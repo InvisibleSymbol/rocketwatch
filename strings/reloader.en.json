@@ -1,0 +1,8 @@
+{
+  "load": "Loaded %{name} Plugin!",
+  "unload": "Unloaded %{name} Plugin!",
+  "unload_reloader": "Can't unload the reloader, as this could brick the bot. Restart the bot instead!",
+  "already_loaded": "Plugin %{name} already loaded!",
+  "not_loaded": "Plugin %{name} not loaded!",
+  "not_found": "Plugin %{name} not found!"
+}

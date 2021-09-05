@@ -1,0 +1,19 @@
+{
+  "storage": {
+    "name": "rocketStorage",
+    "address": "0xd8Cd47263414aFEca62d6e2a3917d6600abDceB3"
+  },
+  "sources": {
+    "rocketNodeDeposit": {
+      "TokensBurned": "reth_burn_event"
+    },
+    "rocketMinipoolManager": {
+      "MinipoolCreated": "minipool_create_event",
+      "MinipoolDestroyed": "minipool_destroy_event"
+    },
+    "rocketDepositPool": {
+      "DepositReceived": "pool_deposit_event",
+      "DepositRecycled": "pool_recycle_event"
+    }
+  }
+}

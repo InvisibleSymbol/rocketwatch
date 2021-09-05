@@ -1,0 +1,26 @@
+{
+  "reth_burn_event": {
+    "title": "rETH Burn",
+    "description": "Burned %{amount} rETH for %{ethAmount} ETH! :fire:"
+  },
+  "minipool_create_event": {
+    "title": "Minipool Created",
+    "description": "Minipool %{minipool_fancy} has been created! :rocket:"
+  },
+  "minipool_destroy_event": {
+    "title": "Minipool Destroyed",
+    "description": "Minipool %{minipool_fancy} has been destroyed!"
+  },
+  "pool_deposit_event": {
+    "title": "Pool Deposit",
+    "description": "%{amount} ETH deposited to the Pool! :rocket:"
+  },
+  "pool_recycle_event": {
+    "title": "Deposit Recycled",
+    "description": "%{amount} ETH recycled back into the Vault!"
+  },
+  "pool_assign_event": {
+    "title": "ETH Assigned",
+    "description": "%{amount} ETH has been assigned to Minipool %{minipool_fancy}!"
+  }
+}
