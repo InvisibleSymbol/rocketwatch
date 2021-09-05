@@ -21,7 +21,7 @@ class RocketPool(commands.Cog):
     self.loaded = True
     self.tnx_cache = []
     self.w3 = Web3(Web3.WebsocketProvider(os.getenv("W3_NODE_WS")))
-    with open("./stuff/rocketpool.json") as f:
+    with open("./data/rocketpool.json") as f:
       self.config = json.load(f)
     self.contracts = {}
     self.events = []
