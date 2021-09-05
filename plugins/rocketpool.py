@@ -112,7 +112,7 @@ class RocketPool(commands.Cog):
 
           log.debug(event_name, event['args'])
 
-    channel = await self.bot.fetch_channel(os.getenv("DEBUG_CHANNEL"))
+    channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL"))
     for embed in sorted(messages, key=lambda a: a["score"], reverse=False):
       await channel.send(embed=embed["embed"])
 
