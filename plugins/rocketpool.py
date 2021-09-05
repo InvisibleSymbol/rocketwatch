@@ -55,8 +55,8 @@ class RocketPool(commands.Cog):
     contract = self.contracts[event['address']]
     result = {
       "message": contract.functions.getMessage(event["args"]["proposalID"]).call(),
-      "votesFor": contract.functions.getVotesFor(event["args"]["proposalID"]).call() // 10**18,
-      "votesAgainst": contract.functions.getVotesAgainst(event["args"]["proposalID"]).call() // 10**18,
+      "votesFor": contract.functions.getVotesFor(event["args"]["proposalID"]).call() // 10 ** 18,
+      "votesAgainst": contract.functions.getVotesAgainst(event["args"]["proposalID"]).call() // 10 ** 18,
     }
     return result
 
