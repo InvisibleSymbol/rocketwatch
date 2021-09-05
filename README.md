@@ -1,4 +1,4 @@
-# rpl-bot
+# Rocket Feed
  A Discord bot that tracks Rocket Pool Events
 
 ## Instructions
