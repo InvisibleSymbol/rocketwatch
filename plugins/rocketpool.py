@@ -93,9 +93,10 @@ class RocketPool(commands.Cog):
       if keys:
         key = keys[0]
         name = self.get_dao_member_name(args[key])
-        if not name:
-          name = "Unknown"
-        args["member_fancy"] = f"{name} ({args[key + '_fancy']})"
+        if name:
+          args["member_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
+        else:
+          args["member_fancy"] = args[key + '_fancy']
 
     embed.title = _(f"rocketpool.{event_name}.title")
     embed.description = _(f"rocketpool.{event_name}.description", **args)
