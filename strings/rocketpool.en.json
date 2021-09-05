@@ -1,22 +1,22 @@
 {
   "reth_burn_event": {
-    "title": "rETH Burn",
-    "description": "Burned %{amount} rETH for %{ethAmount} ETH! :fire:"
+    "title": ":fire: rETH Burn",
+    "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
   },
   "minipool_create_event": {
-    "title": "Minipool Created",
-    "description": "Minipool %{minipool_fancy} has been created! :rocket:"
+    "title": ":rocket: Minipool Created",
+    "description": "Minipool %{minipool_fancy} has been created!"
   },
   "minipool_destroy_event": {
-    "title": "Minipool Destroyed",
+    "title": ":firecracker: Minipool Destroyed",
     "description": "Minipool %{minipool_fancy} has been destroyed!"
   },
   "pool_deposit_event": {
-    "title": "Pool Deposit",
-    "description": "%{amount} ETH deposited to the Pool! :rocket:"
+    "title": ":rocket: Pool Deposit",
+    "description": "%{amount} ETH deposited to the Pool!"
   },
   "pool_recycle_event": {
-    "title": "Deposit Recycled",
+    "title": ":recycle: Deposit Recycled",
     "description": "%{amount} ETH recycled back into the Vault!"
   },
   "odao_proposal_added": {
