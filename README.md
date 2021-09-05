@@ -9,7 +9,7 @@
 
 
 ## How to add new Events:
-- Open `rocketpool.json` and add a new Entry. Map the Contract Events to Bot Events in `events_to_watch`.
+- Open `./data/rocketpool.json` and add a new Entry. Map the Contract Events to Bot Events in `events_to_watch`.
 - Add the required ABI in `./contracts/`. (The Path should look like this: `./contracts/RocketMinipoolManager.abi`). 
 - Open `./strings/rocketpool.en.json` and add both `title` and `description` for each new Event. You can access Event Arguments directly using their Names: `%(amount)`. If you want to mention an Address, you can append `_fancy` to get a shorter Version that also automatically links to etherscan.io.
 
