@@ -36,7 +36,6 @@ class RocketPool(commands.Cog):
       for event in events:
         self.events.append(self.contracts[address].events[event].createFilter(fromBlock="latest", toBlock="latest"))
       self.mapping[address] = events
-
     if not self.run_loop.is_running():
       self.run_loop.start()
 
@@ -136,7 +135,6 @@ class RocketPool(commands.Cog):
     # Handles small reorgs better this way
     for events in reversed(self.events):
       for event in list(events.get_all_entries())[:1]:
-        print(event)
         if event["event"] in self.mapping[event['address']]:
 
           # skip if we already have seen this message
@@ -157,7 +155,8 @@ class RocketPool(commands.Cog):
           # to prevent duplicate messages
           self.tnx_cache.append(tnx_hash)
 
-          log.debug(event_name, event['args'])
+          log.debug(event_name)
+          print(event)
 
     channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL"))
     for embed in sorted(messages, key=lambda a: a["score"], reverse=False):
