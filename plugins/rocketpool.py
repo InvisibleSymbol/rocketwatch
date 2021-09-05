@@ -109,7 +109,7 @@ class RocketPool(commands.Cog):
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
     return embed
 
-  @tasks.loop(seconds=10.0)
+  @tasks.loop(seconds=30.0)
   async def check_for_new_events(self):
     if not self.loaded:
       return
