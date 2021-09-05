@@ -37,7 +37,8 @@ class RocketPool(commands.Cog):
         self.events.append(self.contracts[address].events[event].createFilter(fromBlock="latest", toBlock="latest"))
       self.mapping[address] = events
 
-    self.check_for_new_events.start()
+    if not self.run_loop.is_running():
+      self.run_loop.start()
 
   def get_address_from_storage_contract(self, name):
     log.debug(f"retrieving address for {name}")
@@ -109,7 +110,21 @@ class RocketPool(commands.Cog):
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
     return embed
 
-  @tasks.loop(seconds=30.0)
+  @tasks.loop(seconds=5.0)
+  async def run_loop(self):
+    if self.loaded:
+      try:
+        return await self.check_for_new_events()
+      except Exception as err:
+        self.loaded = False
+        log.exception(err)
+    else:
+      try:
+        return self.__init__(self.bot)
+      except Exception as err:
+        self.loaded = False
+        log.exception(err)
+
   async def check_for_new_events(self):
     if not self.loaded:
       return
@@ -153,7 +168,7 @@ class RocketPool(commands.Cog):
 
   def cog_unload(self):
     self.loaded = False
-    self.check_for_new_events.stop()
+    self.run_loop.cancel()
 
 
 def setup(bot):
