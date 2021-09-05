@@ -134,7 +134,7 @@ class RocketPool(commands.Cog):
     # Newest Event first so they are preferred over older ones.
     # Handles small reorgs better this way
     for events in reversed(self.events):
-      for event in list(events.get_all_entries())[:1]:
+      for event in events.get_new_entries():
         if event["event"] in self.mapping[event['address']]:
 
           # skip if we already have seen this message
