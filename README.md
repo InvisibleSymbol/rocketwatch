@@ -3,7 +3,7 @@
 
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
-![](https://url.invis.cloud/Rw3iga)
+![](https://url.invis.cloud/wr5DGl)
 
 ## Instructions
 - Python 3.8 Recommended
