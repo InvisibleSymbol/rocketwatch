@@ -18,9 +18,5 @@
   "pool_recycle_event": {
     "title": "Deposit Recycled",
     "description": "%{amount} ETH recycled back into the Vault!"
-  },
-  "pool_assign_event": {
-    "title": "ETH Assigned",
-    "description": "%{amount} ETH has been assigned to Minipool %{minipool_fancy}!"
   }
 }
