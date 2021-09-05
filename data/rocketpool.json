@@ -14,6 +14,22 @@
     "rocketDepositPool": {
       "DepositReceived": "pool_deposit_event",
       "DepositRecycled": "pool_recycle_event"
+    },
+    "rocketDAOProposal": {
+      "ProposalAdded": "odao_proposal_added",
+      "ProposalExecuted": "odao_proposal_executed",
+      "ProposalCancelled": "odao_proposal_cancelled"
+    },
+    "rocketDAONodeTrustedActions": {
+      "ActionJoined": "odao_member_join",
+      "ActionLeave": "odao_member_leave",
+      "ActionKick": "odao_member_kicked"
+    },
+    "rocketNodeManager": {
+      "NodeRegistered": "node_register_event"
+    },
+    "rocketTokenRPL": {
+      "RPLInflationLog": "rpl_inflation_event"
     }
   }
 }

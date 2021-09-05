@@ -51,8 +51,22 @@ class RocketPool(commands.Cog):
     inflated = pako_inflate(base64.b64decode(raw_result))
     return inflated.decode("ascii")
 
-  @staticmethod
-  def create_embed(event_name, event):
+  def get_proposal_info(self, event):
+    contract = self.contracts[event['address']]
+    result = {
+      "message": contract.functions.getMessage(event["args"]["proposalID"]).call(),
+      "votesFor": contract.functions.getVotesFor(event["args"]["proposalID"]).call() // 10**18,
+      "votesAgainst": contract.functions.getVotesAgainst(event["args"]["proposalID"]).call() // 10**18,
+    }
+    return result
+
+  def get_dao_member_name(self, member_address):
+    address = self.get_address_from_storage_contract("rocketDAONodeTrusted")
+    with open(f"./contracts/rocketDAONodeTrusted.abi", "r") as f:
+      contract = self.w3.eth.contract(address=address, abi=f.read())
+    return contract.functions.getMemberID(member_address).call()
+
+  def create_embed(self, event_name, event):
     embed = Embed(color=discord.Color.from_rgb(235, 142, 85))
     embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
     embed.set_author(icon_url="https://docs.rocketpool.net/images/logo.png", name="Rocket Pool Goerli")
@@ -60,11 +74,28 @@ class RocketPool(commands.Cog):
     # prepare args
     args = dict(event['args'])
     for arg_key, arg_value in list(args.items()):
-      if "amount" in arg_key.lower():
+      if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
         args[arg_key] = arg_value / 10 ** 18
 
       if str(arg_value).startswith("0x"):
         args[f"{arg_key}_fancy"] = f"[{arg_value[:6]}...{arg_value[-4:]}](https://goerli.etherscan.io/search?q={arg_value})"
+
+    # add proposal message manually if the event contains a proposal
+    if "proposal" in event_name:
+      data = self.get_proposal_info(event)
+      args["message"] = data["message"]
+      embed.add_field(name="Votes For", value=data["votesFor"], inline=False)
+      embed.add_field(name="Votes Against", value=data["votesAgainst"], inline=False)
+
+    # add member name if we can
+    if "odao" in event_name:
+      keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer"] if key in args]
+      if keys:
+        key = keys[0]
+        name = self.get_dao_member_name(args[key])
+        if not name:
+          name = "Unknown"
+        args["member_fancy"] = f"{name} ({args[key + '_fancy']})"
 
     embed.title = _(f"rocketpool.{event_name}.title")
     embed.description = _(f"rocketpool.{event_name}.description", **args)
@@ -89,7 +120,8 @@ class RocketPool(commands.Cog):
     # Newest Event first so they are preferred over older ones.
     # Handles small reorgs better this way
     for events in reversed(self.events):
-      for event in events.get_new_entries():
+      for event in list(events.get_all_entries())[:1]:
+        print(event)
         if event["event"] in self.mapping[event['address']]:
 
           # skip if we already have seen this message

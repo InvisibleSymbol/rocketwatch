@@ -18,5 +18,37 @@
   "pool_recycle_event": {
     "title": "Deposit Recycled",
     "description": "%{amount} ETH recycled back into the Vault!"
+  },
+  "odao_proposal_added": {
+    "title": ":bulb: Proposal created",
+    "description": "%{member_fancy} created Proposal #%{proposalID}!\n```%{message}```"
+  },
+  "odao_proposal_executed": {
+    "title": ":white_check_mark: Proposal Executed",
+    "description": "%{member_fancy} has executed Proposal #%{proposalID}!\n```%{message}```"
+  },
+  "odao_proposal_cancelled": {
+    "title": ":no_entry_sign: Cancelled Proposal",
+    "description": "%{member_fancy} has cancelled Proposal #%{proposalID}!\n```%{message}```"
+  },
+  "odao_member_join": {
+    "title": ":new: oDAO Member Joined",
+    "description": "%%{member_fancy} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
+  },
+  "odao_member_leave": {
+    "title": ":leaves: oDAO Member Left",
+    "description": "%{nodeAddress_fancy} left the oDAO!"
+  },
+  "odao_member_kicked": {
+    "title": ":boot: oDAO Member Kicked",
+    "description": "%{nodeAddress_fancy} was kicked from the oDAO!"
+  },
+  "node_register_event": {
+    "title": ":mailbox_with_mail: Node Registered",
+    "description": "%{node_fancy} has registered as a Node Operator!"
+  },
+  "rpl_inflation_event": {
+    "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
+    "description": "%{sender_fancy} minted %{value} new RPL!"
   }
 }
