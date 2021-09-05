@@ -3,6 +3,8 @@
 
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
+![](https://url.invis.cloud/Rw3iga)
+
 ## Instructions
 - Python 3.8 Recommended
 - `pip install -r requirements.txt`
