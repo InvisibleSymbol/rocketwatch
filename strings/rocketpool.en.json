@@ -37,7 +37,7 @@
   },
   "odao_member_join": {
     "title": ":new: oDAO Member Joined",
-    "description": "%%{member_fancy} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
+    "description": "%{member_fancy} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
   },
   "odao_member_leave": {
     "title": ":leaves: oDAO Member Left",
