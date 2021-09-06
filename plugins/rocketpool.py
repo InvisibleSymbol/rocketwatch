@@ -80,17 +80,7 @@ class RocketPool(commands.Cog):
 
     # prepare args
     args = dict(event['args'])
-    for arg_key, arg_value in list(args.items()):
-      if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
-        args[arg_key] = arg_value / 10 ** 18
 
-      if str(arg_value).startswith("0x"):
-        name = ""
-        if self.w3.isAddress(arg_value):
-          name = self.get_ens_name(arg_value)
-        if not name:
-          name = f"{arg_value[:6]}...{arg_value[-4:]}"
-        args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
@@ -105,7 +95,19 @@ class RocketPool(commands.Cog):
     if "supported" in args:
       args["decision"] = "for" if args["supported"] else "against"
 
-    # add member name if we can
+    for arg_key, arg_value in list(args.items()):
+      if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
+        args[arg_key] = arg_value / 10 ** 18
+
+      if str(arg_value).startswith("0x"):
+        name = ""
+        if self.w3.isAddress(arg_value):
+          name = self.get_ens_name(arg_value)
+        if not name:
+          name = f"{short_hex(arg_value)}"
+        args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
+
+    # add oDAO member name if we can
     if "odao" in event_name:
       keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]
       if keys:
