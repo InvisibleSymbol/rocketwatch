@@ -3,6 +3,16 @@
 
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
+## Features:
+- Tracks most if not all interesting Events.
+- Supports ENS Addresses.
+- Accesses Contracts to get detailed information about Proposals / oDAO Members.
+- Automatically retrieves Addresses from Storage Contract at start-up. (Easy support for Upgrades)
+- Supports dual-channel setup to separate oDAO Events from the rest.
+- Short event-to-message duration (Events are fetched every 15 seconds).
+- Deduplication-Logic (prevents duplicated Messages caused by Chain-Reorgs).
+- Easy Extendability (No hard-coded addresses, Events are loaded from a `.json` File)
+
 ![](readme-images/screenshot.png)
 
 ## Instructions
