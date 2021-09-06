@@ -56,6 +56,10 @@ class RocketPool(commands.Cog):
     inflated = pako_inflate(base64.b64decode(raw_result))
     return inflated.decode("ascii")
 
+  def get_pubkey_from_minipool(self, event):
+    contract = self.contracts[event['address']]
+    return contract.functions.getMinipoolPubkey(event["args"]["minipool"]).call()
+
   def get_ens_name(self, address):
     return self.ens.name(address)
 
@@ -81,6 +85,12 @@ class RocketPool(commands.Cog):
     # prepare args
     args = dict(event['args'])
 
+    # get pubkey of validator if a Minipool is involved
+    if "minipool" in event_name:
+      pubkey = self.get_pubkey_from_minipool(event)
+      embed.add_field(name="validator",
+                      value=f"[{short_hex(pubkey)}](https://prater.beaconcha.in/validator/{pubkey})",
+                      inline=False)
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
