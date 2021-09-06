@@ -11,7 +11,7 @@
 - Supports dual-channel setup to separate oDAO Events from the rest.
 - Short event-to-message duration (Events are fetched every 15 seconds).
 - Deduplication-Logic (prevents duplicated Messages caused by Chain-Reorgs).
-- Easy Extendability (No hard-coded addresses, Events are loaded from a `.json` File)
+- Easy Extendability (No hard-coded Addresses, Events are loaded from a `.json` File)
 
 ![](readme-images/screenshot.png)
 
