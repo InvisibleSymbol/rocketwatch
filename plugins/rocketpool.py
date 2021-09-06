@@ -83,7 +83,7 @@ class RocketPool(commands.Cog):
       if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
         args[arg_key] = arg_value / 10 ** 18
 
-      if arg_value.startswith("0x"):
+      if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
           name = self.get_ens_name(arg_value)
