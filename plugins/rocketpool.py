@@ -5,6 +5,7 @@ import os
 
 import discord
 import termplotlib as tpl
+from ens import ENS
 from discord import Embed
 from discord.ext import commands, tasks
 from web3 import Web3
@@ -23,6 +24,7 @@ class RocketPool(commands.Cog):
     self.tnx_cache = []
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
+    self.ens = ENS.fromWeb3(Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))) # switch to self.w3 once we use mainnet
     with open("./data/rocketpool.json") as f:
       self.config = json.load(f)
     self.contracts = {}
@@ -53,6 +55,9 @@ class RocketPool(commands.Cog):
     inflated = pako_inflate(base64.b64decode(raw_result))
     return inflated.decode("ascii")
 
+  def get_ens_name(self, address):
+    return self.ens.name(address)
+
   def get_proposal_info(self, event):
     contract = self.contracts[event['address']]
     result = {
@@ -78,8 +83,13 @@ class RocketPool(commands.Cog):
       if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
         args[arg_key] = arg_value / 10 ** 18
 
-      if str(arg_value).startswith("0x"):
-        args[f"{arg_key}_fancy"] = f"[{arg_value[:6]}...{arg_value[-4:]}](https://goerli.etherscan.io/search?q={arg_value})"
+      if arg_value.startswith("0x"):
+        name = ""
+        if self.w3.isAddress(arg_value):
+          name = self.get_ens_name(arg_value)
+        if not name:
+          name = f"{arg_value[:6]}...{arg_value[-4:]}"
+        args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
