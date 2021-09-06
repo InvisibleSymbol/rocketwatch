@@ -156,7 +156,8 @@ class RocketPool(commands.Cog):
 
           messages.append({
             "score": score,
-            "embed": self.create_embed(event_name, event)
+            "embed": self.create_embed(event_name, event),
+            "event_name": event_name
           })
 
           # to prevent duplicate messages
@@ -165,9 +166,13 @@ class RocketPool(commands.Cog):
           log.debug(event_name)
           print(event)
 
-    channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL"))
-    for embed in sorted(messages, key=lambda a: a["score"], reverse=False):
-      await channel.send(embed=embed["embed"])
+    default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
+    odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
+    for event in sorted(messages, key=lambda a: a["score"], reverse=False):
+      if "odao" in event["event_name"]:
+        await odao_channel.send(embed=event["embed"])
+      else:
+        await default_channel.send(embed=event["embed"])
 
     # this is so we don't just continue and use up more and more memory for the deduplication
     self.tnx_cache = self.tnx_cache[-1000:]
