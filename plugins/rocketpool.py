@@ -21,7 +21,8 @@ class RocketPool(commands.Cog):
     self.bot = bot
     self.loaded = True
     self.tnx_cache = []
-    self.w3 = Web3(Web3.WebsocketProvider(os.getenv("W3_NODE_WS")))
+    infura_id = os.getenv("INFURA_ID")
+    self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
     with open("./data/rocketpool.json") as f:
       self.config = json.load(f)
     self.contracts = {}
