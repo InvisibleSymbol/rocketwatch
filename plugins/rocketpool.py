@@ -166,6 +166,7 @@ class RocketPool(commands.Cog):
 
           log.debug(event_name)
           print(event)
+    log.debug("finished checking for new events")
 
     default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
     odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
