@@ -21,15 +21,15 @@
   },
   "odao_proposal_added": {
     "title": ":bulb: Proposal created",
-    "description": "%{member_fancy} created Proposal #%{proposalID}!\n```%{message}```"
+    "description": "%{member_fancy} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
   },
   "odao_proposal_executed": {
     "title": ":white_check_mark: Proposal Executed",
-    "description": "%{member_fancy} executed Proposal #%{proposalID}!\n```%{message}```"
+    "description": "%{member_fancy} executed Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
   },
   "odao_proposal_cancelled": {
     "title": ":no_entry_sign: Cancelled Proposal",
-    "description": "%{member_fancy} cancelled Proposal #%{proposalID}!\n```%{message}```"
+    "description": "%{member_fancy} cancelled Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
   },
   "odao_member_join": {
     "title": ":new: oDAO Member Joined",

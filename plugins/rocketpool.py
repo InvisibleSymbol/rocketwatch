@@ -84,8 +84,10 @@ class RocketPool(commands.Cog):
     if "proposal" in event_name:
       data = self.get_proposal_info(event)
       args["message"] = data["message"]
-      embed.add_field(name="Votes For", value=data["votesFor"], inline=False)
-      embed.add_field(name="Votes Against", value=data["votesAgainst"], inline=False)
+      # create bar graph for votes
+      vote_graph = tpl.figure()
+      vote_graph.barh([data["votesFor"], data["votesAgainst"]], ["For", "Against"], max_width=20)
+      args["vote_graph"] = vote_graph.get_string()
 
     # add member name if we can
     if "odao" in event_name:
