@@ -12,6 +12,7 @@ from web3 import Web3
 
 from strings import _
 from utils.pako import pako_inflate
+from utils.shorten import short_hex
 
 log = logging.getLogger("rocketpool")
 log.setLevel("DEBUG")
@@ -120,9 +121,11 @@ class RocketPool(commands.Cog):
 
     tnx_hash = event['transactionHash'].hex()
     embed.add_field(name="Transaction Hash",
-                    value=f"[{tnx_hash[:6]}...{tnx_hash[-4:]}](https://goerli.etherscan.io/tx/{tnx_hash})")
+                    value=f"[{short_hex(tnx_hash)}](https://goerli.etherscan.io/tx/{tnx_hash})")
+
     if "from" in args:
       embed.add_field(name="Sender Address", value=args["from_fancy"])
+
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
     return embed
