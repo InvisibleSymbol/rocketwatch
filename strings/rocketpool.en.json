@@ -17,7 +17,7 @@
   },
   "pool_recycle_event": {
     "title": ":recycle: Deposit Recycled",
-    "description": "%{amount} ETH recycled back into the Vault!"
+    "description": "%{amount} ETH recycled!"
   },
   "odao_proposal_added": {
     "title": ":bulb: Proposal created",
