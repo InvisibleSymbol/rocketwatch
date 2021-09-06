@@ -27,6 +27,10 @@
     "title": ":white_check_mark: Proposal Executed",
     "description": "%{member_fancy} executed Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
   },
+  "odao_proposal_voted": {
+    "title": ":writing_hand: Proposal Voted",
+    "description": "%{member_fancy} voted %{decision} Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
+  },
   "odao_proposal_cancelled": {
     "title": ":no_entry_sign: Cancelled Proposal",
     "description": "%{member_fancy} cancelled Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"

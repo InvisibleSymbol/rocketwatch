@@ -89,9 +89,13 @@ class RocketPool(commands.Cog):
       vote_graph.barh([data["votesFor"], data["votesAgainst"]], ["For", "Against"], max_width=20)
       args["vote_graph"] = vote_graph.get_string()
 
+    # create human readable Decision for Votes
+    if "supported" in args:
+      args["decision"] = "for" if args["supported"] else "against"
+
     # add member name if we can
     if "odao" in event_name:
-      keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer"] if key in args]
+      keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]
       if keys:
         key = keys[0]
         name = self.get_dao_member_name(args[key])

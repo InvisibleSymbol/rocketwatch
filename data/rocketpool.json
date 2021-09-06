@@ -17,6 +17,7 @@
     },
     "rocketDAOProposal": {
       "ProposalAdded": "odao_proposal_added",
+      "ProposalVoted": "odao_proposal_voted",
       "ProposalExecuted": "odao_proposal_executed",
       "ProposalCancelled": "odao_proposal_cancelled"
     },
