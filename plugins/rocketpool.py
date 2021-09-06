@@ -69,7 +69,6 @@ class RocketPool(commands.Cog):
   def create_embed(self, event_name, event):
     embed = Embed(color=discord.Color.from_rgb(235, 142, 85))
     embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
-    embed.set_author(icon_url="https://docs.rocketpool.net/images/logo.png", name="Rocket Pool Goerli")
 
     # prepare args
     args = dict(event['args'])
