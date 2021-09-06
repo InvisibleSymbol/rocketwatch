@@ -12,8 +12,7 @@
       "MinipoolDestroyed": "minipool_destroy_event"
     },
     "rocketDepositPool": {
-      "DepositReceived": "pool_deposit_event",
-      "DepositRecycled": "pool_recycle_event"
+      "DepositReceived": "pool_deposit_event"
     },
     "rocketDAOProposal": {
       "ProposalAdded": "odao_proposal_added",

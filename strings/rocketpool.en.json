@@ -15,10 +15,6 @@
     "title": ":rocket: Pool Deposit",
     "description": "%{amount} ETH deposited to the Pool!"
   },
-  "pool_recycle_event": {
-    "title": ":recycle: Deposit Recycled",
-    "description": "%{amount} ETH recycled!"
-  },
   "odao_proposal_added": {
     "title": ":bulb: Proposal created",
     "description": "%{member_fancy} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
