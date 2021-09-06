@@ -135,12 +135,11 @@ class RocketPool(commands.Cog):
       except Exception as err:
         self.loaded = False
         log.exception(err)
-    else:
-      try:
-        return self.__init__(self.bot)
-      except Exception as err:
-        self.loaded = False
-        log.exception(err)
+    try:
+      return self.__init__(self.bot)
+    except Exception as err:
+      self.loaded = False
+      log.exception(err)
 
   async def check_for_new_events(self):
     if not self.loaded:
