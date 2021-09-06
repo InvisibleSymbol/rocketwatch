@@ -4,6 +4,7 @@ import logging
 import os
 
 import discord
+import termplotlib as tpl
 from discord import Embed
 from discord.ext import commands, tasks
 from web3 import Web3
