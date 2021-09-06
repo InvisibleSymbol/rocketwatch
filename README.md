@@ -1,5 +1,6 @@
 # Rocket Feed
  A Discord bot that tracks Rocket Pool Events
+> Currently rewriting Minipool Deposit Events so the Pubkey can be shown. This requires a more roundabout way of processing the Events so a special Path has to be coded just for this (and making the code not worse while doing that requires more thinking/time) 
 
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
