@@ -174,7 +174,9 @@ class RocketPool(commands.Cog):
 
     for arg_key, arg_value in list(args.items()):
       if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
-        args[arg_key] = arg_value / 10 ** 18
+        args[arg_key] = round(arg_value / 10 ** 18, 5)
+        if args[arg_key] == int(args[arg_key]):
+          args[arg_key] = int(args[arg_key])
 
       if str(arg_value).startswith("0x"):
         name = ""
