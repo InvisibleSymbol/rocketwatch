@@ -3,13 +3,13 @@
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 ## Features:
-- Ability to track Proposals (Description read from Contract)
+- Ability to track Proposals (Description read from Contract):
 
 <p align="center">
     <img src="readme-images/proposals.png">
 </p>
 
-- Ability to track oDAO Member Activity (uses Nicknames of oDAO Members if available)
+- Ability to track oDAO Member Activity (uses Nicknames of oDAO Members if available):
 
 <p align="center">
     <img src="readme-images/odao_members.png">
@@ -24,10 +24,10 @@
 - Ability to track Minipool Activity (Provides Link to Validator if feasible):
 
 <p align="center">
-    <img src="readme-images/minipool.png">
+    <img src="readme-images/minipools.png">
 </p>
 
-- Supports ENS Addresses.
+- Supports ENS Addresses:
 
 <p align="center">
     <img src="readme-images/ens.png">
