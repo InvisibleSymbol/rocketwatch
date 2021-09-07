@@ -1,4 +1,3 @@
-import base64
 import json
 import logging
 import os
@@ -11,7 +10,6 @@ from discord.ext import commands, tasks
 from web3 import Web3
 
 from strings import _
-from utils.pako import pako_inflate
 from utils.shorten import short_hex
 
 log = logging.getLogger("rocketpool")
