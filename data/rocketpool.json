@@ -7,9 +7,6 @@
     "rocketTokenRETH": {
       "TokensBurned": "reth_burn_event"
     },
-    "rocketMinipoolManager": {
-      "MinipoolDestroyed": "minipool_destroy_event"
-    },
     "rocketDepositPool": {
       "DepositReceived": "pool_deposit_event"
     },

@@ -7,9 +7,9 @@
     "title": ":rocket: Minipool Staked",
     "description": "Minipool %{minipool_fancy} has deposited to the Beacon Chain!"
   },
-  "minipool_destroy_event": {
-    "title": ":firecracker: Minipool Destroyed",
-    "description": "Minipool %{minipool_fancy} has been destroyed!"
+  "minipool_exited": {
+    "title": ":leaves: Minipool Exited",
+    "description": "Minipool %{minipool_fancy} has been flagged as Withdrawable!"
   },
   "pool_deposit_event": {
     "title": ":rocket: Pool Deposit",
