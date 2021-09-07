@@ -17,6 +17,9 @@ from utils.shorten import short_hex
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
+DEPOSIT_EVENT = 2
+EXIT_EVENT = 4
+
 
 class RocketPool(commands.Cog):
   def __init__(self, bot):
@@ -49,15 +52,14 @@ class RocketPool(commands.Cog):
         self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
       self.mapping[contract.address] = events
 
-    # This tracks all MinipoolStatus.Staking Events, which is indirectly used to track Minipool deposit events.
-    # It is done this way to allow retrieving the public_key instantly from the corresponding transaction.
-    # It usually takes some time till rocketMinipoolManager is updated with the key, so just accessing that wouldn't work.
+    # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
     with open(f"./contracts/rocketMinipoolDelegate.abi", "r") as f:
-      self.minipool_delegate_contract = self.w3.eth.contract(address=None, abi=f.read())
-    event = self.minipool_delegate_contract.events.StatusUpdated.createFilter(fromBlock="latest",
-                                                                              toBlock="latest",
-                                                                              argument_filters={'status': 2})
-    self.events.append(event)
+      minipool_delegate_contract = self.w3.eth.contract(address=None, abi=f.read())
+    status_event = minipool_delegate_contract.events.StatusUpdated
+    # one for staking (id=2)
+    self.events.append(status_event.createFilter(fromBlock="latest",
+                                                 toBlock="latest",
+                                                 argument_filters={'status': [DEPOSIT_EVENT, EXIT_EVENT]}))
 
     # load the Deposit Contract so we can parse Deposit Events
     with open(f"./contracts/beaconDepositContract.abi", "r") as f:
@@ -96,29 +98,44 @@ class RocketPool(commands.Cog):
       contract = self.w3.eth.contract(address=address, abi=f.read())
     return contract.functions.getMemberID(member_address).call()
 
-  def handle_deposit(self, event):
-    # attempt to retrieve the pubkey
-    receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
-    # next step will throw some warnings about other events but those are safe to ignore
+  def get_pubkey_using_contract(self, address):
+    contract = self.get_contract("rocketMinipoolManager")
+    return contract.functions.getMinipoolPubkey(address).call().hex()
+
+  def get_pubkey_using_transaction(self, receipt):
+    # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
       processed_logs = self.deposit_contract.events.DepositEvent().processReceipt(receipt)
 
+    # attempt to retrieve the pubkey
     if processed_logs:
       deposit_event = processed_logs[0]
-      pubkey = "0x" + deposit_event.args.pubkey.hex()
+      return "0x" + deposit_event.args.pubkey.hex()
 
-      # first need to make the container mutable
-      event = MutableAttributeDict(event)
-      # so we can make this mutable
-      event.args = MutableAttributeDict(event.args)
+  def handle_minipool_events(self, event):
+    receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
+
+    # first need to make the container mutable
+    event = MutableAttributeDict(event)
+    # so we can make this mutable
+    event.args = MutableAttributeDict(event.args)
+
+    pubkey = self.get_pubkey_using_transaction(receipt)
+    if not pubkey:
+      # check if the contract has it stored instead
+      pubkey = self.get_pubkey_using_contract(receipt["from"])
+
+    if pubkey:
       event.args.pubkey = pubkey
-      # while we are at it add the sender address so it shows up
-      event.args["from"] = receipt["from"]
-      # and add the minipool address, which is the contract that was called
-      event.args["minipool"] = receipt["to"]
 
-      return self.create_embed("minipool_deposit_event", event)
+    # while we are at it add the sender address so it shows up
+    event.args["from"] = receipt["from"]
+    # and add the minipool address, which is the contract that was called
+    event.args["minipool"] = receipt["to"]
+
+    event_name = "minipool_deposit_event" if event.args.status == DEPOSIT_EVENT else "minipool_exited_event"
+    return self.create_embed(event_name, event), event_name
 
   def create_embed(self, event_name, event):
     embed = Embed(color=discord.Color.from_rgb(235, 142, 85))
@@ -231,8 +248,7 @@ class RocketPool(commands.Cog):
 
         # custom Deposit Event Path
         if event.event == "StatusUpdated":
-          embed = self.handle_deposit(event)
-          event_name = "minipool_deposit"
+          embed, event_name = self.handle_minipool_events(event)
 
         # default Event Path
         elif event.event in self.mapping.get(address, {}):
