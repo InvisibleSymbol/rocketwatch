@@ -49,13 +49,6 @@ class RocketPool(commands.Cog):
     sha3 = Web3.soliditySha3(["string", "string"], ["contract.address", name])
     return self.storage_contract.functions.getAddress(sha3).call()
 
-  def get_abi_from_storage_contract(self, name):
-    # Not used as the stored ABI is a stripped-down version without the required Events
-    sha3 = Web3.soliditySha3(["string", "string"], ["contract.abi", name])
-    raw_result = self.storage_contract.functions.getString(sha3).call()
-    inflated = pako_inflate(base64.b64decode(raw_result))
-    return inflated.decode("ascii")
-
   def get_pubkey_from_minipool(self, event):
     contract = self.contracts[event['address']]
     return contract.functions.getMinipoolPubkey(event["args"]["minipool"]).call()
