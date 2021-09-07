@@ -9,9 +9,9 @@ from utils.reporter import report_error
 
 load_dotenv()
 
-logging.basicConfig(format="%(levelname)6s %(asctime)s [%(name)s] %(filename)s|%(funcName)s(): %(message)s")
+logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
-log.setLevel("DEBUG")
+log.setLevel(os.getenv("DEBUG_LEVEL"))
 bot = commands.Bot(command_prefix=';')
 
 
