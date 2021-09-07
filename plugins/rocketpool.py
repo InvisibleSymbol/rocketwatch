@@ -58,9 +58,9 @@ class RocketPool(commands.Cog):
   def get_proposal_info(self, event):
     contract = self.contracts[event['address']]
     result = {
-      "message": contract.functions.getMessage(event["args"]["proposalID"]).call(),
-      "votesFor": contract.functions.getVotesFor(event["args"]["proposalID"]).call() // 10 ** 18,
-      "votesAgainst": contract.functions.getVotesAgainst(event["args"]["proposalID"]).call() // 10 ** 18,
+      "message": contract.functions.getMessage(event.args.proposalID).call(),
+      "votesFor": contract.functions.getVotesFor(event.args.proposalID).call() // 10 ** 18,
+      "votesAgainst": contract.functions.getVotesAgainst(event.args.proposalID).call() // 10 ** 18,
     }
     return result
 
@@ -86,7 +86,7 @@ class RocketPool(commands.Cog):
       vote_graph.barh([data["votesFor"], data["votesAgainst"]], ["For", "Against"], max_width=20)
       args["vote_graph"] = vote_graph.get_string()
 
-    # create human readable Decision for Votes
+    # create human readable decision for votes
     if "supported" in args:
       args["decision"] = "for" if args["supported"] else "against"
 
@@ -99,6 +99,7 @@ class RocketPool(commands.Cog):
         if self.w3.isAddress(arg_value):
           name = self.ens.name(arg_value)
         if not name:
+          # fallback when no ens name is found or when the hex isn't an address to begin with
           name = f"{short_hex(arg_value)}"
         args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
@@ -111,6 +112,7 @@ class RocketPool(commands.Cog):
         if name:
           args["member_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
         else:
+          # fallback to just using the pre-formatted address instead
           args["member_fancy"] = args[key + '_fancy']
 
     embed.title = _(f"rocketpool.{event_name}.title")
@@ -121,7 +123,8 @@ class RocketPool(commands.Cog):
                     value=f"[{short_hex(tnx_hash)}](https://goerli.etherscan.io/tx/{tnx_hash})")
 
     if "from" in args:
-      embed.add_field(name="Sender Address", value=args["from_fancy"])
+      embed.add_field(name="Sender Address",
+                      value=args["from_fancy"])
 
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
@@ -151,6 +154,7 @@ class RocketPool(commands.Cog):
     # Newest Event first so they are preferred over older ones.
     # Handles small reorgs better this way
     for events in self.events:
+      log.debug(f"checking {events.filter_id} ({events.filter_params})")
       for event in reversed(list(events.get_new_entries())):
         if event["event"] in self.mapping[event['address']]:
 
@@ -173,20 +177,15 @@ class RocketPool(commands.Cog):
           # to prevent duplicate messages
           self.tnx_cache.append(tnx_hash)
 
-          log.debug(event_name)
-          print(event)
     log.debug("finished checking for new events")
 
     default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
     odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
-    for event in sorted(messages, key=lambda a: a["score"], reverse=False):
-      if "odao" in event["event_name"]:
-        await odao_channel.send(embed=event["embed"])
+    for message in sorted(messages, key=lambda a: a["score"], reverse=False):
+      if "odao" in message["event_name"]:
+        await odao_channel.send(embed=message["embed"])
       else:
-        await default_channel.send(embed=event["embed"])
-
-    # this is so we don't just continue and use up more and more memory for the deduplication
-    self.tnx_cache = self.tnx_cache[-1000:]
+        await default_channel.send(embed=message["embed"])
 
   def cog_unload(self):
     self.loaded = False
