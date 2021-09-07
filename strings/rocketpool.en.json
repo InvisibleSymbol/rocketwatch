@@ -4,8 +4,8 @@
     "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
   },
   "minipool_deposit_event": {
-    "title": ":rocket: Minipool Created",
-    "description": "Minipool %{minipool_fancy} has been created!"
+    "title": ":rocket: Minipool Staked",
+    "description": "Minipool %{minipool_fancy} has deposited to the Beacon Chain!"
   },
   "minipool_destroy_event": {
     "title": ":firecracker: Minipool Destroyed",
