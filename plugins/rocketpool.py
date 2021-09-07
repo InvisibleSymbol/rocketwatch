@@ -83,6 +83,10 @@ class RocketPool(commands.Cog):
     self.address_to_contract[address] = contract
     return contract
 
+  def is_minipool(self, address):
+    contract = self.get_contract("rocketMinipoolManager")
+    return contract.functions.getMinipoolExists(address).call()
+
   def get_proposal_info(self, event):
     contract = self.address_to_contract[event['address']]
     result = {
@@ -115,6 +119,11 @@ class RocketPool(commands.Cog):
 
   def handle_minipool_events(self, event):
     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
+
+    if not self.is_minipool(receipt["to"]):
+      # some random contract we don't care about
+      log.warning(f"Skipping {event.transactionHash} because the called Contract is not a Minipool")
+      return
 
     # first need to make the container mutable
     event = MutableAttributeDict(event)
