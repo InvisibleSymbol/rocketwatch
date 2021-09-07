@@ -3,7 +3,7 @@
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 ## Features:
-- Ability to track Proposals (Description read from Contract):
+- Ability to track Proposals (Description/Vote Count read from Contract):
 
 <p align="center">
     <img src="readme-images/proposals.png">
