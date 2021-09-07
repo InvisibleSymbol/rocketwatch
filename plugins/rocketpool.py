@@ -53,9 +53,6 @@ class RocketPool(commands.Cog):
     contract = self.contracts[event['address']]
     return contract.functions.getMinipoolPubkey(event["args"]["minipool"]).call()
 
-  def get_ens_name(self, address):
-    return self.ens.name(address)
-
   def get_proposal_info(self, event):
     contract = self.contracts[event['address']]
     result = {
@@ -105,7 +102,7 @@ class RocketPool(commands.Cog):
       if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
-          name = self.get_ens_name(arg_value)
+          name = self.ens.name(arg_value)
         if not name:
           name = f"{short_hex(arg_value)}"
         args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
