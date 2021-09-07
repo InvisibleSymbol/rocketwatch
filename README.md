@@ -1,20 +1,46 @@
 # Rocket Feed
  A Discord bot that tracks Rocket Pool Events
-> Currently rewriting Minipool Deposit Events so the Pubkey can be shown. This requires a more roundabout way of processing the Events so a special Path has to be coded just for this (and making the code not worse while doing that requires more thinking/time) 
-
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 ## Features:
-- Tracks most if not all interesting Events.
+- Ability to track Proposals:
+  - Provides detailed information about Proposals.
+
+<p align="center">
+    <img src="readme-images/proposals.png">
+</p>
+
+- Ability to track oDAO Member Activity:
+  - Attempts to retrieve nicknames of oDAO Members.
+
+<p align="center">
+    <img src="readme-images/odao_members.png">
+</p>
+
+- Ability to track Deposit Poll Activity:
+
+<p align="center">
+    <img src="readme-images/pool.png">
+</p>
+
+- Ability to track Minipool related Activity:
+  - Provides Link to Validator for Minipool Creation Events.
+
+<p align="center">
+    <img src="readme-images/minipool.png">
+</p>
+
 - Supports ENS Addresses.
-- Accesses Contracts to get detailed information about Proposals / oDAO Members.
+
+<p align="center">
+    <img src="readme-images/ens.png">
+</p>
+
 - Automatically retrieves Addresses from Storage Contract at start-up. (Easy support for Upgrades)
 - Supports dual-channel setup to separate oDAO Events from the rest.
 - Short event-to-message duration (Events are fetched every 15 seconds).
 - Deduplication-Logic (prevents duplicated Messages caused by Chain-Reorgs).
-- Easy Extendability (No hard-coded Events, they are loaded from a `.json` File)
-
-![](readme-images/screenshot.png)
+- Easy Extendability (Almost no hard-coded Events, most are loaded from a `.json` File)
 
 ## Instructions
 - Python 3.8 Recommended
