@@ -15,7 +15,7 @@ from strings import _
 from utils.shorten import short_hex
 
 log = logging.getLogger("rocketpool")
-log.setLevel(os.getenv("DEBUG_LEVEL"))
+log.setLevel(os.getenv("LOG_LEVEL"))
 
 
 class RocketPool(commands.Cog):
