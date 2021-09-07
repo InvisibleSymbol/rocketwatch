@@ -3,15 +3,13 @@
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 ## Features:
-- Ability to track Proposals:
-  - Provides detailed information about Proposals.
+- Ability to track Proposals (Description read from Contract)
 
 <p align="center">
     <img src="readme-images/proposals.png">
 </p>
 
-- Ability to track oDAO Member Activity:
-  - Attempts to retrieve nicknames of oDAO Members.
+- Ability to track oDAO Member Activity (uses Nicknames of oDAO Members if available)
 
 <p align="center">
     <img src="readme-images/odao_members.png">
@@ -23,8 +21,7 @@
     <img src="readme-images/pool.png">
 </p>
 
-- Ability to track Minipool related Activity:
-  - Provides Link to Validator for Minipool Creation Events.
+- Ability to track Minipool Activity (Provides Link to Validator if feasible):
 
 <p align="center">
     <img src="readme-images/minipool.png">
