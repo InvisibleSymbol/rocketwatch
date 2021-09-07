@@ -3,7 +3,7 @@
     "title": ":fire: rETH Burn",
     "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
   },
-  "minipool_create_event": {
+  "minipool_deposit_event": {
     "title": ":rocket: Minipool Created",
     "description": "Minipool %{minipool_fancy} has been created!"
   },
