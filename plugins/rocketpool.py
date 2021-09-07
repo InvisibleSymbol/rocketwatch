@@ -23,7 +23,9 @@ class RocketPool(commands.Cog):
     self.bot = bot
     self.loaded = True
     self.event_history = []
+    self.storage_cache = {}
     self.contracts = {}
+    self.address_to_contract = {}
     self.events = []
     self.mapping = {}
 
@@ -42,13 +44,10 @@ class RocketPool(commands.Cog):
 
     # Load Contracts and create Filters for all Events
     for name, events in self.config["sources"].items():
-      address = self.get_address_from_storage_contract(name)
-      with open(f"./contracts/{name}.abi", "r") as f:
-        self.contracts[address] = self.w3.eth.contract(address=address, abi=f.read())
+      contract = self.get_contract(name)
       for event in events:
-        self.events.append(
-          self.contracts[address].events[event].createFilter(fromBlock="latest", toBlock="latest"))
-      self.mapping[address] = events
+        self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
+      self.mapping[contract.address] = events
 
     # This tracks all MinipoolStatus.Staking Events, which is indirectly used to track Minipool deposit events.
     # It is done this way to allow retrieving the public_key instantly from the corresponding transaction.
@@ -72,8 +71,18 @@ class RocketPool(commands.Cog):
     sha3 = Web3.soliditySha3(["string", "string"], ["contract.address", name])
     return self.storage_contract.functions.getAddress(sha3).call()
 
+  def get_contract(self, name):
+    if name in self.contracts:
+      return self.contracts[name]
+    address = self.get_address_from_storage_contract(name)
+    with open(f"./contracts/{name}.abi", "r") as f:
+      contract = self.w3.eth.contract(address=address, abi=f.read())
+    self.contracts[name] = contract
+    self.address_to_contract[address] = contract
+    return contract
+
   def get_proposal_info(self, event):
-    contract = self.contracts[event['address']]
+    contract = self.address_to_contract[event['address']]
     result = {
       "message": contract.functions.getMessage(event.args.proposalID).call(),
       "votesFor": contract.functions.getVotesFor(event.args.proposalID).call() // 10 ** 18,
