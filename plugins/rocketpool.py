@@ -21,23 +21,31 @@ class RocketPool(commands.Cog):
     self.bot = bot
     self.loaded = True
     self.tnx_cache = []
-    infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
-    self.ens = ENS.fromWeb3(Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))) # switch to self.w3 once we use mainnet
-    with open("./data/rocketpool.json") as f:
-      self.config = json.load(f)
     self.contracts = {}
     self.events = []
+    self.mapping = {}
+
+    infura_id = os.getenv("INFURA_ID")
+    self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
+    temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
+    self.ens = ENS.fromWeb3(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
+
+    with open("./data/rocketpool.json") as f:
+      self.config = json.load(f)
+
+    # load storage contract so we can dynamically load all required addresses
     storage = self.config['storage']
     with open(f"./contracts/{storage['name']}.abi", "r") as f:
       self.storage_contract = self.w3.eth.contract(address=storage["address"], abi=f.read())
-    self.mapping = {}
+
+    # Load Contracts and create Filters for all Events
     for name, events in self.config["sources"].items():
       address = self.get_address_from_storage_contract(name)
       with open(f"./contracts/{name}.abi", "r") as f:
         self.contracts[address] = self.w3.eth.contract(address=address, abi=f.read())
       for event in events:
-        self.events.append(self.contracts[address].events[event].createFilter(fromBlock="latest", toBlock="latest"))
+        self.events.append(
+          self.contracts[address].events[event].createFilter(fromBlock="latest", toBlock="latest"))
       self.mapping[address] = events
     if not self.run_loop.is_running():
       self.run_loop.start()
