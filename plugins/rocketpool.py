@@ -44,14 +44,14 @@ class RocketPool(commands.Cog):
       self.storage_contract = self.w3.eth.contract(address=storage, abi=f.read())
 
     with open("./config/events.json") as f:
-      all_events = json.load(f)
+      mapped_events = json.load(f)
 
     # Load Contracts and create Filters for all Events
-    for contract_name, events in all_events.items():
+    for contract_name, event_mapping in mapped_events.items():
       contract = self.get_contract(contract_name)
-      for event in events:
+      for event in event_mapping:
         self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
-      self.mapping[contract.address] = events
+      self.mapping[contract.address] = event_mapping
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
     with open(f"./contracts/rocketMinipoolDelegate.abi", "r") as f:
