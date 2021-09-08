@@ -202,15 +202,15 @@ class Events(commands.Cog):
         score = event.blockNumber + (event.transactionIndex / 1000)
         embed = None
         event_name = None
+        contract_name = self.rocketpool.get_name_by_address(address)
 
         # custom Deposit Event Path
         if event.event == "StatusUpdated":
           embed, event_name = self.handle_minipool_events(event)
 
         # default Event Path
-        elif event.event in self.mapping.get(address, {}):
-          event_name = self.mapping[address][event.event]
-
+        elif contract_name and event.event in self.mapping.get(contract_name, {}):
+          event_name = self.mapping[contract_name][event.event]
           embed = self.create_embed(event_name, event)
 
         if embed:
