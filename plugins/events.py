@@ -184,7 +184,6 @@ class Events(commands.Cog):
       log.debug(f"checking topic: {events.filter_params['topics'][0]} "
                 f"address: {events.filter_params.get('address', None)}")
       for event in reversed(list(events.get_new_entries())):
-        log.debug(f"checking event {event}")
         tnx_hash = event.transactionHash
         address = event.address
 
@@ -194,6 +193,9 @@ class Events(commands.Cog):
           # TODO don't just use the tnx_hash alone so we can support multiple events in a single message (add topics or smth idk)
           log.debug(f"skipping {event_hash} because we have already processed it")
           continue
+        else:
+          log.debug(f"checking event {event_hash}")
+
         self.event_history = self.event_history[-256:] + [event_hash]
 
         # lazy way of making it sort events within a single block correctly
