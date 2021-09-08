@@ -38,17 +38,17 @@ class RocketPool(commands.Cog):
     temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.ens = ENS.fromWeb3(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
 
-    with open("./data/rocketpool.json") as f:
-      self.config = json.load(f)
-
     # load storage contract so we can dynamically load all required addresses
     storage = os.getenv("STORAGE_CONTRACT")
     with open(f"./contracts/rocketStorage.abi", "r") as f:
       self.storage_contract = self.w3.eth.contract(address=storage, abi=f.read())
 
+    with open("./config/events.json") as f:
+      all_events = json.load(f)
+
     # Load Contracts and create Filters for all Events
-    for name, events in self.config["sources"].items():
-      contract = self.get_contract(name)
+    for contract_name, events in all_events.items():
+      contract = self.get_contract(contract_name)
       for event in events:
         self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
       self.mapping[contract.address] = events
