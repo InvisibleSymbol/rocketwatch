@@ -181,7 +181,8 @@ class Events(commands.Cog):
     # Newest Event first so they are preferred over older ones.
     # Handles small reorgs better this way
     for events in self.events:
-      log.debug(f"checking topic: {events.filter_params['topics'][0]} address: {events.filter_params.get('address', None)}")
+      log.debug(f"checking topic: {events.filter_params['topics'][0]} "
+                f"address: {events.filter_params.get('address', None)}")
       for event in reversed(list(events.get_new_entries())):
         log.debug(f"checking event {event}")
         tnx_hash = event.transactionHash
