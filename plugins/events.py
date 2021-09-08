@@ -3,14 +3,13 @@ import logging
 import os
 
 import termplotlib as tpl
-from cachetools.func import ttl_cache
 from discord import Embed, Color
 from discord.ext import commands, tasks
-from ens import ENS
 from web3 import Web3
 from web3.datastructures import MutableAttributeDict
 
 from strings import _
+from utils.cached_ens import CachedEns
 from utils.rocketpool import RocketPool
 from utils.shorten import short_hex
 
@@ -35,8 +34,7 @@ class Events(commands.Cog):
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
     temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
-    self.ens = ENS.fromWeb3(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
-
+    self.ens = CachedEns(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
     self.rocketpool = RocketPool(self.w3,
                                  os.getenv("STORAGE_CONTRACT"),
                                  os.getenv("DEPOSIT_CONTRACT"))
@@ -61,11 +59,6 @@ class Events(commands.Cog):
 
     if not self.run_loop.is_running():
       self.run_loop.start()
-
-  @ttl_cache(ttl=360)
-  def get_ens_name(self, address):
-    log.debug(f"retrieving ens name for {address}")
-    return self.ens.name(address)
 
   def handle_minipool_events(self, event):
     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
@@ -131,6 +124,7 @@ class Events(commands.Cog):
       if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
+          name = self.ens.get_name(arg_value)
         if not name:
           # fallback when no ens name is found or when the hex isn't an address to begin with
           name = f"{short_hex(arg_value)}"
