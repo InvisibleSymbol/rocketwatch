@@ -2,13 +2,15 @@ import logging
 import os
 import warnings
 
-from functools import cache as memoize
-from cachetools.func import ttl_cache
+from cachetools.func import ttl_cache, lru_cache
 from bidict import bidict
 from web3 import Web3
 
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
+
+# noinspection PyTypeChecker
+memoize = lru_cache(maxsize=None)
 
 
 class RocketPool:
