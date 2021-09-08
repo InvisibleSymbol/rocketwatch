@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import warnings
 
 import termplotlib as tpl
 from cachetools.func import ttl_cache
@@ -12,6 +11,7 @@ from web3 import Web3
 from web3.datastructures import MutableAttributeDict
 
 from strings import _
+from utils.rocketpool import RocketPool
 from utils.shorten import short_hex
 
 log = logging.getLogger("rocketpool")
@@ -21,7 +21,7 @@ DEPOSIT_EVENT = 2
 EXIT_EVENT = 4
 
 
-class RocketPool(commands.Cog):
+class Events(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
     self.loaded = True
@@ -37,95 +37,40 @@ class RocketPool(commands.Cog):
     temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.ens = ENS.fromWeb3(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
 
-    # load storage contract so we can dynamically load all required addresses
-    storage = os.getenv("STORAGE_CONTRACT")
-    with open(f"./contracts/rocketStorage.abi", "r") as f:
-      self.storage_contract = self.w3.eth.contract(address=storage, abi=f.read())
+    self.rocketpool = RocketPool(self.w3,
+                                 os.getenv("STORAGE_CONTRACT"),
+                                 os.getenv("DEPOSIT_CONTRACT"))
 
     with open("./config/events.json") as f:
       mapped_events = json.load(f)
 
     # Load Contracts and create Filters for all Events
     for contract_name, event_mapping in mapped_events.items():
-      contract = self.get_contract(contract_name)
+      contract = self.rocketpool.get_contract_by_name(contract_name)
       for event in event_mapping:
         self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
-      self.mapping[contract.address] = event_mapping
+      self.mapping[contract_name] = event_mapping
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
-    with open(f"./contracts/rocketMinipoolDelegate.abi", "r") as f:
-      minipool_delegate_contract = self.w3.eth.contract(address=None, abi=f.read())
-    status_event = minipool_delegate_contract.events.StatusUpdated
-    # one for staking (id=2)
-    self.events.append(status_event.createFilter(fromBlock="latest",
-                                                 toBlock="latest",
-                                                 argument_filters={'status': [DEPOSIT_EVENT, EXIT_EVENT]}))
-
-    # load the Deposit Contract so we can parse Deposit Events
-    with open(f"./contracts/beaconDepositContract.abi", "r") as f:
-      self.deposit_contract = self.w3.eth.contract(address=os.getenv("DEPOSIT_CONTRACT_ADDRESS"), abi=f.read())
+    minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate")
+    self.events.append(minipool_delegate_contract.events.StatusUpdated.createFilter(fromBlock="latest",
+                                                                                    toBlock="latest",
+                                                                                    argument_filters={
+                                                                                      'status': [DEPOSIT_EVENT,
+                                                                                                 EXIT_EVENT]}))
 
     if not self.run_loop.is_running():
       self.run_loop.start()
-
-  def get_address_from_storage_contract(self, name):
-    log.debug(f"retrieving address for {name} Contract")
-    sha3 = Web3.soliditySha3(["string", "string"], ["contract.address", name])
-    return self.storage_contract.functions.getAddress(sha3).call()
-
-  def get_contract(self, name):
-    if name in self.contracts:
-      return self.contracts[name]
-    address = self.get_address_from_storage_contract(name)
-    with open(f"./contracts/{name}.abi", "r") as f:
-      contract = self.w3.eth.contract(address=address, abi=f.read())
-    self.contracts[name] = contract
-    self.address_to_contract[address] = contract
-    return contract
-
-  def is_minipool(self, address):
-    contract = self.get_contract("rocketMinipoolManager")
-    return contract.functions.getMinipoolExists(address).call()
 
   @ttl_cache(ttl=360)
   def get_ens_name(self, address):
     log.debug(f"retrieving ens name for {address}")
     return self.ens.name(address)
 
-  def get_proposal_info(self, event):
-    contract = self.address_to_contract[event['address']]
-    result = {
-      "message": contract.functions.getMessage(event.args.proposalID).call(),
-      "votesFor": contract.functions.getVotesFor(event.args.proposalID).call() // 10 ** 18,
-      "votesAgainst": contract.functions.getVotesAgainst(event.args.proposalID).call() // 10 ** 18,
-    }
-    return result
-
-  def get_dao_member_name(self, member_address):
-    address = self.get_address_from_storage_contract("rocketDAONodeTrusted")
-    with open(f"./contracts/rocketDAONodeTrusted.abi", "r") as f:
-      contract = self.w3.eth.contract(address=address, abi=f.read())
-    return contract.functions.getMemberID(member_address).call()
-
-  def get_pubkey_using_contract(self, address):
-    contract = self.get_contract("rocketMinipoolManager")
-    return contract.functions.getMinipoolPubkey(address).call().hex()
-
-  def get_pubkey_using_transaction(self, receipt):
-    # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
-    with warnings.catch_warnings():
-      warnings.simplefilter("ignore")
-      processed_logs = self.deposit_contract.events.DepositEvent().processReceipt(receipt)
-
-    # attempt to retrieve the pubkey
-    if processed_logs:
-      deposit_event = processed_logs[0]
-      return "0x" + deposit_event.args.pubkey.hex()
-
   def handle_minipool_events(self, event):
     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
 
-    if not self.is_minipool(receipt["to"]):
+    if not self.rocketpool.is_minipool(receipt["to"]):
       # some random contract we don't care about
       log.warning(f"Skipping {event.transactionHash} because the called Contract is not a Minipool")
       return
@@ -135,10 +80,10 @@ class RocketPool(commands.Cog):
     # so we can make this mutable
     event.args = MutableAttributeDict(event.args)
 
-    pubkey = self.get_pubkey_using_transaction(receipt)
+    pubkey = self.rocketpool.get_pubkey_using_transaction(receipt)
     if not pubkey:
       # check if the contract has it stored instead
-      pubkey = self.get_pubkey_using_contract(receipt["from"])
+      pubkey = self.rocketpool.get_pubkey_using_contract(receipt["from"])
 
     if pubkey:
       event.args.pubkey = pubkey
@@ -160,7 +105,7 @@ class RocketPool(commands.Cog):
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
-      data = self.get_proposal_info(event)
+      data = self.rocketpool.get_proposal_info(event)
       args["message"] = data["message"]
       # create bar graph for votes
       vote_graph = tpl.figure()
@@ -186,7 +131,6 @@ class RocketPool(commands.Cog):
       if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
-          name = self.get_ens_name(arg_value)
         if not name:
           # fallback when no ens name is found or when the hex isn't an address to begin with
           name = f"{short_hex(arg_value)}"
@@ -197,7 +141,7 @@ class RocketPool(commands.Cog):
       keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]
       if keys:
         key = keys[0]
-        name = self.get_dao_member_name(args[key])
+        name = self.rocketpool.get_dao_member_name(args[key])
         if name:
           args["member_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
         else:
@@ -299,4 +243,4 @@ class RocketPool(commands.Cog):
 
 
 def setup(bot):
-  bot.add_cog(RocketPool(bot))
+  bot.add_cog(Events(bot))
