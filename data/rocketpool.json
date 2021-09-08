@@ -1,8 +1,4 @@
 {
-  "storage": {
-    "name": "rocketStorage",
-    "address": "0xd8Cd47263414aFEca62d6e2a3917d6600abDceB3"
-  },
   "sources": {
     "rocketTokenRETH": {
       "TokensBurned": "reth_burn_event"

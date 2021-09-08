@@ -42,9 +42,9 @@ class RocketPool(commands.Cog):
       self.config = json.load(f)
 
     # load storage contract so we can dynamically load all required addresses
-    storage = self.config['storage']
-    with open(f"./contracts/{storage['name']}.abi", "r") as f:
-      self.storage_contract = self.w3.eth.contract(address=storage["address"], abi=f.read())
+    storage = os.getenv("STORAGE_CONTRACT")
+    with open(f"./contracts/rocketStorage.abi", "r") as f:
+      self.storage_contract = self.w3.eth.contract(address=storage, abi=f.read())
 
     # Load Contracts and create Filters for all Events
     for name, events in self.config["sources"].items():
