@@ -4,7 +4,6 @@ import warnings
 
 from cachetools.func import ttl_cache, lru_cache
 from bidict import bidict
-from web3 import Web3
 from web3.datastructures import MutableAttributeDict as aDict
 
 log = logging.getLogger("rocketpool")
@@ -24,7 +23,7 @@ class RocketPool:
   @memoize
   def get_address_by_name(self, name):
     log.debug(f"retrieving address for {name} Contract")
-    sha3 = Web3.soliditySha3(["string", "string"], ["contract.address", name])
+    sha3 = self.w3.soliditySha3(["string", "string"], ["contract.address", name])
     address = self.storage_contract.functions.getAddress(sha3).call()
     self.addresses[name] = address
     return address
