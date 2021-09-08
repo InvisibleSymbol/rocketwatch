@@ -6,7 +6,7 @@ import termplotlib as tpl
 from discord import Embed, Color
 from discord.ext import commands, tasks
 from web3 import Web3
-from web3.datastructures import MutableAttributeDict
+from web3.datastructures import MutableAttributeDict as aDict
 
 from strings import _
 from utils.cached_ens import CachedEns
@@ -64,15 +64,15 @@ class Events(commands.Cog):
   def handle_minipool_events(self, event):
     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
 
-    if not self.rocketpool.is_minipool(receipt["to"]):
+    if not self.rocketpool.is_minipool(receipt.to):
       # some random contract we don't care about
       log.warning(f"Skipping {event.transactionHash} because the called Contract is not a Minipool")
       return
 
     # first need to make the container mutable
-    event = MutableAttributeDict(event)
+    event = aDict(event)
     # so we can make this mutable
-    event.args = MutableAttributeDict(event.args)
+    event.args = aDict(event.args)
 
     pubkey = self.rocketpool.get_pubkey_using_transaction(receipt)
     if not pubkey:
@@ -85,7 +85,7 @@ class Events(commands.Cog):
     # while we are at it add the sender address so it shows up
     event.args["from"] = receipt["from"]
     # and add the minipool address, which is the contract that was called
-    event.args["minipool"] = receipt["to"]
+    event.args.minipool = receipt.to
 
     event_name = "minipool_deposit_event" if event.args.status == DEPOSIT_EVENT else "minipool_exited_event"
     return self.create_embed(event_name, event), event_name
@@ -95,20 +95,20 @@ class Events(commands.Cog):
     embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
 
     # prepare args
-    args = dict(event['args'])
+    args = aDict(event['args'])
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
       data = self.rocketpool.get_proposal_info(event)
-      args["message"] = data["message"]
+      args.message = data.message
       # create bar graph for votes
       vote_graph = tpl.figure()
-      vote_graph.barh([data["votesFor"], data["votesAgainst"]], ["For", "Against"], max_width=20)
-      args["vote_graph"] = vote_graph.get_string()
+      vote_graph.barh([data.votesFor, data.votesAgainst], ["For", "Against"], max_width=20)
+      args.vote_graph = vote_graph.get_string()
 
     # create human readable decision for votes
     if "supported" in args:
-      args["decision"] = "for" if args["supported"] else "against"
+      args.decision = "for" if args.supported else "against"
 
     # show public key if we have one
     if "pubkey" in args:
@@ -138,21 +138,21 @@ class Events(commands.Cog):
         key = keys[0]
         name = self.rocketpool.get_dao_member_name(args[key])
         if name:
-          args["member_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
+          args.member_fancy = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
         else:
           # fallback to just using the pre-formatted address instead
-          args["member_fancy"] = args[key + '_fancy']
+          args.member_fancy = args[key + '_fancy']
 
     embed.title = _(f"rocketpool.{event_name}.title")
     embed.description = _(f"rocketpool.{event_name}.description", **args)
 
-    tnx_hash = event['transactionHash'].hex()
+    tnx_hash = event.transactionHash.hex()
     embed.add_field(name="Transaction Hash",
                     value=f"[{short_hex(tnx_hash)}](https://goerli.etherscan.io/tx/{tnx_hash})")
 
     if "from" in args:
       embed.add_field(name="Sender Address",
-                      value=args["from_fancy"])
+                      value=args.from_fancy)
 
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
@@ -215,11 +215,11 @@ class Events(commands.Cog):
           embed = self.create_embed(event_name, event)
 
         if embed:
-          messages.append({
+          messages.append(aDict({
             "score": score,
             "embed": embed,
             "event_name": event_name
-          })
+          }))
 
     log.debug("finished checking for new events")
 

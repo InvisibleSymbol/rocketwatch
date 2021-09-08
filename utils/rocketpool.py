@@ -5,6 +5,7 @@ import warnings
 from cachetools.func import ttl_cache, lru_cache
 from bidict import bidict
 from web3 import Web3
+from web3.datastructures import MutableAttributeDict as aDict
 
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
@@ -75,7 +76,7 @@ class RocketPool:
       "votesFor": contract.functions.getVotesFor(event.args.proposalID).call() // 10 ** 18,
       "votesAgainst": contract.functions.getVotesAgainst(event.args.proposalID).call() // 10 ** 18,
     }
-    return result
+    return aDict(result)
 
   @ttl_cache(ttl=300)
   def is_minipool(self, address):
