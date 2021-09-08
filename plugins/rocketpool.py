@@ -87,6 +87,9 @@ class RocketPool(commands.Cog):
     contract = self.get_contract("rocketMinipoolManager")
     return contract.functions.getMinipoolExists(address).call()
 
+  def get_ens_name(self, address):
+    return self.ens.name(address)
+
   def get_proposal_info(self, event):
     contract = self.address_to_contract[event['address']]
     result = {
@@ -181,7 +184,7 @@ class RocketPool(commands.Cog):
       if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
-          name = self.ens.name(arg_value)
+          name = self.get_ens_name(arg_value)
         if not name:
           # fallback when no ens name is found or when the hex isn't an address to begin with
           name = f"{short_hex(arg_value)}"
