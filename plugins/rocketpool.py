@@ -5,6 +5,7 @@ import warnings
 
 import discord
 import termplotlib as tpl
+from cachetools.func import ttl_cache
 from discord import Embed
 from discord.ext import commands, tasks
 from ens import ENS
@@ -69,7 +70,7 @@ class RocketPool(commands.Cog):
       self.run_loop.start()
 
   def get_address_from_storage_contract(self, name):
-    log.debug(f"retrieving address for {name}")
+    log.debug(f"retrieving address for {name} Contract")
     sha3 = Web3.soliditySha3(["string", "string"], ["contract.address", name])
     return self.storage_contract.functions.getAddress(sha3).call()
 
@@ -87,7 +88,9 @@ class RocketPool(commands.Cog):
     contract = self.get_contract("rocketMinipoolManager")
     return contract.functions.getMinipoolExists(address).call()
 
+  @ttl_cache(ttl=360)
   def get_ens_name(self, address):
+    log.debug(f"retrieving ens name for {address}")
     return self.ens.name(address)
 
   def get_proposal_info(self, event):
