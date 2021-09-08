@@ -50,7 +50,8 @@ class Events(commands.Cog):
       self.mapping[contract_name] = event_mapping
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
-    minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate")
+    minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate",
+                                                              address=None)
     self.events.append(minipool_delegate_contract.events.StatusUpdated.createFilter(fromBlock="latest",
                                                                                     toBlock="latest",
                                                                                     argument_filters={
