@@ -25,9 +25,6 @@ class Events(commands.Cog):
     self.bot = bot
     self.loaded = True
     self.event_history = []
-    self.storage_cache = {}
-    self.contracts = {}
-    self.address_to_contract = {}
     self.events = []
     self.mapping = {}
 
