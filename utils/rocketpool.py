@@ -35,10 +35,7 @@ class RocketPool:
     return contract
 
   def get_name_by_address(self, address):
-    """
-    **WARNING**: only call after contract has been previously retrieved using its name
-    """
-    return self.addresses.inverse[address]
+    return self.addresses.inverse.get(address, None)
 
   def get_contract_by_name(self, name):
     address = self.get_address_by_name(name)
