@@ -3,10 +3,9 @@ import logging
 import os
 import warnings
 
-import discord
 import termplotlib as tpl
 from cachetools.func import ttl_cache
-from discord import Embed
+from discord import Embed, Color
 from discord.ext import commands, tasks
 from ens import ENS
 from web3 import Web3
@@ -153,7 +152,7 @@ class RocketPool(commands.Cog):
     return self.create_embed(event_name, event), event_name
 
   def create_embed(self, event_name, event):
-    embed = Embed(color=discord.Color.from_rgb(235, 142, 85))
+    embed = Embed(color=Color.from_rgb(235, 142, 85))
     embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
 
     # prepare args
