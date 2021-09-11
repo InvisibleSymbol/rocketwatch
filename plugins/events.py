@@ -62,8 +62,8 @@ class Events(commands.Cog):
 
     if not self.rocketpool.is_minipool(receipt.to):
       # some random contract we don't care about
-      log.warning(f"Skipping {event.transactionHash} because the called Contract is not a Minipool")
-      return
+      log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
+      return None, None
 
     # first need to make the container mutable
     event = aDict(event)
