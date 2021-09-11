@@ -28,6 +28,7 @@ class Events(commands.Cog):
     self.tnx_hash_cache = FIFOCache(maxsize=256)
     self.events = []
     self.mapping = {}
+    self.topic_mapping = {}
 
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
@@ -40,11 +41,24 @@ class Events(commands.Cog):
       mapped_events = json.load(f)
 
     # Load Contracts and create Filters for all Events
+    addresses = []
+    aggregated_topics = []
     for contract_name, event_mapping in mapped_events.items():
       contract = self.rocketpool.get_contract_by_name(contract_name)
-      for event in event_mapping:
-        self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
+      addresses.append(contract.address)
       self.mapping[contract_name] = event_mapping
+      for event in event_mapping:
+        topic = contract.events[event].build_filter().topics[0]
+        self.topic_mapping[topic] = event
+        if topic not in aggregated_topics:
+          aggregated_topics.append(topic)
+
+    self.events.append(self.w3.eth.filter({
+      "address": addresses,
+      "topics": [aggregated_topics],
+      "fromBlock": "latest",
+      "toBlock": "latest"
+    }))
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
     minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate",
@@ -183,34 +197,37 @@ class Events(commands.Cog):
     messages = []
     tnx_hashes = []
 
-    # Newest Event first so they are preferred over older ones.
-    # Handles small reorgs better this way
     for events in self.events:
-      for event in reversed(list(events.get_new_entries())):
-        tnx_hash = event.transactionHash
-        address = event.address
+      for event in reversed(list(events.get_new_entries())[:1]):
+        tnx_hash = event.transactionHash.hex()
+        event_name = None
+        embed = None
 
         if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
           continue
 
         log.debug(f"checking event {tnx_hash} #{event.logIndex}")
 
-        # lazy way of making it sort events within a single block correctly
-        score = event.blockNumber + (event.transactionIndex / 1000)
-        embed = None
-        event_name = None
+        address = event.address
         contract_name = self.rocketpool.get_name_by_address(address)
+        if contract_name:
+          # default event path
+          contract = self.rocketpool.get_contract_by_address(address)
+          contract_event = self.topic_mapping[event.topics[0].hex()]
+          event = contract.events[contract_event]().processLog(event)
+          event_name = self.mapping[contract_name][event.event]
 
-        # custom Deposit Event Path
-        if event.event == "StatusUpdated":
+          embed = self.create_embed(event_name, event)
+        elif event.get("event", None) == "StatusUpdated":
+          if tnx_hash in tnx_hashes:
+            log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
+            continue
+          # deposit/exit event path
           embed, event_name = self.handle_minipool_events(event)
 
-        # default Event Path
-        elif contract_name and event.event in self.mapping.get(contract_name, {}):
-          event_name = self.mapping[contract_name][event.event]
-          embed = self.create_embed(event_name, event)
-
         if embed:
+          # lazy way of making it sort events within a single block correctly
+          score = event.blockNumber + (event.transactionIndex / 1000)
           messages.append(aDict({
             "score": score,
             "embed": embed,
