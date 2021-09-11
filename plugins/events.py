@@ -206,7 +206,7 @@ class Events(commands.Cog):
     tnx_hashes = []
 
     for events in self.events:
-      for event in reversed(list(events.get_new_entries())[:1]):
+      for event in reversed(list(events.get_new_entries())):
         tnx_hash = event.transactionHash.hex()
         event_name = None
         embed = None
