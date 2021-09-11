@@ -152,6 +152,12 @@ class Events(commands.Cog):
 
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
+
+    if "time" in args:
+      embed.add_field(name="Execution Timestamp",
+                      value=f"<t:{args.time}:R> (<t:{args.time}:f>)",
+                      inline=False)
+
     return embed
 
   @tasks.loop(seconds=15.0)
