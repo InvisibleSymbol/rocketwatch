@@ -3,6 +3,7 @@ import logging
 import os
 
 import termplotlib as tpl
+from cachetools import FIFOCache
 from discord import Embed, Color
 from discord.ext import commands, tasks
 from web3 import Web3
@@ -17,34 +18,47 @@ log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
 DEPOSIT_EVENT = 2
-EXIT_EVENT = 4
+WITHDRAWABLE_EVENT = 3
 
 
 class Events(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
     self.loaded = True
-    self.event_history = []
+    self.tnx_hash_cache = FIFOCache(maxsize=256)
     self.events = []
     self.mapping = {}
+    self.topic_mapping = {}
 
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
     temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.ens = CachedEns(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
     self.rocketpool = RocketPool(self.w3,
-                                 os.getenv("STORAGE_CONTRACT"),
-                                 os.getenv("DEPOSIT_CONTRACT"))
+                                 os.getenv("STORAGE_CONTRACT"))
 
     with open("./config/events.json") as f:
       mapped_events = json.load(f)
 
     # Load Contracts and create Filters for all Events
+    addresses = []
+    aggregated_topics = []
     for contract_name, event_mapping in mapped_events.items():
       contract = self.rocketpool.get_contract_by_name(contract_name)
-      for event in event_mapping:
-        self.events.append(contract.events[event].createFilter(fromBlock="latest", toBlock="latest"))
+      addresses.append(contract.address)
       self.mapping[contract_name] = event_mapping
+      for event in event_mapping:
+        topic = contract.events[event].build_filter().topics[0]
+        self.topic_mapping[topic] = event
+        if topic not in aggregated_topics:
+          aggregated_topics.append(topic)
+
+    self.events.append(self.w3.eth.filter({
+      "address": addresses,
+      "topics": [aggregated_topics],
+      "fromBlock": "latest",
+      "toBlock": "latest"
+    }))
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
     minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate",
@@ -53,7 +67,7 @@ class Events(commands.Cog):
                                                                                     toBlock="latest",
                                                                                     argument_filters={
                                                                                       'status': [DEPOSIT_EVENT,
-                                                                                                 EXIT_EVENT]}))
+                                                                                                 WITHDRAWABLE_EVENT]}))
 
     if not self.run_loop.is_running():
       self.run_loop.start()
@@ -63,8 +77,8 @@ class Events(commands.Cog):
 
     if not self.rocketpool.is_minipool(receipt.to):
       # some random contract we don't care about
-      log.warning(f"Skipping {event.transactionHash} because the called Contract is not a Minipool")
-      return
+      log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
+      return None, None
 
     # first need to make the container mutable
     event = aDict(event)
@@ -153,6 +167,12 @@ class Events(commands.Cog):
 
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
+
+    if "time" in args:
+      embed.add_field(name="Execution Timestamp",
+                      value=f"<t:{args.time}:R> (<t:{args.time}:f>)",
+                      inline=False)
+
     return embed
 
   @tasks.loop(seconds=15.0)
@@ -175,62 +195,68 @@ class Events(commands.Cog):
     log.debug("checking for new events")
 
     messages = []
+    tnx_hashes = []
 
-    # Newest Event first so they are preferred over older ones.
-    # Handles small reorgs better this way
     for events in self.events:
-      log.debug(f"checking topic: {events.filter_params['topics'][0]} "
-                f"address: {events.filter_params.get('address', None)}")
-      for event in reversed(list(events.get_new_entries())):
-        tnx_hash = event.transactionHash
-        address = event.address
-
-        # skip if we already have seen this message
-        event_hash = [tnx_hash, event.event, event.args]
-        if event_hash in self.event_history:
-          # TODO don't just use the tnx_hash alone so we can support multiple events in a single message (add topics or smth idk)
-          log.debug(f"skipping {event_hash} because we have already processed it")
-          continue
-        else:
-          log.debug(f"checking event {event_hash}")
-
-        self.event_history = self.event_history[-256:] + [event_hash]
-
-        # lazy way of making it sort events within a single block correctly
-        score = event.blockNumber + (event.transactionIndex / 1000)
-        embed = None
+      for event in reversed(list(events.get_new_entries())[:1]):
+        tnx_hash = event.transactionHash.hex()
         event_name = None
-        contract_name = self.rocketpool.get_name_by_address(address)
+        embed = None
 
-        # custom Deposit Event Path
-        if event.event == "StatusUpdated":
+        if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
+          continue
+
+        log.debug(f"checking event {tnx_hash} #{event.logIndex}")
+
+        address = event.address
+        contract_name = self.rocketpool.get_name_by_address(address)
+        if contract_name:
+          # default event path
+          contract = self.rocketpool.get_contract_by_address(address)
+          contract_event = self.topic_mapping[event.topics[0].hex()]
+          event = contract.events[contract_event]().processLog(event)
+          event_name = self.mapping[contract_name][event.event]
+
+          embed = self.create_embed(event_name, event)
+        elif event.get("event", None) == "StatusUpdated":
+          if tnx_hash in tnx_hashes:
+            log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
+            continue
+          # deposit/exit event path
           embed, event_name = self.handle_minipool_events(event)
 
-        # default Event Path
-        elif contract_name and event.event in self.mapping.get(contract_name, {}):
-          event_name = self.mapping[contract_name][event.event]
-          embed = self.create_embed(event_name, event)
-
         if embed:
+          # lazy way of making it sort events within a single block correctly
+          score = event.blockNumber + (event.logIndex / 1000)
           messages.append(aDict({
             "score": score,
             "embed": embed,
             "event_name": event_name
           }))
 
+        tnx_hashes.append(tnx_hash)
+
     log.debug("finished checking for new events")
 
     if messages:
       log.info(f"Sending {len(messages)} Message(s)")
+
       default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
       odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
+
       for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-        log.info(f"Sending \"{message['event_name']}\" Event")
+        log.debug(f"Sending \"{message['event_name']}\" Event")
+
         if "odao" in message["event_name"]:
           await odao_channel.send(embed=message["embed"])
         else:
           await default_channel.send(embed=message["embed"])
+
       log.info("Finished sending Message(s)")
+
+    # de-dupe logic:
+    for tnx_hash in set(tnx_hashes):
+      self.tnx_hash_cache[tnx_hash] = True
 
   def cog_unload(self):
     self.loaded = False

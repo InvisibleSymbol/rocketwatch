@@ -14,11 +14,10 @@ memoize = lru_cache(maxsize=None)
 
 
 class RocketPool:
-  def __init__(self, w3, storage_address, deposit_address):
+  def __init__(self, w3, storage_address):
     self.w3 = w3
     self.addresses = bidict()
     self.storage_contract = self.get_contract("rocketStorage", storage_address)
-    self.deposit_contract = self.get_contract("beaconDepositContract", deposit_address)
 
   @memoize
   def get_address_by_name(self, name):
@@ -56,7 +55,7 @@ class RocketPool:
     # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
-      processed_logs = self.deposit_contract.events.DepositEvent().processReceipt(receipt)
+      processed_logs = self.get_contract_by_name("casperDeposit").events.DepositEvent().processReceipt(receipt)
 
     # attempt to retrieve the pubkey
     if processed_logs:
