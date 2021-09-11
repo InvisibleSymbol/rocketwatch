@@ -3,6 +3,7 @@ import logging
 import os
 
 import termplotlib as tpl
+from cachetools import FIFOCache
 from discord import Embed, Color
 from discord.ext import commands, tasks
 from web3 import Web3
@@ -24,7 +25,7 @@ class Events(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
     self.loaded = True
-    self.event_history = []
+    self.tnx_hash_cache = FIFOCache(maxsize=256)
     self.events = []
     self.mapping = {}
 
@@ -180,26 +181,19 @@ class Events(commands.Cog):
     log.debug("checking for new events")
 
     messages = []
+    tnx_hashes = []
 
     # Newest Event first so they are preferred over older ones.
     # Handles small reorgs better this way
     for events in self.events:
-      log.debug(f"checking topic: {events.filter_params['topics'][0]} "
-                f"address: {events.filter_params.get('address', None)}")
       for event in reversed(list(events.get_new_entries())):
         tnx_hash = event.transactionHash
         address = event.address
 
-        # skip if we already have seen this message
-        event_hash = [tnx_hash, event.event, event.args]
-        if event_hash in self.event_history:
-          # TODO don't just use the tnx_hash alone so we can support multiple events in a single message (add topics or smth idk)
-          log.debug(f"skipping {event_hash} because we have already processed it")
+        if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
           continue
-        else:
-          log.debug(f"checking event {event_hash}")
 
-        self.event_history = self.event_history[-256:] + [event_hash]
+        log.debug(f"checking event {tnx_hash} #{event.logIndex}")
 
         # lazy way of making it sort events within a single block correctly
         score = event.blockNumber + (event.transactionIndex / 1000)
@@ -223,19 +217,29 @@ class Events(commands.Cog):
             "event_name": event_name
           }))
 
+        tnx_hashes.append(tnx_hash)
+
     log.debug("finished checking for new events")
 
     if messages:
       log.info(f"Sending {len(messages)} Message(s)")
+
       default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
       odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
+
       for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-        log.info(f"Sending \"{message['event_name']}\" Event")
+        log.debug(f"Sending \"{message['event_name']}\" Event")
+
         if "odao" in message["event_name"]:
           await odao_channel.send(embed=message["embed"])
         else:
           await default_channel.send(embed=message["embed"])
+
       log.info("Finished sending Message(s)")
+
+    # de-dupe logic:
+    for tnx_hash in set(tnx_hashes):
+      self.tnx_hash_cache[tnx_hash] = True
 
   def cog_unload(self):
     self.loaded = False
