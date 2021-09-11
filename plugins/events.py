@@ -17,7 +17,7 @@ log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
 DEPOSIT_EVENT = 2
-EXIT_EVENT = 4
+WITHDRAWABLE_EVENT = 3
 
 
 class Events(commands.Cog):
@@ -52,7 +52,7 @@ class Events(commands.Cog):
                                                                                     toBlock="latest",
                                                                                     argument_filters={
                                                                                       'status': [DEPOSIT_EVENT,
-                                                                                                 EXIT_EVENT]}))
+                                                                                                 WITHDRAWABLE_EVENT]}))
 
     if not self.run_loop.is_running():
       self.run_loop.start()
