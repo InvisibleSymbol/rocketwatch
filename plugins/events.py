@@ -142,6 +142,14 @@ class Events(commands.Cog):
           name = f"{short_hex(arg_value)}"
         args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
+    # show current inflation of RPL if new RPL was minted
+    if "rpl_inflation" in event_name:
+      args.total_supply = self.rocketpool.get_rpl_supply()
+      inflation = round(self.rocketpool.get_annual_rpl_inflation() * 100, 4)
+      embed.add_field(name="Current Inflation",
+                      value=f"{inflation}%",
+                      inline=False)
+
     # add oDAO member name if we can
     if "odao" in event_name:
       keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]
@@ -168,9 +176,10 @@ class Events(commands.Cog):
     embed.add_field(name="Block Number",
                     value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
 
-    if "time" in args:
-      embed.add_field(name="Execution Timestamp",
-                      value=f"<t:{args.time}:R> (<t:{args.time}:f>)",
+    times = [value for key, value in args.items() if "time" in key.lower()]
+    if times:
+      embed.add_field(name="Timestamp",
+                      value=f"<t:{times[0]}:R> (<t:{times[0]}:f>)",
                       inline=False)
 
     return embed
@@ -198,7 +207,7 @@ class Events(commands.Cog):
     tnx_hashes = []
 
     for events in self.events:
-      for event in reversed(list(events.get_new_entries())[:1]):
+      for event in reversed(list(events.get_new_entries())):
         tnx_hash = event.transactionHash.hex()
         event_name = None
         embed = None
