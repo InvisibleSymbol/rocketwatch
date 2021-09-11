@@ -142,6 +142,14 @@ class Events(commands.Cog):
           name = f"{short_hex(arg_value)}"
         args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
+    # show current inflation of RPL if new RPL was minted
+    if "rpl_inflation" in event_name:
+      args.total_supply = self.rocketpool.get_rpl_supply()
+      inflation = round(self.rocketpool.get_annual_rpl_inflation() * 100, 4)
+      embed.add_field(name="Current Inflation",
+                      value=f"{inflation}%",
+                      inline=False)
+
     # add oDAO member name if we can
     if "odao" in event_name:
       keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]

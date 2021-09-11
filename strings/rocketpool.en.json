@@ -49,6 +49,6 @@
   },
   "rpl_inflation_event": {
     "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
-    "description": "%{sender_fancy} minted %{value} new RPL!"
+    "description": "%{value} new RPL minted and transferred to %{sender_fancy}!\nThe new Total Supply is %{total_supply} RPL."
   }
 }

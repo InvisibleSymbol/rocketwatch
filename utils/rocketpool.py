@@ -6,6 +6,8 @@ from bidict import bidict
 from cachetools.func import ttl_cache, lru_cache
 from web3.datastructures import MutableAttributeDict as aDict
 
+import utils.solidity_units as units
+
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
@@ -80,3 +82,16 @@ class RocketPool:
   def is_minipool(self, address):
     contract = self.get_contract_by_name("rocketMinipoolManager")
     return contract.functions.getMinipoolExists(address).call()
+
+  def get_rpl_supply(self):
+    contract = self.get_contract_by_name("rocketTokenRPL")
+    return contract.functions.totalSupply().call() // 10**18
+
+  def get_annual_rpl_inflation(self):
+    contract = self.get_contract_by_name("rocketTokenRPL")
+    inflation_per_interval = (contract.functions.getInflationIntervalRate().call() / 10**18)
+    seconds_per_interval = contract.functions.getInflationIntervalTime().call()
+    intervals_per_year = units.years / seconds_per_interval
+    annual_inflation = (inflation_per_interval ** intervals_per_year) - 1
+    return annual_inflation
+
