@@ -33,8 +33,7 @@ class Events(commands.Cog):
     temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.ens = CachedEns(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
     self.rocketpool = RocketPool(self.w3,
-                                 os.getenv("STORAGE_CONTRACT"),
-                                 os.getenv("DEPOSIT_CONTRACT"))
+                                 os.getenv("STORAGE_CONTRACT"))
 
     with open("./config/events.json") as f:
       mapped_events = json.load(f)
