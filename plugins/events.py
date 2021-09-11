@@ -227,7 +227,7 @@ class Events(commands.Cog):
 
         if embed:
           # lazy way of making it sort events within a single block correctly
-          score = event.blockNumber + (event.transactionIndex / 1000)
+          score = event.blockNumber + (event.logIndex / 1000)
           messages.append(aDict({
             "score": score,
             "embed": embed,
