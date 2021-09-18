@@ -1,8 +1,11 @@
 import io
+import logging
 import os
 import traceback
 
 from discord import File
+
+log = logging.getLogger("reporter")
 
 
 def format_stacktrace(error):
@@ -10,16 +13,15 @@ def format_stacktrace(error):
 
 
 async def report_error(ctx, excep):
-  desc = f"`{excep}`"
-  desc += f"\n```{str(ctx.message.author)=}\n{ctx.message.content=}\n{ctx.message.author.id=}\n{ctx.channel.id=}\n{ctx.guild.id=}```"
+  desc = f"```{excep}\n{ctx.message=}```"
+  log.error(desc)
 
-  f = io.StringIO()
   if hasattr(excep, "original"):
-    f.write(format_stacktrace(excep.original))
+    details = format_stacktrace(excep.original)
   else:
-    f.write(format_stacktrace(excep))
-  f.seek(0)
+    details = format_stacktrace(excep)
+  log.error(details)
 
   channel = await ctx.bot.fetch_channel(os.getenv("ERROR_CHANNEL"))
-  await channel.send(desc, file=File(fp=f, filename="exception.txt"))
-  f.close()
+  with io.StringIO(details) as f:
+    await channel.send(desc, file=File(fp=f, filename="exception.txt"))

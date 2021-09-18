@@ -9,7 +9,7 @@ from utils.reporter import report_error
 
 load_dotenv()
 
-logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s|%(funcName)s(): %(message)s")
+logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
 log.setLevel(os.getenv("LOG_LEVEL"))
 bot = commands.Bot(command_prefix=';')
@@ -17,8 +17,6 @@ bot = commands.Bot(command_prefix=';')
 
 @bot.event
 async def on_command_error(ctx, excep):
-  log.exception(excep)
-
   if isinstance(excep, commands.CommandNotFound):
     return
 
