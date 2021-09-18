@@ -4,17 +4,16 @@ import os
 
 import termplotlib as tpl
 from cachetools import FIFOCache
-from discord import Embed, Color
 from discord.ext import commands, tasks
 from web3 import Web3
 from web3.datastructures import MutableAttributeDict as aDict
 
-from strings import _
+import utils.embeds
+from utils import readable
 from utils.cached_ens import CachedEns
 from utils.rocketpool import RocketPool
-from utils.shorten import short_hex
 
-log = logging.getLogger("rocketpool")
+log = logging.getLogger("events")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
 DEPOSIT_EVENT = 2
@@ -102,11 +101,15 @@ class Events(commands.Cog):
     return self.create_embed(event_name, event), event_name
 
   def create_embed(self, event_name, event):
-    embed = Embed(color=Color.from_rgb(235, 142, 85))
-    embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
-
     # prepare args
     args = aDict(event['args'])
+
+    # store event_name in args
+    args.event_name = event_name
+
+    # add transaction hash and block number to args
+    args.transactionHash = event.transactionHash.hex()
+    args.blockNumber = event.blockNumber
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
@@ -121,17 +124,15 @@ class Events(commands.Cog):
     if "supported" in args:
       args.decision = "for" if args.supported else "against"
 
-    # show public key if we have one
-    if "pubkey" in args:
-      embed.add_field(name="Validator",
-                      value=f"[{short_hex(args['pubkey'])}](https://prater.beaconcha.in/validator/{args['pubkey']})",
-                      inline=False)
+    # add inflation and new supply if inflation occurred
+    if "rpl_inflation" in event_name:
+      args.total_supply = self.rocketpool.get_rpl_supply()
+      args.inflation = round(self.rocketpool.get_annual_rpl_inflation() * 100, 4)
 
+    # handle numbers and hex strings
     for arg_key, arg_value in list(args.items()):
       if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
-        args[arg_key] = round(arg_value / 10 ** 18, 5)
-        if args[arg_key] == int(args[arg_key]):
-          args[arg_key] = int(args[arg_key])
+        args[arg_key] = arg_value / 10 ** 18
 
       if str(arg_value).startswith("0x"):
         name = ""
@@ -139,16 +140,12 @@ class Events(commands.Cog):
           name = self.ens.get_name(arg_value)
         if not name:
           # fallback when no ens name is found or when the hex isn't an address to begin with
-          name = f"{short_hex(arg_value)}"
-        args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
+          name = readable.hex(arg_value)
 
-    # show current inflation of RPL if new RPL was minted
-    if "rpl_inflation" in event_name:
-      args.total_supply = self.rocketpool.get_rpl_supply()
-      inflation = round(self.rocketpool.get_annual_rpl_inflation() * 100, 4)
-      embed.add_field(name="Current Inflation",
-                      value=f"{inflation}%",
-                      inline=False)
+        if arg_key == "pubkey":
+          args[f"{arg_key}_fancy"] = f"[{name}](https://prater.beaconcha.in/validator/{arg_value})"
+        else:
+          args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
 
     # add oDAO member name if we can
     if "odao" in event_name:
@@ -162,25 +159,7 @@ class Events(commands.Cog):
           # fallback to just using the pre-formatted address instead
           args.member_fancy = args[key + '_fancy']
 
-    embed.title = _(f"rocketpool.{event_name}.title")
-    embed.description = _(f"rocketpool.{event_name}.description", **args)
-
-    tnx_hash = event.transactionHash.hex()
-    embed.add_field(name="Transaction Hash",
-                    value=f"[{short_hex(tnx_hash)}](https://goerli.etherscan.io/tx/{tnx_hash})")
-
-    if "from" in args:
-      embed.add_field(name="Sender Address",
-                      value=args.from_fancy)
-
-    embed.add_field(name="Block Number",
-                    value=f"[{event['blockNumber']}](https://goerli.etherscan.io/block/{event['blockNumber']})")
-
-    times = [value for key, value in args.items() if "time" in key.lower()]
-    if times:
-      embed.add_field(name="Timestamp",
-                      value=f"<t:{times[0]}:R> (<t:{times[0]}:f>)",
-                      inline=False)
+    embed = utils.embeds.assemble(args)
 
     return embed
 
