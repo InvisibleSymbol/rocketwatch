@@ -201,7 +201,7 @@ class Events(commands.Cog):
   async def check_for_new_events(self):
     if not self.loaded:
       return
-    log.debug("checking for new events")
+    log.info("Checking for new Events")
 
     messages = []
     tnx_hashes = []
@@ -215,7 +215,7 @@ class Events(commands.Cog):
         if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
           continue
 
-        log.debug(f"checking event {tnx_hash} #{event.logIndex}")
+        log.debug(f"Checking Event {tnx_hash} #{event.logIndex}")
 
         address = event.address
         contract_name = self.rocketpool.get_name_by_address(address)
@@ -245,7 +245,7 @@ class Events(commands.Cog):
 
         tnx_hashes.append(tnx_hash)
 
-    log.debug("finished checking for new events")
+    log.debug("Finished Checking for new Events")
 
     if messages:
       log.info(f"Sending {len(messages)} Message(s)")
