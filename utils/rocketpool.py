@@ -23,7 +23,7 @@ class RocketPool:
 
   @memoize
   def get_address_by_name(self, name):
-    log.debug(f"retrieving address for {name} Contract")
+    log.debug(f"Retrieving address for {name} Contract")
     sha3 = self.w3.soliditySha3(["string", "string"], ["contract.address", name])
     address = self.storage_contract.functions.getAddress(sha3).call()
     self.addresses[name] = address
@@ -85,13 +85,34 @@ class RocketPool:
 
   def get_rpl_supply(self):
     contract = self.get_contract_by_name("rocketTokenRPL")
-    return contract.functions.totalSupply().call() // 10**18
+    return contract.functions.totalSupply().call() // 10 ** 18
 
   def get_annual_rpl_inflation(self):
     contract = self.get_contract_by_name("rocketTokenRPL")
-    inflation_per_interval = (contract.functions.getInflationIntervalRate().call() / 10**18)
+    inflation_per_interval = (contract.functions.getInflationIntervalRate().call() / 10 ** 18)
     seconds_per_interval = contract.functions.getInflationIntervalTime().call()
     intervals_per_year = units.years / seconds_per_interval
     annual_inflation = (inflation_per_interval ** intervals_per_year) - 1
     return annual_inflation
 
+  def get_effective_rpl_stake(self):
+    contract = self.get_contract_by_name("rocketNetworkPrices")
+    value = contract.functions.getEffectiveRPLStake().call() / 10 ** 18
+    return value
+
+  def get_reth_supply(self):
+    contract = self.get_contract_by_name("rocketTokenRETH")
+    value = contract.functions.totalSupply().call() / 10 ** 18
+    return value
+
+  # get_active_staking_amount
+  def get_staking_minipool_count(self):
+    contract = self.get_contract_by_name("rocketMinipoolManager")
+    value = contract.functions.getStakingMinipoolCount().call()
+    return value
+
+  def get_percentage_rpl_swapped(self):
+    contract = self.get_contract_by_name("rocketTokenRPL")
+    value = contract.functions.totalSwappedRPL().call() / 10 ** 18
+    percentage = (value / 18_000_000) * 100
+    return round(percentage, 2)

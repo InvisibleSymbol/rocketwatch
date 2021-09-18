@@ -50,5 +50,21 @@
   "rpl_inflation_event": {
     "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
     "description": "%{value} new RPL minted and transferred to %{sender_fancy}!\nThe new Total Supply is %{total_supply} RPL."
+  },
+  "get_effective_rpl_stake_milestone": {
+    "title": ":tada: Milestone Reached",
+    "description": "%{current_value} RPL has been staked by Node Operators!"
+  },
+  "get_reth_supply_milestone": {
+    "title": ":tada: Milestone Reached",
+    "description": "A total of %{current_value} rETH has been issued!"
+  },
+  "get_staking_minipool_count_milestone": {
+    "title": ":tada: Milestone Reached",
+    "description": "%{current_value} Minipools are currently staking on the Beacon Chain!"
+  },
+  "get_percentage_rpl_swapped_milestone": {
+    "title": ":tada: Milestone Reached",
+    "description": "%{current_value}% of all RPL has been exchanged for the new Version!"
   }
 }

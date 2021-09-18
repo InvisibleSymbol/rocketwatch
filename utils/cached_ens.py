@@ -4,7 +4,7 @@ import os
 from cachetools.func import ttl_cache
 from ens import ENS
 
-log = logging.getLogger("rocketpool")
+log = logging.getLogger("cached_ens")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
 
