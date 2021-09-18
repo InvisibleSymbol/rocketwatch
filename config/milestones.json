@@ -1,0 +1,18 @@
+{
+  "get_percentage_rpl_swapped": {
+    "min": 1,
+    "step_size": 10
+  },
+  "get_staking_minipool_count": {
+    "min": 10,
+    "step_size": 50
+  },
+  "get_reth_supply": {
+    "min": 1000,
+    "step_size": 1000
+  },
+  "get_effective_rpl_stake": {
+    "min": 15000,
+    "step_size": 5000
+  }
+}

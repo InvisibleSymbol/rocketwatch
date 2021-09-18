@@ -95,3 +95,24 @@ class RocketPool:
     annual_inflation = (inflation_per_interval ** intervals_per_year) - 1
     return annual_inflation
 
+  def get_effective_rpl_stake(self):
+    contract = self.get_contract_by_name("rocketNetworkPrices")
+    value = contract.functions.getEffectiveRPLStake().call() / 10 ** 18
+    return value
+
+  def get_reth_supply(self):
+    contract = self.get_contract_by_name("rocketTokenRETH")
+    value = contract.functions.totalSupply().call() / 10 ** 18
+    return value
+
+  # get_active_staking_amount
+  def get_staking_minipool_count(self):
+    contract = self.get_contract_by_name("rocketMinipoolManager")
+    value = contract.functions.getStakingMinipoolCount().call()
+    return value
+
+  def get_percentage_rpl_swapped(self):
+    contract = self.get_contract_by_name("rocketTokenRPL")
+    value = contract.functions.totalSwappedRPL().call() / 10 ** 18
+    percentage = (value / 18_000_000) * 100
+    return round(percentage, 2)
