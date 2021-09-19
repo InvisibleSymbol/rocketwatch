@@ -1,3 +1,4 @@
+import math
 import os
 
 import humanize
@@ -14,7 +15,9 @@ def assemble(args):
   # make numbers look nice
   for arg_key, arg_value in list(args.items()):
     if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
-      arg_value = round(arg_value, 5)
+      decimal = 5 - math.floor(math.log10(arg_value))
+      decimal = max(0, min(5, decimal))
+      arg_value = round(arg_value, decimal)
       if arg_value == int(arg_value):
         arg_value = int(arg_value)
       args[arg_key] = humanize.intcomma(arg_value)
