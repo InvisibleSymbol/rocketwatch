@@ -53,18 +53,18 @@
   },
   "get_effective_rpl_stake_milestone": {
     "title": ":tada: Milestone Reached",
-    "description": "%{current_value} RPL has been staked by Node Operators!"
+    "description": "Over %{milestone_value} RPL has been staked by Node Operators! (%{result_value} RPL)"
   },
   "get_reth_supply_milestone": {
     "title": ":tada: Milestone Reached",
-    "description": "A total of %{current_value} rETH has been issued!"
+    "description": "Over %{milestone_value} rETH has been issued! (%{result_value} rETH)"
   },
   "get_staking_minipool_count_milestone": {
     "title": ":tada: Milestone Reached",
-    "description": "%{current_value} Minipools are currently staking on the Beacon Chain!"
+    "description": "Over %{milestone_value} Minipools are currently staking on the Beacon Chain! (%{result_value} Minipools)"
   },
   "get_percentage_rpl_swapped_milestone": {
     "title": ":tada: Milestone Reached",
-    "description": "%{current_value}% of all RPL has been exchanged for the new Version!"
+    "description": "Over %{milestone_value}% of all RPL has been exchanged for the new Version! (%{result_value}%)"
   }
 }

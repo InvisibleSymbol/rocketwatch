@@ -84,7 +84,8 @@ class Milestones(commands.Cog):
         embed = utils.embeds.assemble(aDict({
           "timestamp": int(datetime.datetime.now().timestamp()),
           "event_name": f"{function}_milestone",
-          "current_value": value
+          "milestone_value": previous_milestone,
+          "result_value": value
         }))
         default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
         await default_channel.send(embed=embed)
