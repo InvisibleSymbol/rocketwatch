@@ -3,6 +3,6 @@
     "config:base",
     ":disableDependencyDashboard",
     ":automergeMinor",
-    ":automergeRequireAllStatusChecks"
+    ":automergeBranch"
   ]
 }
