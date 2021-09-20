@@ -36,8 +36,12 @@ class Reloader(commands.Cog):
   @commands.is_owner()
   async def reload(self, ctx, module: str):
     """Reloads a module."""
-    await self.unload(ctx, module)
-    await self.load(ctx, module)
+    try:
+      self.bot.reload_extension("plugins." + module)
+      await ctx.send(_("reloader.reload", name=module), hidden=True)
+    except commands.errors.ExtensionNotLoaded:
+      await ctx.send(_("reloader.not_loaded", name=module), hidden=True)
+    return True
 
 
 def setup(bot):
