@@ -8,6 +8,7 @@ from discord import Embed
 from discord.ext import commands
 
 from utils import readable
+from utils.slash_commands import default_slash
 
 psutil.getloadavg()
 BOOT_TIME = time.time()
@@ -18,9 +19,9 @@ class Stats(commands.Cog):
     self.bot = bot
     self.process = psutil.Process(os.getpid())
 
-  @commands.command(brief="Show Bot stats")
-  @commands.cooldown(1, 2, commands.BucketType.guild)
+  @default_slash()
   async def stats(self, ctx):
+    """System and Server Statistics"""
     embed = Embed()
 
     embed.add_field(name="CPU", value=f"{psutil.cpu_percent():.2f}%")
@@ -36,7 +37,7 @@ class Stats(commands.Cog):
     system_uptime = uptime.uptime()
     embed.add_field(name="System Uptime", value=f"{readable.uptime(system_uptime)}")
 
-    await ctx.channel.send(embed=embed)
+    await ctx.send(embed=embed, hidden=True)
 
 
 def setup(bot):

@@ -13,7 +13,11 @@ def format_stacktrace(error):
 
 
 async def report_error(ctx, excep):
-  desc = f"```{excep}\n{ctx.message=}```"
+  desc = f"```{excep}\n" \
+         f"{ctx.command=}\n" \
+         f"{ctx.args=}\n" \
+         f"{ctx.channel=}\n" \
+         f"{ctx.author=}```"
   log.error(desc)
 
   if hasattr(excep, "original"):
