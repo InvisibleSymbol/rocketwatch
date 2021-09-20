@@ -1,8 +1,11 @@
 # Rocket Feed
- A Discord bot that tracks Rocket Pool Events
+
+A Discord bot that tracks Rocket Pool Events
 > Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 [![wakatime](https://wakatime.com/badge/github/InvisibleSymbol/rocketfeed.svg)](https://wakatime.com/badge/github/InvisibleSymbol/rocketfeed)
+![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/InvisibleSymbol/rocketfeed?label=code%20quality&logo=lgtm)
+
 ## Features:
 - Ability to track Proposals (Description/Vote Count read from Contract):
 
