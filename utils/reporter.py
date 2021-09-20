@@ -22,6 +22,6 @@ async def report_error(ctx, excep):
     details = format_stacktrace(excep)
   log.error(details)
 
-  channel = await ctx.bot.fetch_channel(os.getenv("ERROR_CHANNEL"))
+  channel = await ctx.bot.fetch_channel(os.getenv("OWNER_CHANNEL_ERRORS"))
   with io.StringIO(details) as f:
     await channel.send(desc, file=File(fp=f, filename="exception.txt"))
