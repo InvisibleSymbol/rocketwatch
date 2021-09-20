@@ -1,5 +1,4 @@
 import math
-import os
 
 import humanize
 from discord import Embed, Color
@@ -9,7 +8,7 @@ from strings import _
 
 def assemble(args):
   embed = Embed(color=Color.from_rgb(235, 142, 85))
-  embed.set_footer(text=os.getenv("CREDITS"), icon_url=os.getenv("CREDITS_ICON"))
+  embed.set_footer(text="Developed by InvisibleSymbol#2788 · /donate")
   embed.title = _(f"embeds.{args.event_name}.title")
 
   # make numbers look nice

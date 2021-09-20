@@ -13,7 +13,11 @@ def format_stacktrace(error):
 
 
 async def report_error(ctx, excep):
-  desc = f"```{excep}\n{ctx.message=}```"
+  desc = f"```{excep}\n" \
+         f"{ctx.command=}\n" \
+         f"{ctx.args=}\n" \
+         f"{ctx.channel=}\n" \
+         f"{ctx.author=}```"
   log.error(desc)
 
   if hasattr(excep, "original"):
@@ -22,6 +26,6 @@ async def report_error(ctx, excep):
     details = format_stacktrace(excep)
   log.error(details)
 
-  channel = await ctx.bot.fetch_channel(os.getenv("ERROR_CHANNEL"))
+  channel = await ctx.bot.fetch_channel(os.getenv("OWNER_CHANNEL_ERRORS"))
   with io.StringIO(details) as f:
     await channel.send(desc, file=File(fp=f, filename="exception.txt"))

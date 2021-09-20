@@ -2,21 +2,34 @@ import logging
 import math
 import os
 
+import discord.errors
+from discord import Intents
 from discord.ext import commands
+from discord_slash import SlashCommand
 from dotenv import load_dotenv
 
 from utils.reporter import report_error
 
 load_dotenv()
 
+# https://discord.com/api/oauth2/authorize?client_id=884095717168259142&permissions=0&scope=bot%20applications.commands
+
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
 log.setLevel(os.getenv("LOG_LEVEL"))
-bot = commands.Bot(command_prefix=';')
+logging.getLogger("discord_slash").setLevel(os.getenv("LOG_LEVEL"))
+
+bot = commands.Bot(command_prefix=';',
+                   self_bot=True,
+                   help_command=None,
+                   intents=Intents.default())
+slash = SlashCommand(bot,
+                     sync_commands=True,
+                     sync_on_cog_reload=True)
 
 
 @bot.event
-async def on_command_error(ctx, excep):
+async def on_slash_command_error(ctx, excep):
   if isinstance(excep, commands.CommandNotFound):
     return
 
@@ -35,7 +48,10 @@ async def on_command_error(ctx, excep):
 
   else:
     await report_error(ctx, excep)
-    return await ctx.channel.send('An unexpected error occurred. This Error has been automatically reported.')
+    try:
+      return await ctx.send('An unexpected error occurred. This Error has been automatically reported.', hidden=True)
+    except discord.errors.NotFound:
+      pass
 
 
 log.info(f"Loading Plugins")

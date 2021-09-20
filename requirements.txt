@@ -10,3 +10,4 @@ bidict==0.21.3
 tinydb==4.5.1
 requests==2.26.0
 uptime==3.0.1
+discord-py-interactions==3.0.0

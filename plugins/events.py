@@ -229,8 +229,8 @@ class Events(commands.Cog):
     if messages:
       log.info(f"Sending {len(messages)} Message(s)")
 
-      default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
-      odao_channel = await self.bot.fetch_channel(os.getenv("ODAO_CHANNEL"))
+      default_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_DEFAULT"))
+      odao_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_ODAO"))
 
       for message in sorted(messages, key=lambda a: a["score"], reverse=False):
         log.debug(f"Sending \"{message['event_name']}\" Event")

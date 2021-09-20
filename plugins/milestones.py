@@ -87,7 +87,7 @@ class Milestones(commands.Cog):
           "milestone_value": previous_milestone,
           "result_value": value
         }))
-        default_channel = await self.bot.fetch_channel(os.getenv("DEFAULT_CHANNEL"))
+        default_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_DEFAULT"))
         await default_channel.send(embed=embed)
         self.db.upsert({
           "function": function,
