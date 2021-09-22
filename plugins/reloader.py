@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from strings import _
-from utils.slash_commands import owner_only_slash
+from utils.slash_permissions import owner_only_slash
 
 
 class Reloader(commands.Cog):

@@ -15,9 +15,7 @@ owner_only_perms = {
   ]
 }
 
-
-def default_slash():
-  return cog_ext.cog_slash(guild_ids=[owner_server_id, output_server_id])
+guilds = [owner_server_id, output_server_id]
 
 
 def owner_only_slash():

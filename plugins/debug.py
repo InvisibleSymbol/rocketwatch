@@ -4,7 +4,7 @@ import random
 import psutil
 from discord.ext import commands
 
-from utils.slash_commands import owner_only_slash
+from utils.slash_permissions import owner_only_slash
 
 psutil.getloadavg()
 

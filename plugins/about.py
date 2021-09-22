@@ -6,9 +6,10 @@ import psutil
 import uptime
 from discord import Embed
 from discord.ext import commands
+from discord_slash import cog_ext
 
 from utils import readable
-from utils.slash_commands import default_slash
+from utils.slash_permissions import guilds
 
 psutil.getloadavg()
 BOOT_TIME = time.time()
@@ -19,7 +20,12 @@ class Stats(commands.Cog):
     self.bot = bot
     self.process = psutil.Process(os.getpid())
 
-  @default_slash()
+  @cog_ext.cog_slash(guild_ids=guilds)
+  async def about(self, ctx):
+    """Information about this bot"""
+    await ctx.send("TBA", hidden=True)
+
+  @cog_ext.cog_slash(guild_ids=guilds)
   async def stats(self, ctx):
     """System and Server Statistics"""
     embed = Embed()
