@@ -30,7 +30,7 @@ class RocketPool:
     return address
 
   @memoize
-  def get_contract(self, name, address):
+  def get_contract(self, name, address=None):
     with open(f"./contracts/{name}.abi", "r") as f:
       contract = self.w3.eth.contract(address=address, abi=f.read())
     return contract
