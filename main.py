@@ -48,10 +48,13 @@ async def on_slash_command_error(ctx, excep):
 
   else:
     await report_error(ctx, excep)
+    msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
     try:
-      return await ctx.send('An unexpected error occurred. This Error has been automatically reported.', hidden=True)
+      # try to inform the user silently. this might fail if it took too long to respond
+      return await ctx.send(msg, hidden=True)
     except discord.errors.NotFound:
-      pass
+      # so fall back to a normal channel message
+      return await ctx.channel.send(msg)
 
 
 log.info(f"Loading Plugins")
