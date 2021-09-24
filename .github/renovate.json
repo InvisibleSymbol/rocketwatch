@@ -3,7 +3,8 @@
     "config:base",
     ":prNotPending",
     ":automergeMinor",
-    ":automergeBranch"
+    ":automergeBranch",
+    ":skipStatusChecks"
   ],
   "rollbackPrs": true,
   "stabilityDays": 7
