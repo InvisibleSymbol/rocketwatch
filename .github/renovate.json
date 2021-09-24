@@ -1,11 +1,17 @@
 {
   "extends": [
     "config:base",
-    ":prNotPending",
-    ":automergeMinor",
-    ":automergeBranch",
-    ":skipStatusChecks"
   ],
+  "minor": {
+    "automerge": true
+  },
+  "patch": {
+    "automerge": true
+  },
+  "pin": {
+    "automerge": true
+  },
+  "prCreation": "not-pending",
   "rollbackPrs": true,
   "stabilityDays": 7
 }
