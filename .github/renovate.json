@@ -11,6 +11,9 @@
   "pin": {
     "automerge": true
   },
+  "rollback": {
+    "automerge": true
+  }
   "prCreation": "not-pending",
   "rollbackPrs": true,
   "stabilityDays": 7
