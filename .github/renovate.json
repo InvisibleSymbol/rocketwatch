@@ -1,8 +1,10 @@
 {
   "extends": [
     "config:base",
-    ":disableDependencyDashboard",
+    ":prNotPending",
     ":automergeMinor",
     ":automergeBranch"
-  ]
+  ],
+  "rollbackPrs": true,
+  "stabilityDays": 7
 }
