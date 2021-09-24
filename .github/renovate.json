@@ -13,7 +13,7 @@
   },
   "rollback": {
     "automerge": true
-  }
+  },
   "prCreation": "not-pending",
   "rollbackPrs": true,
   "stabilityDays": 7
