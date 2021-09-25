@@ -117,4 +117,4 @@ dmypy.json
 .idea/
 
 # state
-data/
+.db
