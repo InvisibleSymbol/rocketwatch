@@ -80,7 +80,6 @@ class Milestones(commands.Cog):
         previous_milestone = args.min
       if previous_milestone < latest_goal:
         log.info(f"Goal for function {function} has increased. Triggering Milestone!")
-        # move embed creation code from events.py to utils.embeds.assemble and use it here as well
         embed = utils.embeds.assemble(aDict({
           "timestamp": int(datetime.datetime.now().timestamp()),
           "event_name": f"{function}_milestone",

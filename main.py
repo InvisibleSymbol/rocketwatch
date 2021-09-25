@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+from pathlib import Path
 
 import discord.errors
 from discord import Intents
@@ -59,12 +60,14 @@ async def on_slash_command_error(ctx, excep):
 
 log.info(f"Loading Plugins")
 
-for filename in os.listdir("./plugins"):
-  if not filename.endswith(".py") or filename.startswith("lib"):
-    continue
-  filename = filename.split(".")[0]
-  log.debug(f"Loading Plugin \"{filename}\"")
-  bot.load_extension(f"plugins.{filename}")
+for path in Path("./plugins").glob('**/*.py'):
+  extension_name = ".".join(path.parts[:-1] + (path.stem,))
+  log.debug(f"Loading Plugin \"{extension_name}\"")
+  try:
+    bot.load_extension(extension_name)
+  except Exception as err:
+    log.error(f"Failed to load plugin \"{extension_name}\"")
+    log.exception(err)
 
 log.info(f"Finished loading Plugins")
 

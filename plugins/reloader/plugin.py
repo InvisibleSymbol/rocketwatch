@@ -12,7 +12,7 @@ class Reloader(commands.Cog):
   async def load(self, ctx, module: str):
     """Loads a module."""
     try:
-      self.bot.load_extension("plugins." + module)
+      self.bot.load_extension(f"plugins.{module}.plugin")
       await ctx.send(_("reloader.load", name=module), hidden=True)
     except commands.errors.ExtensionAlreadyLoaded:
       await ctx.send(_("reloader.already_loaded", name=module), hidden=True)
@@ -25,7 +25,7 @@ class Reloader(commands.Cog):
     if module == "reloader":
       await ctx.send(_("reloader.unload_reloader", name=module), hidden=True)
     try:
-      self.bot.unload_extension("plugins." + module)
+      self.bot.unload_extension(f"plugins.{module}.plugin")
       await ctx.send(_("reloader.unload", name=module), hidden=True)
     except commands.errors.ExtensionNotLoaded:
       await ctx.send(_("reloader.not_loaded", name=module), hidden=True)
@@ -34,7 +34,7 @@ class Reloader(commands.Cog):
   async def reload(self, ctx, module: str):
     """Reloads a module."""
     try:
-      self.bot.reload_extension("plugins." + module)
+      self.bot.reload_extension(f"plugins.{module}.plugin")
       await ctx.send(_("reloader.reload", name=module), hidden=True)
     except commands.errors.ExtensionNotLoaded:
       await ctx.send(_("reloader.not_loaded", name=module), hidden=True)
