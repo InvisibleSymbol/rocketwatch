@@ -60,7 +60,7 @@ async def on_slash_command_error(ctx, excep):
 
 log.info(f"Loading Plugins")
 
-for path in Path("./plugins").glob('**/*.py'):
+for path in Path("./plugins").glob('**/plugin.py'):
   extension_name = ".".join(path.parts[:-1] + (path.stem,))
   log.debug(f"Loading Plugin \"{extension_name}\"")
   try:
