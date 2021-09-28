@@ -7,7 +7,7 @@ python-dotenv==0.19.0
 termplotlib==0.3.9
 cachetools==4.2.2
 bidict==0.21.3
-tinydb==4.5.1
+tinydb==4.5.2
 requests==2.26.0
 uptime==3.0.1
 discord-py-interactions==3.0.2
