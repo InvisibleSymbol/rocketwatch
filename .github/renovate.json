@@ -16,5 +16,5 @@
   },
   "prCreation": "not-pending",
   "rollbackPrs": true,
-  "stabilityDays": 7
+  "stabilityDays": 3
 }
