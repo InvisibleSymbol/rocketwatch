@@ -27,7 +27,7 @@ class Milestones(commands.Cog):
                      separators=(',', ': '))
 
     infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
+    self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.rocketpool = RocketPool(self.w3,
                                  os.getenv("STORAGE_CONTRACT"))
 
