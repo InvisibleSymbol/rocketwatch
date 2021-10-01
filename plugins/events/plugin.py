@@ -192,7 +192,7 @@ class Events(commands.Cog):
         if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
           continue
 
-        log.debug(f"Checking Event {tnx_hash} #{event.logIndex}")
+        log.debug(f"Checking Event {event}")
 
         address = event.address
         contract_name = self.rocketpool.get_name_by_address(address)
