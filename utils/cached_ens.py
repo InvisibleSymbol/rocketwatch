@@ -17,3 +17,8 @@ class CachedEns:
   def get_name(self, address):
     log.debug(f"retrieving ens name for {address}")
     return self.ens.name(address)
+
+  @ttl_cache(ttl=300)
+  def resolve_name(self, name):
+    log.debug(f"resolving ens name {name}")
+    return self.ens.resolve(name)
