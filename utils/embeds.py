@@ -48,7 +48,7 @@ def assemble(args):
   # show block number
   if "blockNumber" in args:
     embed.add_field(name="Block Number",
-                    value=f"[{args.blockNumber}](https://goerli.etherscan.io/block/{args.blockNumber})")
+                    value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
 
   # show timestamp
   times = [value for key, value in args.items() if "time" in key.lower()]

@@ -30,9 +30,8 @@ class Events(commands.Cog):
     self.topic_mapping = {}
 
     infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://goerli.infura.io/ws/v3/{infura_id}"))
-    temp_mainnet_w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
-    self.ens = CachedEns(temp_mainnet_w3)  # switch to self.w3 once we use mainnet
+    self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
+    self.ens = CachedEns(self.w3)
     self.rocketpool = RocketPool(self.w3,
                                  os.getenv("STORAGE_CONTRACT"))
 
@@ -142,9 +141,9 @@ class Events(commands.Cog):
           name = readable.hex(arg_value)
 
         if arg_key == "pubkey":
-          args[f"{arg_key}_fancy"] = f"[{name}](https://prater.beaconcha.in/validator/{arg_value})"
+          args[f"{arg_key}_fancy"] = f"[{name}](https://beaconcha.in/validator/{arg_value})"
         else:
-          args[f"{arg_key}_fancy"] = f"[{name}](https://goerli.etherscan.io/search?q={arg_value})"
+          args[f"{arg_key}_fancy"] = f"[{name}](https://etherscan.io/search?q={arg_value})"
 
     # add oDAO member name if we can
     if "odao" in event_name:
@@ -153,7 +152,7 @@ class Events(commands.Cog):
         key = keys[0]
         name = self.rocketpool.get_dao_member_name(args[key])
         if name:
-          args.member_fancy = f"[{name}](https://goerli.etherscan.io/search?q={args[key]})"
+          args.member_fancy = f"[{name}](https://etherscan.io/search?q={args[key]})"
         else:
           # fallback to just using the pre-formatted address instead
           args.member_fancy = args[key + '_fancy']
