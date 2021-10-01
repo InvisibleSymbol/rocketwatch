@@ -20,7 +20,7 @@ class Milestones(commands.Cog):
     self.bot = bot
     self.loaded = True
     self.state = {}
-    self.db = TinyDB('./data/milestones.db',
+    self.db = TinyDB('./plugins/milestones/state.db',
                      create_dirs=True,
                      sort_keys=True,
                      indent=4,
@@ -31,7 +31,7 @@ class Milestones(commands.Cog):
     self.rocketpool = RocketPool(self.w3,
                                  os.getenv("STORAGE_CONTRACT"))
 
-    with open("./config/milestones.json") as f:
+    with open("./plugins/milestones/milestones.json") as f:
       self.milestones = json.load(f)
 
     if not self.run_loop.is_running():

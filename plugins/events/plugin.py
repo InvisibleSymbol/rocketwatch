@@ -36,7 +36,7 @@ class Events(commands.Cog):
     self.rocketpool = RocketPool(self.w3,
                                  os.getenv("STORAGE_CONTRACT"))
 
-    with open("./config/events.json") as f:
+    with open("./plugins/events/events.json") as f:
       mapped_events = json.load(f)
 
     # Load Contracts and create Filters for all Events
