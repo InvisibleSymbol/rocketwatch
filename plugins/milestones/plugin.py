@@ -9,6 +9,7 @@ from web3 import Web3
 from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
+from utils import solidity
 from utils.rocketpool import RocketPool
 
 log = logging.getLogger("milestones")
@@ -58,42 +59,44 @@ class Milestones(commands.Cog):
     log.info("Checking Milestones")
 
     history = Query()
-    for function, args in self.milestones.items():
-      args = aDict(args)
-      state = self.db.search(history.function == function)
+    for milestone in self.milestones:
+      milestone = aDict(milestone)
+      state = self.db.search(history.name == milestone.name)
 
-      value = getattr(self.rp, function)()
-      log.debug(f"{function}:{value}")
-      if value < args.min:
+      value = getattr(self.rp, milestone.function)(*milestone.args)
+      if milestone.formatter:
+        value = getattr(solidity, milestone.formatter)(value)
+      log.debug(f"{milestone.name}:{value}")
+      if value < milestone.min:
         continue
 
-      step_size = args.step_size
+      step_size = milestone.step_size
       latest_goal = (value // step_size + 1) * step_size
 
       if state:
         previous_milestone = state[0]["current_goal"]
       else:
-        log.debug(f"First time we have processed Milestones for function {function}. Adding it to the Database.")
+        log.debug(f"First time we have processed Milestones for milestone {milestone.name}. Adding it to the Database.")
         self.db.insert({
-          "function": function,
+          "name": milestone.name,
           "current_goal": latest_goal
         })
-        previous_milestone = args.min
+        previous_milestone = milestone.min
       if previous_milestone < latest_goal:
-        log.info(f"Goal for function {function} has increased. Triggering Milestone!")
+        log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
         embed = utils.embeds.assemble(aDict({
           "timestamp": int(datetime.datetime.now().timestamp()),
-          "event_name": f"{function}_milestone",
+          "event_name": milestone.name,
           "milestone_value": previous_milestone,
           "result_value": value
         }))
         default_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_DEFAULT"))
         await default_channel.send(embed=embed)
         self.db.upsert({
-          "function": function,
+          "name": milestone.name,
           "current_goal": latest_goal
         },
-          history.function == function)
+          history.name == milestone.name)
 
     log.debug("Finished Checking Milestones")
 

@@ -49,9 +49,10 @@ class RocketPool:
     name = self.get_name_by_address(address)
     return self.get_contract(name, address)
 
-  def get_pubkey_using_contract(self, address):
-    contract = self.get_contract_by_name("rocketMinipoolManager")
-    return contract.functions.getMinipoolPubkey(address).call().hex()
+  def call(self, path, *args):
+    name, function = path.split(".")
+    contract = self.get_contract_by_name(name)
+    return contract.functions[function](*args).call()
 
   def get_pubkey_using_transaction(self, receipt):
     # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
@@ -64,54 +65,13 @@ class RocketPool:
       deposit_event = processed_logs[0]
       return "0x" + deposit_event.args.pubkey.hex()
 
-  @ttl_cache(ttl=300)
-  def get_dao_member_name(self, member_address):
-    contract = self.get_contract_by_name("rocketDAONodeTrusted")
-    return contract.functions.getMemberID(member_address).call()
-
-  def get_proposal_info(self, event):
-    contract = self.get_contract_by_address(event['address'])
-    result = {
-      "message": contract.functions.getMessage(event.args.proposalID).call(),
-      "votesFor": solidity.to_int(contract.functions.getVotesFor(event.args.proposalID).call()),
-      "votesAgainst": solidity.to_int(contract.functions.getVotesAgainst(event.args.proposalID).call()),
-    }
-    return aDict(result)
-
-  @ttl_cache(ttl=300)
-  def is_minipool(self, address):
-    contract = self.get_contract_by_name("rocketMinipoolManager")
-    return contract.functions.getMinipoolExists(address).call()
-
-  def get_rpl_supply(self):
-    contract = self.get_contract_by_name("rocketTokenRPL")
-    return contract.functions.totalSupply().call() // 10 ** 18
-
   def get_annual_rpl_inflation(self):
-    contract = self.get_contract_by_name("rocketTokenRPL")
-    inflation_per_interval = (contract.functions.getInflationIntervalRate().call() / 10 ** 18)
-    seconds_per_interval = contract.functions.getInflationIntervalTime().call()
+    inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))
+    seconds_per_interval = self.call("rocketTokenRPL.getInflationIntervalTime")
     intervals_per_year = solidity.years / seconds_per_interval
     return (inflation_per_interval ** intervals_per_year) - 1
 
-  def get_effective_rpl_stake(self):
-    contract = self.get_contract_by_name("rocketNetworkPrices")
-    value = contract.functions.getEffectiveRPLStake().call() / 10 ** 18
-    return value
-
-  def get_reth_supply(self):
-    contract = self.get_contract_by_name("rocketTokenRETH")
-    value = contract.functions.totalSupply().call() / 10 ** 18
-    return value
-
-  # get_active_staking_amount
-  def get_staking_minipool_count(self):
-    contract = self.get_contract_by_name("rocketMinipoolManager")
-    value = contract.functions.getStakingMinipoolCount().call()
-    return value
-
   def get_percentage_rpl_swapped(self):
-    contract = self.get_contract_by_name("rocketTokenRPL")
-    value = contract.functions.totalSwappedRPL().call() / 10 ** 18
+    value = solidity.to_float(self.call("rocketTokenRPL.totalSwappedRPL"))
     percentage = (value / 18_000_000) * 100
     return round(percentage, 2)
