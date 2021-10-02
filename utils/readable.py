@@ -1,4 +1,4 @@
-import utils.solidity_units as units
+import utils.solidity as units
 
 
 def uptime(time):

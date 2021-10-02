@@ -9,7 +9,7 @@ from web3 import Web3
 from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
-from utils import readable
+from utils import readable, solidity
 from utils.cached_ens import CachedEns
 from utils.rocketpool import RocketPool
 
@@ -26,14 +26,14 @@ class Events(commands.Cog):
     self.loaded = True
     self.tnx_hash_cache = FIFOCache(maxsize=256)
     self.events = []
-    self.mapping = {}
+    self.internal_event_mapping = {}
     self.topic_mapping = {}
 
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.ens = CachedEns(self.w3)
-    self.rocketpool = RocketPool(self.w3,
-                                 os.getenv("STORAGE_CONTRACT"))
+    self.rp = RocketPool(self.w3,
+                         os.getenv("STORAGE_CONTRACT"))
 
     with open("./plugins/events/events.json") as f:
       mapped_events = json.load(f)
@@ -42,9 +42,9 @@ class Events(commands.Cog):
     addresses = []
     aggregated_topics = []
     for contract_name, event_mapping in mapped_events.items():
-      contract = self.rocketpool.get_contract_by_name(contract_name)
+      contract = self.rp.get_contract_by_name(contract_name)
       addresses.append(contract.address)
-      self.mapping[contract_name] = event_mapping
+      self.internal_event_mapping[contract_name] = event_mapping
       for event in event_mapping:
         topic = contract.events[event].build_filter().topics[0]
         self.topic_mapping[topic] = event
@@ -59,7 +59,7 @@ class Events(commands.Cog):
     }))
 
     # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
-    minipool_delegate_contract = self.rocketpool.get_contract(name="rocketMinipoolDelegate")
+    minipool_delegate_contract = self.rp.get_contract(name="rocketMinipoolDelegate")
     self.events.append(minipool_delegate_contract.events.StatusUpdated.createFilter(fromBlock="latest",
                                                                                     toBlock="latest",
                                                                                     argument_filters={
@@ -72,7 +72,7 @@ class Events(commands.Cog):
   def handle_minipool_events(self, event):
     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
 
-    if not self.rocketpool.is_minipool(receipt.to):
+    if not self.rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to):
       # some random contract we don't care about
       log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
       return None, None
@@ -82,10 +82,10 @@ class Events(commands.Cog):
     # so we can make this mutable
     event.args = aDict(event.args)
 
-    pubkey = self.rocketpool.get_pubkey_using_transaction(receipt)
+    pubkey = self.rp.get_pubkey_using_transaction(receipt)
     if not pubkey:
       # check if the contract has it stored instead
-      pubkey = self.rocketpool.get_pubkey_using_contract(receipt["from"])
+      pubkey = self.rp.get_pubkey_using_contract(receipt["from"])
 
     if pubkey:
       event.args.pubkey = pubkey
@@ -111,7 +111,7 @@ class Events(commands.Cog):
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
-      data = self.rocketpool.get_proposal_info(event)
+      data = self.rp.get_proposal_info(event)
       args.message = data.message
       # create bar graph for votes
       vote_graph = tpl.figure()
@@ -124,8 +124,8 @@ class Events(commands.Cog):
 
     # add inflation and new supply if inflation occurred
     if "rpl_inflation" in event_name:
-      args.total_supply = self.rocketpool.get_rpl_supply()
-      args.inflation = round(self.rocketpool.get_annual_rpl_inflation() * 100, 4)
+      args.total_supply = int(solidity.to_float(self.rp.call("rocketTokenRPL.totalSupply")))
+      args.inflation = round(self.rp.get_annual_rpl_inflation() * 100, 4)
 
     # handle numbers and hex strings
     for arg_key, arg_value in list(args.items()):
@@ -150,7 +150,7 @@ class Events(commands.Cog):
       keys = [key for key in ["nodeAddress", "canceller", "executer", "proposer", "voter"] if key in args]
       if keys:
         key = keys[0]
-        name = self.rocketpool.get_dao_member_name(args[key])
+        name = self.rp.call("rocketDAONodeTrusted.getMemberID", args[key])
         if name:
           args.member_fancy = f"[{name}](https://etherscan.io/search?q={args[key]})"
         else:
@@ -195,13 +195,13 @@ class Events(commands.Cog):
         log.debug(f"Checking Event {event}")
 
         address = event.address
-        contract_name = self.rocketpool.get_name_by_address(address)
+        contract_name = self.rp.get_name_by_address(address)
         if contract_name:
           # default event path
-          contract = self.rocketpool.get_contract_by_address(address)
+          contract = self.rp.get_contract_by_address(address)
           contract_event = self.topic_mapping[event.topics[0].hex()]
           event = contract.events[contract_event]().processLog(event)
-          event_name = self.mapping[contract_name][event.event]
+          event_name = self.internal_event_mapping[contract_name][event.event]
 
           embed = self.create_embed(event_name, event)
         elif event.get("event", None) == "StatusUpdated":

@@ -6,7 +6,7 @@ from bidict import bidict
 from cachetools.func import ttl_cache, lru_cache
 from web3.datastructures import MutableAttributeDict as aDict
 
-import utils.solidity_units as units
+from utils import solidity
 
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
@@ -73,8 +73,8 @@ class RocketPool:
     contract = self.get_contract_by_address(event['address'])
     result = {
       "message": contract.functions.getMessage(event.args.proposalID).call(),
-      "votesFor": contract.functions.getVotesFor(event.args.proposalID).call() // 10 ** 18,
-      "votesAgainst": contract.functions.getVotesAgainst(event.args.proposalID).call() // 10 ** 18,
+      "votesFor": solidity.to_int(contract.functions.getVotesFor(event.args.proposalID).call()),
+      "votesAgainst": solidity.to_int(contract.functions.getVotesAgainst(event.args.proposalID).call()),
     }
     return aDict(result)
 
@@ -91,9 +91,8 @@ class RocketPool:
     contract = self.get_contract_by_name("rocketTokenRPL")
     inflation_per_interval = (contract.functions.getInflationIntervalRate().call() / 10 ** 18)
     seconds_per_interval = contract.functions.getInflationIntervalTime().call()
-    intervals_per_year = units.years / seconds_per_interval
-    annual_inflation = (inflation_per_interval ** intervals_per_year) - 1
-    return annual_inflation
+    intervals_per_year = solidity.years / seconds_per_interval
+    return (inflation_per_interval ** intervals_per_year) - 1
 
   def get_effective_rpl_stake(self):
     contract = self.get_contract_by_name("rocketNetworkPrices")

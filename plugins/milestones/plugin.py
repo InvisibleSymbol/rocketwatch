@@ -28,8 +28,8 @@ class Milestones(commands.Cog):
 
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
-    self.rocketpool = RocketPool(self.w3,
-                                 os.getenv("STORAGE_CONTRACT"))
+    self.rp = RocketPool(self.w3,
+                         os.getenv("STORAGE_CONTRACT"))
 
     with open("./plugins/milestones/milestones.json") as f:
       self.milestones = json.load(f)
@@ -62,7 +62,8 @@ class Milestones(commands.Cog):
       args = aDict(args)
       state = self.db.search(history.function == function)
 
-      value = getattr(self.rocketpool, function)()
+      value = getattr(self.rp, function)()
+      log.debug(f"{function}:{value}")
       if value < args.min:
         continue
 
