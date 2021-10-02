@@ -7,6 +7,7 @@ A Discord bot that tracks Rocket Pool Events
 [![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/InvisibleSymbol/rocketwatch?label=code%20quality&logo=lgtm)](https://lgtm.com/projects/g/InvisibleSymbol/rocketwatch/alerts/)
 
 ## Features:
+
 - Ability to track Proposals (Description/Vote Count read from Contract):
 
 <p align="center">
@@ -44,16 +45,21 @@ A Discord bot that tracks Rocket Pool Events
 - Easy Extendability (Almost no hard-coded Events, most are loaded from a `.json` File)
 
 ## Instructions
+
 - Python 3.8 Recommended
 - `pip install -r requirements.txt`
-- Copy `.env.sample` to `.env` and fill everything out. You can get the channel IDs by enabling Developer Mode in your Discord Settings and Right-Clicking a Channel.
+- Copy `.env.sample` to `.env` and fill everything out. You can get the channel IDs by enabling Developer Mode in your
+  Discord Settings and Right-Clicking a Channel.
 - Run `python main.py`
 
-
 ## How to add new Events:
-- Open `./data/rocketpool.json` and add a new Entry to `sources`. Map the Contract Events to new Bot Events.
-- Add the required ABI in `./contracts/`. (The Path should look like this: `./contracts/rocketMinipoolManager.abi`). 
-- Open `./strings/rocketpool.en.json` and add both `title` and `description` for each new Bot Event. You can access Event Arguments directly using their Names: `%(amount)`. If you want to mention an Address, you can append `_fancy` to get a shorter Version that also automatically links to etherscan.io.
 
-## Donate: 
+- Open `./data/rocketpool.json` and add a new Entry to `sources`. Map the Contract Events to new Bot Events.
+- Add the required ABI in `./contracts/`. (The Path should look like this: `./contracts/rocketMinipoolManager.abi`).
+- Open `./strings/rocketpool.en.json` and add both `title` and `description` for each new Bot Event. You can access
+  Event Arguments directly using their Names: `%(amount)`. If you want to mention an Address, you can append `_fancy` to
+  get a shorter Version that also automatically links to etherscan.io.
+
+## Donate:
+
 [<kbd>0x87FF5B8ccFAeEC77b2B4090FD27b11dA2ED808Fb</kbd>](https://invis.cloud/donate)

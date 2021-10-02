@@ -57,6 +57,7 @@ async def on_slash_command_error(ctx, excep):
       # so fall back to a normal channel message
       return await ctx.channel.send(msg)
 
+
 # chain should be read dynamically but hardcoding works for now
 log.info(f"Running using Storage Contract {os.getenv('STORAGE_CONTRACT')} (Chain: Mainnet)")
 log.info(f"Loading Plugins")
