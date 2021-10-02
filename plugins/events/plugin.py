@@ -85,7 +85,7 @@ class Events(commands.Cog):
     pubkey = self.rp.get_pubkey_using_transaction(receipt)
     if not pubkey:
       # check if the contract has it stored instead
-      pubkey = self.rp.get_pubkey_using_contract(receipt["from"])
+      pubkey = self.rp.call("rocketMinipoolManager.getMinipoolPubkey", receipt["from"]).hex()
 
     if pubkey:
       event.args.pubkey = pubkey
@@ -111,11 +111,15 @@ class Events(commands.Cog):
 
     # add proposal message manually if the event contains a proposal
     if "proposal" in event_name:
-      data = self.rp.get_proposal_info(event)
-      args.message = data.message
+      proposal_id = event.args.proposalID
+      args.message = self.rp.call("rocketDAOProposal.getMessage", proposal_id)
       # create bar graph for votes
+      votes = [
+        solidity.to_int(self.rp.call("rocketDAOProposal.votesFor", proposal_id)),
+        solidity.to_int(self.rp.call("rocketDAOProposal.votesAgainst", proposal_id))
+      ]
       vote_graph = tpl.figure()
-      vote_graph.barh([data.votesFor, data.votesAgainst], ["For", "Against"], max_width=20)
+      vote_graph.barh(votes, ["For", "Against"], max_width=20)
       args.vote_graph = vote_graph.get_string()
 
     # create human readable decision for votes
