@@ -21,11 +21,6 @@ class Stats(commands.Cog):
     self.process = psutil.Process(os.getpid())
 
   @cog_ext.cog_slash(guild_ids=guilds)
-  async def about(self, ctx):
-    """Information about this bot"""
-    await ctx.send("TBA", hidden=True)
-
-  @cog_ext.cog_slash(guild_ids=guilds)
   async def stats(self, ctx):
     """System and Server Statistics"""
     embed = Embed()
