@@ -2,7 +2,9 @@
   {
     "name": "milestone_rpl_stake",
     "function": "call",
-    "args": ["rocketNetworkPrices.getEffectiveRPLStake"],
+    "args": [
+      "rocketNetworkPrices.getEffectiveRPLStake"
+    ],
     "formatter": "to_float",
     "min": 15000,
     "step_size": 5000
@@ -10,7 +12,9 @@
   {
     "name": "milestone_reth_supply",
     "function": "call",
-    "args": ["rocketTokenRETH.totalSupply"],
+    "args": [
+      "rocketTokenRETH.totalSupply"
+    ],
     "formatter": "to_float",
     "min": 1000,
     "step_size": 1000
@@ -18,7 +22,9 @@
   {
     "name": "milestone_staking_minipools",
     "function": "call",
-    "args": ["rocketMinipoolManager.getStakingMinipoolCount"],
+    "args": [
+      "rocketMinipoolManager.getStakingMinipoolCount"
+    ],
     "formatter": "",
     "min": 10,
     "step_size": 50

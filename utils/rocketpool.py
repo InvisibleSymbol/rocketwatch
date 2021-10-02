@@ -3,8 +3,7 @@ import os
 import warnings
 
 from bidict import bidict
-from cachetools.func import ttl_cache, lru_cache
-from web3.datastructures import MutableAttributeDict as aDict
+from cachetools.func import lru_cache
 
 from utils import solidity
 
