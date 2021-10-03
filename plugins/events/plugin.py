@@ -139,9 +139,12 @@ class Events(commands.Cog):
       if str(arg_value).startswith("0x"):
         name = ""
         if self.w3.isAddress(arg_value):
-          name = self.ens.get_name(arg_value)
+          name = self.rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
+          if not name:
+            # not an odao member, try to get their ens
+            name = self.ens.get_name(arg_value)
         if not name:
-          # fallback when no ens name is found or when the hex isn't an address to begin with
+          # fallback when no ens name/odao id is found or when the hex isn't an address to begin with
           name = readable.hex(arg_value)
 
         if arg_key == "pubkey":
