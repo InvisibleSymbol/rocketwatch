@@ -62,7 +62,7 @@ async def on_slash_command_error(ctx, excep):
 log.info(f"Running using Storage Contract {os.getenv('STORAGE_CONTRACT')} (Chain: Mainnet)")
 log.info(f"Loading Plugins")
 
-for path in Path("./plugins").glob('**/plugin.py'):
+for path in Path("plugins").glob('**/plugin.py'):
   extension_name = ".".join(path.parts[:-1] + (path.stem,))
   log.debug(f"Loading Plugin \"{extension_name}\"")
   try:

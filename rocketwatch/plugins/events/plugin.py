@@ -9,7 +9,7 @@ from web3 import Web3
 from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
-from utils import readable, solidity
+from utils import solidity, readable
 from utils.cached_ens import CachedEns
 from utils.rocketpool import RocketPool
 

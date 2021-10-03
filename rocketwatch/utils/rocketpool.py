@@ -4,10 +4,9 @@ import os
 import warnings
 
 from bidict import bidict
-from cachetools import cached, LRUCache
-from cachetools.func import lru_cache
+from cachetools import cached
 
-from utils import solidity, pako
+from utils import pako, solidity
 
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
