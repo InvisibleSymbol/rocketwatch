@@ -1,17 +1,18 @@
+import base64
 import logging
 import os
 import warnings
 
 from bidict import bidict
+from cachetools import cached, LRUCache
 from cachetools.func import lru_cache
 
-from utils import solidity
+from utils import solidity, pako
 
 log = logging.getLogger("rocketpool")
 log.setLevel(os.getenv("LOG_LEVEL"))
 
 # noinspection PyTypeChecker
-memoize = lru_cache(maxsize=None)
 
 
 class RocketPool:
@@ -20,7 +21,7 @@ class RocketPool:
     self.addresses = bidict()
     self.storage_contract = self.get_contract("rocketStorage", storage_address)
 
-  @memoize
+  @cached(cache={})
   def get_address_by_name(self, name):
     log.debug(f"Retrieving address for {name} Contract")
     sha3 = self.w3.soliditySha3(["string", "string"], ["contract.address", name])
@@ -28,11 +29,22 @@ class RocketPool:
     self.addresses[name] = address
     return address
 
-  @memoize
+  @cached(cache={})
+  def get_abi_by_name(self, name):
+    log.debug(f"Retrieving abi for {name} Contract")
+    sha3 = self.w3.soliditySha3(["string", "string"], ["contract.abi", name])
+    compressed_string = self.storage_contract.functions.getString(sha3).call()
+    inflated = pako.pako_inflate(base64.b64decode(compressed_string))
+    return inflated.decode("ascii")
+
+  @cached(cache={})
   def get_contract(self, name, address=None):
-    with open(f"./contracts/{name}.abi", "r") as f:
-      contract = self.w3.eth.contract(address=address, abi=f.read())
-    return contract
+    if os.path.exists(f"./contracts/{name}.abi"):
+      with open(f"./contracts/{name}.abi", "r") as f:
+        abi = f.read()
+    else:
+      abi = self.get_abi_by_name(name)
+    return self.w3.eth.contract(address=address, abi=abi)
 
   def get_name_by_address(self, address):
     return self.addresses.inverse.get(address, None)
