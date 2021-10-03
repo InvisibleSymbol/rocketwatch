@@ -48,7 +48,7 @@ async def on_slash_command_error(ctx, excep):
       delete_after=min(excep.retry_after, 1))
 
   else:
-    await report_error(ctx, excep)
+    await report_error(excep, ctx)
     msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
     try:
       # try to inform the user silently. this might fail if it took too long to respond
