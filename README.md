@@ -6,6 +6,7 @@ A Discord bot that tracks Rocket Pool Events
 [![wakatime](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch.svg)](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch)
 [![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/InvisibleSymbol/rocketwatch?label=code%20quality&logo=lgtm)](https://lgtm.com/projects/g/InvisibleSymbol/rocketwatch/alerts/)
 
+> Stuff below is quite outdated. Will update in a day or two
 ## Features:
 
 - Ability to track Proposals (Description/Vote Count read from Contract):
