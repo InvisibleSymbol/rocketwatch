@@ -49,7 +49,7 @@
   },
   "rpl_inflation_event": {
     "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
-    "description": "%{value} new RPL minted and transferred to %{sender_fancy}!\nThe new Total Supply is %{total_supply} RPL."
+    "description": "%{value} new RPL minted! The new Total Supply is %{total_supply} RPL."
   },
   "milestone_rpl_stake": {
     "title": ":tada: Milestone Reached",
