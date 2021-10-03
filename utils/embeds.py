@@ -13,7 +13,7 @@ def assemble(args):
 
   # make numbers look nice
   for arg_key, arg_value in list(args.items()):
-    if any(keyword in arg_key.lower() for keyword in ["amount", "value"]):
+    if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply"]):
       decimal = 5 - math.floor(math.log10(arg_value))
       decimal = max(0, min(5, decimal))
       arg_value = round(arg_value, decimal)
@@ -41,9 +41,10 @@ def assemble(args):
                     value=args.transactionHash_fancy)
 
   # show sender address
-  if "from" in args:
+  senders = [value for key, value in args.items() if key.lower() in ["sender_fancy", "from_fancy"]]
+  if senders:
     embed.add_field(name="Sender Address",
-                    value=args.from_fancy)
+                    value=senders[0])
 
   # show block number
   if "blockNumber" in args:
