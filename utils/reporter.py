@@ -12,13 +12,13 @@ def format_stacktrace(error):
   return "".join(traceback.format_exception(type(error), error, error.__traceback__))
 
 
-async def report_error(ctx, excep):
-  desc = f"```{excep}\n" \
-         f"{ctx.command=}\n" \
-         f"{ctx.args=}\n" \
-         f"{ctx.channel=}\n" \
-         f"{ctx.author=}```"
-  log.error(desc)
+async def report_error(excep, ctx=None):
+  desc = f"**`{excep}`**\n"
+  if ctx:
+    desc += f"```{ctx.command=}\n" \
+            f"{ctx.args=}\n" \
+            f"{ctx.channel=}\n" \
+            f"{ctx.author=}```"
 
   if hasattr(excep, "original"):
     details = format_stacktrace(excep.original)
