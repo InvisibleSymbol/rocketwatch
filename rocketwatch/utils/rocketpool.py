@@ -19,6 +19,7 @@ class RocketPool:
     self.w3 = w3
     self.addresses = bidict()
     self.storage_contract = self.get_contract("rocketStorage", storage_address)
+    self.addresses["rocketStorage"] = storage_address
 
   @cached(cache={})
   def get_address_by_name(self, name):
