@@ -2,7 +2,6 @@ import os
 import random
 
 from discord.ext import commands
-from eth_typing import HexStr
 from web3 import Web3
 
 from utils.rocketpool import RocketPool
