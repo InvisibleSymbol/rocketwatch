@@ -2,6 +2,7 @@ import os
 import random
 
 from discord.ext import commands
+from eth_typing import HexStr
 from web3 import Web3
 
 from utils.rocketpool import RocketPool
@@ -11,7 +12,6 @@ from utils.slash_permissions import owner_only_slash
 class Debug(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    self.process = psutil.Process(os.getpid())
     infura_id = os.getenv("INFURA_ID")
     self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
     self.rp = RocketPool(self.w3,
@@ -27,11 +27,14 @@ class Debug(commands.Cog):
     await ctx.send(f"`{command}: {self.rp.call(command)}`", hidden=True)
 
   @owner_only_slash()
-  async def encode_tnx(self, ctx, contract_name:str, tnx_hash:str):
-    contract = self.rp.get_contract_by_name()
-    receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
-    data = contract.decode_function_input(receipt.input)
-    await ctx.send(f"```{dir(data)}```")
+  async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
+    tnx = self.w3.eth.get_transaction(tnx_hash)
+    if contract_name:
+      contract = self.rp.get_contract_by_name(contract_name)
+    else:
+      contract = self.rp.get_contract_by_address(tnx.to)
+    data = contract.decode_function_input(tnx.input)
+    await ctx.send(f"```Input:\n{data}```", hidden=True)
 
 
 def setup(bot):
