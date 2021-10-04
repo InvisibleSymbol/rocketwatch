@@ -12,31 +12,31 @@ A Discord bot that tracks Rocket Pool Events
 - Ability to track Proposals (Description/Vote Count read from Contract):
 
 <p align="center">
-    <img src="readme-images/proposals.png">
+    <img src=".github/readme-images/proposals.png">
 </p>
 
 - Ability to track oDAO Member Activity (uses Nicknames of oDAO Members if available):
 
 <p align="center">
-    <img src="readme-images/odao_members.png">
+    <img src=".github/readme-images/odao_members.png">
 </p>
 
 - Ability to track Deposit Poll Activity:
 
 <p align="center">
-    <img src="readme-images/pool.png">
+    <img src=".github/readme-images/pool.png">
 </p>
 
 - Ability to track Minipool Activity (Provides Link to Validator if feasible):
 
 <p align="center">
-    <img src="readme-images/minipools.png">
+    <img src=".github/readme-images/minipools.png">
 </p>
 
 - Supports ENS Addresses:
 
 <p align="center">
-    <img src="readme-images/ens.png">
+    <img src=".github/readme-images/ens.png">
 </p>
 
 - Automatically retrieves Addresses from Storage Contract at start-up. (Easy support for Upgrades)
