@@ -1,14 +1,11 @@
 import os
 import random
 
-import psutil
 from discord.ext import commands
 from web3 import Web3
 
 from utils.rocketpool import RocketPool
 from utils.slash_permissions import owner_only_slash
-
-psutil.getloadavg()
 
 
 class Debug(commands.Cog):
@@ -28,6 +25,13 @@ class Debug(commands.Cog):
   @owner_only_slash()
   async def call(self, ctx, command):
     await ctx.send(f"`{command}: {self.rp.call(command)}`", hidden=True)
+
+  @owner_only_slash()
+  async def encode_tnx(self, ctx, contract_name:str, tnx_hash:str):
+    contract = self.rp.get_contract_by_name()
+    receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
+    data = contract.decode_function_input(receipt.input)
+    await ctx.send(f"```{dir(data)}```")
 
 
 def setup(bot):
