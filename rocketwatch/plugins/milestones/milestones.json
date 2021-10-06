@@ -6,8 +6,8 @@
       "rocketNetworkPrices.getEffectiveRPLStake"
     ],
     "formatter": "to_float",
-    "min": 15000,
-    "step_size": 5000
+    "min": 10000,
+    "step_size": 10000
   },
   {
     "name": "milestone_reth_supply",
@@ -26,7 +26,7 @@
       "rocketMinipoolManager.getStakingMinipoolCount"
     ],
     "formatter": "",
-    "min": 10,
+    "min": 15,
     "step_size": 50
   },
   {
