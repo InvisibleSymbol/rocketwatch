@@ -14,6 +14,12 @@
   "rollback": {
     "automerge": true
   },
+  "docker-compose": {
+    "automerge": false
+  },
+  "docker": {
+    "automerge": false
+  },
   "prCreation": "not-pending",
   "rollbackPrs": true,
   "stabilityDays": 3
