@@ -79,6 +79,8 @@ class RocketPool:
 
   def get_annual_rpl_inflation(self):
     inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))
+    if not inflation_per_interval:
+      return 0
     seconds_per_interval = self.call("rocketTokenRPL.getInflationIntervalTime")
     intervals_per_year = solidity.years / seconds_per_interval
     return (inflation_per_interval ** intervals_per_year) - 1
