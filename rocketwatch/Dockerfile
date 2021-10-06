@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9-slim
+FROM python:3.9.7-slim
 
 RUN apt-get update
 RUN apt-get install gcc -y
