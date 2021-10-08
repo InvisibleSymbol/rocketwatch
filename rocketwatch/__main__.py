@@ -1,8 +1,8 @@
 import logging
 import math
-import os
 from pathlib import Path
 
+import config
 import discord.errors
 from discord import Intents
 from discord.ext import commands
@@ -12,13 +12,12 @@ from dotenv import load_dotenv
 from utils.reporter import report_error
 
 load_dotenv()
-
-# https://discord.com/api/oauth2/authorize?client_id=884095717168259142&permissions=0&scope=bot%20applications.commands
+cfg = config.Config('main.cfg')
 
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
-log.setLevel(os.getenv("LOG_LEVEL"))
-logging.getLogger("discord_slash").setLevel(os.getenv("LOG_LEVEL"))
+log.setLevel(cfg["log_level"])
+logging.getLogger("discord_slash").setLevel(cfg["log_level"])
 
 bot = commands.Bot(command_prefix=';',
                    self_bot=True,
@@ -59,7 +58,7 @@ async def on_slash_command_error(ctx, excep):
 
 
 # chain should be read dynamically but hardcoding works for now
-log.info(f"Running using Storage Contract {os.getenv('STORAGE_CONTRACT')} (Chain: Mainnet)")
+log.info(f"Running using Storage Contract {cfg['rocketpool.storage_contract']} (Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
 for path in Path("plugins").glob('**/plugin.py'):
@@ -74,4 +73,4 @@ for path in Path("plugins").glob('**/plugin.py'):
 log.info(f"Finished loading Plugins")
 
 log.info(f"Starting bot")
-bot.run(os.getenv("DISCORD_KEY"))
+bot.run(cfg["discord.secret"])

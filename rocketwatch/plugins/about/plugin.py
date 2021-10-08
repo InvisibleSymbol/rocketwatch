@@ -1,6 +1,7 @@
 import os
 import time
 
+import config
 import humanize
 import psutil
 import uptime
@@ -11,6 +12,7 @@ from discord_slash import cog_ext
 from utils import readable
 from utils.slash_permissions import guilds
 
+cfg = config.Config('main.cfg')
 psutil.getloadavg()
 BOOT_TIME = time.time()
 
@@ -26,7 +28,7 @@ class About(commands.Cog):
     embed = Embed()
 
     g = self.bot.guilds
-    embed.add_field(name="Chain", value="Mainnet")
+    embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
     embed.add_field(name="Joined Guilds", value=str(len(g)))
     embed.add_field(name="Total Member Count", value=sum(guild.member_count for guild in g))
 

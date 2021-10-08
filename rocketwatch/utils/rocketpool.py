@@ -3,22 +3,25 @@ import logging
 import os
 import warnings
 
+import config
 from bidict import bidict
 from cachetools import cached
 
 from utils import pako, solidity
 
+cfg = config.Config('main.cfg')
 log = logging.getLogger("rocketpool")
-log.setLevel(os.getenv("LOG_LEVEL"))
+log.setLevel(cfg["log_level"])
 
 
 # noinspection PyTypeChecker
 
 
 class RocketPool:
-  def __init__(self, w3, storage_address):
+  def __init__(self, w3):
     self.w3 = w3
     self.addresses = bidict()
+    storage_address = cfg['rocketpool.storage_contract']
     self.storage_contract = self.get_contract("rocketStorage", storage_address)
     self.addresses["rocketStorage"] = storage_address
 

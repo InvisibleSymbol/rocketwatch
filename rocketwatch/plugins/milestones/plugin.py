@@ -1,8 +1,8 @@
 import datetime
 import json
 import logging
-import os
 
+import config
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
 from web3 import Web3
@@ -12,8 +12,9 @@ import utils.embeds
 from utils import solidity
 from utils.rocketpool import RocketPool
 
+cfg = config.Config('main.cfg')
 log = logging.getLogger("milestones")
-log.setLevel(os.getenv("LOG_LEVEL"))
+log.setLevel(cfg["log_level"])
 
 
 class Milestones(commands.Cog):
@@ -27,10 +28,9 @@ class Milestones(commands.Cog):
                      indent=4,
                      separators=(',', ': '))
 
-    infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
-    self.rp = RocketPool(self.w3,
-                         os.getenv("STORAGE_CONTRACT"))
+    self.w3 = Web3(
+      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
+    self.rp = RocketPool(self.w3)
 
     with open("./plugins/milestones/milestones.json") as f:
       self.milestones = json.load(f)
@@ -90,7 +90,7 @@ class Milestones(commands.Cog):
           "milestone_value": previous_milestone,
           "result_value": value
         }))
-        default_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_DEFAULT"))
+        default_channel = await self.bot.fetch_channel(cfg["discord.channels.default"])
         await default_channel.send(embed=embed)
         self.db.upsert({
           "name": milestone.name,
