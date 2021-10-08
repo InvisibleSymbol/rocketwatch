@@ -30,9 +30,7 @@ class About(commands.Cog):
     embed.add_field(name="Process Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)}")
 
     load = psutil.getloadavg()
-    embed.add_field(name="1min load", value=f"{load[0]}")
-    embed.add_field(name="5min load", value=f"{load[1]}")
-    embed.add_field(name="15min load", value=f"{load[2]}")
+    embed.add_field(name="Load 1/5/15", value=f"{'/'.join(str(l) for l in load)}")
     bot_uptime = time.time() - BOOT_TIME
     embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
     system_uptime = uptime.uptime()
