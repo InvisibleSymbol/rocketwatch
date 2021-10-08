@@ -21,8 +21,8 @@ class About(commands.Cog):
     self.process = psutil.Process(os.getpid())
 
   @cog_ext.cog_slash(guild_ids=guilds)
-  async def stats(self, ctx):
-    """System and Server Statistics"""
+  async def about(self, ctx):
+    """Bot and Server Information"""
     embed = Embed()
 
     embed.add_field(name="CPU", value=f"{psutil.cpu_percent():.2f}%")
