@@ -1,0 +1,23 @@
+log_level: `logging:DEBUG`,
+rocketpool: {
+  storage_contract: "0x0000000000000000000000000000000000000000",
+  chain: "mainnet",
+  infura_secret: "insert_secret_here"
+},
+discord: {
+  secret: "insert_secret_here",
+  owner: {
+    user_id: -1,
+    server_id: -1
+  },
+  # guilds where the slash commands will show up
+  guilds: [
+    -1
+  ]
+  channels: {
+    errors: -1,
+    default: -1,
+    odao: -1,
+    bootstrap: -1
+  }
+}

@@ -1,20 +1,21 @@
-import os
 import random
 
+import config
 from discord.ext import commands
 from web3 import Web3
 
 from utils.rocketpool import RocketPool
 from utils.slash_permissions import owner_only_slash
 
+cfg = config.Config('main.cfg')
+
 
 class Debug(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
-    self.rp = RocketPool(self.w3,
-                         os.getenv("STORAGE_CONTRACT"))
+    self.w3 = Web3(
+      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
+    self.rp = RocketPool(self.w3)
 
   @owner_only_slash()
   async def raise_exception(self, ctx):

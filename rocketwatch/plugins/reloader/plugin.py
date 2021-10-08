@@ -1,6 +1,5 @@
 from discord.ext import commands
 
-from strings import _
 from utils.slash_permissions import owner_only_slash
 
 
@@ -13,31 +12,29 @@ class Reloader(commands.Cog):
     """Loads a module."""
     try:
       self.bot.load_extension(f"plugins.{module}.plugin")
-      await ctx.send(_("reloader.load", name=module), hidden=True)
+      await ctx.send(f"Loaded {module} Plugin!", hidden=True)
     except commands.errors.ExtensionAlreadyLoaded:
-      await ctx.send(_("reloader.already_loaded", name=module), hidden=True)
+      await ctx.send(f"Plugin {module} already loaded!", hidden=True)
     except commands.errors.ExtensionNotFound:
-      await ctx.send(_("reloader.not_found", name=module), hidden=True)
+      await ctx.send(f"Plugin {module} not found!", hidden=True)
 
   @owner_only_slash()
   async def unload(self, ctx, module: str):
     """Unloads a module."""
-    if module == "reloader":
-      await ctx.send(_("reloader.unload_reloader", name=module), hidden=True)
     try:
       self.bot.unload_extension(f"plugins.{module}.plugin")
-      await ctx.send(_("reloader.unload", name=module), hidden=True)
+      await ctx.send(f"Unloaded {module} Plugin!", hidden=True)
     except commands.errors.ExtensionNotLoaded:
-      await ctx.send(_("reloader.not_loaded", name=module), hidden=True)
+      await ctx.send(f"Plugin {module} not loaded!", hidden=True)
 
   @owner_only_slash()
   async def reload(self, ctx, module: str):
     """Reloads a module."""
     try:
       self.bot.reload_extension(f"plugins.{module}.plugin")
-      await ctx.send(_("reloader.reload", name=module), hidden=True)
+      await ctx.send(f"Reloaded {module} Plugin!", hidden=True)
     except commands.errors.ExtensionNotLoaded:
-      await ctx.send(_("reloader.not_loaded", name=module), hidden=True)
+      await ctx.send(f"Plugin {module} not loaded!", hidden=True)
 
 
 def setup(bot):

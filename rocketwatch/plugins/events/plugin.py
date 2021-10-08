@@ -1,7 +1,7 @@
 import json
 import logging
-import os
 
+import config
 import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
@@ -13,8 +13,9 @@ from utils import solidity, readable
 from utils.cached_ens import CachedEns
 from utils.rocketpool import RocketPool
 
+cfg = config.Config('main.cfg')
 log = logging.getLogger("events")
-log.setLevel(os.getenv("LOG_LEVEL"))
+log.setLevel(cfg["log_level"])
 
 DEPOSIT_EVENT = 2
 WITHDRAWABLE_EVENT = 3
@@ -29,11 +30,10 @@ class Events(commands.Cog):
     self.internal_event_mapping = {}
     self.topic_mapping = {}
 
-    infura_id = os.getenv("INFURA_ID")
-    self.w3 = Web3(Web3.WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{infura_id}"))
+    self.w3 = Web3(
+      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
     self.ens = CachedEns(self.w3)
-    self.rp = RocketPool(self.w3,
-                         os.getenv("STORAGE_CONTRACT"))
+    self.rp = RocketPool(self.w3)
 
     with open("./plugins/events/events.json") as f:
       mapped_events = json.load(f)
@@ -234,16 +234,13 @@ class Events(commands.Cog):
     if messages:
       log.info(f"Sending {len(messages)} Message(s)")
 
-      default_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_DEFAULT"))
-      odao_channel = await self.bot.fetch_channel(os.getenv("OUTPUT_CHANNEL_ODAO"))
+      channels = cfg["discord.channels"]
 
       for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-        log.debug(f"Sending \"{message['event_name']}\" Event")
-
-        if "odao" in message["event_name"]:
-          await odao_channel.send(embed=message["embed"])
-        else:
-          await default_channel.send(embed=message["embed"])
+        log.debug(f"Sending \"{message.event_name}\" Event")
+        channel_candidates = [value for key, value in channels if message.event_name.startswith(key)]
+        channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
+        await channel.send(embed=message["embed"])
 
       log.info("Finished sending Message(s)")
 
