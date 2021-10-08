@@ -41,7 +41,7 @@ class About(commands.Cog):
     system_uptime = uptime.uptime()
     embed.add_field(name="System Uptime", value=f"{readable.uptime(system_uptime)}")
 
-    await ctx.send(embed=embed, hidden=True)
+    await ctx.send(embed=embed)
 
   @cog_ext.cog_slash(guild_ids=guilds)
   async def donate(self, ctx):
