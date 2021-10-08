@@ -48,10 +48,10 @@ class About(commands.Cog):
     """Donate to the Bot Developer"""
     embed = Embed()
     embed.description = "Donation Address: **`0x87FF5B8ccFAeEC77b2B4090FD27b11dA2ED808Fb`** ([Ownership Proof](https://etherscan.io/verifySig/3414))"
-    embed.set_footer(text="Ethereum or Ethereum-based Rollups preferred, but others are ofc fine as well")
-    content = "**Thank you for support! <3**\n" \
-              "I hope my bot has been useful for you, it has been a fun experience building this!\n" \
-              "If you can, any donation helps me keep doing what I love! (Also helps me pay for server bills lol)"
+    embed.set_footer(text="Ethereum or Ethereum-based Rollups preferred, but other chains are ofc fine as well")
+    content = "**Thank you for your support! <3**\n" \
+              "It has been a fun experience to work on this bot, and I hope it has been useful to you!\n" \
+              "Any donation helps me keep doing what I love (and pay the server bills lol)!"
     await ctx.send(
       content,
       embed=embed,
