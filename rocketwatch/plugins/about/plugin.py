@@ -25,6 +25,11 @@ class About(commands.Cog):
     """Bot and Server Information"""
     embed = Embed()
 
+    g = self.bot.guilds
+    embed.add_field(name="Chain", value="Mainnet")
+    embed.add_field(name="Joined Guilds", value=str(len(g)))
+    embed.add_field(name="Total Member Count", value=sum(guild.member_count for guild in g))
+
     embed.add_field(name="CPU", value=f"{psutil.cpu_percent():.2f}%")
     embed.add_field(name="System Memory", value=f"{psutil.virtual_memory().percent}%")
     embed.add_field(name="Process Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)}")
