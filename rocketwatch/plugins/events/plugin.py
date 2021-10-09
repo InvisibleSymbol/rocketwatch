@@ -236,7 +236,7 @@ class Events(commands.Cog):
 
       for message in sorted(messages, key=lambda a: a["score"], reverse=False):
         log.debug(f"Sending \"{message.event_name}\" Event")
-        channel_candidates = [value for key, value in channels if message.event_name.startswith(key)]
+        channel_candidates = [value for key, value in channels.items() if message.event_name.startswith(key)]
         channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
         await channel.send(embed=message["embed"])
 
