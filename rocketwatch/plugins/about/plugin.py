@@ -7,9 +7,9 @@ import uptime
 from discord import Embed
 from discord.ext import commands
 from discord_slash import cog_ext
-from utils.config import cfg
 
 from utils import readable
+from utils.cfg import cfg
 from utils.slash_permissions import guilds
 
 psutil.getloadavg()
