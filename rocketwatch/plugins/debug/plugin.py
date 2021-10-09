@@ -1,7 +1,7 @@
 import random
 
 from discord.ext import commands
-from web3 import Web3
+from web3 import Web3, WebsocketProvider
 
 from utils.cfg import cfg
 from utils.rocketpool import RocketPool
@@ -11,8 +11,7 @@ from utils.slash_permissions import owner_only_slash
 class Debug(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    self.w3 = Web3(
-      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
+    self.w3 = Web3(WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
     self.rp = RocketPool(self.w3)
 
   @owner_only_slash()
