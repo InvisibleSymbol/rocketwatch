@@ -1,9 +1,10 @@
 import io
 import logging
-import os
 import traceback
 
 from discord import File
+
+from utils.cfg import cfg
 
 log = logging.getLogger("reporter")
 
@@ -26,6 +27,6 @@ async def report_error(excep, ctx=None):
     details = format_stacktrace(excep)
   log.error(details)
 
-  channel = await ctx.bot.fetch_channel(os.getenv("OWNER_CHANNEL_ERRORS"))
+  channel = await ctx.bot.fetch_channel(cfg["discord.channels.errors"])
   with io.StringIO(details) as f:
     await channel.send(desc, file=File(fp=f, filename="exception.txt"))
