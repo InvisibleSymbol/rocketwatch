@@ -2,17 +2,13 @@ import logging
 import math
 from pathlib import Path
 
-import config
 import discord.errors
 from discord import Intents
 from discord.ext import commands
 from discord_slash import SlashCommand
-from dotenv import load_dotenv
 
+from utils.cfg import cfg
 from utils.reporter import report_error
-
-load_dotenv()
-cfg = config.Config('main.cfg')
 
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")

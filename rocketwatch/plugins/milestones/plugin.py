@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 
-import config
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
 from web3 import Web3
@@ -10,9 +9,9 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
 from utils import solidity
+from utils.cfg import cfg
 from utils.rocketpool import RocketPool
 
-cfg = config.Config('main.cfg')
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
 

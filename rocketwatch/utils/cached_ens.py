@@ -1,11 +1,12 @@
 import logging
-import os
 
 from cachetools.func import ttl_cache
 from ens import ENS
 
+from utils.cfg import cfg
+
 log = logging.getLogger("cached_ens")
-log.setLevel(os.getenv("LOG_LEVEL"))
+log.setLevel(cfg["log_level"])
 
 
 class CachedEns:
