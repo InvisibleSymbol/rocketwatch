@@ -1,7 +1,6 @@
 import json
 import logging
 
-import config
 import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
@@ -11,9 +10,9 @@ from web3.datastructures import MutableAttributeDict as aDict
 import utils.embeds
 from utils import solidity, readable
 from utils.cached_ens import CachedEns
+from utils.cfg import cfg
 from utils.rocketpool import RocketPool
 
-cfg = config.Config('main.cfg')
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 

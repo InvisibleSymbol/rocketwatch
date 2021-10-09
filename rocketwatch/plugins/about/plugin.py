@@ -1,18 +1,17 @@
 import os
 import time
 
-import config
 import humanize
 import psutil
 import uptime
 from discord import Embed
 from discord.ext import commands
 from discord_slash import cog_ext
+from utils.config import cfg
 
 from utils import readable
 from utils.slash_permissions import guilds
 
-cfg = config.Config('main.cfg')
 psutil.getloadavg()
 BOOT_TIME = time.time()
 

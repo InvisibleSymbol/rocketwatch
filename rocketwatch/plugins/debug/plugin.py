@@ -1,13 +1,11 @@
 import random
 
-import config
 from discord.ext import commands
 from web3 import Web3
 
+from utils.cfg import cfg
 from utils.rocketpool import RocketPool
 from utils.slash_permissions import owner_only_slash
-
-cfg = config.Config('main.cfg')
 
 
 class Debug(commands.Cog):

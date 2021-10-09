@@ -3,13 +3,12 @@ import logging
 import os
 import warnings
 
-import config
 from bidict import bidict
 from cachetools import cached
 
 from utils import pako, solidity
+from utils.cfg import cfg
 
-cfg = config.Config('main.cfg')
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
 
