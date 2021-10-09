@@ -1,24 +1,21 @@
-import os
-
 from discord_slash import cog_ext
 from discord_slash.model import SlashCommandPermissionType
 from discord_slash.utils.manage_commands import create_permission
 
-owner_server_id = int(os.getenv("OWNER_SERVER_ID"))
-output_server_id = int(os.getenv("OWNER_SERVER_ID"))
+from utils.cfg import cfg
 
 owner_only_perms = {
-  owner_server_id: [
-    create_permission(int(os.getenv("OWNER_USER_ID")),
+  cfg["discord.owner.server_id"]: [
+    create_permission(cfg["discord.owner.user_id"],
                       SlashCommandPermissionType.USER,
                       True)
   ]
 }
 
-guilds = [owner_server_id, output_server_id]
+guilds = cfg["discord.guilds"]
 
 
 def owner_only_slash():
-  return cog_ext.cog_slash(guild_ids=[owner_server_id],
+  return cog_ext.cog_slash(guild_ids=[cfg["discord.owner.server_id"]],
                            default_permission=False,
                            permissions=owner_only_perms)
