@@ -4,7 +4,7 @@ import logging
 import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
-from web3 import Web3
+from web3 import Web3, WebsocketProvider
 from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
@@ -29,9 +29,8 @@ class Events(commands.Cog):
     self.internal_event_mapping = {}
     self.topic_mapping = {}
 
-    self.w3 = Web3(
-      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
-    self.ens = CachedEns(self.w3)
+    self.w3 = Web3(WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
+    self.ens = CachedEns()
     self.rp = RocketPool(self.w3)
 
     with open("./plugins/events/events.json") as f:

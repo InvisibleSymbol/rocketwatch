@@ -4,7 +4,7 @@ import logging
 
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
-from web3 import Web3
+from web3 import Web3, WebsocketProvider
 from web3.datastructures import MutableAttributeDict as aDict
 
 import utils.embeds
@@ -27,8 +27,7 @@ class Milestones(commands.Cog):
                      indent=4,
                      separators=(',', ': '))
 
-    self.w3 = Web3(
-      Web3.WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
+    self.w3 = Web3(WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
     self.rp = RocketPool(self.w3)
 
     with open("./plugins/milestones/milestones.json") as f:
