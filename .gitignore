@@ -118,4 +118,4 @@ dmypy.json
 
 # state
 *.db
-main.cfg
+*/main.cfg
