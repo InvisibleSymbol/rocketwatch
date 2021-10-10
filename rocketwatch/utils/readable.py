@@ -24,3 +24,9 @@ def uptime(time):
 
 def hex(string):
   return f"{string[:6]}...{string[-4:]}"
+
+
+def etherscan_url(target, name=None):
+  if not name:
+    name = hex(target)
+  return f"{name}(https://etherscan.io/search?q={target})"

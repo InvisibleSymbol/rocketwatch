@@ -17,9 +17,10 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketPool:
+  addresses = bidict()
+
   def __init__(self, w3):
     self.w3 = w3
-    self.addresses = bidict()
     storage_address = cfg['rocketpool.storage_contract']
     self.storage_contract = self.get_contract("rocketStorage", storage_address)
     self.addresses["rocketStorage"] = storage_address

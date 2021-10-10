@@ -10,6 +10,8 @@ from discord_slash import cog_ext
 
 from utils import readable
 from utils.cfg import cfg
+from utils.readable import etherscan_url
+from utils.rocketpool import RocketPool
 from utils.slash_permissions import guilds
 
 psutil.getloadavg()
@@ -27,20 +29,33 @@ class About(commands.Cog):
     embed = Embed()
 
     g = self.bot.guilds
-    embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
-    embed.add_field(name="Joined Guilds", value=str(len(g)))
-    embed.add_field(name="Total Member Count", value=sum(guild.member_count for guild in g))
+    embed.add_field(name="Bot Statistics",
+                    value=f"{len(g)} Guilds joined, "
+                          f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members seen",
+                    inline=False)
 
-    embed.add_field(name="CPU", value=f"{psutil.cpu_percent():.2f}%")
-    embed.add_field(name="System Memory", value=f"{psutil.virtual_memory().percent}%")
-    embed.add_field(name="Process Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)}")
+    if cfg["rocketpool.chain"] == "mainnet":
+      address = "TBA"
+    else:
+      address = etherscan_url(cfg["rocketpool.storage_contract"])
+    embed.add_field(name="Storage Contract", value=address)
+
+    embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
+
+    embed.add_field(name="Plugins loaded", value=str(len(self.bot.cogs)))
+
+    embed.add_field(name="Host CPU", value=f"{psutil.cpu_percent():.2f}%")
+    embed.add_field(name="Host Memory", value=f"{psutil.virtual_memory().percent}% used")
+    embed.add_field(name="Bot Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)} used")
 
     load = psutil.getloadavg()
-    embed.add_field(name="Load 1/5/15", value=f"{'/'.join(str(l) for l in load)}")
+    embed.add_field(name="Host Load", value='/'.join(str(l) for l in load))
+
+    system_uptime = uptime.uptime()
+    embed.add_field(name="Host Uptime", value=f"{readable.uptime(system_uptime)}")
+
     bot_uptime = time.time() - BOOT_TIME
     embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
-    system_uptime = uptime.uptime()
-    embed.add_field(name="System Uptime", value=f"{readable.uptime(system_uptime)}")
 
     await ctx.send(embed=embed)
 
