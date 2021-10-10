@@ -30,8 +30,8 @@ class About(commands.Cog):
 
     g = self.bot.guilds
     embed.add_field(name="Bot Statistics",
-                    value=f"{len(g)} Guilds joined, "
-                          f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members seen",
+                    value=f"{len(g)} Guilds joined and "
+                          f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
                     inline=False)
 
     if cfg["rocketpool.chain"] == "mainnet":
