@@ -11,7 +11,6 @@ from discord_slash import cog_ext
 from utils import readable
 from utils.cfg import cfg
 from utils.readable import etherscan_url
-from utils.rocketpool import RocketPool
 from utils.slash_permissions import guilds
 
 psutil.getloadavg()
