@@ -29,4 +29,4 @@ def hex(string):
 def etherscan_url(target, name=None):
   if not name:
     name = hex(target)
-  return f"{name}(https://etherscan.io/search?q={target})"
+  return f"[{name}](https://etherscan.io/search?q={target})"
