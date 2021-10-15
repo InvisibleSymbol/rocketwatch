@@ -2,9 +2,9 @@ import logging
 
 from cachetools.func import ttl_cache
 from ens import ENS
-from web3 import Web3, WebsocketProvider
 
 from utils.cfg import cfg
+from utils.shared_w3 import mainnet_w3
 
 log = logging.getLogger("cached_ens")
 log.setLevel(cfg["log_level"])
@@ -12,8 +12,7 @@ log.setLevel(cfg["log_level"])
 
 class CachedEns:
   def __init__(self):
-    self.w3 = Web3(WebsocketProvider(f"wss://mainnet.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
-    self.ens = ENS.fromWeb3(self.w3)
+    self.ens = ENS.fromWeb3(mainnet_w3)
 
   @ttl_cache(ttl=300)
   def get_name(self, address):

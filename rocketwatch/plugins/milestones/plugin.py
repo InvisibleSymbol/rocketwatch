@@ -4,13 +4,13 @@ import logging
 
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
-from web3 import Web3, WebsocketProvider
 from web3.datastructures import MutableAttributeDict as aDict
 
-import utils.embeds
 from utils import solidity
 from utils.cfg import cfg
-from utils.rocketpool import RocketPool
+from utils.embeds import CustomEmbeds
+from utils.reporter import report_error
+from utils.rocketpool import rp
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
@@ -19,7 +19,7 @@ log.setLevel(cfg["log_level"])
 class Milestones(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    self.loaded = True
+    self.state = "OK"
     self.state = {}
     self.db = TinyDB('./plugins/milestones/state.db',
                      create_dirs=True,
@@ -27,8 +27,7 @@ class Milestones(commands.Cog):
                      indent=4,
                      separators=(',', ': '))
 
-    self.w3 = Web3(WebsocketProvider(f"wss://{cfg['rocketpool.chain']}.infura.io/ws/v3/{cfg['rocketpool.infura_secret']}"))
-    self.rp = RocketPool(self.w3)
+    self.embed = CustomEmbeds()
 
     with open("./plugins/milestones/milestones.json") as f:
       self.milestones = json.load(f)
@@ -38,22 +37,23 @@ class Milestones(commands.Cog):
 
   @tasks.loop(seconds=60.0)
   async def run_loop(self):
-    if self.loaded:
+    if self.state == "STOPPED":
+      return
+
+    if self.state != "ERROR":
       try:
+        self.state = "OK"
         return await self.check_for_new_events()
       except Exception as err:
-        self.loaded = False
-        log.exception(err)
+        self.state = "ERROR"
+        await report_error(err)
     try:
       return self.__init__(self.bot)
     except Exception as err:
-      self.loaded = False
       log.exception(err)
 
   # noinspection PyTypeChecker
   async def check_for_new_events(self):
-    if not self.loaded:
-      return
     log.info("Checking Milestones")
 
     history = Query()
@@ -61,7 +61,7 @@ class Milestones(commands.Cog):
       milestone = aDict(milestone)
       state = self.db.search(history.name == milestone.name)
 
-      value = getattr(self.rp, milestone.function)(*milestone.args)
+      value = getattr(rp, milestone.function)(*milestone.args)
       if milestone.formatter:
         value = getattr(solidity, milestone.formatter)(value)
       log.debug(f"{milestone.name}:{value}")
@@ -82,7 +82,7 @@ class Milestones(commands.Cog):
         previous_milestone = milestone.min
       if previous_milestone < latest_goal:
         log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
-        embed = utils.embeds.assemble(aDict({
+        embed = self.embed.assemble(aDict({
           "timestamp": int(datetime.datetime.now().timestamp()),
           "event_name": milestone.name,
           "milestone_value": previous_milestone,
@@ -99,7 +99,7 @@ class Milestones(commands.Cog):
     log.debug("Finished Checking Milestones")
 
   def cog_unload(self):
-    self.loaded = False
+    self.state = "STOPPED"
     self.run_loop.cancel()
 
 
