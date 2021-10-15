@@ -5,47 +5,47 @@
   },
   "minipool_deposit_event": {
     "title": ":rocket: Minipool Staked",
-    "description": "Minipool %{minipool_fancy} has deposited to the Beacon Chain!"
+    "description": "Minipool %{minipool} has deposited to the Beacon Chain!"
   },
   "minipool_exited_event": {
     "title": ":leaves: Minipool Exited",
-    "description": "Minipool %{minipool_fancy} has been flagged as Withdrawable!"
+    "description": "Minipool %{minipool} has been flagged as Withdrawable!"
   },
   "pool_deposit_event": {
     "title": ":rocket: Pool Deposit",
     "description": "%{amount} ETH deposited to the Pool!"
   },
   "odao_proposal_added": {
-    "title": ":bulb: Proposal created",
-    "description": "%{member_fancy} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
+    "title": ":bulb: Proposal Created",
+    "description": "%{proposer} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
   },
   "odao_proposal_executed": {
     "title": ":white_check_mark: Proposal Executed",
-    "description": "%{member_fancy} executed Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
+    "description": "%{executer} executed Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
   "odao_proposal_voted": {
     "title": ":writing_hand: Proposal Voted",
-    "description": "%{member_fancy} voted %{decision} Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
+    "description": "%{voter} voted %{decision} Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
   "odao_proposal_cancelled": {
     "title": ":no_entry_sign: Cancelled Proposal",
-    "description": "%{member_fancy} cancelled Proposal #%{proposalID}!\n```Description:\n%{message}```\n```Total Votes:\n%{vote_graph}```"
+    "description": "%{canceller} cancelled Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
   "odao_member_join": {
     "title": ":new: oDAO Member Joined",
-    "description": "%{member_fancy} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
+    "description": "%{nodeAddress} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
   },
   "odao_member_leave": {
     "title": ":leaves: oDAO Member Left",
-    "description": "%{nodeAddress_fancy} left the oDAO!"
+    "description": "%{nodeAddress} left the oDAO!"
   },
   "odao_member_kicked": {
     "title": ":boot: oDAO Member Kicked",
-    "description": "%{nodeAddress_fancy} was kicked from the oDAO!"
+    "description": "%{nodeAddress} was kicked from the oDAO!"
   },
   "node_register_event": {
     "title": ":mailbox_with_mail: Node Registered",
-    "description": "%{node_fancy} registered as a Node Operator!"
+    "description": "%{node} registered as a Node Operator!"
   },
   "rpl_inflation_event": {
     "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
@@ -66,5 +66,41 @@
   "milestone_rpl_swapped": {
     "title": ":tada: Milestone Reached",
     "description": "Over %{milestone_value}% of all RPL has been exchanged for the new Version! (%{result_value}%)"
+  },
+  "bootstrap_odao_member": {
+    "title": ":satellite_orbital: oDAO Bootstrap Mode: Member Added",
+    "description": "%{nodeAddress} added as a new oDAO Member!"
+  },
+  "bootstrap_odao_setting": {
+    "title": ":satellite_orbital: oDAO Bootstrap Mode: Setting Modified",
+    "description": "Setting `%{settingPath}` set to `%{value}`!"
+  },
+  "bootstrap_odao_network_upgrade": {
+    "title": ":satellite_orbital: oDAO Bootstrap Mode: Network Upgrade",
+    "description": "%{description}"
+  },
+  "bootstrap_odao_disable": {
+    "title": ":satellite_orbital: oDAO Bootstrap Mode: Disabled Bootstrap Mode",
+    "description": "Bootstrap mode for the oDAO has been disabled!"
+  },
+  "bootstrap_pdao_multi": {
+    "title": ":satellite_orbital: pDAO Bootstrap Mode: Multiple Settings Modified",
+    "description": "%{description}"
+  },
+  "bootstrap_pdao_setting": {
+    "title": ":satellite_orbital: pDAO Bootstrap Mode: Setting Modified",
+    "description": "Setting `%{settingPath}` set to `%{value}`!"
+  },
+  "bootstrap_pdao_claimer": {
+    "title": ":satellite_orbital: pDAO Bootstrap Mode: Changed Reward Distribution",
+    "description": "Contract `%{contractName}` has been allocated %{perc}% of the Inflation!"
+  },
+  "bootstrap_pdao_spend_treasury": {
+    "title": ":satellite_orbital: pDAO Bootstrap Mode: Spent Treasury",
+    "description": "%{amount} RPL from Treasury sent to %{recipientAddress}!"
+  },
+  "bootstrap_pdao_disable": {
+    "title": ":satellite_orbital: pDAO Bootstrap Mode: Disabled Bootstrap Mode",
+    "description": "Bootstrap mode for the pDAO has been disabled!"
   }
 }

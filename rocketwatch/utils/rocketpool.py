@@ -8,27 +8,24 @@ from cachetools import cached
 
 from utils import pako, solidity
 from utils.cfg import cfg
+from utils.shared_w3 import w3
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
 
 
-# noinspection PyTypeChecker
-
-
 class RocketPool:
   addresses = bidict()
 
-  def __init__(self, w3):
-    self.w3 = w3
+  def __init__(self):
     storage_address = cfg['rocketpool.storage_contract']
-    self.storage_contract = self.get_contract("rocketStorage", storage_address)
+    self.storage_contract = self.assemble_contract("rocketStorage", storage_address)
     self.addresses["rocketStorage"] = storage_address
 
   @cached(cache={})
   def get_address_by_name(self, name):
     log.debug(f"Retrieving address for {name} Contract")
-    sha3 = self.w3.soliditySha3(["string", "string"], ["contract.address", name])
+    sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
     address = self.storage_contract.functions.getAddress(sha3).call()
     self.addresses[name] = address
     return address
@@ -36,33 +33,33 @@ class RocketPool:
   @cached(cache={})
   def get_abi_by_name(self, name):
     log.debug(f"Retrieving abi for {name} Contract")
-    sha3 = self.w3.soliditySha3(["string", "string"], ["contract.abi", name])
+    sha3 = w3.soliditySha3(["string", "string"], ["contract.abi", name])
     compressed_string = self.storage_contract.functions.getString(sha3).call()
     inflated = pako.pako_inflate(base64.b64decode(compressed_string))
     return inflated.decode("ascii")
 
   @cached(cache={})
-  def get_contract(self, name, address=None):
+  def assemble_contract(self, name, address=None):
     if os.path.exists(f"./contracts/{name}.abi"):
       with open(f"./contracts/{name}.abi", "r") as f:
         abi = f.read()
     else:
       abi = self.get_abi_by_name(name)
-    return self.w3.eth.contract(address=address, abi=abi)
+    return w3.eth.contract(address=address, abi=abi)
 
   def get_name_by_address(self, address):
     return self.addresses.inverse.get(address, None)
 
   def get_contract_by_name(self, name):
     address = self.get_address_by_name(name)
-    return self.get_contract(name, address)
+    return self.assemble_contract(name, address)
 
   def get_contract_by_address(self, address):
     """
     **WARNING**: only call after contract has been previously retrieved using its name
     """
     name = self.get_name_by_address(address)
-    return self.get_contract(name, address)
+    return self.assemble_contract(name, address)
 
   def call(self, path, *args):
     name, function = path.split(".")
@@ -92,3 +89,6 @@ class RocketPool:
     value = solidity.to_float(self.call("rocketTokenRPL.totalSwappedRPL"))
     percentage = (value / 18_000_000) * 100
     return round(percentage, 2)
+
+
+rp = RocketPool()

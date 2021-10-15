@@ -1,0 +1,18 @@
+{
+  "rocketDAONodeTrusted": {
+    "bootstrapMember": "bootstrap_odao_member",
+    "bootstrapSettingUint": "bootstrap_odao_setting",
+    "bootstrapSettingBool": "bootstrap_odao_setting",
+    "bootstrapUpgrade": "bootstrap_odao_network_upgrade",
+    "bootstrapDisable": "bootstrap_odao_disable"
+  },
+  "rocketDAOProtocol": {
+    "bootstrapSettingMulti": "bootstrap_pdao_multi",
+    "bootstrapSettingUint": "bootstrap_pdao_setting",
+    "bootstrapSettingBool": "bootstrap_pdao_setting",
+    "bootstrapSettingAddress": "bootstrap_pdao_setting",
+    "bootstrapSettingClaimer": "bootstrap_pdao_claimer",
+    "bootstrapSpendTreasury": "bootstrap_pdao_spend_treasury",
+    "bootstrapDisable": "bootstrap_pdao_disable"
+  }
+}
