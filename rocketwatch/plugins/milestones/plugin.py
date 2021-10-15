@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 
+from discord import Activity, ActivityType
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
 from web3.datastructures import MutableAttributeDict as aDict
@@ -50,7 +51,7 @@ class Milestones(commands.Cog):
     try:
       return self.__init__(self.bot)
     except Exception as err:
-      log.exception(err)
+      await report_error(err)
 
   # noinspection PyTypeChecker
   async def check_for_new_events(self):

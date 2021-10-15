@@ -145,7 +145,7 @@ class Events(commands.Cog):
     try:
       return self.__init__(self.bot)
     except Exception as err:
-      log.exception(err)
+      await report_error(err)
 
   async def check_for_new_events(self):
     log.info("Checking for new Events")
