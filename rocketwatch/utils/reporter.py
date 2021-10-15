@@ -7,6 +7,7 @@ from discord import File
 from utils.cfg import cfg
 
 log = logging.getLogger("reporter")
+bot = None
 
 
 def format_stacktrace(error):
@@ -26,7 +27,8 @@ async def report_error(excep, ctx=None):
   else:
     details = format_stacktrace(excep)
   log.error(details)
-
-  channel = await ctx.bot.fetch_channel(cfg["discord.channels.errors"])
+  if not bot:
+    log.warning("cant send error as bot variable not initialized")
+  channel = await bot.fetch_channel(cfg["discord.channels.errors"])
   with io.StringIO(details) as f:
     await channel.send(desc, file=File(fp=f, filename="exception.txt"))

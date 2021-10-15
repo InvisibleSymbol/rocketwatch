@@ -7,8 +7,8 @@ from discord import Intents
 from discord.ext import commands
 from discord_slash import SlashCommand
 
+from utils import reporter
 from utils.cfg import cfg
-from utils.reporter import report_error
 
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
@@ -22,6 +22,8 @@ bot = commands.Bot(command_prefix=';',
 slash = SlashCommand(bot,
                      sync_commands=True,
                      sync_on_cog_reload=True)
+
+reporter.bot = bot
 
 
 @bot.event
@@ -43,7 +45,7 @@ async def on_slash_command_error(ctx, excep):
       delete_after=min(excep.retry_after, 1))
 
   else:
-    await report_error(excep, ctx)
+    await reporter.report_error(excep, ctx)
     msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
     try:
       # try to inform the user silently. this might fail if it took too long to respond
