@@ -1,4 +1,5 @@
 import utils.solidity as units
+from utils.cfg import cfg
 
 
 def uptime(time):
@@ -29,4 +30,6 @@ def hex(string):
 def etherscan_url(target, name=None):
   if not name:
     name = hex(target)
-  return f"[{name}](https://etherscan.io/search?q={target})"
+  chain = cfg["rocketpool.chain"]
+  prefix = chain + "." if chain != "mainnet" else ""
+  return f"[{name}](https://{prefix}etherscan.io/search?q={target})"
