@@ -55,7 +55,6 @@ async def on_slash_command_error(ctx, excep):
       return await ctx.channel.send(msg)
 
 
-# chain should be read dynamically but hardcoding works for now
 log.info(f"Running using Storage Contract {cfg['rocketpool.storage_contract']} (Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
