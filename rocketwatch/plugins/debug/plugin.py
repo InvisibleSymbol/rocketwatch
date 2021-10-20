@@ -27,9 +27,7 @@ class Debug(commands.Cog):
   @owner_only_slash()
   async def get_abi_from_contract(self, ctx, contract):
     abi = json.loads(rp.get_abi_by_name(contract))
-    with io.StringIO() as f:
-      json.dump(abi, f, indent=4)
-      f.seek(0)
+    with io.StringIO(json.dumps(abi, indent=4)) as f:
       await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
   @owner_only_slash()
