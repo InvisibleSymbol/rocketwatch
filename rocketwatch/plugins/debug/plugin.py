@@ -1,6 +1,9 @@
 import random
+import json
+import io
 
 from discord.ext import commands
+from discord import File
 
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -19,6 +22,14 @@ class Debug(commands.Cog):
   @owner_only_slash()
   async def call(self, ctx, command):
     await ctx.send(f"`{command}: {rp.call(command)}`", hidden=True)
+
+  @owner_only_slash()
+  async def get_abi_from_contract(self, ctx, contract):
+    abi = json.loads(rp.get_abi_by_name(contract))
+    with io.StringIO() as f:
+      json.dump(abi, f, indent=4)
+      f.seek(0)
+      await ctx.send(file=File(fp=f, filename=f"{contract}.abi.json"))
 
   @owner_only_slash()
   async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
