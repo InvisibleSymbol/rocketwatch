@@ -5,6 +5,7 @@ import io
 from discord.ext import commands
 from discord import File
 
+from utils.cfg import cfg
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import owner_only_slash
@@ -29,7 +30,7 @@ class Debug(commands.Cog):
     with io.StringIO() as f:
       json.dump(abi, f, indent=4)
       f.seek(0)
-      await ctx.send(file=File(fp=f, filename=f"{contract}.abi.json"))
+      await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
   @owner_only_slash()
   async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
