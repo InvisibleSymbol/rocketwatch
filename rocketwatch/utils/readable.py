@@ -24,7 +24,7 @@ def uptime(time):
 
 
 def hex(string):
-  return f"{string[:6]}...{string[-4:]}"
+  return f"{string[:10]}..."
 
 
 def etherscan_url(target, name=None):
