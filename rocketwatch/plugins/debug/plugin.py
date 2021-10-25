@@ -1,11 +1,12 @@
-import random
-import json
 import io
+import json
+import random
 
-from discord.ext import commands
 from discord import File
+from discord.ext import commands
 
 from utils.cfg import cfg
+from utils.readable import etherscan_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import owner_only_slash
@@ -21,14 +22,18 @@ class Debug(commands.Cog):
       raise Exception("this should never happen wtf is your filesystem")
 
   @owner_only_slash()
-  async def call(self, ctx, command):
-    await ctx.send(f"`{command}: {rp.call(command)}`", hidden=True)
+  async def call(self, ctx, command, json_args):
+    await ctx.send(f"`{command}: {rp.call(command, *json.loads(json_args))}`", hidden=True)
 
   @owner_only_slash()
   async def get_abi_from_contract(self, ctx, contract):
     abi = json.loads(rp.get_abi_by_name(contract))
     with io.StringIO(json.dumps(abi, indent=4)) as f:
       await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+
+  @owner_only_slash()
+  async def get_address_of_contract(self, ctx, contract):
+    await ctx.send(etherscan_url(rp.get_address_by_name(contract)))
 
   @owner_only_slash()
   async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
