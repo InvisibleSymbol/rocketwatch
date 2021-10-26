@@ -1,6 +1,7 @@
 import json
 import logging
 
+import web3.exceptions
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
@@ -112,8 +113,12 @@ class Bootstrap(commands.Cog):
 
     messages = []
     for block_hash in reversed(list(self.block_event.get_new_entries())):
-      log.debug(f"Checking Block Hash: {block_hash.hex()}")
-      block = w3.eth.get_block(block_hash, full_transactions=True)
+      log.debug(f"Checking Block: {block_hash.hex()}")
+      try:
+        block = w3.eth.get_block(block_hash, full_transactions=True)
+      except web3.exceptions.BlockNotFound:
+        log.error(f"Skipping Block {block_hash.hex()} as it can't be found")
+        continue
       for tnx in block.transactions:
         if tnx.get("removed", False) or tnx.hash in self.tnx_hash_cache:
           continue
