@@ -76,22 +76,22 @@ class Milestones(commands.Cog):
       else:
         log.debug(f"First time we have processed Milestones for milestone {milestone.name}. Adding it to the Database.")
         self.db.insert({
-          "name": milestone.name,
+          "name"        : milestone.name,
           "current_goal": latest_goal
         })
         previous_milestone = milestone.min
       if previous_milestone < latest_goal:
         log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
         embed = self.embed.assemble(aDict({
-          "timestamp": int(datetime.datetime.now().timestamp()),
-          "event_name": milestone.name,
+          "timestamp"      : int(datetime.datetime.now().timestamp()),
+          "event_name"     : milestone.name,
           "milestone_value": previous_milestone,
-          "result_value": value
+          "result_value"   : value
         }))
         default_channel = await self.bot.fetch_channel(cfg["discord.channels.default"])
         await default_channel.send(embed=embed)
         self.db.upsert({
-          "name": milestone.name,
+          "name"        : milestone.name,
           "current_goal": latest_goal
         },
           history.name == milestone.name)

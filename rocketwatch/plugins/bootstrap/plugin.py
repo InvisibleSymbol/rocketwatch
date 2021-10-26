@@ -152,8 +152,8 @@ class Bootstrap(commands.Cog):
                 score += event.logIndex * 10 ** -3
 
               messages.append(aDict({
-                "score": score,
-                "embed": embed,
+                "score"     : score,
+                "embed"     : embed,
                 "event_name": event_name
               }))
 
