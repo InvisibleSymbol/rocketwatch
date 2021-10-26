@@ -13,7 +13,7 @@ class Debug(commands.Cog):
     self.bot = bot
     self.embeds = embeds.CustomEmbeds()
 
-    with open("./plugins/mock/mock_mapping.json") as f:
+    with open("./plugins/mock/mock_data.json") as f:
       data = json.load(f)
 
     self.mock_mapping = data["mapping"]
