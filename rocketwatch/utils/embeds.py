@@ -4,10 +4,9 @@ import humanize
 from discord import Embed, Color
 
 from strings import _
-from utils import readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
-from utils.readable import etherscan_url
+from utils.readable import etherscan_url, beaconchain_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
@@ -16,35 +15,34 @@ class CustomEmbeds:
   ens = CachedEns()
 
   def prepare_args(self, args):
-    # handle numbers and hex strings
     for arg_key, arg_value in list(args.items()):
+      # store raw value
+      args[f"{arg_key}_raw"] = arg_value
 
+      # handle numbers
       if any(keyword in arg_key.lower() for keyword in ["amount", "value"]) and isinstance(arg_value, int):
-        if int(math.log10(arg_value)) <= 6:
-          # prob not a 18 digit number
-          continue
         args[arg_key] = arg_value / 10 ** 18
 
+      # handle percentages
       if "perc" in arg_key.lower():
         args[arg_key] = arg_value / 10 ** 16
 
+      # handle hex strings
       if str(arg_value).startswith("0x"):
-        name = ""
+        name = None
+
+        # handle addresses
         if w3.isAddress(arg_value):
           name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
           if not name:
             # not an odao member, try to get their ens
             name = self.ens.get_name(arg_value)
-        if not name:
-          # fallback when no ens name/odao id is found or when the hex isn't an address to begin with
-          name = readable.hex(arg_value)
 
-        args[f"{arg_key}_raw"] = arg_value
+        # handle validators
         if arg_key == "pubkey":
-          args[arg_key] = f"[{name}](https://beaconcha.in/validator/{arg_value})"
+          args[arg_key] = beaconchain_url(arg_value)
         else:
           args[arg_key] = etherscan_url(arg_value, name)
-
     return args
 
   def assemble(self, args):

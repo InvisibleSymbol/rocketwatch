@@ -1,25 +1,131 @@
 {
-  "rocketTokenRETH": {
-    "TokensBurned": "reth_burn_event"
-  },
-  "rocketDepositPool": {
-    "DepositReceived": "pool_deposit_event"
-  },
-  "rocketDAOProposal": {
-    "ProposalAdded": "odao_proposal_added",
-    "ProposalVoted": "odao_proposal_voted",
-    "ProposalExecuted": "odao_proposal_executed",
-    "ProposalCancelled": "odao_proposal_cancelled"
-  },
-  "rocketDAONodeTrustedActions": {
-    "ActionJoined": "odao_member_join",
-    "ActionLeave": "odao_member_leave",
-    "ActionKick": "odao_member_kicked"
-  },
-  "rocketNodeManager": {
-    "NodeRegistered": "node_register_event"
-  },
-  "rocketTokenRPL": {
-    "RPLInflationLog": "rpl_inflation_event"
-  }
+  "direct": [
+    {
+      "contract_name": "rocketTokenRETH",
+      "events": [
+        {
+          "event_name": "TokensBurned",
+          "name": "reth_burn_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketDepositPool",
+      "events": [
+        {
+          "event_name": "DepositReceived",
+          "name": "pool_deposit_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketDAOProposal",
+      "events": [
+        {
+          "event_name": "ProposalAdded",
+          "name": "odao_proposal_add_event"
+        },
+        {
+          "event_name": "ProposalVoted",
+          "name": "odao_proposal_vote_event"
+        },
+        {
+          "event_name": "ProposalExecuted",
+          "name": "odao_proposal_execute_event"
+        },
+        {
+          "event_name": "ProposalCancelled",
+          "name": "odao_proposal_cancel_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketDAONodeTrustedActions",
+      "events": [
+        {
+          "event_name": "ActionJoined",
+          "name": "odao_member_join_event"
+        },
+        {
+          "event_name": "ActionLeave",
+          "name": "odao_member_leave_event"
+        },
+        {
+          "event_name": "ActionKick",
+          "name": "odao_member_kick_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketNodeManager",
+      "events": [
+        {
+          "event_name": "NodeRegistered",
+          "name": "node_register_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketTokenRPL",
+      "events": [
+        {
+          "event_name": "RPLInflationLog",
+          "name": "rpl_inflation_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketMinipoolStatus",
+      "events": [
+        {
+          "event_name": "MinipoolWithdrawableSubmitted",
+          "name": "minipool_exit_event"
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketAuctionManager",
+      "events": [
+        {
+          "event_name": "LotCreated",
+          "name": "auction_lot_create_event"
+        },
+        {
+          "event_name": "BidPlaced",
+          "name": "auction_bid_event"
+        },
+        {
+          "event_name": "RPLRecovered",
+          "name": "auction_rpl_recover_event"
+        }
+      ]
+    }
+  ],
+  "global": [
+    {
+      "contract_name": "rocketMinipoolDelegate",
+      "events": [
+        {
+          "event_name": "MinipoolScrubbed",
+          "name": "minipool_scrub_event"
+        },
+        {
+          "event_name": "StatusUpdated",
+          "name": "minipool_deposit_event",
+          "filter": {
+            "status": 2
+          }
+        }
+      ]
+    },
+    {
+      "contract_name": "rocketNodeStaking",
+      "events": [
+        {
+          "event_name": "RPLSlashed",
+          "name": "node_rpl_slash_event"
+        }
+      ]
+    }
+  ]
 }

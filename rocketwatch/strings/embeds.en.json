@@ -7,7 +7,7 @@
     "title": ":rocket: Minipool Staked",
     "description": "Minipool %{minipool} has deposited to the Beacon Chain!"
   },
-  "minipool_exited_event": {
+  "minipool_exit_event": {
     "title": ":leaves: Minipool Exited",
     "description": "Minipool %{minipool} has been flagged as Withdrawable!"
   },
@@ -15,31 +15,31 @@
     "title": ":rocket: Pool Deposit",
     "description": "%{amount} ETH deposited to the Pool!"
   },
-  "odao_proposal_added": {
+  "odao_proposal_add_event": {
     "title": ":bulb: Proposal Created",
     "description": "%{proposer} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
   },
-  "odao_proposal_executed": {
+  "odao_proposal_execute_event": {
     "title": ":white_check_mark: Proposal Executed",
     "description": "%{executer} executed Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
-  "odao_proposal_voted": {
+  "odao_proposal_vote_event": {
     "title": ":writing_hand: Proposal Voted",
     "description": "%{voter} voted %{decision} Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
-  "odao_proposal_cancelled": {
+  "odao_proposal_cancel_event": {
     "title": ":no_entry_sign: Cancelled Proposal",
     "description": "%{canceller} cancelled Proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
   },
-  "odao_member_join": {
+  "odao_member_join_event": {
     "title": ":new: oDAO Member Joined",
     "description": "%{nodeAddress} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
   },
-  "odao_member_leave": {
+  "odao_member_leave_event": {
     "title": ":leaves: oDAO Member Left",
     "description": "%{nodeAddress} left the oDAO!"
   },
-  "odao_member_kicked": {
+  "odao_member_kick_event": {
     "title": ":boot: oDAO Member Kicked",
     "description": "%{nodeAddress} was kicked from the oDAO!"
   },
@@ -73,7 +73,7 @@
   },
   "bootstrap_odao_setting": {
     "title": ":satellite_orbital: oDAO Bootstrap Mode: Setting Modified",
-    "description": "Setting `%{settingPath}` set to `%{value}`!"
+    "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
   },
   "bootstrap_odao_network_upgrade": {
     "title": ":satellite_orbital: oDAO Bootstrap Mode: Network Upgrade",
@@ -89,7 +89,7 @@
   },
   "bootstrap_pdao_setting": {
     "title": ":satellite_orbital: pDAO Bootstrap Mode: Setting Modified",
-    "description": "Setting `%{settingPath}` set to `%{value}`!"
+    "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
   },
   "bootstrap_pdao_claimer": {
     "title": ":satellite_orbital: pDAO Bootstrap Mode: Changed Reward Distribution",
@@ -102,5 +102,25 @@
   "bootstrap_pdao_disable": {
     "title": ":satellite_orbital: pDAO Bootstrap Mode: Disabled Bootstrap Mode",
     "description": "Bootstrap mode for the pDAO has been disabled!"
+  },
+  "minipool_scrub_event": {
+    "title": ":rotating_light: Minipool Scrubbed",
+    "description": "Minipool %{minipool} has been scrubbed due to invalid Withdrawal Credentials!"
+  },
+  "node_rpl_slash_event": {
+    "title": ":rotating_light: Node Operator Slashed",
+    "description": "Node Operator %{node} has been slashed for %{amount} RPL (%{ethValue} ETH)!"
+  },
+  "auction_lot_create_event": {
+    "title": ":scales: Lot Created",
+    "description": "%{by} created Lot #%{lotIndex}, which will auction off %{rplAmount} RPL!"
+  },
+  "auction_bid_event": {
+    "title": ":scales: Bid On Lot",
+    "description": "%{by} bid %{ethAmount} ETH for %{rplAmount} RPL on Lot #%{lotIndex}!"
+  },
+  "auction_rpl_recover_event": {
+    "title": ":scales: RPL Recovered From Lot",
+    "description": "%{rplAmount} RPL recovered from Lot #%{lotIndex}!"
   }
 }

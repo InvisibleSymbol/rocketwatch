@@ -33,3 +33,11 @@ def etherscan_url(target, name=None):
   chain = cfg["rocketpool.chain"]
   prefix = chain + "." if chain != "mainnet" else ""
   return f"[{name}](https://{prefix}etherscan.io/search?q={target})"
+
+
+def beaconchain_url(target, name=None):
+  if not name:
+    name = hex(target)
+  chain = cfg["rocketpool.chain"]
+  prefix = "prater." if chain == "goerli" else ""
+  return f"[{name}](https://{prefix}beaconcha.in/validator/{target})"

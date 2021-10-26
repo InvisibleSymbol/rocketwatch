@@ -32,42 +32,45 @@ class Events(commands.Cog):
     self.embed = CustomEmbeds()
 
     with open("./plugins/events/events.json") as f:
-      mapped_events = json.load(f)
+      events_config = json.load(f)
 
-    # Load Contracts and create Filters for all Events
+    # Generate Filter for direct Events
     addresses = []
     aggregated_topics = []
-    for contract_name, event_mapping in mapped_events.items():
-      contract = rp.get_contract_by_name(contract_name)
+    for group in events_config["direct"]:
+      contract = rp.get_contract_by_name(group["contract_name"])
       addresses.append(contract.address)
-      self.internal_event_mapping[contract_name] = event_mapping
-      for event in event_mapping:
-        topic = contract.events[event].build_filter().topics[0]
-        self.topic_mapping[topic] = event
+
+      for event in group["events"]:
+        self.internal_event_mapping[event["event_name"]] = event["name"]
+        topic = contract.events[event["event_name"]].build_filter().topics[0]
+        self.topic_mapping[topic] = event["event_name"]
         if topic not in aggregated_topics:
           aggregated_topics.append(topic)
 
     self.events.append(w3.eth.filter({
-      "address": addresses,
-      "topics": [aggregated_topics],
+      "address"  : addresses,
+      "topics"   : [aggregated_topics],
       "fromBlock": "latest",
-      "toBlock": "latest"
+      "toBlock"  : "latest"
     }))
 
-    # Track MinipoolStatus.Staking and MinipoolStatus.Withdrawable Events.
-    minipool_delegate_contract = rp.assemble_contract(name="rocketMinipoolDelegate")
-    self.events.append(minipool_delegate_contract.events.StatusUpdated.createFilter(fromBlock="latest",
-                                                                                    toBlock="latest",
-                                                                                    argument_filters={
-                                                                                      'status': [DEPOSIT_EVENT,
-                                                                                                 WITHDRAWABLE_EVENT]}))
+    # Generate Filters for global Events
+    for group in events_config["global"]:
+      contract = rp.assemble_contract(name=group["contract_name"])
+      for event in group["events"]:
+        self.internal_event_mapping[event["event_name"]] = event["name"]
+        self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
+                                                                             toBlock="latest",
+                                                                             argument_filters=event.get("filter", {})))
 
     if not self.run_loop.is_running():
       self.run_loop.start()
 
-  def handle_minipool_events(self, event):
+  def handle_global_event(self, event):
     receipt = w3.eth.get_transaction_receipt(event.transactionHash)
 
+    # global events only really happen from minipools, so this check is fine
     if not rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to):
       # some random contract we don't care about
       log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
@@ -75,12 +78,13 @@ class Events(commands.Cog):
 
     # first need to make the container mutable
     event = aDict(event)
-    # so we can make this mutable
+    # so we can make the args mutable
     event.args = aDict(event.args)
 
+    # get the pubkey
     pubkey = rp.get_pubkey_using_transaction(receipt)
     if not pubkey:
-      # check if the contract has it stored instead
+      # maybe the contract has it stored :thonk:
       pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", receipt["from"]).hex()
 
     if pubkey:
@@ -88,10 +92,11 @@ class Events(commands.Cog):
 
     # while we are at it add the sender address so it shows up
     event.args["from"] = receipt["from"]
+
     # and add the minipool address, which is the contract that was called
     event.args.minipool = receipt.to
 
-    event_name = "minipool_deposit_event" if event.args.status == DEPOSIT_EVENT else "minipool_exited_event"
+    event_name = self.internal_event_mapping[event["event"]]
     return self.create_embed(event_name, event), event_name
 
   def create_embed(self, event_name, event):
@@ -126,6 +131,11 @@ class Events(commands.Cog):
     if "rpl_inflation" in event_name:
       args.total_supply = int(solidity.to_float(rp.call("rocketTokenRPL.totalSupply")))
       args.inflation = round(rp.get_annual_rpl_inflation() * 100, 4)
+
+    if "auction_bid_event" in event_name:
+      rpl = solidity.to_float(args.rplAmount)
+      price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
+      args.ethAmount = rpl * price
 
     args = self.embed.prepare_args(args)
     return self.embed.assemble(args)
@@ -171,15 +181,15 @@ class Events(commands.Cog):
           contract = rp.get_contract_by_address(address)
           contract_event = self.topic_mapping[event.topics[0].hex()]
           event = contract.events[contract_event]().processLog(event)
-          event_name = self.internal_event_mapping[contract_name][event.event]
+          event_name = self.internal_event_mapping[event.event]
 
           embed = self.create_embed(event_name, event)
-        elif event.get("event", None) == "StatusUpdated":
+        elif event.get("event", None) in self.internal_event_mapping:
           if tnx_hash in tnx_hashes:
             log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
             continue
           # deposit/exit event path
-          embed, event_name = self.handle_minipool_events(event)
+          embed, event_name = self.handle_global_event(event)
 
         if embed:
           # lazy way of making it sort events within a single block correctly
@@ -191,8 +201,8 @@ class Events(commands.Cog):
             score += event.logIndex * 10 ** -3
 
           messages.append(aDict({
-            "score": score,
-            "embed": embed,
+            "score"     : score,
+            "embed"     : embed,
             "event_name": event_name
           }))
 
