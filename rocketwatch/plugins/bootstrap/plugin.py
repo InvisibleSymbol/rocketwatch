@@ -83,9 +83,9 @@ class Bootstrap(commands.Cog):
       elif args.type == "upgradeContract":
         args.description = f"Contract `{args.name}` has been upgraded!"
       elif args.type == "addABI":
-        args.description = f"ABI_[⁽ʷʰᵃᵗ⁾](https://ethereum.org/en/glossary/#abi)_ for Contract `{args.name}` has been added!"
+        args.description = f"[ABI](https://ethereum.org/en/glossary/#abi) for Contract `{args.name}` has been added!"
       elif args.type == "upgradeABI":
-        args.description = f"ABI[⁽ʷʰᵃᵗ⁾](https://ethereum.org/en/glossary/#abi) of Contract `{args.name}` has been upgraded!"
+        args.description = f"[ABI](https://ethereum.org/en/glossary/#abi) of Contract `{args.name}` has been upgraded!"
 
     args = self.embed.prepare_args(args)
     return self.embed.assemble(args)
