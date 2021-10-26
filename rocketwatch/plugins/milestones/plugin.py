@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 
-from discord import Activity, ActivityType
 from discord.ext import commands, tasks
 from tinydb import TinyDB, Query
 from web3.datastructures import MutableAttributeDict as aDict
