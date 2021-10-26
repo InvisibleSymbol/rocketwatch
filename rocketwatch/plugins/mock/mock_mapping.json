@@ -30,8 +30,10 @@
             "blockNumber"
         ],
         "odao_proposal_execute_event": [
-            "nodeAddress",
-            "rplBondAmount",
+            "executer",
+            "message",
+            "proposalID",
+            "vote_graph",
             "transactionHash",
             "blockNumber"
         ],
@@ -104,7 +106,7 @@
     },
     "data": {
         "value": 50,
-        "total_supply": 18000050,
+        "total_supply": "18,000,050",
         "voter": "[vbuterin.eth](https://google.com)",
         "pubkey": "[0x80085000...](https://google.com)",
         "minipool": "[0x12345678...](https://google.com)",
@@ -123,7 +125,8 @@
         "ethValue": 50,
         "rplBondAmount": 50,
         "proposer": "[vbuterin.eth](https://google.com)",
+        "executer": "[vbuterin.eth](https://google.com)",
         "by": "[vbuterin.eth](https://google.com)",
-        "message": "rpl.rewards.claim.period.time"
+        "message": "set rpl.rewards.claim.period.time"
     }
 }
