@@ -133,9 +133,9 @@ class Events(commands.Cog):
       args.inflation = round(rp.get_annual_rpl_inflation() * 100, 4)
 
     if "auction_bid_event" in event_name:
-      rpl = solidity.to_float(args.rplAmount)
+      eth = solidity.to_float(args.bidAmount)
       price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
-      args.ethAmount = rpl * price
+      args.rplAmount = eth / price
 
     args = self.embed.prepare_args(args)
     return self.embed.assemble(args)

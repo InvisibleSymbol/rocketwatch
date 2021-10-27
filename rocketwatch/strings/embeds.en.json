@@ -117,7 +117,7 @@
   },
   "auction_bid_event": {
     "title": ":scales: Bid On Lot",
-    "description": "%{by} bid %{ethAmount} ETH for %{rplAmount} RPL on Lot #%{lotIndex}!"
+    "description": "%{by} bid %{bidAmount} ETH for %{rplAmount} RPL on Lot #%{lotIndex}!"
   },
   "auction_rpl_recover_event": {
     "title": ":scales: RPL Recovered From Lot",

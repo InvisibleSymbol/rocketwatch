@@ -72,7 +72,7 @@
         ],
         "auction_bid_event": [
             "by",
-            "ethAmount",
+            "bidAmount",
             "rplAmount",
             "lotIndex",
             "transactionHash",
@@ -117,6 +117,7 @@
         "node": "[0xBAAAAAAD...](https://google.com)",
         "proposalID": 1559,
         "decision": "for",
+        "bidAmount": 50,
         "rplAmount": 50,
         "transactionHash": "[0xDEADBEEF...](https://google.com)",
         "sender": "[vbuterin.eth](https://google.com)",
