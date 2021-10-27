@@ -2,10 +2,10 @@ import datetime
 import json
 
 from discord.ext import commands
+from web3.datastructures import MutableAttributeDict as aDict
 
 from utils.embeds import assemble
 from utils.slash_permissions import owner_only_slash
-from web3.datastructures import MutableAttributeDict as aDict
 
 
 class Debug(commands.Cog):
