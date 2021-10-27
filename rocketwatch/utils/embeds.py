@@ -57,7 +57,7 @@ class CustomEmbeds:
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
       if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
-        if not isinstance(arg_key, (int, float)):
+        if not isinstance(arg_value, (int, float)):
           continue
         if arg_value:
           decimal = 5 - math.floor(math.log10(arg_value))
