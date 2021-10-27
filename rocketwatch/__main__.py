@@ -28,44 +28,44 @@ reporter.bot = bot
 
 @bot.event
 async def on_slash_command_error(ctx, excep):
-  if isinstance(excep, commands.CommandNotFound):
-    return
+    if isinstance(excep, commands.CommandNotFound):
+        return
 
-  elif isinstance(excep, commands.CheckFailure):
-    try:
-      return await ctx.message.add_reaction('\N{NO ENTRY SIGN}')
-    except Exception as err:
-      log.exception(err)
-      return
+    elif isinstance(excep, commands.CheckFailure):
+        try:
+            return await ctx.message.add_reaction('\N{NO ENTRY SIGN}')
+        except Exception as err:
+            log.exception(err)
+            return
 
-  elif isinstance(excep, commands.CommandOnCooldown):
-    return await ctx.channel.send(
-      f'Command is on cooldown, can be used again in '
-      f'{math.ceil(excep.retry_after)} seconds',
-      delete_after=min(excep.retry_after, 1))
+    elif isinstance(excep, commands.CommandOnCooldown):
+        return await ctx.channel.send(
+            f'Command is on cooldown, can be used again in '
+            f'{math.ceil(excep.retry_after)} seconds',
+            delete_after=min(excep.retry_after, 1))
 
-  else:
-    await reporter.report_error(excep, ctx)
-    msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
-    try:
-      # try to inform the user silently. this might fail if it took too long to respond
-      return await ctx.send(msg, hidden=True)
-    except discord.errors.NotFound:
-      # so fall back to a normal channel message
-      return await ctx.channel.send(msg)
+    else:
+        await reporter.report_error(excep, ctx)
+        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
+        try:
+            # try to inform the user silently. this might fail if it took too long to respond
+            return await ctx.send(msg, hidden=True)
+        except discord.errors.NotFound:
+            # so fall back to a normal channel message
+            return await ctx.channel.send(msg)
 
 
 log.info(f"Running using Storage Contract {cfg['rocketpool.storage_contract']} (Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
 for path in Path("plugins").glob('**/plugin.py'):
-  extension_name = ".".join(path.parts[:-1] + (path.stem,))
-  log.debug(f"Loading Plugin \"{extension_name}\"")
-  try:
-    bot.load_extension(extension_name)
-  except Exception as err:
-    log.error(f"Failed to load plugin \"{extension_name}\"")
-    log.exception(err)
+    extension_name = ".".join(path.parts[:-1] + (path.stem,))
+    log.debug(f"Loading Plugin \"{extension_name}\"")
+    try:
+        bot.load_extension(extension_name)
+    except Exception as err:
+        log.error(f"Failed to load plugin \"{extension_name}\"")
+        log.exception(err)
 
 log.info(f"Finished loading Plugins")
 
