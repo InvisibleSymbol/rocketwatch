@@ -14,8 +14,12 @@ def format_stacktrace(error):
   return "".join(traceback.format_exception(type(error), error, error.__traceback__))
 
 
-async def report_error(excep, ctx=None):
-  desc = f"**`{excep}`**\n"
+async def report_error(excep, *args, ctx=None):
+  desc = f"**`{repr(excep)}`**\n"
+  if args:
+    desc += "```"
+    desc += "\n".join(f"args[{i}]={arg}" for i, arg in enumerate(args))
+    desc += "```\n"
   if ctx:
     desc += f"```{ctx.command=}\n" \
             f"{ctx.args=}\n" \

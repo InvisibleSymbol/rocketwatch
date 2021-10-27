@@ -1,126 +1,155 @@
+import datetime
+import functools
 import math
 
 import humanize
 from discord import Embed, Color
+from web3.datastructures import MutableAttributeDict as aDict
 
 from strings import _
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import etherscan_url, beaconchain_url
+from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
 
-class CustomEmbeds:
-  ens = CachedEns()
+def exception_fallback():
+  def wrapper(func):
+    @functools.wraps(func)
+    async def wrapped(*args):
+      try:
+        return await func(*args)
+      except Exception as err:
+        await report_error(err, *args)
+        # create fallback embed
+        return assemble(aDict({
+          "event_name": "fallback"
+        }))
 
-  def prepare_args(self, args):
-    for arg_key, arg_value in list(args.items()):
-      # store raw value
-      args[f"{arg_key}_raw"] = arg_value
+    return wrapped
 
-      # handle numbers
-      if any(keyword in arg_key.lower() for keyword in ["amount", "value"]) and isinstance(arg_value, int):
-        args[arg_key] = arg_value / 10 ** 18
+  return wrapper
 
-      # handle percentages
-      if "perc" in arg_key.lower():
-        args[arg_key] = arg_value / 10 ** 16
 
-      # handle hex strings
-      if str(arg_value).startswith("0x"):
-        name = None
+ens = CachedEns()
 
-        # handle addresses
-        if w3.isAddress(arg_value):
-          name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
-          if not name:
-            # not an odao member, try to get their ens
-            name = self.ens.get_name(arg_value)
 
-        # handle validators
-        if arg_key == "pubkey":
-          args[arg_key] = beaconchain_url(arg_value)
-        else:
-          args[arg_key] = etherscan_url(arg_value, name)
-    return args
+def prepare_args(args):
+  for arg_key, arg_value in list(args.items()):
+    # store raw value
+    args[f"{arg_key}_raw"] = arg_value
 
-  def assemble(self, args):
-    embed = Embed(color=Color.from_rgb(235, 142, 85))
-    footer_parts = ["Developed by InvisibleSymbol#2788",
-                    "/donate"]
-    if cfg["rocketpool.chain"] != "mainnet":
-      footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
-    embed.set_footer(text=" · ".join(footer_parts))
-    embed.title = _(f"embeds.{args.event_name}.title")
+    # handle numbers
+    if any(keyword in arg_key.lower() for keyword in ["amount", "value"]) and isinstance(arg_value, int):
+      args[arg_key] = arg_value / 10 ** 18
 
-    # make numbers look nice
-    for arg_key, arg_value in list(args.items()):
-      if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
-        if not isinstance(arg_value, (int, float)):
-          continue
-        if arg_value:
-          decimal = 5 - math.floor(math.log10(arg_value))
-          decimal = max(0, min(5, decimal))
-          arg_value = round(arg_value, decimal)
-        if arg_value == int(arg_value):
-          arg_value = int(arg_value)
-        args[arg_key] = humanize.intcomma(arg_value)
+    # handle percentages
+    if "perc" in arg_key.lower():
+      args[arg_key] = arg_value / 10 ** 16
 
-    embed.description = _(f"embeds.{args.event_name}.description", **args)
+    # handle hex strings
+    if str(arg_value).startswith("0x"):
+      name = None
 
-    # show public key if we have one
-    if "pubkey" in args:
-      embed.add_field(name="Validator",
-                      value=args.pubkey,
-                      inline=False)
+      # handle addresses
+      if w3.isAddress(arg_value):
+        name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
+        if not name:
+          # not an odao member, try to get their ens
+          name = ens.get_name(arg_value)
 
-    if "settingContractName" in args:
-      embed.add_field(name="Contract",
-                      value=f"`{args.settingContractName}`",
-                      inline=False)
+      # handle validators
+      if arg_key == "pubkey":
+        args[arg_key] = beaconchain_url(arg_value)
+      else:
+        args[arg_key] = etherscan_url(arg_value, name)
+  return args
 
-    if "invoiceID" in args:
-      embed.add_field(name="Invoice ID",
-                      value=f"`{args.invoiceID}`",
-                      inline=False)
 
-    if "contractAddress" in args and "Contract" in args.type:
-      embed.add_field(name="Contract Address",
-                      value=args.contractAddress,
-                      inline=False)
+def assemble(args):
+  color = Color.from_rgb(235, 142, 85)
+  if args.event_name == "fallback":
+    color = Color.from_rgb(235, 86, 86)
+  embed = Embed(color=color)
+  footer_parts = ["Developed by InvisibleSymbol#2788",
+                  "/donate"]
+  if cfg["rocketpool.chain"] != "mainnet":
+    footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
+  embed.set_footer(text=" · ".join(footer_parts))
+  embed.title = _(f"embeds.{args.event_name}.title")
 
-    if "url" in args:
-      embed.add_field(name="URL",
-                      value=args.url,
-                      inline=False)
+  # make numbers look nice
+  for arg_key, arg_value in list(args.items()):
+    if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
+      if not isinstance(arg_value, (int, float)):
+        continue
+      if arg_value:
+        decimal = 5 - math.floor(math.log10(arg_value))
+        decimal = max(0, min(5, decimal))
+        arg_value = round(arg_value, decimal)
+      if arg_value == int(arg_value):
+        arg_value = int(arg_value)
+      args[arg_key] = humanize.intcomma(arg_value)
 
-    # show current inflation
-    if "inflation" in args:
-      embed.add_field(name="Current Inflation",
-                      value=f"{args.inflation}%",
-                      inline=False)
+  embed.description = _(f"embeds.{args.event_name}.description", **args)
 
-    # show transaction hash if possible
-    if "transactionHash" in args:
-      embed.add_field(name="Transaction Hash",
-                      value=args.transactionHash)
+  # show public key if we have one
+  if "pubkey" in args:
+    embed.add_field(name="Validator",
+                    value=args.pubkey,
+                    inline=False)
 
-    # show sender address
-    senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
-    if senders:
-      embed.add_field(name="Sender Address",
-                      value=senders[0])
+  if "settingContractName" in args:
+    embed.add_field(name="Contract",
+                    value=f"`{args.settingContractName}`",
+                    inline=False)
 
-    # show block number
-    if "blockNumber" in args:
-      embed.add_field(name="Block Number",
-                      value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
+  if "invoiceID" in args:
+    embed.add_field(name="Invoice ID",
+                    value=f"`{args.invoiceID}`",
+                    inline=False)
 
-    # show timestamp
-    times = [value for key, value in args.items() if "time" in key.lower()]
-    if times:
-      embed.add_field(name="Timestamp",
-                      value=f"<t:{times[0]}:R> (<t:{times[0]}:f>)",
-                      inline=False)
-    return embed
+  if "contractAddress" in args and "Contract" in args.type:
+    embed.add_field(name="Contract Address",
+                    value=args.contractAddress,
+                    inline=False)
+
+  if "url" in args:
+    embed.add_field(name="URL",
+                    value=args.url,
+                    inline=False)
+
+  # show current inflation
+  if "inflation" in args:
+    embed.add_field(name="Current Inflation",
+                    value=f"{args.inflation}%",
+                    inline=False)
+
+  # show transaction hash if possible
+  if "transactionHash" in args:
+    embed.add_field(name="Transaction Hash",
+                    value=args.transactionHash)
+
+  # show sender address
+  senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
+  if senders:
+    embed.add_field(name="Sender Address",
+                    value=senders[0])
+
+  # show block number
+  if "blockNumber" in args:
+    embed.add_field(name="Block Number",
+                    value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
+
+  # show timestamp
+  times = [value for key, value in args.items() if "time" in key.lower()]
+  if times:
+    time = times[0]
+  else:
+    time = int(datetime.datetime.now().timestamp())
+  embed.add_field(name="Timestamp",
+                  value=f"<t:{time}:R> (<t:{time}:f>)",
+                  inline=False)
+  return embed

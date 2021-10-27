@@ -8,7 +8,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import CustomEmbeds
+from utils.embeds import assemble, prepare_args, exception_fallback
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -28,8 +28,6 @@ class Events(commands.Cog):
     self.events = []
     self.internal_event_mapping = {}
     self.topic_mapping = {}
-
-    self.embed = CustomEmbeds()
 
     with open("./plugins/events/events.json") as f:
       events_config = json.load(f)
@@ -67,7 +65,8 @@ class Events(commands.Cog):
     if not self.run_loop.is_running():
       self.run_loop.start()
 
-  def handle_global_event(self, event):
+  @exception_fallback()
+  async def handle_global_event(self, event):
     receipt = w3.eth.get_transaction_receipt(event.transactionHash)
 
     # global events only really happen from minipools, so this check is fine
@@ -97,9 +96,10 @@ class Events(commands.Cog):
     event.args.minipool = receipt.to
 
     event_name = self.internal_event_mapping[event["event"]]
-    return self.create_embed(event_name, event), event_name
+    return await self.create_embed(event_name, event), event_name
 
-  def create_embed(self, event_name, event):
+  @exception_fallback()
+  async def create_embed(self, event_name, event):
     # prepare args
     args = aDict(event['args'])
 
@@ -137,8 +137,8 @@ class Events(commands.Cog):
       price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
       args.rplAmount = eth / price
 
-    args = self.embed.prepare_args(args)
-    return self.embed.assemble(args)
+    args = prepare_args(args)
+    return assemble(args)
 
   @tasks.loop(seconds=15.0)
   async def run_loop(self):
@@ -183,13 +183,13 @@ class Events(commands.Cog):
           event = contract.events[contract_event]().processLog(event)
           event_name = self.internal_event_mapping[event.event]
 
-          embed = self.create_embed(event_name, event)
+          embed = await self.create_embed(event_name, event)
         elif event.get("event", None) in self.internal_event_mapping:
           if tnx_hash in tnx_hashes:
             log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
             continue
           # deposit/exit event path
-          embed, event_name = self.handle_global_event(event)
+          embed, event_name = await self.handle_global_event(event)
 
         if embed:
           # lazy way of making it sort events within a single block correctly

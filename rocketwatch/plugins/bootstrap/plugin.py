@@ -7,7 +7,7 @@ from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils.cfg import cfg
-from utils.embeds import CustomEmbeds
+from utils.embeds import assemble, prepare_args, exception_fallback
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -27,8 +27,6 @@ class Bootstrap(commands.Cog):
     self.addresses = []
     self.internal_function_mapping = {}
 
-    self.embed = CustomEmbeds()
-
     self.block_event = w3.eth.filter("latest")
 
     with open("./plugins/bootstrap/functions.json") as f:
@@ -41,6 +39,7 @@ class Bootstrap(commands.Cog):
     if not self.run_loop.is_running():
       self.run_loop.start()
 
+  @exception_fallback()
   def create_embed(self, event_name, event):
     # prepare args
     args = aDict(event.args)
@@ -87,9 +86,11 @@ class Bootstrap(commands.Cog):
         args.description = f"[ABI](https://ethereum.org/en/glossary/#abi) for Contract `{args.name}` has been added!"
       elif args.type == "upgradeABI":
         args.description = f"[ABI](https://ethereum.org/en/glossary/#abi) of Contract `{args.name}` has been upgraded!"
+      else:
+        raise Exception(f"Network Upgrade of type {args.type} is not known.")
 
-    args = self.embed.prepare_args(args)
-    return self.embed.assemble(args)
+    args = prepare_args(args)
+    return assemble(args)
 
   @tasks.loop(seconds=15.0)
   async def run_loop(self):

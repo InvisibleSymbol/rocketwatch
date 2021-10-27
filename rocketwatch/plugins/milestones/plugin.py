@@ -8,7 +8,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import CustomEmbeds
+from utils.embeds import assemble
 from utils.reporter import report_error
 from utils.rocketpool import rp
 
@@ -26,8 +26,6 @@ class Milestones(commands.Cog):
                      sort_keys=True,
                      indent=4,
                      separators=(',', ': '))
-
-    self.embed = CustomEmbeds()
 
     with open("./plugins/milestones/milestones.json") as f:
       self.milestones = json.load(f)
@@ -82,7 +80,7 @@ class Milestones(commands.Cog):
         previous_milestone = milestone.min
       if previous_milestone < latest_goal:
         log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
-        embed = self.embed.assemble(aDict({
+        embed = assemble(aDict({
           "timestamp"      : int(datetime.datetime.now().timestamp()),
           "event_name"     : milestone.name,
           "milestone_value": previous_milestone,

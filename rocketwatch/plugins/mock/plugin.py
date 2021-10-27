@@ -3,7 +3,7 @@ import json
 
 from discord.ext import commands
 
-from utils import embeds
+from utils.embeds import assemble
 from utils.slash_permissions import owner_only_slash
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -11,7 +11,6 @@ from web3.datastructures import MutableAttributeDict as aDict
 class Debug(commands.Cog):
   def __init__(self, bot):
     self.bot = bot
-    self.embeds = embeds.CustomEmbeds()
 
     with open("./plugins/mock/mock_data.json") as f:
       data = json.load(f)
@@ -30,7 +29,7 @@ class Debug(commands.Cog):
     for arg in self.mock_mapping[event_name]:
       args[arg] = self.mock_data[arg]
 
-    embed = self.embeds.assemble(args)
+    embed = assemble(args)
     # add note to footer about it being a mock
     embed.set_footer(text=embed._footer["text"] + " · This is a mocked Event!")
 
