@@ -120,10 +120,15 @@ class Bootstrap(commands.Cog):
         log.error(f"Skipping Block {block_hash.hex()} as it can't be found")
         continue
       for tnx in block.transactions:
-        if tnx.get("removed", False) or tnx.hash in self.tnx_hash_cache:
+        if tnx.hash in self.tnx_hash_cache:
           continue
         if tnx.to in self.addresses:
           self.tnx_hash_cache[tnx.hash] = True
+
+          # get receipt and check if the transaction reverted using status attribute
+          receipt = w3.eth.get_transaction_receipt(tnx.hash)
+          if not receipt.status:
+            log.error(f"Skipping Reverted Bootstrap Call {tnx.hash.hex()}")
 
           contract_name = rp.get_name_by_address(tnx.to)
           contract = rp.get_contract_by_address(tnx.to)
