@@ -1,8 +1,10 @@
+import logging
 import os
 import time
 
 import humanize
 import psutil
+import requests
 import uptime
 from discord import Embed
 from discord.ext import commands
@@ -28,6 +30,18 @@ class About(commands.Cog):
         embed = Embed()
 
         g = self.bot.guilds
+
+        if cfg["wakatime.secret"]:
+            code_time = requests.get("https://wakatime.com/api/v1/users/current/all_time_since_today",
+                                     params={
+                                         "project": "rocketwatch",
+                                         "api_key": cfg["wakatime.secret"]
+                                     }).json()["data"]["text"]
+
+            embed.add_field(name="Project Statistics",
+                            value=f"An estimate of {code_time} has been spent developing this bot!",
+                            inline=False)
+
         embed.add_field(name="Bot Statistics",
                         value=f"{len(g)} Guilds joined and "
                               f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",

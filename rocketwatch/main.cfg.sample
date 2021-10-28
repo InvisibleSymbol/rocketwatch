@@ -4,6 +4,7 @@ rocketpool: {
   chain: "mainnet",
   infura_secret: "insert_secret_here"
 },
+wakatime.secret = ""
 discord: {
   secret: "insert_secret_here",
   owner: {
