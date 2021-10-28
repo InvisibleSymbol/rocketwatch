@@ -44,7 +44,7 @@ class Events(commands.Cog):
                 try:
                     topic = contract.events[event["event_name"]].build_filter().topics[0]
                 except ABIEventFunctionNotFound as err:
-                    report_error(err)
+                    log.exception(err)
                     log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
                     continue
 
@@ -70,7 +70,7 @@ class Events(commands.Cog):
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
-                    report_error(err)
+                    log.exception(err)
                     log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
                     continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
