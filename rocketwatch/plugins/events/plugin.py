@@ -64,10 +64,16 @@ class Events(commands.Cog):
         for group in events_config["global"]:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
+                try:
+                    f = event.get("filter", {})
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
+                                                                                         toBlock="latest",
+                                                                                         argument_filters=f))
+                except ABIEventFunctionNotFound as err:
+                    report_error(err)
+                    log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                    continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
-                self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
-                                                                                     toBlock="latest",
-                                                                                     argument_filters=event.get("filter", {})))
 
         if not self.run_loop.is_running():
             self.run_loop.start()
