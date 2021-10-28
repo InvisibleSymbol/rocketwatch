@@ -25,7 +25,6 @@ class Debug(commands.Cog):
 
         args = aDict({})
         args.event_name = event_name
-        args.timestamp = int(datetime.datetime.now().timestamp())
         for arg in self.mock_mapping[event_name]:
             args[arg] = self.mock_data[arg]
 

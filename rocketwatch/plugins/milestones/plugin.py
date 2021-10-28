@@ -81,7 +81,6 @@ class Milestones(commands.Cog):
             if previous_milestone < latest_goal:
                 log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
                 embed = assemble(aDict({
-                    "timestamp"      : int(datetime.datetime.now().timestamp()),
                     "event_name"     : milestone.name,
                     "milestone_value": previous_milestone,
                     "result_value"   : value
