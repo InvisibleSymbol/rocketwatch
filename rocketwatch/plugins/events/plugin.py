@@ -5,6 +5,7 @@ import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
+from web3.exceptions import ABIEventFunctionNotFound
 
 from utils import solidity
 from utils.cfg import cfg
@@ -40,8 +41,14 @@ class Events(commands.Cog):
             addresses.append(contract.address)
 
             for event in group["events"]:
+                try:
+                    topic = contract.events[event["event_name"]].build_filter().topics[0]
+                except ABIEventFunctionNotFound as err:
+                    report_error(err)
+                    log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                    continue
+
                 self.internal_event_mapping[event["event_name"]] = event["name"]
-                topic = contract.events[event["event_name"]].build_filter().topics[0]
                 self.topic_mapping[topic] = event["event_name"]
                 if topic not in aggregated_topics:
                     aggregated_topics.append(topic)
