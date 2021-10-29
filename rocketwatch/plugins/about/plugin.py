@@ -31,7 +31,7 @@ class About(commands.Cog):
 
         g = self.bot.guilds
 
-        if cfg["wakatime.secret"]:
+        if cfg.get("wakatime.secret"):
             code_time = requests.get("https://wakatime.com/api/v1/users/current/all_time_since_today",
                                      params={
                                          "project": "rocketwatch",
