@@ -1,11 +1,18 @@
+import base64
 import json
 
 import utils.solidity as units
+from utils import pako
 from utils.cfg import cfg
 
 
 def prettify_json_string(data):
     return json.dumps(json.loads(data), indent=4)
+
+
+def decode_abi(compressed_string):
+    inflated = pako.pako_inflate(base64.b64decode(compressed_string))
+    return inflated.decode("ascii")
 
 
 def uptime(time):

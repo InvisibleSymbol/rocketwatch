@@ -27,12 +27,12 @@ class Debug(commands.Cog):
 
     @owner_only_slash()
     async def get_abi_from_contract(self, ctx, contract):
-        with io.StringIO(prettify_json_string(rp.get_abi_by_name(contract))) as f:
+        with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
             await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
     @owner_only_slash()
     async def get_address_of_contract(self, ctx, contract):
-        await ctx.send(etherscan_url(rp.get_address_by_name(contract)))
+        await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))
 
     @owner_only_slash()
     async def decode_tnx(self, ctx, tnx_hash, contract_name=None):

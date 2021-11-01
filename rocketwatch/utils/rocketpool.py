@@ -1,4 +1,3 @@
-import base64
 import logging
 import os
 import warnings
@@ -6,9 +5,10 @@ import warnings
 from bidict import bidict
 from cachetools import cached
 
-from utils import pako, solidity
+from utils import solidity
 from utils.cfg import cfg
 from utils.shared_w3 import w3
+from utils.readable import decode_abi
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
@@ -24,6 +24,9 @@ class RocketPool:
 
     @cached(cache={})
     def get_address_by_name(self, name):
+        return self.uncached_get_address_by_name(name)
+
+    def uncached_get_address_by_name(self, name):
         log.debug(f"Retrieving address for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
         address = self.storage_contract.functions.getAddress(sha3).call()
@@ -32,11 +35,13 @@ class RocketPool:
 
     @cached(cache={})
     def get_abi_by_name(self, name):
+        return self.uncached_get_abi_by_name(name)
+
+    def uncached_get_abi_by_name(self, name):
         log.debug(f"Retrieving abi for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.abi", name])
         compressed_string = self.storage_contract.functions.getString(sha3).call()
-        inflated = pako.pako_inflate(base64.b64decode(compressed_string))
-        return inflated.decode("ascii")
+        return decode_abi(compressed_string)
 
     @cached(cache={})
     def assemble_contract(self, name, address=None):
