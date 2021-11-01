@@ -1,5 +1,11 @@
+import json
+
 import utils.solidity as units
 from utils.cfg import cfg
+
+
+def prettify_json_string(data):
+    return json.dumps(json.loads(data), indent=4)
 
 
 def uptime(time):

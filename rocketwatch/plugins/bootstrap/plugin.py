@@ -7,6 +7,7 @@ from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils.cfg import cfg
+from utils.containers import Response
 from utils.embeds import assemble, prepare_args, exception_fallback
 from utils.reporter import report_error
 from utils.rocketpool import rp
@@ -40,7 +41,7 @@ class Bootstrap(commands.Cog):
             self.run_loop.start()
 
     @exception_fallback()
-    def create_embed(self, event_name, event):
+    async def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event.args)
 
@@ -90,7 +91,9 @@ class Bootstrap(commands.Cog):
                 raise Exception(f"Network Upgrade of type {args.type} is not known.")
 
         args = prepare_args(args)
-        return assemble(args)
+        return Response(
+            embed=assemble(args),
+            event_name=event_name)
 
     @tasks.loop(seconds=15.0)
     async def run_loop(self):
@@ -151,9 +154,9 @@ class Bootstrap(commands.Cog):
                         if "disable" in event_name and not event.args.get("confirmDisableBootstrapMode", False):
                             continue
 
-                        embed = self.create_embed(event_name, event)
+                        result = await self.create_embed(event_name, event)
 
-                        if embed:
+                        if result:
                             # lazy way of making it sort events within a single block correctly
                             score = event.blockNumber
                             # sort within block
@@ -163,9 +166,8 @@ class Bootstrap(commands.Cog):
                                 score += event.logIndex * 10 ** -3
 
                             messages.append(aDict({
-                                "score"     : score,
-                                "embed"     : embed,
-                                "event_name": event_name
+                                "score" : score,
+                                "result": result
                             }))
 
         log.debug("Finished Checking for new Bootstrap Commands")
@@ -176,8 +178,8 @@ class Bootstrap(commands.Cog):
             channel = await self.bot.fetch_channel(cfg["discord.channels.bootstrap"])
 
             for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-                log.debug(f"Sending \"{message.event_name}\" Event")
-                await channel.send(embed=message["embed"])
+                log.debug(f"Sending \"{message.result.event_name}\" Event")
+                await channel.send(embed=message.result.embed)
 
             log.info("Finished sending Message(s)")
 

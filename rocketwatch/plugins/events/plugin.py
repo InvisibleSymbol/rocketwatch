@@ -9,6 +9,7 @@ from web3.exceptions import ABIEventFunctionNotFound
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.containers import Response
 from utils.embeds import assemble, prepare_args, exception_fallback
 from utils.reporter import report_error
 from utils.rocketpool import rp
@@ -86,7 +87,7 @@ class Events(commands.Cog):
         if not rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
-            return None, None
+            return Response()
 
         # first need to make the container mutable
         event = aDict(event)
@@ -109,7 +110,8 @@ class Events(commands.Cog):
         event.args.minipool = receipt.to
 
         event_name = self.internal_event_mapping[event["event"]]
-        return await self.create_embed(event_name, event), event_name
+
+        return await self.create_embed(event_name, event)
 
     @exception_fallback()
     async def create_embed(self, event_name, event):
@@ -151,7 +153,9 @@ class Events(commands.Cog):
             args.rplAmount = eth / price
 
         args = prepare_args(args)
-        return assemble(args)
+        return Response(
+            embed=assemble(args),
+            event_name=event_name)
 
     @tasks.loop(seconds=15.0)
     async def run_loop(self):
@@ -179,8 +183,7 @@ class Events(commands.Cog):
         for events in self.events:
             for event in reversed(list(events.get_new_entries())):
                 tnx_hash = event.transactionHash.hex()
-                event_name = None
-                embed = None
+                result = None
 
                 if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
                     continue
@@ -196,15 +199,15 @@ class Events(commands.Cog):
                     event = contract.events[contract_event]().processLog(event)
                     event_name = self.internal_event_mapping[event.event]
 
-                    embed = await self.create_embed(event_name, event)
+                    result = await self.create_embed(event_name, event)
                 elif event.get("event", None) in self.internal_event_mapping:
                     if tnx_hash in tnx_hashes:
                         log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
                         continue
                     # deposit/exit event path
-                    embed, event_name = await self.handle_global_event(event)
+                    result = await self.handle_global_event(event)
 
-                if embed:
+                if result:
                     # lazy way of making it sort events within a single block correctly
                     score = event.blockNumber
                     # sort within block
@@ -214,9 +217,8 @@ class Events(commands.Cog):
                         score += event.logIndex * 10 ** -3
 
                     messages.append(aDict({
-                        "score"     : score,
-                        "embed"     : embed,
-                        "event_name": event_name
+                        "score" : score,
+                        "result": result
                     }))
 
                 tnx_hashes.append(tnx_hash)
@@ -229,10 +231,10 @@ class Events(commands.Cog):
             channels = cfg["discord.channels"]
 
             for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-                log.debug(f"Sending \"{message.event_name}\" Event")
-                channel_candidates = [value for key, value in channels.items() if message.event_name.startswith(key)]
+                log.debug(f"Sending \"{message.result.event_name}\" Event")
+                channel_candidates = [value for key, value in channels.items() if message.result.event_name.startswith(key)]
                 channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
-                await channel.send(embed=message["embed"])
+                await channel.send(embed=message.result.embed)
 
             log.info("Finished sending Message(s)")
 

@@ -9,6 +9,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 from strings import _
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
+from utils.containers import Response
 from utils.readable import etherscan_url, beaconchain_url
 from utils.reporter import report_error
 from utils.rocketpool import rp
@@ -24,9 +25,10 @@ def exception_fallback():
             except Exception as err:
                 await report_error(err, *args)
                 # create fallback embed
-                return assemble(aDict({
+                e = assemble(aDict({
                     "event_name": "fallback"
                 }))
+                return Response(e)
 
         return wrapped
 
@@ -83,7 +85,7 @@ def assemble(args):
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
-            if not isinstance(arg_value, (int, float)):
+            if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
                 decimal = 5 - math.floor(math.log10(arg_value))

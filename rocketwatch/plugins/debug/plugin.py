@@ -6,7 +6,7 @@ from discord import File
 from discord.ext import commands
 
 from utils.cfg import cfg
-from utils.readable import etherscan_url
+from utils.readable import etherscan_url, prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import owner_only_slash
@@ -27,8 +27,7 @@ class Debug(commands.Cog):
 
     @owner_only_slash()
     async def get_abi_from_contract(self, ctx, contract):
-        abi = json.loads(rp.get_abi_by_name(contract))
-        with io.StringIO(json.dumps(abi, indent=4)) as f:
+        with io.StringIO(prettify_json_string(rp.get_abi_by_name(contract))) as f:
             await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
     @owner_only_slash()
