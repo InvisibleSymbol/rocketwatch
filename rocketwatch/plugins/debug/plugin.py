@@ -35,6 +35,13 @@ class Debug(commands.Cog):
         await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))
 
     @owner_only_slash()
+    async def delete(self, ctx, channel_id, message_id):
+        channel = await self.bot.fetch_channel(channel_id)
+        msg = await channel.fetch_message(message_id)
+        await msg.delete()
+        await ctx.send("Done", hidden=True)
+
+    @owner_only_slash()
     async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
         tnx = w3.eth.get_transaction(tnx_hash)
         if contract_name:
