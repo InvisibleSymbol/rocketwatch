@@ -24,11 +24,16 @@ def exception_fallback():
                 return await func(*args)
             except Exception as err:
                 await report_error(err, *args)
+                event_name = args[2]["event"] if len(args) >= 3 and "event" in args[2] else "unkown"
                 # create fallback embed
                 e = assemble(aDict({
-                    "event_name": "fallback"
+                    "event_name": "fallback",
+                    "fallback_event_name": event_name
                 }))
-                return Response(e)
+                return Response(
+                    embed=e,
+                    event_name=event_name
+                )
 
         return wrapped
 
