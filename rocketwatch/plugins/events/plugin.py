@@ -57,7 +57,7 @@ class Events(commands.Cog):
         self.events.append(w3.eth.filter({
             "address"  : addresses,
             "topics"   : [aggregated_topics],
-            "fromBlock": "latest",
+            "fromBlock": 13535498,
             "toBlock"  : "latest"
         }))
 
@@ -67,7 +67,7 @@ class Events(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=13535498,
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
@@ -82,9 +82,10 @@ class Events(commands.Cog):
     @exception_fallback()
     async def handle_global_event(self, event):
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
+        event_name = self.internal_event_mapping[event["event"]]
 
-        # global events only really happen from minipools, so this check is fine
-        if not rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to):
+        if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
+                    rp.get_address_by_name("rocketNodeDeposit") == receipt.to]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
             return Response()
@@ -94,22 +95,28 @@ class Events(commands.Cog):
         # so we can make the args mutable
         event.args = aDict(event.args)
 
-        # get the pubkey
-        pubkey = rp.get_pubkey_using_transaction(receipt)
+        pubkey = None
+
+        # is the pubkey in the event arguments?
+        if "validatorPubkey" in event.args:
+            pubkey = event.args.validatorPubkey.hex()
+
+        # maybe the contract has it stored?
         if not pubkey:
-            # maybe the contract has it stored :thonk:
-            pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", receipt["from"]).hex()
+            pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", event.address).hex()
+
+        # maybe its in the transaction?
+        if not pubkey:
+            pubkey = rp.get_pubkey_using_transaction(receipt)
 
         if pubkey:
-            event.args.pubkey = pubkey
+            event.args.pubkey = "0x" + pubkey
 
         # while we are at it add the sender address so it shows up
         event.args["from"] = receipt["from"]
 
-        # and add the minipool address, which is the contract that was called
-        event.args.minipool = receipt.to
-
-        event_name = self.internal_event_mapping[event["event"]]
+        # and add the minipool address, which is the origin of the event
+        event.args.minipool = event.address
 
         return await self.create_embed(event_name, event)
 
@@ -181,7 +188,7 @@ class Events(commands.Cog):
         tnx_hashes = []
 
         for events in self.events:
-            for event in reversed(list(events.get_new_entries())):
+            for event in reversed(list(events.get_all_entries())):
                 tnx_hash = event.transactionHash.hex()
                 result = None
 

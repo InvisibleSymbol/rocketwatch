@@ -80,7 +80,7 @@ class RocketPool:
         # attempt to retrieve the pubkey
         if processed_logs:
             deposit_event = processed_logs[0]
-            return "0x" + deposit_event.args.pubkey.hex()
+            return deposit_event.args.pubkey.hex()
 
     def get_annual_rpl_inflation(self):
         inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))

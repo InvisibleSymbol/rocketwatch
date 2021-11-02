@@ -110,6 +110,10 @@
           "name": "minipool_scrub_event"
         },
         {
+          "event_name": "MinipoolPrestaked",
+          "name": "minipool_prestake_event"
+        },
+        {
           "event_name": "StatusUpdated",
           "name": "minipool_deposit_event",
           "filter": {

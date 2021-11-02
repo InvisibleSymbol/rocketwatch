@@ -8,11 +8,11 @@
     "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
   },
   "minipool_deposit_event": {
-    "title": ":rocket: Minipool Staked",
-    "description": "Minipool %{minipool} has deposited to the Beacon Chain!"
+    "title": ":rocket: Minipool Final Deposit ",
+    "description": "Minipool %{minipool} has deposited its final 16 ETH to the Beacon Chain!"
   },
   "minipool_exit_event": {
-    "title": ":leaves: Minipool Exited",
+    "title": ":leaves: Minipool Closed",
     "description": "Minipool %{minipool} has been flagged as Withdrawable!"
   },
   "pool_deposit_event": {
@@ -126,5 +126,10 @@
   "auction_rpl_recover_event": {
     "title": ":scales: RPL Recovered From Lot",
     "description": "%{rplAmount} RPL recovered from Lot #%{lotIndex}!"
-  }
+  },
+  "minipool_prestake_event": {
+    "title": ":construction_site: Minipool Initial Deposit",
+    "description": "Minipool %{minipool} has deposited its initial 16 ETH to the Beacon Chain!"
+  },
+  ""
 }
