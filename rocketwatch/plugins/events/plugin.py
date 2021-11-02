@@ -57,7 +57,7 @@ class Events(commands.Cog):
         self.events.append(w3.eth.filter({
             "address"  : addresses,
             "topics"   : [aggregated_topics],
-            "fromBlock": 13535498,
+            "fromBlock": "latest",
             "toBlock"  : "latest"
         }))
 
@@ -67,7 +67,7 @@ class Events(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=13535498,
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
@@ -188,7 +188,7 @@ class Events(commands.Cog):
         tnx_hashes = []
 
         for events in self.events:
-            for event in reversed(list(events.get_all_entries())):
+            for event in reversed(list(events.get_new_entries())):
                 tnx_hash = event.transactionHash.hex()
                 result = None
 
