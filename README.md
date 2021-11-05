@@ -63,4 +63,4 @@ A Discord bot that tracks Rocket Pool Events
 
 ## Donate:
 
-[<kbd>0x87FF5B8ccFAeEC77b2B4090FD27b11dA2ED808Fb</kbd>](https://invis.cloud/donate)
+[<kbd>0xF0138d2e4037957D7b37De312a16a88A7f83A32a</kbd>](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)
