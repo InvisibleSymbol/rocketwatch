@@ -58,8 +58,12 @@ async def on_slash_command_error(ctx, excep):
 log.info(f"Running using Storage Contract {cfg['rocketpool.storage_contract']} (Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
-for path in Path("plugins").glob('**/plugin.py'):
-    extension_name = ".".join(path.parts[:-1] + (path.stem,))
+for path in Path("plugins").glob('**/*.py'):
+    plugin_name = path.parts[1]
+    if path.stem != plugin_name:
+        log.warning(f"Skipping plugin {plugin_name}")
+        continue
+    extension_name = f"plugins.{plugin_name}.{plugin_name}"
     log.debug(f"Loading Plugin \"{extension_name}\"")
     try:
         bot.load_extension(extension_name)
