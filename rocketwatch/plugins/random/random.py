@@ -2,18 +2,11 @@ import os
 import time
 from datetime import datetime
 
-import humanize
 import psutil
 import pytz
-import requests
-import uptime
-from discord import Embed
 from discord.ext import commands
 from discord_slash import cog_ext
 
-from utils import readable
-from utils.cfg import cfg
-from utils.readable import etherscan_url
 from utils.slash_permissions import guilds
 
 psutil.getloadavg()
