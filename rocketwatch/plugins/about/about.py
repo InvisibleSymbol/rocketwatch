@@ -13,6 +13,7 @@ from discord_slash import cog_ext
 from utils import readable
 from utils.cfg import cfg
 from utils.readable import etherscan_url
+from utils.reporter import report_error
 from utils.slash_permissions import guilds
 
 psutil.getloadavg()
@@ -28,16 +29,20 @@ class About(commands.Cog):
     async def about(self, ctx):
         """Bot and Server Information"""
         embed = Embed()
-
         g = self.bot.guilds
+        code_time = None
 
         if cfg.get("wakatime.secret"):
-            code_time = requests.get("https://wakatime.com/api/v1/users/current/all_time_since_today",
-                                     params={
-                                         "project": "rocketwatch",
-                                         "api_key": cfg["wakatime.secret"]
-                                     }).json()["data"]["text"]
+            try:
+                code_time = requests.get("https://wakatime.com/api/v1/users/current/all_time_since_today",
+                                         params={
+                                             "project": "rocketwatch",
+                                             "api_key": cfg["wakatime.secret"]
+                                         }).json()["data"]["text"]
+            except Exception as err:
+                await report_error(err)
 
+        if code_time:
             embed.add_field(name="Project Statistics",
                             value=f"An estimate of {code_time} has been spent developing this bot!",
                             inline=False)
