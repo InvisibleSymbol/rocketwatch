@@ -27,7 +27,7 @@ class About(commands.Cog):
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
-        """Bot and Server Information"""
+        """Ever wondered what time it is in Upside-down land? Well worry no more, this command is here to help!"""
         dev_time = datetime.now(tz=pytz.timezone("Australia/Lindeman"))
         await ctx.send(dev_time.strftime("It's currently %A at %H:%M for the devs"))
 
