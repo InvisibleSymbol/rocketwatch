@@ -75,13 +75,23 @@ class About(commands.Cog):
     async def donate(self, ctx):
         """Donate to the Bot Developer"""
         embed = Embed()
-        embed.description = "Donation Address: **`0x87FF5B8ccFAeEC77b2B4090FD27b11dA2ED808Fb`** ([Ownership Proof](https://etherscan.io/verifySig/3414))"
-        embed.set_footer(text="Ethereum or Ethereum-based Rollups preferred, but other chains are ofc fine as well")
-        content = "**Thank you for your support! <3**\n" \
-                  "It has been a fun experience to work on this bot, and I hope it has been useful to you!\n" \
-                  "Any donation helps me keep doing what I love (and pay the server bills lol)!"
+        embed.title = "Donate to the Developer"
+        embed.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
+                            "Donations will help me keep doing what I love (and pay the server bills haha)"
+        embed.add_field(name="Donation Address", value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)")
+
+        # add address qrcode
+        query_string = urlencode({
+            "chs" : "128x128",
+            "cht" : "qr",
+            "chl" : "0xF0138d2e4037957D7b37De312a16a88A7f83A32a",
+            "choe": "UTF-8",
+            "chld": "L|0"
+        })
+        embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+
+        embed.set_footer(text="Thank you for your support! <3")
         await ctx.send(
-            content,
             embed=embed,
             hidden=True)
 
