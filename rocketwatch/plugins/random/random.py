@@ -1,22 +1,15 @@
-import os
-import time
 from datetime import datetime
 
-import psutil
 import pytz
 from discord.ext import commands
 from discord_slash import cog_ext
 
 from utils.slash_permissions import guilds
 
-psutil.getloadavg()
-BOOT_TIME = time.time()
 
-
-class About(commands.Cog):
+class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.process = psutil.Process(os.getpid())
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
@@ -26,4 +19,4 @@ class About(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(About(bot))
+    bot.add_cog(Random(bot))
