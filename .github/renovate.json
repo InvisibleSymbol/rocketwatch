@@ -1,26 +1,26 @@
 {
-  "extends": [
-    "config:base"
-  ],
-  "minor": {
-    "automerge": true
-  },
-  "patch": {
-    "automerge": true
-  },
-  "pin": {
-    "automerge": true
-  },
-  "rollback": {
-    "automerge": true
-  },
-  "docker-compose": {
-    "automerge": false
-  },
-  "docker": {
-    "automerge": false
-  },
-  "prCreation": "not-pending",
-  "rollbackPrs": true,
-  "stabilityDays": 3
+    "extends": [
+        "config:base"
+    ],
+    "minor": {
+        "automerge": true
+    },
+    "patch": {
+        "automerge": true
+    },
+    "pin": {
+        "automerge": true
+    },
+    "rollback": {
+        "automerge": true
+    },
+    "docker-compose": {
+        "automerge": false
+    },
+    "docker": {
+        "automerge": false
+    },
+    "prCreation": "not-pending",
+    "rollbackPrs": true,
+    "stabilityDays": 3
 }

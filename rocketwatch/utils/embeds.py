@@ -27,7 +27,7 @@ def exception_fallback():
                 event_name = args[2]["event"] if len(args) >= 3 and "event" in args[2] else "unkown"
                 # create fallback embed
                 e = assemble(aDict({
-                    "event_name": "fallback",
+                    "event_name"         : "fallback",
                     "fallback_event_name": event_name
                 }))
                 return Response(

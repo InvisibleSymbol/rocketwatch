@@ -1,40 +1,40 @@
 [
-  {
-    "name": "milestone_rpl_stake",
-    "function": "call",
-    "args": [
-      "rocketNetworkPrices.getEffectiveRPLStake"
-    ],
-    "formatter": "to_float",
-    "min": 10000,
-    "step_size": 10000
-  },
-  {
-    "name": "milestone_reth_supply",
-    "function": "call",
-    "args": [
-      "rocketTokenRETH.totalSupply"
-    ],
-    "formatter": "to_float",
-    "min": 1000,
-    "step_size": 1000
-  },
-  {
-    "name": "milestone_staking_minipools",
-    "function": "call",
-    "args": [
-      "rocketMinipoolManager.getStakingMinipoolCount"
-    ],
-    "formatter": "",
-    "min": 15,
-    "step_size": 50
-  },
-  {
-    "name": "milestone_rpl_swapped",
-    "function": "get_percentage_rpl_swapped",
-    "args": [],
-    "formatter": "",
-    "min": 1,
-    "step_size": 5
-  }
+    {
+        "name": "milestone_rpl_stake",
+        "function": "call",
+        "args": [
+            "rocketNetworkPrices.getEffectiveRPLStake"
+        ],
+        "formatter": "to_float",
+        "min": 10000,
+        "step_size": 10000
+    },
+    {
+        "name": "milestone_reth_supply",
+        "function": "call",
+        "args": [
+            "rocketTokenRETH.totalSupply"
+        ],
+        "formatter": "to_float",
+        "min": 1000,
+        "step_size": 1000
+    },
+    {
+        "name": "milestone_staking_minipools",
+        "function": "call",
+        "args": [
+            "rocketMinipoolManager.getStakingMinipoolCount"
+        ],
+        "formatter": "",
+        "min": 15,
+        "step_size": 50
+    },
+    {
+        "name": "milestone_rpl_swapped",
+        "function": "get_percentage_rpl_swapped",
+        "args": [],
+        "formatter": "",
+        "min": 1,
+        "step_size": 5
+    }
 ]

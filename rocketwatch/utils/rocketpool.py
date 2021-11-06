@@ -7,8 +7,8 @@ from cachetools import cached
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.shared_w3 import w3
 from utils.readable import decode_abi
+from utils.shared_w3 import w3
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])

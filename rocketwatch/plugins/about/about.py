@@ -84,7 +84,8 @@ class About(commands.Cog):
         embed.title = "Donate to the Developer"
         embed.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
                             "Donations will help me keep doing what I love (and pay the server bills haha)"
-        embed.add_field(name="Donation Address", value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)")
+        embed.add_field(name="Donation Address",
+                        value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)")
 
         # add address qrcode
         query_string = urlencode({
