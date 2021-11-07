@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytz
+from discord import Embed, Color
 from discord.ext import commands
 from discord_slash import cog_ext
 
@@ -13,9 +14,17 @@ class Random(commands.Cog):
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
-        """Ever wondered what time it is in Upside-down land? Well worry no more, this command is here to help!"""
+        """Timezones too confusing to you? Well worry no more, this command is here to help!"""
+        color = Color.from_rgb(235, 142, 85)
+        embed = Embed(color=color)
+
         dev_time = datetime.now(tz=pytz.timezone("Australia/Lindeman"))
-        await ctx.send(dev_time.strftime("It's currently %A at %H:%M for the devs"))
+        embed.add_field(name="Time for most of the Dev Team", value=dev_time.strftime("%A %H:%M"), inline=False)
+
+        joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
+        embed.add_field(name="Joe's Time", value=joe_time.strftime("%A %H:%M"), inline=False)
+
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
