@@ -52,10 +52,7 @@ class About(commands.Cog):
                               f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
                         inline=False)
 
-        if cfg["rocketpool.chain"] == "mainnet":
-            address = "TBA"
-        else:
-            address = etherscan_url(cfg["rocketpool.storage_contract"])
+        address = etherscan_url(cfg["rocketpool.storage_contract"])
         embed.add_field(name="Storage Contract", value=address)
 
         embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
