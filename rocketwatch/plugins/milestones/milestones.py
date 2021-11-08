@@ -32,7 +32,7 @@ class Milestones(commands.Cog):
         if not self.run_loop.is_running():
             self.run_loop.start()
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=15.0)
     async def run_loop(self):
         if self.state == "STOPPED":
             return
