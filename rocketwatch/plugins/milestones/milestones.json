@@ -36,5 +36,15 @@
         "formatter": "",
         "min": 1,
         "step_size": 5
+    },
+    {
+        "name": "milestone_registered_nodes",
+        "function": "call",
+        "args": [
+            "rocketNodeManager.getRegisteredNodeCount"
+        ],
+        "formatter": "",
+        "min": 50,
+        "step_size": 100
     }
 ]

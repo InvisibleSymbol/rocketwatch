@@ -67,6 +67,10 @@
         "title": ":tada: Milestone Reached",
         "description": "Over %{milestone_value} Minipools are currently staking on the Beacon Chain! (%{result_value} Minipools)"
     },
+    "milestone_registered_nodes": {
+        "title": ":tada: Milestone Reached",
+        "description": "Over %{milestone_value} Nodes have been registered! (%{result_value} Nodes)"
+    },
     "milestone_rpl_swapped": {
         "title": ":tada: Milestone Reached",
         "description": "Over %{milestone_value}% of all RPL has been exchanged for the new Version! (%{result_value}%)"
