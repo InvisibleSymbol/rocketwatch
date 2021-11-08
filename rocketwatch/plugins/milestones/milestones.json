@@ -41,7 +41,7 @@
         "name": "milestone_registered_nodes",
         "function": "call",
         "args": [
-            "rocketNodeManager.getRegisteredNodeCount"
+            "rocketNodeManager.getNodeCount"
         ],
         "formatter": "",
         "min": 50,
