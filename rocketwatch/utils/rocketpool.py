@@ -45,11 +45,15 @@ class RocketPool:
 
     @cached(cache={})
     def assemble_contract(self, name, address=None):
+        abi = None
+
         if os.path.exists(f"./contracts/{name}.abi"):
             with open(f"./contracts/{name}.abi", "r") as f:
                 abi = f.read()
-        else:
+        if not abi:
             abi = self.get_abi_by_name(name)
+        if not abi:
+            raise Exception(f"No abi found for {name} Contract")
         return w3.eth.contract(address=address, abi=abi)
 
     def get_name_by_address(self, address):
@@ -67,7 +71,10 @@ class RocketPool:
         return self.assemble_contract(name, address)
 
     def call(self, path, *args):
-        name, function = path.split(".")
+        parts = path.split(".")
+        if len(parts) != 2:
+            raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
+        name, function = parts
         contract = self.get_contract_by_name(name)
         return contract.functions[function](*args).call()
 
