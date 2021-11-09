@@ -44,7 +44,7 @@ class Debug(commands.Cog):
         try:
             v = rp.call(command, *json.loads(json_args))
         except Exception as err:
-            await ctx.send(f"Exception: {repr(err)}")
+            await ctx.send(f"Exception: `{repr(err)}`")
             return
 
         if auto_format:
