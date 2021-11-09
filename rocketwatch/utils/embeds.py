@@ -81,7 +81,7 @@ def assemble(args):
         color = Color.from_rgb(235, 86, 86)
     embed = Embed(color=color)
     footer_parts = ["Developed by InvisibleSymbol#2788",
-                    "/donate"]
+                    "/donate for POAP"]
     if cfg["rocketpool.chain"] != "mainnet":
         footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
     embed.set_footer(text=" · ".join(footer_parts))

@@ -80,9 +80,12 @@ class About(commands.Cog):
         embed = Embed()
         embed.title = "Donate to the Developer"
         embed.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
-                            "Donations will help me keep doing what I love (and pay the server bills haha)"
+                            "Donations will help me keep doing what I love (and pay the server bills haha)\n\n" \
+                            "I accept Donations on all Ethereum related Chains! (Mainnet, Polygon, Rollups, etc.)\n\n" \
+                            "**Message me about your Donation for a free POAP!\***\n\n" \
+                            "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
         embed.add_field(name="Donation Address",
-                        value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)")
+                        value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
         # add address qrcode
         query_string = urlencode({
@@ -92,7 +95,8 @@ class About(commands.Cog):
             "choe": "UTF-8",
             "chld": "L|0"
         })
-        embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        # embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        embed.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
         embed.set_footer(text="Thank you for your support! <3")
         await ctx.send(
