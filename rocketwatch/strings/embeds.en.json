@@ -57,23 +57,23 @@
     },
     "milestone_rpl_stake": {
         "title": ":tada: Milestone Reached",
-        "description": "Over %{milestone_value} RPL has been staked by Node Operators! (%{result_value} RPL)"
+        "description": "%{result_value} RPL has been staked by Node Operators!"
     },
     "milestone_reth_supply": {
         "title": ":tada: Milestone Reached",
-        "description": "Over %{milestone_value} rETH has been issued! (%{result_value} rETH)"
+        "description": "%{result_value} rETH has been issued! ( rETH)"
     },
     "milestone_staking_minipools": {
         "title": ":tada: Milestone Reached",
-        "description": "Over %{milestone_value} Minipools are currently staking on the Beacon Chain! (%{result_value} Minipools)"
+        "description": "%{result_value} Minipools are currently staking on the Beacon Chain!"
     },
     "milestone_registered_nodes": {
         "title": ":tada: Milestone Reached",
-        "description": "Over %{milestone_value} Nodes have been registered! (%{result_value} Nodes)"
+        "description": "%{result_value} Nodes have been registered!"
     },
     "milestone_rpl_swapped": {
         "title": ":tada: Milestone Reached",
-        "description": "Over %{milestone_value}% of all RPL has been exchanged for the new Version! (%{result_value}%)"
+        "description": "%{result_value}% of all RPL has been exchanged for the new Version!"
     },
     "bootstrap_odao_member": {
         "title": ":satellite_orbital: oDAO Bootstrap Mode: Member Added",
