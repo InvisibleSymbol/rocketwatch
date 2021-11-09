@@ -42,7 +42,10 @@ class Debug(commands.Cog):
     async def call(self, ctx, command, json_args="[]", auto_format=True):
         """Call Function of Contract"""
         try:
-            v = rp.call(command, *json.loads(json_args))
+            args = json.loads(json_args)
+            if not isinstance(args, list):
+                args = [args]
+            v = rp.call(command, *args)
         except Exception as err:
             await ctx.send(f"Exception: `{repr(err)}`")
             return
