@@ -41,10 +41,16 @@ class Debug(commands.Cog):
                        )
     async def call(self, ctx, command, json_args="[]", auto_format=True):
         """Call Function of Contract"""
-        v = rp.call(command, *json.loads(json_args))
+        try:
+            v = rp.call(command, *json.loads(json_args))
+        except Exception as err:
+            await ctx.send(f"Exception: {repr(err)}")
+            return
+
         if auto_format:
             if isinstance(v, int) and v >= 10 ** 12:
                 v = solidity.to_float(v)
+
         await ctx.send(f"`{command}: {v}`")
 
     @cog_ext.cog_slash(guild_ids=guilds)
