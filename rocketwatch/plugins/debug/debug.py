@@ -43,7 +43,7 @@ class Debug(commands.Cog):
         """Call Function of Contract"""
         v = rp.call(command, *json.loads(json_args))
         if auto_format:
-            if v >= 10**12:
+            if isinstance(v, int) and v >= 10 ** 12:
                 v = solidity.to_float(v)
         await ctx.send(f"`{command}: {v}`")
 
