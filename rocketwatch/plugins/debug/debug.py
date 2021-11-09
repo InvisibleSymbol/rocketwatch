@@ -7,6 +7,7 @@ from discord.ext import commands
 from discord_slash import cog_ext
 from discord_slash.utils.manage_commands import create_option
 
+from utils import solidity
 from utils.cfg import cfg
 from utils.readable import etherscan_url, prettify_json_string
 from utils.rocketpool import rp
@@ -38,9 +39,13 @@ class Debug(commands.Cog):
                                required=False)
                        ]
                        )
-    async def call(self, ctx, command, json_args="[]"):
+    async def call(self, ctx, command, json_args="[]", auto_format=True):
         """Call Function of Contract"""
-        await ctx.send(f"`{command}: {rp.call(command, *json.loads(json_args))}`")
+        v = rp.call(command, *json.loads(json_args))
+        if auto_format:
+            if v >= 10**12:
+                v = solidity.to_float(v)
+        await ctx.send(f"`{command}: {v}`")
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
