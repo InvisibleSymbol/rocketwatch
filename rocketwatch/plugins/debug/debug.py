@@ -4,11 +4,14 @@ import random
 
 from discord import File
 from discord.ext import commands
+from discord_slash import cog_ext
+from discord_slash.utils.manage_commands import create_option
 
 from utils.cfg import cfg
 from utils.readable import etherscan_url, prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.slash_permissions import guilds
 from utils.slash_permissions import owner_only_slash
 
 
@@ -21,17 +24,33 @@ class Debug(commands.Cog):
         with open(str(random.random()), "rb"):
             raise Exception("this should never happen wtf is your filesystem")
 
-    @owner_only_slash()
-    async def call(self, ctx, command, json_args):
-        await ctx.send(f"`{command}: {rp.call(command, *json.loads(json_args))}`", hidden=True)
+    @cog_ext.cog_slash(guild_ids=guilds,
+                       options=[
+                           create_option(
+                               name="command",
+                               description="Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`",
+                               option_type=3,
+                               required=True),
+                           create_option(
+                               name="json_args",
+                               description="json formated arguments. example: `[1, \"World\"]`",
+                               option_type=3,
+                               required=False)
+                       ]
+                       )
+    async def call(self, ctx, command, json_args="[]"):
+        """Call Function of Contract"""
+        await ctx.send(f"`{command}: {rp.call(command, *json.loads(json_args))}`")
 
-    @owner_only_slash()
+    @cog_ext.cog_slash(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
+        """retrieves the latest ABI for a contract"""
         with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
             await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
-    @owner_only_slash()
+    @cog_ext.cog_slash(guild_ids=guilds)
     async def get_address_of_contract(self, ctx, contract):
+        """retrieves the latest address for a contract"""
         await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))
 
     @owner_only_slash()
