@@ -24,12 +24,12 @@ class Random(commands.Cog):
         deposit_free_capacity = deposit_cap - deposit_pool
         current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee"))
         e.title = "Deposit Pool Stats"
-        e.add_field(name="Current Size", value=f"{humanize.intcomma(deposit_pool)} ETH")
-        e.add_field(name="Maximum Size", value=f"{humanize.intcomma(deposit_cap)} ETH")
-        e.add_field(name="Free Capacity", value=f"{humanize.intcomma(deposit_free_capacity)} ETH")
-        e.add_field(name="Percentage Full", value=f"{deposit_pool / deposit_cap * 100:.2f}%", inline=False)
+        e.add_field(name="Current Size:", value=f"{humanize.intcomma(deposit_pool)} ETH")
+        e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(deposit_cap)} ETH")
+        e.add_field(name="Free Capacity:", value=f"{humanize.intcomma(deposit_free_capacity)} ETH")
+        e.add_field(name="Status:", value=f"{deposit_pool / deposit_cap * 100:.2f}% Full", inline=False)
         e.add_field(name="Enough For:", value=f"{int(deposit_pool/16)} new Minipools")
-        e.add_field(name="Current Commission", value=f"{current_commission * 100:.2f}%")
+        e.add_field(name="Current Commission:", value=f"{current_commission * 100:.2f}%")
         await ctx.send(embed=e)
 
     @cog_ext.cog_slash(guild_ids=guilds)
