@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import humanize
 import pytz
 from discord import Embed, Color
 from discord.ext import commands
@@ -18,11 +19,11 @@ class Random(commands.Cog):
     @cog_ext.cog_slash(guild_ids=guilds)
     async def deposit_pool(self, ctx):
         e = Embed(colour=self.color)
-        deposit_pool = solidity.to_float(rp.call("rocketDepositPool.getBalance"))
-        deposit_cap = solidity.to_float(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
+        deposit_pool = round(solidity.to_float(rp.call("rocketDepositPool.getBalance")),3)
+        deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
         e.title = "Deposit Pool Stats"
-        e.add_field(name="Current Size", value=f"{deposit_pool:.3f} ETH")
-        e.add_field(name="Maximum Size", value=f"{deposit_cap:.3f} ETH")
+        e.add_field(name="Current Size", value=f"{humanize.intcomma(deposit_pool)} ETH")
+        e.add_field(name="Maximum Size", value=f"{humanize.intcomma(deposit_cap)} ETH")
         e.add_field(name="Percentage Full", value=f"{deposit_pool / deposit_cap * 100:.2f}%", inline=False)
         await ctx.send(embed=e)
 
