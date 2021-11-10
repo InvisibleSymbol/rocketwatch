@@ -5,18 +5,31 @@ from discord import Embed, Color
 from discord.ext import commands
 from discord_slash import cog_ext
 
+from utils import solidity
+from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 
 
 class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.color = Color.from_rgb(235, 142, 85)
+
+    @cog_ext.cog_slash(guild_ids=guilds)
+    async def deposit_pool(self, ctx):
+        e = Embed(colour=self.color)
+        deposit_pool = solidity.to_int(rp.call("rocketDepositPool.getBalance"))
+        deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
+        e.title = "Deposit Pool Stats"
+        e.add_field(name="Current Size", value=f"{deposit_pool} ETH")
+        e.add_field(name="Maximum Size", value=f"{deposit_cap} ETH")
+        e.add_field(name="Percentage Full", value=f"{deposit_pool / deposit_cap * 100:.2f}%")
+        await ctx.send(embed=e)
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
         """Timezones too confusing to you? Well worry no more, this command is here to help!"""
-        color = Color.from_rgb(235, 142, 85)
-        embed = Embed(color=color)
+        embed = Embed(color=self.color)
         time_format = "%A %H:%M:%S %Z"
 
         dev_time = datetime.now(tz=pytz.timezone("UTC"))
