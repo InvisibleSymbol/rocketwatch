@@ -17,19 +17,36 @@ class Random(commands.Cog):
         self.color = Color.from_rgb(235, 142, 85)
 
     @cog_ext.cog_slash(guild_ids=guilds)
+    async def dp(self, ctx):
+        """Deposit Pool Stats"""
+        await self._dp(ctx)
+
+    @cog_ext.cog_slash(guild_ids=guilds)
     async def deposit_pool(self, ctx):
+        """Deposit Pool Stats"""
+        await self._dp(ctx)
+
+    async def _dp(self, ctx):
         e = Embed(colour=self.color)
-        deposit_pool = round(solidity.to_float(rp.call("rocketDepositPool.getBalance")),3)
-        deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
-        deposit_free_capacity = deposit_cap - deposit_pool
-        current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee"))
         e.title = "Deposit Pool Stats"
-        e.add_field(name="Current Size:", value=f"{humanize.intcomma(deposit_pool)} ETH")
-        e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(deposit_cap)} ETH")
-        e.add_field(name="Free Capacity:", value=f"{humanize.intcomma(deposit_free_capacity)} ETH")
-        e.add_field(name="Status:", value=f"{deposit_pool / deposit_cap * 100:.2f}% Full", inline=False)
-        e.add_field(name="Enough For:", value=f"{int(deposit_pool/16)} new Minipools")
-        e.add_field(name="Current Commission:", value=f"{current_commission * 100:.2f}%")
+
+        deposit_pool = solidity.to_float(rp.call("rocketDepositPool.getBalance"))
+        e.add_field(name="Current Size:", value=f"{humanize.intcomma(round(deposit_pool, 3))} ETH")
+
+        deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
+        e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(round(deposit_cap, 3))} ETH")
+
+        percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
+        e.add_field(name="Status:",
+                    value=f"{percentage_filled}% Full.\nCapacity for {humanize.intcomma(round(deposit_cap - deposit_pool, 3))} ETH",
+                    inline=False)
+
+        minipool_count = int(deposit_pool / 16)
+        e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
+
+        current_commission = round(solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100, 2)
+        e.add_field(name="Current Commission:", value=f"{current_commission}%")
+
         await ctx.send(embed=e)
 
     @cog_ext.cog_slash(guild_ids=guilds)
