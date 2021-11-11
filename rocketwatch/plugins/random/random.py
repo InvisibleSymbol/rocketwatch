@@ -34,18 +34,24 @@ class Random(commands.Cog):
         e.add_field(name="Current Size:", value=f"{humanize.intcomma(round(deposit_pool, 3))} ETH")
 
         deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
-        e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(round(deposit_cap, 3))} ETH")
+        e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(deposit_cap)} ETH")
 
-        percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
-        e.add_field(name="Status:",
-                    value=f"{percentage_filled}% Full.\nCapacity for {humanize.intcomma(round(deposit_cap - deposit_pool, 3))} ETH",
-                    inline=False)
+        if deposit_cap - deposit_pool < 0.01:
+            e.add_field(name="Status:",
+                        value=f"Deposit Pool Cap Reached!",
+                        inline=False)
+        else:
+            percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
+            free_capacity = round(deposit_cap - deposit_pool, 3)
+            e.add_field(name="Status:",
+                        value=f"{percentage_filled}% Full. Space for {humanize.intcomma(free_capacity)} more ETH",
+                        inline=False)
 
         minipool_count = int(deposit_pool / 16)
         e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
 
         current_commission = round(solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100, 2)
-        e.add_field(name="Current Commission:", value=f"{current_commission}%")
+        e.add_field(name="Current Commission Rate:", value=f"{current_commission}%")
 
         await ctx.send(embed=e)
 
