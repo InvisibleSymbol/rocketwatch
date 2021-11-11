@@ -27,6 +27,7 @@ class Random(commands.Cog):
         await self._dp(ctx)
 
     async def _dp(self, ctx):
+        await ctx.defer()
         e = Embed(colour=self.color)
         e.title = "Deposit Pool Stats"
 
