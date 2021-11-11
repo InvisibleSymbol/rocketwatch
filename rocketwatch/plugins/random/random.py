@@ -45,7 +45,7 @@ class Random(commands.Cog):
             percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
             free_capacity = round(deposit_cap - deposit_pool, 3)
             e.add_field(name="Status:",
-                        value=f"{percentage_filled}% Full. Space for {humanize.intcomma(free_capacity)} more ETH",
+                        value=f"{percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
                         inline=False)
 
         minipool_count = int(deposit_pool / 16)
