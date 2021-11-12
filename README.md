@@ -1,12 +1,11 @@
 # Rocket Watch
 
 A Discord bot that tracks Rocket Pool Events
-> Note: If anybody from the Rocket Pool Team reads this and plans on hosting an instance themselves, please contact me instead: I would prefer self-hosting it so I can push bug-fixes/updates quicker.
 
 [![wakatime](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch.svg)](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch)
 [![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/InvisibleSymbol/rocketwatch?label=code%20quality&logo=lgtm)](https://lgtm.com/projects/g/InvisibleSymbol/rocketwatch/alerts/)
 
-# Stuff below this line is quite outdated. Will update in a day or two
+# Stuff below this line is quite outdated. Will update when i feel like it lol
 ## Features:
 
 - Ability to track Proposals (Description/Vote Count read from Contract):
@@ -44,7 +43,7 @@ A Discord bot that tracks Rocket Pool Events
 - Short event-to-message duration (Events are fetched every 15 seconds).
 - Deduplication-Logic (prevents duplicated Messages caused by Chain-Reorgs).
 - Easy Extendability (Almost no hard-coded Events, most are loaded from a `.json` File)
-
+<!--
 ## Instructions
 
 - Python 3.8 Recommended
@@ -62,5 +61,5 @@ A Discord bot that tracks Rocket Pool Events
   get a shorter Version that also automatically links to etherscan.io.
 
 ## Donate:
-
-[<kbd>0xF0138d2e4037957D7b37De312a16a88A7f83A32a</kbd>](https://app.poap.xyz/scan/0xF0138d2e4037957D7b37De312a16a88A7f83A32a)
+-->
+[<kbd>0xF0138d2e4037957D7b37De312a16a88A7f83A32a</kbd>](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)
