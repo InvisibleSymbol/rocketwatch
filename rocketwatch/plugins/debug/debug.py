@@ -41,6 +41,8 @@ class Debug(commands.Cog):
                        )
     async def call(self, ctx, command, json_args="[]", auto_format=True):
         """Call Function of Contract"""
+        # make sure the first character of the command is lowercase
+        command = command[0].lower() + command[1:]
         try:
             args = json.loads(json_args)
             if not isinstance(args, list):
