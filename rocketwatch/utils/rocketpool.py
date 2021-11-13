@@ -61,6 +61,8 @@ class RocketPool:
 
     def get_contract_by_name(self, name):
         address = self.get_address_by_name(name)
+        if not address:
+            raise Exception(f"No address found for {name} Contract")
         return self.assemble_contract(name, address)
 
     def get_contract_by_address(self, address):
