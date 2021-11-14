@@ -14,5 +14,8 @@
         "bootstrapSettingClaimer": "bootstrap_pdao_claimer",
         "bootstrapSpendTreasury": "bootstrap_pdao_spend_treasury",
         "bootstrapDisable": "bootstrap_pdao_disable"
+    },
+    "rocketNodeDeposit": {
+        "deposit": "minipool_failed_deposit"
     }
 }

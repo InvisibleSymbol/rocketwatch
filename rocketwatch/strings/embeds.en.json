@@ -134,5 +134,9 @@
     "minipool_prestake_event": {
         "title": ":construction_site: Minipool Initial Deposit",
         "description": "Minipool %{minipool} has deposited its initial 16 ETH to the Beacon Chain!"
+    },
+    "minipool_failed_deposit": {
+        "title": ":fire: Failed Minipool Deposit",
+        "description": ":fire_engine: %{node} burned **%{burnedValue} ETH** trying to create a minipool! :fire_engine:"
     }
 }

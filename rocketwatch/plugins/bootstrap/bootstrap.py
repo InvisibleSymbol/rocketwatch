@@ -6,6 +6,7 @@ from cachetools import FIFOCache
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
+from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args, exception_fallback
@@ -54,6 +55,11 @@ class Bootstrap(commands.Cog):
 
         if "dao_disable" in event_name and not event.confirmDisableBootstrapMode:
             return None
+
+        if "deposit" in event_name:
+            receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+            args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
+            args.node = receipt["from"]
 
         if "SettingBool" in args.function_name:
             args.value = bool(args.value)
@@ -128,13 +134,17 @@ class Bootstrap(commands.Cog):
                     continue
                 if tnx.to in self.addresses:
                     self.tnx_hash_cache[tnx.hash] = True
+                    contract_name = rp.get_name_by_address(tnx.to)
 
                     # get receipt and check if the transaction reverted using status attribute
                     receipt = w3.eth.get_transaction_receipt(tnx.hash)
-                    if not receipt.status:
-                        log.error(f"Skipping Reverted Bootstrap Call {tnx.hash.hex()}")
+                    if contract_name == "rocketNodeDeposit" and receipt.status:
+                        log.info(f"Skipping Successful Node Deposit {tnx.hash.hex()}")
+                        continue
+                    if contract_name != "rocketNodeDeposit" and not receipt.status:
+                        log.info(f"Skipping Reverted Bootstrap Call {tnx.hash.hex()}")
+                        continue
 
-                    contract_name = rp.get_name_by_address(tnx.to)
                     contract = rp.get_contract_by_address(tnx.to)
 
                     decoded = contract.decode_function_input(tnx.input)
@@ -150,9 +160,6 @@ class Bootstrap(commands.Cog):
                             event.args[arg.lstrip("_")] = value
                         event.args["timestamp"] = block.timestamp
                         event.args["function_name"] = function
-
-                        if "disable" in event_name and not event.args.get("confirmDisableBootstrapMode", False):
-                            continue
 
                         result = await self.create_embed(event_name, event)
 
@@ -175,10 +182,12 @@ class Bootstrap(commands.Cog):
         if messages:
             log.info(f"Sending {len(messages)} Message(s)")
 
-            channel = await self.bot.fetch_channel(cfg["discord.channels.bootstrap"])
+            channels = cfg["discord.channels"]
 
             for message in sorted(messages, key=lambda a: a["score"], reverse=False):
                 log.debug(f"Sending \"{message.result.event_name}\" Event")
+                channel_candidates = [value for key, value in channels.items() if message.result.event_name.startswith(key)]
+                channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
                 await channel.send(embed=message.result.embed)
 
             log.info("Finished sending Message(s)")
