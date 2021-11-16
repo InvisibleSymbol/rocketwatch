@@ -16,7 +16,7 @@
         },
         "3": {
             "credits": "@Invis with the help of @knoshua and @I Like Kairy Hiwis",
-            "description": "**tl;dr: _Yes._**\\n\\nFull minipools instantly proceed to the `prelaunch` State, allowing one to get the `staking` Status after the 12 hour long scrub period.\\n\\n**NOTE:** Your minipool functions the same as any other minipool. The 16 extra ETH you provided only function as a way to kick-start it. **You will not earn rewards for the extra 16 ETH you deposited.** Consider them stale!\\nAfter your minipool has been processed through the \"full minipool\" queue, you will be able to claim back your 16 ETH. This full queue is behind the one for normal (16 ETH) minipools, so it might take a while (up to multiple weeks) until you get back those 16 ETH.\n\n",
+            "description": "**tl;dr: _Yes._**\\n\\nFull minipools instantly proceed to the `prelaunch` State, allowing one to get the `staking` Status after the 12 hour long scrub period.\\n\\n**NOTE:** Your minipool functions the same as any other minipool. The 16 extra ETH you provided only function as a way to kick-start it.\\n**You will not earn rewards for the extra 16 ETH you deposited.** Consider them stale!\\n\\nAfter your minipool has been processed through the \"full minipool\" queue, you will be able to claim back your 16 ETH. This full queue is behind the one for normal (16 ETH) minipools, so it might take a while (up to multiple weeks) until you get back those 16 ETH.",
             "name": "queue",
             "title": "Can I skip the queue with a full (32 ETH) minipool?",
             "image": ""
