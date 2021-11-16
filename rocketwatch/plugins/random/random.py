@@ -73,17 +73,5 @@ class Random(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @cog_ext.cog_slash(guild_ids=guilds)
-    async def rewards_explained(self, ctx):
-        """Confused about your first Rewards? So am I! Hope this command can help though lol"""
-        embed = Embed(color=self.color)
-        with open("plugins/random/rewards_explained.txt", "r") as f:
-            embed.title = "#trading Rewards Explanation"
-            embed.description = f.read()
-        embed.set_footer(text="Noticed anything wrong/confusing? Mention @Invis or @knoshua")
-
-        await ctx.send(embed=embed)
-
-
 def setup(bot):
     bot.add_cog(Random(bot))
