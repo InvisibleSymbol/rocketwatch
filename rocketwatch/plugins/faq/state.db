@@ -2,9 +2,9 @@
     "_default": {
         "1": {
             "credits": "@Invis and @knoshua",
-            "description": "You can claim no sooner than 28 days after node registration. Rewards are based on effective RPL staked at the time you claim. Effective RPL staked is influenced by your minipools in staking status.\\n\\nA minipool moves to staking status after it received ETH from the deposit pool, passed the 12 hour scrub period and the node triggered stake (full 32 ETH minipools don't have to wait for ETH from the deposit pool and only have to pass the scrub check and stake before moving to `staking`).\\n\\nThe first nodes will be able to claim 28 days after registration opened, which is Dec 6/7 (depending on time zone). To prevent rewards dilution, you want to be staking before the first claim, as otherwise people claiming before you will get a bigger share of the rewards\\n\\n[How does Reward Dilution come into play?](https://url.invis.cloud/reward-dilution)",
+            "description": "You can claim no sooner than 28 days after node registration. Rewards are based on effective RPL staked at the time you claim. Effective RPL staked is influenced by your minipools in staking status.\\n\\nA minipool moves to staking status after it received ETH from the deposit pool, passed the 12 hour scrub period and the node triggered stake (full 32 ETH minipools don't have to wait for ETH from the deposit pool and only have to pass the scrub check and stake before moving to `staking`).\\n\\nThe first nodes will be able to claim 28 days after registration opened, which is Dec 6/7 (depending on time zone). To prevent rewards dilution, you want to be staking before the first claim, as otherwise people claiming before you will get a bigger share of the rewards\\n\\n[How does Reward Dilution come into play?](https://url.invis.cloud/reward-dilution)\n\nReward Dilution is only expected to be worth considering in the first Reward Period. As more minipools come online, the amount you loose to dilution shrinks to a negligible amount.",
             "name": "rewards",
-            "title": "#trading Explains Rewards",
+            "title": "#trading First Rewards Period Explains Rewards",
             "image": ""
         },
         "2": {
