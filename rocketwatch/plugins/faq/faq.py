@@ -24,24 +24,30 @@ class FaQ(commands.Cog):
 
     async def created_embed(self, data):
         embed = Embed(color=self.color)
-        embed.title = data["title"]
+        embed.title = f"FAQ: {data['title']}"
         embed.description = data["description"].encode('raw_unicode_escape').decode('unicode_escape')
         embed.set_footer(text=f"Credits: {data['credits']}")
+        if data["image"]:
+            embed.set_image(url=data["image"])
         return embed
 
     @owner_only_slash()
-    async def store_faq(self, ctx, name, title="", description="", credits=""):
+    async def store_faq(self, ctx, name, title="", description="", credits="", image_url=""):
         entries = Query()
         current_state = self.db.search(entries.name == name)
         if current_state:
-            if current_state[0]["title"] != title:
-                self.db.update({"title": title}, entries.name == name)
-            if current_state[0]["description"] != description:
-                self.db.update({"description": description}, entries.name == name)
-            if current_state[0]["credits"] != credits:
-                self.db.update({"credits": credits}, entries.name == name)
+            # only update what has been set
+            if title:
+                current_state[0]["title"] = title
+            if description:
+                current_state[0]["description"] = description
+            if credits:
+                current_state[0]["credits"] = credits
+            if image_url:
+                current_state[0]["image"] = image_url
         else:
-            self.db.insert({"name": name, "title": title, "description": description, "credits": credits})
+            # create new entry
+            self.db.insert({"name": name, "title": title, "description": description, "credits": credits, "image": image_url})
         await ctx.send("Entry Updated!")
 
     @owner_only_slash()
@@ -76,7 +82,7 @@ class FaQ(commands.Cog):
             embed = Embed(color=self.color)
             embed.title = "FAQ List"
             for entry in current_state:
-                embed.add_field(name=entry["name"], value=entry["title"])
+                embed.add_field(name=entry["name"], value=f"Name: `{entry['title']}`", inline=False)
             await ctx.send(embed=embed)
         else:
             await ctx.send("No FAQs found!")
