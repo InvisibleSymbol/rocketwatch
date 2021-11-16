@@ -11,6 +11,12 @@
             "description": "If you're planning on zerging into Stage 4 ASAP, I would **strongly** encourage you to either set your slippage to 10+ so you don't get reverted, and you just get whatever commission you get, or **don't zerg in** until things have calmed down",
             "name": "slippage",
             "title": "Stage 4 Warning About Slippage"
+        },
+        "3": {
+            "credits": "@Invis",
+            "description": "tl;dr: No.\\n\\n32 ETH minipools get put into a seperate queue that only gets processed after there are no 16 ETH minipools left. If you try to do a 32 ETH minipool to skip the queue at the start of stage 4, you might end up having to wait till there are no more 16 ETH minipools. You have been warned! c:",
+            "name": "queue",
+            "title": "Can I skip the queue with a 32 ETH minipool?"
         }
     }
 }
