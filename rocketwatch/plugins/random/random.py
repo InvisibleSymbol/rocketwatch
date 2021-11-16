@@ -48,11 +48,15 @@ class Random(commands.Cog):
                         value=f"{percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
                         inline=False)
 
+        current_commission = round(solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100, 2)
+        e.add_field(name="Current Commission Rate:", value=f"{current_commission}%", inline=False)
+
         minipool_count = int(deposit_pool / 16)
         e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
 
-        current_commission = round(solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100, 2)
-        e.add_field(name="Current Commission Rate:", value=f"{current_commission}%")
+        queue_length = solidity.to_int(rp.call("rocketMinipoolQueue.getTotalLength"))
+        e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
+
 
         await ctx.send(embed=e)
 
@@ -72,6 +76,7 @@ class Random(commands.Cog):
         embed.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
 
         await ctx.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(Random(bot))
