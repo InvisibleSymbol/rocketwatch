@@ -54,7 +54,7 @@ class Random(commands.Cog):
         minipool_count = int(deposit_pool / 16)
         e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
 
-        queue_length = solidity.to_int(rp.call("rocketMinipoolQueue.getTotalLength"))
+        queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
 
 
