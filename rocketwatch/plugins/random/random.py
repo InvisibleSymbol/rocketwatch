@@ -5,10 +5,12 @@ import pytz
 from discord import Embed, Color
 from discord.ext import commands
 from discord_slash import cog_ext
+from discord import File
 
 from utils import solidity
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
+from utils.deposit_pool_graph import get_graph
 
 
 class Random(commands.Cog):
@@ -48,8 +50,8 @@ class Random(commands.Cog):
                         value=f"{percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
                         inline=False)
 
-        current_commission = round(solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100, 2)
-        e.add_field(name="Current Commission Rate:", value=f"{current_commission}%", inline=False)
+        current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100
+        e.add_field(name="Current Commission Rate:", value=f"{round(current_commission, 2)}%", inline=False)
 
         minipool_count = int(deposit_pool / 16)
         e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
@@ -57,8 +59,13 @@ class Random(commands.Cog):
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
 
-
-        await ctx.send(embed=e)
+        img = get_graph(current_commission)
+        if img:
+            e.set_image(url="attachment://graph.png")
+            f = File(img, filename="graph.png")
+            await ctx.send(embed=e, file=f)
+        else:
+            await ctx.send(embed=e)
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
