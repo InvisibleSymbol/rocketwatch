@@ -28,6 +28,7 @@ class About(commands.Cog):
     @cog_ext.cog_slash(guild_ids=guilds)
     async def about(self, ctx):
         """Bot and Server Information"""
+        await ctx.defer()
         embed = Embed()
         g = self.bot.guilds
         code_time = None
