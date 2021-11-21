@@ -22,8 +22,8 @@
             "title": "Can I skip the queue with a full (32 ETH) minipool?"
         },
         "5": {
-            "credits": "@Invis !!! This is an estimate!!!",
-            "description": "__**assuming**__:\\n- full stage 3 deposit pool (1440 ETH)\\n- 15% dynamic commission at launch (L_max=1814 ETH)\\n- no new rETH mints during stage 4 launch\\n_we will get:_\\n- 90 minipools will get above 10%\\n- 104 minipools will get above 9.99%\\n- 120 minipools will get above 9.9%\\n- 142 minipools will get above 9.5%\\n- 156 minipools will get above 9%\\n- 180 minipools will get above 7.5%",
+            "credits": "@Invis",
+            "description": "**This is just a guess**\\n\\n__**assuming**__:\\n- full stage 3 deposit pool (1440 ETH)\\n- 15% dynamic commission at launch (Demand Range of 1814 ETH)\\n- no new rETH mints during stage 4 launch\\n\n_we will get:_\\n- 18 minipools will get at least 12.5%\\n- 37 minipools will get at least 11%\\n- 90 minipools will get at least 10%\\n- 120 minipools will get at least 9.9%\\n- 156 minipools will get at least 9%\\n- 180 minipools will get at least 7.5%\\n- 202 minipools will get at least 5%",
             "image": "",
             "name": "commissions",
             "title": "how many minipools will get at least xyz% commissions at stage 4 launch?"
