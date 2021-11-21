@@ -3,14 +3,14 @@ from datetime import datetime
 import humanize
 import pytz
 from discord import Embed, Color
+from discord import File
 from discord.ext import commands
 from discord_slash import cog_ext
-from discord import File
 
 from utils import solidity
+from utils.deposit_pool_graph import get_graph
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
-from utils.deposit_pool_graph import get_graph
 
 
 class Random(commands.Cog):
