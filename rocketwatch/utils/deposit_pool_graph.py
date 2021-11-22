@@ -69,13 +69,13 @@ def get_graph(current_commission):
     ax.set_xlabel("Node Demand (ETH)")
     ax.set_ylabel("Commission Fee (%)")
 
+    # draw the function
+    ax.plot(x, func, color='blue')
+
     # vertical indicators
     ax.axvline(x=current_node_demand, color='black')
     ax.axvline(x=left_border, color='red')
     ax.axvline(x=right_border, color='green')
-
-    # current commission dot
-    ax.plot(current_node_demand, func[np.argmin(np.abs(x - current_node_demand))], 'o', color='black')
 
     # show current percentage boldly in the middle
     # add out-of-range rectangles
@@ -93,8 +93,8 @@ def get_graph(current_commission):
                                    fill=False,
                                    hatch='///'))
 
-    # draw the function
-    ax.plot(x, func, color='blue')
+    # current commission dot
+    ax.plot(current_node_demand, func[np.argmin(np.abs(x - current_node_demand))], 'o', color='black')
 
     # store the graph in an file object
     figfile = BytesIO()
