@@ -87,7 +87,8 @@ def get_graph(current_commission):
         color = "green"
         box_start = right_border
     if box_start:
-        ax.text(0, max_fee - 2, f"{round(current_commission, 2)}%",
+        c = int(current_commission) if int(current_commission) == current_commission else round(current_commission, 2)
+        ax.text(0, max_fee - 2, f"{c}%",
                 fontsize=32, color="black", ha='center', va='center', weight='bold')
         ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
