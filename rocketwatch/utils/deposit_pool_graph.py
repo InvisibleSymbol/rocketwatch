@@ -16,6 +16,8 @@ def get_graph(current_commission):
     if cached_image_commission == current_commission:
         cached_image.seek(0)
         return cached_image
+    else:
+        cached_image.close()
 
     current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
 
@@ -97,6 +99,10 @@ def get_graph(current_commission):
     figfile = BytesIO()
     fig.savefig(figfile, format='png')
     figfile.seek(0)
+    
+    # clear plot from memory
+    fig.clf()
+    plt.close()
 
     # store image in cache
     cached_image_commission = current_commission
