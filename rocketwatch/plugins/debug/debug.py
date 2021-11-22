@@ -53,7 +53,7 @@ class Debug(commands.Cog):
             return
 
         if auto_format:
-            if isinstance(v, int) and v >= 10 ** 12:
+            if isinstance(v, int) and abs(v) >= 10 ** 12:
                 v = solidity.to_float(v)
 
         await ctx.send(f"`{command}: {v}`")
