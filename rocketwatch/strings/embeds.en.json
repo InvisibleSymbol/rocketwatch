@@ -61,7 +61,7 @@
     },
     "milestone_reth_supply": {
         "title": ":tada: Milestone Reached",
-        "description": "%{result_value} rETH has been issued! ( rETH)"
+        "description": "%{result_value} rETH has been issued!"
     },
     "milestone_staking_minipools": {
         "title": ":tada: Milestone Reached",
