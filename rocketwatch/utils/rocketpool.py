@@ -104,5 +104,29 @@ class RocketPool:
         percentage = (value / 18_000_000) * 100
         return round(percentage, 2)
 
+    def get_minipools_by_type(self, minipool_type, limit=10):
+        key = w3.soliditySha3(["string"], [minipool_type])
+        cap = self.call("addressQueueStorage.getLength", key)
+        limit = min(cap, limit)
+        results = []
+        for i in range(0, limit):
+            results.append(self.call("addressQueueStorage.getItem", key, i))
+        return cap, results
+
+    def get_minipools(self, limit=10):
+        result = {
+            "half" : self.get_minipools_by_type("minipools.available.half", limit),
+            "full" : [],
+            "empty": []}
+        current_len = sum([e[0] for e in result.values() if e])
+        if current_len >= limit:
+            return result
+        result["full"] = self.get_minipools_by_type("minipools.available.full", limit - current_len)
+        current_len = sum([e[0] for e in result.values() if e])
+        if current_len >= limit:
+            return result
+        result["empty"] = self.get_minipools_by_type("minipools.available.empty", limit - current_len)
+        return result
+
 
 rp = RocketPool()

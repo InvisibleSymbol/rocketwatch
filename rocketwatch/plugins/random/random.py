@@ -9,14 +9,44 @@ from discord_slash import cog_ext
 
 from utils import solidity
 from utils.deposit_pool_graph import get_graph
+from utils.readable import etherscan_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
+from utils.visibility import is_hidden
 
 
 class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
+
+    @cog_ext.cog_slash(guild_ids=guilds)
+    async def queue(self, ctx):
+        """Show the next 10 minipools in the queue"""
+        await ctx.defer(hidden=is_hidden(ctx))
+        e = Embed(colour=self.color)
+        e.title = "Minipool queue"
+
+        # Get the next 10 minipools per category
+        minipools = rp.get_minipools(limit=10)
+        description = ""
+        if minipools["half"]:
+            data = minipools["half"]
+            description += f"**Normal Minipool Queue:** ({data[0]} Minipools)\n- "
+            description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
+            description += "\n- ...\n\n"
+        if minipools["full"]:
+            data = minipools["full"]
+            description += f"**32 ETH Minipool Refund Queue:** ({data[0]} Minipools)\n- "
+            description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
+            description += "\n- ...\n\n"
+        if minipools["empty"]:
+            data = minipools["empty"]
+            description += f"**Unbonded Minipool**: ({data[0]} Minipools)\n- "
+            description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
+            description += "\n- ...\n\n"
+        e.description = description
+        await ctx.send(embed=e, hidden=is_hidden(ctx))
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dp(self, ctx):
