@@ -62,7 +62,7 @@ def get_graph(current_commission):
     # prepare the graph
     fig, ax = plt.subplots()
     ax.set_xlim(left_side, right_side)
-    ax.set_ylim(min_fee - 5, max_fee + 5)
+    ax.set_ylim(min_fee - 1, max_fee + 1)
     ax.grid(True)
 
     # labels
@@ -89,9 +89,9 @@ def get_graph(current_commission):
     if box_start:
         ax.text(0, max_fee, f"{round(current_commission, 2)}%",
                 fontsize=32, color=color, ha='center', va='center', weight='bold')
-        ax.add_patch(plt.Rectangle((box_start, min_fee - 5),
+        ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
-                                   max_fee - min_fee + 10,
+                                   max_fee - min_fee + 2,
                                    fill=False,
                                    hatch='///'))
 
