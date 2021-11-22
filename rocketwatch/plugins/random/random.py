@@ -39,13 +39,18 @@ class Random(commands.Cog):
         deposit_cap = solidity.to_int(rp.call("rocketDAOProtocolSettingsDeposit.getMaximumDepositPoolSize"))
         e.add_field(name="Maximum Size:", value=f"{humanize.intcomma(deposit_cap)} ETH")
 
+        current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
+
         if deposit_cap - deposit_pool < 0.01:
             e.add_field(name="Status:",
                         value=f"Deposit Pool Cap Reached!",
                         inline=False)
         else:
             percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
-            free_capacity = round(deposit_cap - deposit_pool, 3)
+            free_capacity = deposit_cap - deposit_pool
+            if current_node_demand <= 0:
+                free_capacity += current_node_demand * -1
+            free_capacity = round(free_capacity, 3)
             e.add_field(name="Status:",
                         value=f"{percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
                         inline=False)
@@ -59,7 +64,7 @@ class Random(commands.Cog):
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
 
-        img = get_graph(current_commission)
+        img = get_graph(current_commission, current_node_demand)
         if img:
             e.set_image(url="attachment://graph.png")
             f = File(img, filename="graph.png")
