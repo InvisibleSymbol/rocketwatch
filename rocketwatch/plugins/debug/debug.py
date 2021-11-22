@@ -39,7 +39,7 @@ class Debug(commands.Cog):
                                required=False)
                        ]
                        )
-    async def call(self, ctx, command, json_args="[]", auto_format=True):
+    async def call(self, ctx, command, json_args="[]"):
         """Call Function of Contract"""
         # make sure the first character of the command is lowercase
         command = command[0].lower() + command[1:]
@@ -52,9 +52,8 @@ class Debug(commands.Cog):
             await ctx.send(f"Exception: `{repr(err)}`")
             return
 
-        if auto_format:
-            if isinstance(v, int) and abs(v) >= 10 ** 12:
-                v = solidity.to_float(v)
+        if isinstance(v, int) and abs(v) >= 10 ** 12:
+            v = solidity.to_float(v)
 
         await ctx.send(f"`{command}: {v}`")
 
