@@ -6,20 +6,21 @@ import numpy as np
 from utils import solidity
 from utils.rocketpool import rp
 
-cached_image_commission = None
+cached_image_node_demand = None
 cached_image = None
 
 
 def get_graph(current_commission):
-    global cached_image_commission
+    global cached_image_node_demand
     global cached_image
-    if cached_image_commission == current_commission:
+    current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
+
+    if cached_image_node_demand == current_node_demand:
         cached_image.seek(0)
         return cached_image
     else:
         cached_image.close()
 
-    current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
 
     # get values from contracts
     min_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMinimumNodeFee"), decimals=16)
@@ -105,6 +106,6 @@ def get_graph(current_commission):
     plt.close()
 
     # store image in cache
-    cached_image_commission = current_commission
+    cached_image_node_demand = current_node_demand
     cached_image = figfile
     return figfile
