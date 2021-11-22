@@ -88,12 +88,13 @@ def get_graph(current_commission):
         box_start = right_border
     if box_start:
         ax.text(0, max_fee - 2, f"{round(current_commission, 2)}%",
-                fontsize=32, color=color, ha='center', va='center', weight='bold')
+                fontsize=32, color="black", ha='center', va='center', weight='bold')
         ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
                                    max_fee - min_fee + 2,
                                    fill=False,
-                                   hatch='///'))
+                                   hatch='///',
+                                   color=color))
 
     # current commission dot
     ax.plot(current_node_demand, func[np.argmin(np.abs(x - current_node_demand))], 'o', color='black')
