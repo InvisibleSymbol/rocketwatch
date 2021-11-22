@@ -29,7 +29,7 @@ class Random(commands.Cog):
         await self._dp(ctx)
 
     async def _dp(self, ctx):
-        await ctx.defer()
+        await ctx.defer(hidden=is_hidden(ctx))
         e = Embed(colour=self.color)
         e.title = "Deposit Pool Stats"
 
@@ -68,9 +68,9 @@ class Random(commands.Cog):
         if img:
             e.set_image(url="attachment://graph.png")
             f = File(img, filename="graph.png")
-            await ctx.send(embed=e, file=f)
+            await ctx.send(embed=e, file=f, hidden=is_hidden(ctx))
         else:
-            await ctx.send(embed=e)
+            await ctx.send(embed=e, hidden=is_hidden(ctx))
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):
