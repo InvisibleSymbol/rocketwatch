@@ -94,7 +94,7 @@ def get_graph(current_commission):
                                    right_side - right_border,
                                    max_fee - min_fee + 2,
                                    fill=False,
-                                   hatch='///',
+                                   hatch='xxx',
                                    color=color))
 
     # current commission dot
