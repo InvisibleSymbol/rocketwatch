@@ -17,7 +17,6 @@ def get_graph(current_commission):
         cached_image.seek(0)
         return cached_image
 
-    current_commission = 5
     current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
 
     # get values from contracts
