@@ -81,12 +81,14 @@ def get_graph(current_commission):
     # add out-of-range rectangles
     box_start = None
     if current_node_demand <= left_border:
+        color = "red"
         box_start = left_side
     elif current_node_demand >= right_border:
+        color = "green"
         box_start = right_border
     if box_start:
         ax.text(0, max_fee, f"{round(current_commission, 2)}%",
-                fontsize=32, color='black', ha='center', va='center', weight='bold')
+                fontsize=32, color=color, ha='center', va='center', weight='bold')
         ax.add_patch(plt.Rectangle((box_start, min_fee - 5),
                                    right_side - right_border,
                                    max_fee - min_fee + 10,
