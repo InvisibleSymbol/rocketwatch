@@ -97,7 +97,7 @@ def get_graph(current_commission):
                                    color=color))
 
     # current commission dot
-    ax.plot(current_node_demand, func[np.argmin(np.abs(x - current_node_demand))], 'o', color='black')
+    ax.plot(current_node_demand, current_commission, 'o', color='black')
 
     # store the graph in an file object
     figfile = BytesIO()
