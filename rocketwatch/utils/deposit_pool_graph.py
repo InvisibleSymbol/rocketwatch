@@ -78,9 +78,9 @@ def get_graph(current_commission):
     # show current percentage boldly in the middle
     # add out-of-range rectangles
     box_start = None
-    if current_node_demand < left_border:
+    if current_node_demand <= left_border:
         box_start = left_side
-    elif current_node_demand > right_border:
+    elif current_node_demand >= right_border:
         box_start = right_border
     if box_start:
         ax.text(0, max_fee, f"{round(current_commission, 2)}%",
