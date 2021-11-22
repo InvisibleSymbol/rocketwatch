@@ -18,7 +18,7 @@ def get_graph(current_commission):
     if cached_image_node_demand == current_node_demand:
         cached_image.seek(0)
         return cached_image
-    else:
+    elif cached_image:
         cached_image.close()
 
 
