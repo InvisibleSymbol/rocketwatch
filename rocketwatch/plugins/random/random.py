@@ -126,23 +126,22 @@ class Random(commands.Cog):
     async def tvl(self, ctx):
         tvl = []
 
-        description = "```"
-        tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
-        description += f"Deposit Pool: {humanize.intcomma(round(tvl[0], 3))} ETH\n"
-        tvl += solidity.to_float(rp.call("rocketTokenRETH.getBalance"))
-        description += f"rETH Burn-Reserve: {humanize.intcomma(round(tvl[1], 3))} ETH\n"
-        tvl += rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32
-        description += f"Staking Minipools: {humanize.intcomma(tvl[2])} ETH\n"
-        tvl += rp.call("rocketMinipoolQueue.getLength", 0) * 16
-        description += f"Half Minipool Queue: {humanize.intcomma(tvl[3])} ETH\n"
-        tvl += rp.call("rocketMinipoolQueue.getLength", 1) * 32
-        description += f"Full Minipool Queue: {humanize.intcomma(tvl[4])} ETH\n"
-        tvl += solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-        description += f"Total RPL Staked: {humanize.intcomma(round(tvl[5], 3))} ETH\n"
-        description += "```"
+        description = []
+        tvl.append(solidity.to_float(rp.call("rocketTokenRETH.getTotalCollateral")))
+        description.append(f"  {tvl[0]:12.2f} ETH: rETH Reserves")
+        tvl.append(rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32)
+        description.append(f"+ {tvl[1]:12.2f} ETH: Staking Minipools")
+        tvl.append(rp.call("rocketMinipoolQueue.getLength", 0) * 16)
+        description.append(f"+ {tvl[2]:12.2f} ETH: Half Minipool Queue")
+        tvl.append(rp.call("rocketMinipoolQueue.getLength", 1) * 32)
+        description.append(f"+ {tvl[3]:12.2f} ETH: Full Minipool Queue")
+        tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
+        description.append(f"+ {tvl[4]:12.2f} ETH: RPL Locked (staked or bonded)")
+        description.append("-" * max(len(d) for d in description))
+        description.append(f"  {sum(tvl):12.2f} ETH: Total Value Locked")
+        description = "```" + "\n".join(description) + "```"
         # send embed with tvl
         embed = Embed(color=self.color)
-        embed.add_field(name="Total Value Locked", value=f"{humanize.intcomma(round(tvl, 3))} ETH", inline=False)
         embed.set_footer(text="\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021")
         embed.description = description
         await ctx.send(embed=embed)
