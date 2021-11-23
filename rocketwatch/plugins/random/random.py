@@ -124,17 +124,27 @@ class Random(commands.Cog):
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def tvl(self, ctx):
-        tvl = 0
+        tvl = []
 
-        tvl += solidity.to_float(rp.call("rocketDepositPool.getBalance"))
+        description = "```"
+        tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
+        description += f"Deposit Pool: {humanize.intcomma(round(tvl[0], 3))} ETH\n"
+        tvl += solidity.to_float(rp.call("rocketTokenRETH.getBalance"))
+        description += f"rETH Burn-Reserve: {humanize.intcomma(round(tvl[1], 3))} ETH\n"
         tvl += rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32
+        description += f"Staking Minipools: {humanize.intcomma(tvl[2])} ETH\n"
         tvl += rp.call("rocketMinipoolQueue.getLength", 0) * 16
+        description += f"Half Minipool Queue: {humanize.intcomma(tvl[3])} ETH\n"
         tvl += rp.call("rocketMinipoolQueue.getLength", 1) * 32
+        description += f"Full Minipool Queue: {humanize.intcomma(tvl[4])} ETH\n"
         tvl += solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+        description += f"Total RPL Staked: {humanize.intcomma(round(tvl[5], 3))} ETH\n"
+        description += "```"
         # send embed with tvl
         embed = Embed(color=self.color)
         embed.add_field(name="Total Value Locked", value=f"{humanize.intcomma(round(tvl, 3))} ETH", inline=False)
-        embed.description = "\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021"
+        embed.set_footer(text="\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021")
+        embed.description = description
         await ctx.send(embed=embed)
 
 
