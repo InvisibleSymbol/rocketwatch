@@ -124,6 +124,7 @@ class Random(commands.Cog):
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def tvl(self, ctx):
+        await ctx.defer(hidden=is_hidden(ctx))
         tvl = []
 
         description = []
