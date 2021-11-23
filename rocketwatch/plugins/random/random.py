@@ -134,10 +134,10 @@ class Random(commands.Cog):
         description.append(f"+ {tvl[1]:12.2f} ETH: Staking Minipools")
 
         tvl.append(rp.call("rocketMinipoolQueue.getLength", 1) * 32)
-        description.append(f"+ {tvl[3]:12.2f} ETH: Full Minipool Queue")
+        description.append(f"+ {tvl[2]:12.2f} ETH: Full Minipool Queue")
 
         tvl.append(rp.call("rocketMinipoolQueue.getLength", 2) * 16)
-        description.append(f"+ {tvl[2]:12.2f} ETH: Half Minipool Queue")
+        description.append(f"+ {tvl[3]:12.2f} ETH: Half Minipool Queue")
 
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         description.append(f"+ {tvl[4]:12.2f} ETH: RPL Locked (staked or bonded)")
