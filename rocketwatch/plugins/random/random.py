@@ -137,7 +137,7 @@ class Random(commands.Cog):
         description.append(f"+ {tvl[-1]:12.2f} ETH: Active Minipools")
 
         tvl.append(rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)[1] * 16)
-        description.append(f"- {tvl[-1]:12.2f} ETH: Pending Minipool")
+        description.append(f"- {tvl[-1]:12.2f} ETH: Unmatched Minipool")
         tvl[-1] *= -1
 
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
