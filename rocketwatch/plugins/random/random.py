@@ -128,17 +128,23 @@ class Random(commands.Cog):
 
         description = []
         tvl.append(solidity.to_float(rp.call("rocketTokenRETH.getTotalCollateral")))
-        description.append(f"  {tvl[-1]:12.2f} ETH: rETH Collateral")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: rETH Collateral")
 
         tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
 
-        tvl.append(rp.call("rocketMinipoolManager.getActiveMinipoolCount") * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Active Minipools")
+        minipool_count_per_status = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)
+        tvl.append(minipool_count_per_status[0] * 16)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Unmatched Minipool")
 
-        tvl.append(rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)[0] * 16)
-        description.append(f"- {tvl[-1]:12.2f} ETH: Unmatched Minipool")
-        tvl[-1] *= -1
+        tvl.append(minipool_count_per_status[1] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Minipool")
+
+        tvl.append(minipool_count_per_status[2] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipool")
+
+        tvl.append(minipool_count_per_status[3] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Withdrawable Minipool")
 
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: RPL Locked (staked or bonded)")
