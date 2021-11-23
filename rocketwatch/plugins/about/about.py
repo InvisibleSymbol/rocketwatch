@@ -15,6 +15,7 @@ from utils.cfg import cfg
 from utils.readable import etherscan_url
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
+from utils.visibility import is_hidden
 
 psutil.getloadavg()
 BOOT_TIME = time.time()
@@ -28,7 +29,7 @@ class About(commands.Cog):
     @cog_ext.cog_slash(guild_ids=guilds)
     async def about(self, ctx):
         """Bot and Server Information"""
-        await ctx.defer()
+        await ctx.defer(hidden=is_hidden(ctx))
         embed = Embed()
         g = self.bot.guilds
         code_time = None
@@ -73,7 +74,7 @@ class About(commands.Cog):
         bot_uptime = time.time() - BOOT_TIME
         embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, hidden=is_hidden(ctx))
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def donate(self, ctx):
