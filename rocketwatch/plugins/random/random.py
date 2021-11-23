@@ -128,19 +128,22 @@ class Random(commands.Cog):
 
         description = []
         tvl.append(solidity.to_float(rp.call("rocketTokenRETH.getTotalCollateral")))
-        description.append(f"  {tvl[0]:12.2f} ETH: rETH Reserves")
+        description.append(f"  {tvl[-1]:12.2f} ETH: rETH Collateral")
+
+        tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
+        description.append(f"  {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
 
         tvl.append(rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32)
-        description.append(f"+ {tvl[1]:12.2f} ETH: Staking Minipools")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
 
         tvl.append(rp.call("rocketMinipoolQueue.getLength", 1) * 32)
-        description.append(f"+ {tvl[2]:12.2f} ETH: Full Minipool Queue")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Full Minipool")
 
         tvl.append(rp.call("rocketMinipoolQueue.getLength", 2) * 16)
-        description.append(f"+ {tvl[3]:12.2f} ETH: Half Minipool Queue")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Half Minipool")
 
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
-        description.append(f"+ {tvl[4]:12.2f} ETH: RPL Locked (staked or bonded)")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: RPL Locked (staked or bonded)")
 
         description.append("-" * max(len(d) for d in description))
         description.append(f"  {sum(tvl):12.2f} ETH: Total Value Locked")
