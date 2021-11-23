@@ -1,4 +1,5 @@
 from datetime import datetime
+from io import BytesIO
 
 import humanize
 import pytz
@@ -94,13 +95,15 @@ class Random(commands.Cog):
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
 
-        img = get_graph(current_commission, current_node_demand)
-        if img:
+        img = BytesIO()
+        rendered_graph = get_graph(img, current_commission, current_node_demand)
+        if rendered_graph:
             e.set_image(url="attachment://graph.png")
             f = File(img, filename="graph.png")
             await ctx.send(embed=e, file=f, hidden=is_hidden(ctx))
         else:
             await ctx.send(embed=e, hidden=is_hidden(ctx))
+        img.close()
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def dev_time(self, ctx):

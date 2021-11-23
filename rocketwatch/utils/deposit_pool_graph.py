@@ -7,13 +7,8 @@ import random
 from utils import solidity
 from utils.rocketpool import rp
 
-cached_image_hash = None
-cached_image = None
 
-
-def get_graph(current_commission, current_node_demand):
-    global cached_image_hash
-    global cached_image
+def get_graph(file, current_commission, current_node_demand):
 
     # get values from contracts
     min_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMinimumNodeFee"), decimals=16)
@@ -22,13 +17,6 @@ def get_graph(current_commission, current_node_demand):
         return None
     target_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetNodeFee"), decimals=16)
     demand_range = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getNodeFeeDemandRange"))
-
-    if cached_image is not None and not cached_image.closed:
-        if cached_image_hash == [min_fee, target_fee, max_fee, demand_range, current_node_demand]:
-            cached_image.seek(0)
-            return cached_image
-        else:
-            cached_image.close()
 
     # define vertical lines
     left_border = -demand_range
@@ -134,15 +122,12 @@ def get_graph(current_commission, current_node_demand):
     ax.plot(current_node_demand, current_commission, 'o', color='black')
 
     # store the graph in an file object
-    figfile = BytesIO()
-    fig.savefig(figfile, format='png')
-    figfile.seek(0)
+    fig.savefig(file, format='png')
+    file.seek(0)
     
     # clear plot from memory
     fig.clf()
     plt.close()
 
     # store image in cache
-    cached_image_hash = [min_fee, target_fee, max_fee, demand_range, current_node_demand]
-    cached_image = figfile
-    return figfile
+    return True
