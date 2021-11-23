@@ -9,6 +9,7 @@ from discord_slash import SlashCommand
 
 from utils import reporter
 from utils.cfg import cfg
+from utils.visibility import is_hidden
 
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
@@ -48,10 +49,10 @@ async def on_slash_command_error(ctx, excep):
         await reporter.report_error(excep, ctx=ctx)
         msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
         try:
-            # try to inform the user silently. this might fail if it took too long to respond
-            return await ctx.send(msg, hidden=True)
+            # try to inform the user. this might fail if it took too long to respond
+            return await ctx.send(msg, hidden=is_hidden(ctx))
         except discord.errors.NotFound:
-            # so fall back to a normal channel message
+            # so fall back to a normal channel message if that happens
             return await ctx.channel.send(msg)
 
 
