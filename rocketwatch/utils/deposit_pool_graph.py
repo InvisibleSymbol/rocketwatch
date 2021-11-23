@@ -100,7 +100,7 @@ def get_graph(current_commission, current_node_demand):
             [20, "How longer must we suffer?"],
             [20, "Remember when commissions were 15%?"],
             [20, "And they don't stop coming"],
-            [10, "Hope you have 32ETH ready c:"]
+            [10, "Hope you have 32ETH ready c:"],
             [10, "Anybody want some cheap rETH?"],
             [10, ":catJAM:"],
             [10, "much stale eth. such queue"],
