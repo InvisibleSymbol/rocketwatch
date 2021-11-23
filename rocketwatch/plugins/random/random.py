@@ -145,7 +145,7 @@ class Random(commands.Cog):
 
         description.append("-" * max(len(d) for d in description))
         description.append(f"  {sum(tvl):12.2f} ETH: Total Value Locked")
-        description = "```" + "\n".join(description) + "```"
+        description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
         embed = Embed(color=self.color)
         embed.set_footer(text="\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021")
