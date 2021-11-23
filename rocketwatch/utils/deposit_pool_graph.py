@@ -6,28 +6,27 @@ import numpy as np
 from utils import solidity
 from utils.rocketpool import rp
 
-cached_image_node_demand = None
+cached_image_hash = None
 cached_image = None
 
 
 def get_graph(current_commission, current_node_demand):
-    global cached_image_node_demand
+    global cached_image_hash
     global cached_image
-
-    if cached_image_node_demand == current_node_demand:
-        cached_image.seek(0)
-        return cached_image
-    elif cached_image:
-        cached_image.close()
 
     # get values from contracts
     min_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMinimumNodeFee"), decimals=16)
     max_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMaximumNodeFee"), decimals=16)
     if min_fee == max_fee:
         return None
-
     target_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetNodeFee"), decimals=16)
     demand_range = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getNodeFeeDemandRange"))
+
+    if cached_image_hash == [min_fee, target_fee, max_fee, demand_range, current_node_demand]:
+        cached_image.seek(0)
+        return cached_image
+    elif cached_image and not cached_image.closed:
+        cached_image.close()
 
     # define vertical lines
     left_border = -demand_range
@@ -86,8 +85,6 @@ def get_graph(current_commission, current_node_demand):
         box_start = right_border
     if box_start:
         c = int(current_commission) if int(current_commission) == current_commission else round(current_commission, 2)
-        ax.text(0, max_fee - 2, f"{c}%",
-                fontsize=32, color="black", ha='center', va='center', weight='bold')
         ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
                                    max_fee - min_fee + 2,
@@ -108,6 +105,6 @@ def get_graph(current_commission, current_node_demand):
     plt.close()
 
     # store image in cache
-    cached_image_node_demand = current_node_demand
+    cached_image_hash = [min_fee, target_fee, max_fee, demand_range, current_node_demand]
     cached_image = figfile
     return figfile
