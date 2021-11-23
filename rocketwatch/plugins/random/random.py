@@ -119,6 +119,21 @@ class Random(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @cog_ext.cog_slash(guild_ids=guilds)
+    async def tvl(self, ctx):
+        tvl = 0
+
+        tvl += solidity.to_float(rp.call("rocketDepositPool.getBalance"))
+        tvl += rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32
+        tvl += rp.call("rocketMinipoolQueue.getLength", 0) * 16
+        tvl += rp.call("rocketMinipoolQueue.getLength", 1) * 32
+        tvl += solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+        # send embed with tvl
+        embed = Embed(color=self.color)
+        embed.add_field(name="Total Value Locked", value=f"{humanize.intcomma(round(tvl, 3))} ETH", inline=False)
+        embed.description = "\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021"
+        await ctx.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(Random(bot))
