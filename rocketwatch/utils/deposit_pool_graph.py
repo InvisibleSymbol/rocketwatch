@@ -23,11 +23,12 @@ def get_graph(current_commission, current_node_demand):
     target_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetNodeFee"), decimals=16)
     demand_range = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getNodeFeeDemandRange"))
 
-    if cached_image_hash == [min_fee, target_fee, max_fee, demand_range, current_node_demand]:
-        cached_image.seek(0)
-        return cached_image
-    elif cached_image and not cached_image.closed:
-        cached_image.close()
+    if cached_image is not None and not cached_image.closed:
+        if cached_image_hash == [min_fee, target_fee, max_fee, demand_range, current_node_demand]:
+            cached_image.seek(0)
+            return cached_image
+        else:
+            cached_image.close()
 
     # define vertical lines
     left_border = -demand_range
