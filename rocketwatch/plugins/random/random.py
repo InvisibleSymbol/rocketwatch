@@ -83,7 +83,7 @@ class Random(commands.Cog):
                 free_capacity += current_node_demand * -1
             free_capacity = round(free_capacity, 3)
             e.add_field(name="Status:",
-                        value=f"{percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
+                        value=f"Buffer {percentage_filled}% Full. Enough space for {humanize.intcomma(free_capacity)} more ETH",
                         inline=False)
 
         current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100
