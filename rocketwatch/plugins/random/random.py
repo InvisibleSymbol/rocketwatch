@@ -149,14 +149,17 @@ class Random(commands.Cog):
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: RPL Locked (staked or bonded)")
 
-        description.append("-" * max(len(d) for d in description))
-        description.append(f"  {sum(tvl):12.2f} ETH: Total Value Locked")
+        description.append("Total Value Locked".center(max(len(d) for d in description), "-"))
+        tvl = sum(tvl)
+        # get it in dai
+        dai_tvl = tvl * rp.get_dai_eth_price()
+        description.append(f"  {tvl:12.2f} ETH ({humanize.intword(dai_tvl)} DAI)")
         description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
         embed = Embed(color=self.color)
         embed.set_footer(text="\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021")
         embed.description = description
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, hidden=is_hidden(ctx))
 
 
 def setup(bot):

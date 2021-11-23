@@ -21,9 +21,13 @@ class RocketPool:
         storage_address = cfg['rocketpool.storage_contract']
         self.storage_contract = self.assemble_contract("rocketStorage", storage_address)
         self.addresses["rocketStorage"] = storage_address
+        self.addresses["DAIETH_univ3"] = cfg['DAIETH_univ3.address']
 
     @cached(cache={})
     def get_address_by_name(self, name):
+        # manual overwrite at init
+        if name in self.addresses:
+            return self.addresses[name]
         return self.uncached_get_address_by_name(name)
 
     def uncached_get_address_by_name(self, name):
@@ -127,6 +131,15 @@ class RocketPool:
             return result
         result["empty"] = self.get_minipools_by_type("minipools.available.empty", limit - current_len)
         return result
+
+    def get_dai_eth_price(self):
+        observations = [self.call("DAIETH_univ3.observations", i) for i in range(0, 2)]
+        t = observations[1][0] - observations[0][0]
+        delta_ticks = observations[1][1] - observations[0][1]
+        avg_ticks = delta_ticks / t
+        value_dai = 1.0001 ** avg_ticks
+        value_eth = 1 / value_dai
+        return value_eth
 
 
 rp = RocketPool()
