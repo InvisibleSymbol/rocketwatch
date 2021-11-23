@@ -2,6 +2,7 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
 from utils import solidity
 from utils.rocketpool import rp
