@@ -136,7 +136,7 @@ class Random(commands.Cog):
         tvl.append(rp.call("rocketMinipoolManager.getActiveMinipoolCount") * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Active Minipools")
 
-        tvl.append(rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)[1] * 16)
+        tvl.append(rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)[0] * 16)
         description.append(f"- {tvl[-1]:12.2f} ETH: Unmatched Minipool")
         tvl[-1] *= -1
 
