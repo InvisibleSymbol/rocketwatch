@@ -131,7 +131,7 @@ class Random(commands.Cog):
         description.append(f"  {tvl[-1]:12.2f} ETH: rETH Collateral")
 
         tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
-        description.append(f"  {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
 
         tvl.append(rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
