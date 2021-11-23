@@ -91,6 +91,42 @@ def get_graph(current_commission, current_node_demand):
                                    fill=False,
                                    hatch='...',
                                    color=color))
+    if box_start < 0:
+        # TODO load from file at module import
+        tmp = [
+            [20, "Maybe go outside. Its gonna take a while..."],
+            [20, "Yep. Still 5%"],
+            [20, "What did you expect?"],
+            [20, "How longer must we suffer?"],
+            [20, "Remember when commissions were 15%?"],
+            [20, "And they don't stop coming"],
+            [10, "Hope you have 32ETH ready c:"]
+            [10, "Anybody want some cheap rETH?"],
+            [10, ":catJAM:"],
+            [10, "much stale eth. such queue"],
+            [10, "We need people depositing rETH... wait no!"],
+            [10, "o_O"],
+            [10, "¯\\_(ツ)_/¯"],
+            [10, "pls low gas wen"],
+            [5, "shouldve deployed on cardano"],
+            [5, "shouldve deployed on solana"],
+            [5, "woooo yeah 5% GO GO GO"],
+            [5, "too bullish"],
+            [5, "too bearish"],
+            [5, "Anybody seen the dot recently?"],
+            [5, "What if the queue never depletes?"],
+            [1, "RPL to 666$"],
+            [1, "RPL to 0.69 ETH"],
+            [1, "shouldve deployed on bitcoin"],
+            [1, "Negative Commissions wen?"],
+            [0.1, "dont tell anyone but im running out of ideas"],
+            [0.1, "This is a secret message. Or is it?"],
+            [0.01, "pog"]
+        ]
+        weights, strings = list(zip(*tmp))
+        text = random.choices(strings, weights=weights)
+        ax.text(0, max_fee - 2, text,
+                fontsize=16, color="black", ha='center', va='center', weight='bold')
 
     # current commission dot
     ax.plot(current_node_demand, current_commission, 'o', color='black')
