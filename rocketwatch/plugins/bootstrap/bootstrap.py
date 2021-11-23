@@ -101,7 +101,7 @@ class Bootstrap(commands.Cog):
             embed=assemble(args),
             event_name=event_name)
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(seconds=30.0)
     async def run_loop(self):
         if self.state == "STOPPED":
             return
