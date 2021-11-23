@@ -127,7 +127,7 @@ def get_graph(current_commission, current_node_demand):
         weights, strings = list(zip(*tmp))
         text = random.choices(strings, weights=weights)
         ax.text(0, max_fee - 2, text[0],
-                fontsize=12, color="black", ha='center', va='center', weight='italic')
+                fontsize=12, color="black", ha='center', va='center')
 
     # current commission dot
     ax.plot(current_node_demand, current_commission, 'o', color='black')
