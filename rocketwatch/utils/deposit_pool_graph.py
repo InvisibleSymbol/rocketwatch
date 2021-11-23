@@ -87,7 +87,7 @@ def get_graph(file, current_commission, current_node_demand):
             [20, "Maybe go outside. Its gonna take a while..."],
             [20, "Yep. Still 5%"],
             [20, "What did you expect?"],
-            [20, "How longer must we suffer?"],
+            [20, "How much longer must we suffer?"],
             [20, "Remember when commissions were 15%?"],
             [20, "And they don't stop coming"],
             [10, "Hope you have 32ETH ready c:"],
