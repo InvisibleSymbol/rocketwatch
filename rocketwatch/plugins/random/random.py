@@ -133,14 +133,12 @@ class Random(commands.Cog):
         tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
 
-        tvl.append(rp.call("rocketMinipoolManager.getStakingMinipoolCount") * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
+        tvl.append(rp.call("rocketMinipoolManager.getActiveMinipoolCount") * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Active Minipools")
 
-        tvl.append(rp.call("rocketMinipoolQueue.getLength", 1) * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Full Minipool")
-
-        tvl.append(rp.call("rocketMinipoolQueue.getLength", 2) * 16)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Half Minipool")
+        tvl.append(rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)[1] * 32)
+        description.append(f"- {tvl[-1]:12.2f} ETH: Pending Minipool")
+        tvl[-1] *= -1
 
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: RPL Locked (staked or bonded)")
