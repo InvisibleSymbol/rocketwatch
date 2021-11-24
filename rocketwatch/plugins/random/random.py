@@ -37,34 +37,23 @@ class Random(commands.Cog):
 
         # Get the next 10 minipools per category
         minipools = rp.get_minipools(limit=10)
-        description = ""
-        if minipools["half"]:
-            data = minipools["half"]
-            description += f"**Normal Minipool Queue:** ({data[0]} Minipools)"
+        description = "Queues are processed from top to bottom.\n" \
+                      "This means that the \"Normal Minipool\"   Queue **has to be empty**\n" \
+                      "before the \"Full Minipool Refund\" Queue gets processed!\n\n"
+        matchings = [
+            ["half", "Normal Minipool Queue"],
+            ["full", "Full Minipool Refund Queue"],
+            ["empty", "Unbonded Minipool FillingQueue"]
+        ]
+        for category, label in matchings:
+            data = minipools[category]
             if data[1]:
+                description += f"**{label}:** ({data[0]} Minipools)"
                 description += "\n- "
                 description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
-            if data[0] > 10:
-                description += "\n- ...\n"
-            description += "\n"
-        if minipools["full"]:
-            data = minipools["full"]
-            description += f"**32 ETH Minipool Refund Queue:** ({data[0]} Minipools)"
-            if data[1]:
-                description += "\n- "
-                description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
-            if data[0] > 10:
-                description += "\n- ...\n"
-            description += "\n"
-        if minipools["empty"]:
-            data = minipools["empty"]
-            description += f"**Unbonded Minipool**: ({data[0]} Minipools)"
-            if data[1]:
-                description += "\n- "
-                description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
-            if data[0] > 10:
-                description += "\n- ...\n"
-            description += "\n"
+                if data[0] > 10:
+                    description += "\n- ..."
+                description += "\n\n"
         e.description = description
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
