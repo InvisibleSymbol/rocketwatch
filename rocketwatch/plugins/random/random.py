@@ -14,10 +14,9 @@ from utils.cfg import cfg
 from utils.deposit_pool_graph import get_graph
 from utils.readable import etherscan_url
 from utils.rocketpool import rp
+from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
-from utils.shared_w3 import w3
-
 
 log = logging.getLogger("random")
 log.setLevel(cfg["log_level"])
