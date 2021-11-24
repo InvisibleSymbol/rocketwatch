@@ -161,7 +161,7 @@ class Random(commands.Cog):
         # convert rpl to eth for correct tvl calcuation
         tvl[-1] *= solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
-        description.append("Total ETH Locked".center(max(len(d) for d in description), "-"))
+        description.append("Total Value Locked".center(max(len(d) for d in description), "-"))
         total_tvl = sum(tvl)
         dai_total_tvl = total_tvl * eth_price
         description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl)} DAI)")
