@@ -96,7 +96,7 @@ def get_graph(file, current_commission, current_node_demand):
             [10, "much stale eth. such queue"],
             [10, "We need people depositing rETH... wait no!"],
             [10, "o_O"],
-            [10, "¯\\_(ツ)_/¯"],
+            [10, "¯\\_(°-°)_/¯"],
             [10, "pls low gas wen"],
             [5, "shouldve deployed on cardano"],
             [5, "shouldve deployed on solana"],
