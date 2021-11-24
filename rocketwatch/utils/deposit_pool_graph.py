@@ -83,38 +83,37 @@ def get_graph(file, current_commission, current_node_demand):
                                    color=color))
     if box_start < 0:
         # TODO load from file at module import
-        tmp = [
-            [20, "Maybe go outside. Its gonna take a while..."],
-            [20, "Yep. Still 5%"],
-            [20, "What did you expect?"],
-            [20, "How much longer must we suffer?"],
-            [20, "Remember when commissions were 15%?"],
-            [20, "And they don't stop coming"],
-            [10, "Hope you have 32ETH ready c:"],
-            [10, "Anybody want some cheap rETH?"],
-            [10, ":catJAM:"],
-            [10, "much stale eth. such queue"],
-            [10, "We need people depositing rETH... wait no!"],
-            [10, "o_O"],
-            [10, "¯\\_(°-°)_/¯"],
-            [10, "pls low gas wen"],
-            [5, "shouldve deployed on cardano"],
-            [5, "shouldve deployed on solana"],
-            [5, "woooo yeah 5% GO GO GO"],
-            [5, "too bullish"],
-            [5, "too bearish"],
-            [5, "Anybody seen the dot recently?"],
-            [5, "What if the queue never depletes?"],
-            [1, "RPL to 666$"],
-            [1, "RPL to 0.69 ETH"],
-            [1, "shouldve deployed on bitcoin"],
-            [1, "Negative Commissions wen?"],
-            [0.1, "dont tell anyone but im running out of ideas"],
-            [0.1, "This is a secret message. Or is it?"],
-            [0.01, "pog"]
+        strings = [
+            "Maybe go outside. Its gonna take a while...",
+            "Yep. Still 5%",
+            "What did you expect?",
+            "How much longer must we suffer?",
+            "Remember when commissions were 15%?",
+            "And they don't stop coming",
+            "Hope you have 32ETH ready c:",
+            "Anybody want some cheap rETH?",
+            ":catJAM:",
+            "much stale eth. such queue",
+            "We need people depositing rETH... wait no!",
+            "o_O",
+            "¯\\_(°-°)_/¯",
+            "pls low gas wen",
+            "shouldve deployed on cardano",
+            "shouldve deployed on solana",
+            "woooo yeah 5% GO GO GO",
+            "too bullish",
+            "too bearish",
+            "Anybody seen the dot recently?",
+            "What if the queue never depletes?",
+            "RPL to 666$",
+            "RPL to 0.69 ETH",
+            "shouldve deployed on bitcoin",
+            "Negative Commissions wen?",
+            "dont tell anyone but im running out of ideas",
+            "This is a secret message. Or is it?",
+            "pog",
         ]
-        weights, strings = list(zip(*tmp))
-        text = random.choices(strings, weights=weights)
+        text = random.choices(strings)
         ax.text(0, max_fee - 2, text[0],
                 fontsize=12, color="black", ha='center', va='center')
 
