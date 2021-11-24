@@ -164,7 +164,7 @@ class Random(commands.Cog):
         description.append("Total ETH Locked".center(max(len(d) for d in description), "-"))
         total_tvl = sum(tvl)
         dai_total_tvl = total_tvl * eth_price
-        description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(eth_price)} DAI)")
+        description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl)} DAI)")
 
         description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
