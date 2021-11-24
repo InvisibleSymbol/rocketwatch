@@ -177,8 +177,14 @@ class Random(commands.Cog):
         tvl[-1] *= solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
+
         tvl.append(solidity.to_float(rp.call("rocketVault.balanceOfToken", "rocketDAONodeTrustedActions", rpl_address)))
         description.append(f"+ {tvl[-1]:12.2f} RPL: oDAO Bonded RPL")
+        # convert rpl to eth for correct tvl calculation
+        tvl[-1] *= solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+
+        tvl.append(solidity.to_float(rp.call("rocketVault.balanceOfToken", "rocketAuctionManager", rpl_address)))
+        description.append(f"+ {tvl[-1]:12.2f} RPL: Slashed RPL ")
         # convert rpl to eth for correct tvl calculation
         tvl[-1] *= solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
