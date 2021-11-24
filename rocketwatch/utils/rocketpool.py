@@ -120,16 +120,9 @@ class RocketPool:
     def get_minipools(self, limit=10):
         result = {
             "half" : self.get_minipools_by_type("minipools.available.half", limit),
-            "full" : [],
-            "empty": []}
-        current_len = sum([e[0] for e in result.values() if e])
-        if current_len >= limit:
-            return result
-        result["full"] = self.get_minipools_by_type("minipools.available.full", limit - current_len)
-        current_len = sum([e[0] for e in result.values() if e])
-        if current_len >= limit:
-            return result
-        result["empty"] = self.get_minipools_by_type("minipools.available.empty", limit - current_len)
+            "full" : self.get_minipools_by_type("minipools.available.full", limit),
+            "empty": self.get_minipools_by_type("minipools.available.empty", limit)
+        }
         return result
 
     def get_dai_eth_price(self):
