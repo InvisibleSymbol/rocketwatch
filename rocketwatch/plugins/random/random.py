@@ -126,35 +126,45 @@ class Random(commands.Cog):
     async def tvl(self, ctx):
         await ctx.defer(hidden=is_hidden(ctx))
         tvl = []
-
         description = []
-        tvl.append(solidity.to_float(rp.call("rocketTokenRETH.getTotalCollateral")))
-        description.append(f"+ {tvl[-1]:12.2f} ETH: rETH Collateral")
+        eth_price = rp.get_dai_eth_price()
+
+        minipool_count_per_status = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)
+
+        tvl.append(minipool_count_per_status[2] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
+
+        tvl.append(minipool_count_per_status[1] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Minipools")
+
+        tvl.append(minipool_count_per_status[0] * 16)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Unmatched Minipools")
+
+        tvl.append(minipool_count_per_status[3] * 32)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Withdrawable Minipools")
 
         tvl.append(solidity.to_float(rp.call("rocketDepositPool.getBalance")))
         description.append(f"+ {tvl[-1]:12.2f} ETH: Deposit Pool Balance")
 
-        minipool_count_per_status = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)
-        tvl.append(minipool_count_per_status[0] * 16)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Unmatched Minipool")
+        tvl.append(solidity.to_float(w3.eth.getBalance(rp.get_address_by_name("rocketTokenRETH"))))
+        description.append(f"+ {tvl[-1]:12.2f} ETH: rETH Extra Collateral")
 
-        tvl.append(minipool_count_per_status[1] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Minipool")
+        description.append("Total ETH Locked".center(max(len(d) for d in description), "-"))
+        eth_tvl = sum(tvl)
+        # get eth tvl in dai
+        dai_eth_tvl = eth_tvl * eth_price
+        description.append(f"  {eth_tvl:12.2f} ETH ({humanize.intword(dai_eth_tvl)} DAI)")
 
-        tvl.append(minipool_count_per_status[2] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipool")
+        tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")))
+        description.append(f"+ {tvl[-1]:12.2f} RPL: Staked or Bonded RPL")
+        # convert rpl to eth for correct tvl calcuation
+        tvl[-1] *= solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
-        tvl.append(minipool_count_per_status[3] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Withdrawable Minipool")
+        description.append("Total ETH Locked".center(max(len(d) for d in description), "-"))
+        total_tvl = sum(tvl)
+        dai_total_tvl = total_tvl * eth_price
+        description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(eth_price)} DAI)")
 
-        tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")) * solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
-        description.append(f"+ {tvl[-1]:12.2f} ETH: RPL Locked (staked or bonded)")
-
-        description.append("Total Value Locked".center(max(len(d) for d in description), "-"))
-        tvl = sum(tvl)
-        # get it in dai
-        dai_tvl = tvl * rp.get_dai_eth_price()
-        description.append(f"  {tvl:12.2f} ETH ({humanize.intword(dai_tvl)} DAI)")
         description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
         embed = Embed(color=self.color)
