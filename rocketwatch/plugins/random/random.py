@@ -196,7 +196,7 @@ class Random(commands.Cog):
         description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
         embed = Embed(color=self.color)
-        embed.set_footer(text="\"Well, it's closer to my earlier calculations than the grafana dashboard.\" - eracpp 2021")
+        embed.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
         embed.description = description
         await ctx.send(embed=embed, hidden=is_hidden(ctx))
 
