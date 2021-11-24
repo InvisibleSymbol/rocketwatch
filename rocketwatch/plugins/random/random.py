@@ -14,6 +14,7 @@ from utils.readable import etherscan_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
+from utils.shared_w3 import w3
 
 
 class Random(commands.Cog):
