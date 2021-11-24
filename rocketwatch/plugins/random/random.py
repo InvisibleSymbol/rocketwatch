@@ -37,7 +37,7 @@ class Random(commands.Cog):
         # Get the next 10 minipools per category
         minipools = rp.get_minipools(limit=10)
         description = "Queues are processed from top to bottom.\n" \
-                      "This means that the \"Normal Minipool\"   Queue **has to be empty**\n" \
+                      "This means that the \"Normal Minipool\" Queue *has to be empty*\n" \
                       "before the \"Full Minipool Refund\" Queue gets processed!\n\n"
         matchings = [
             ["half", "Normal Minipool Queue"],
