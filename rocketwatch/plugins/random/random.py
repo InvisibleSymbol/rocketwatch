@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from io import BytesIO
 
@@ -9,12 +10,17 @@ from discord.ext import commands
 from discord_slash import cog_ext
 
 from utils import solidity
+from utils.cfg import cfg
 from utils.deposit_pool_graph import get_graph
 from utils.readable import etherscan_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 from utils.shared_w3 import w3
+
+
+log = logging.getLogger("random")
+log.setLevel(cfg["log_level"])
 
 
 class Random(commands.Cog):
@@ -130,8 +136,17 @@ class Random(commands.Cog):
         description = []
         eth_price = rp.get_dai_eth_price()
 
-        minipool_count_per_status = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", 0, 9999)
-
+        offset, limit = 0, 500
+        minipool_count_per_status = [0, 0, 0, 0, 0]
+        while True:
+            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
+            tmp = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
+            for i in range(len(tmp)):
+                minipool_count_per_status[i] += tmp[i]
+            if sum(tmp) < limit:
+                break
+            offset += limit
+        log.debug(minipool_count_per_status)
         tvl.append(minipool_count_per_status[2] * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
 
