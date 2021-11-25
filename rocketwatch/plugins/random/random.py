@@ -137,17 +137,8 @@ class Random(commands.Cog):
         eth_price = rp.get_dai_eth_price()
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
+        minipool_count_per_status = rp.get_minipool_count_per_status()
 
-        offset, limit = 0, 500
-        minipool_count_per_status = [0, 0, 0, 0, 0]
-        while True:
-            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
-            tmp = rp.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
-            for i in range(len(tmp)):
-                minipool_count_per_status[i] += tmp[i]
-            if sum(tmp) < limit:
-                break
-            offset += limit
         log.debug(minipool_count_per_status)
         tvl.append(minipool_count_per_status[2] * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")

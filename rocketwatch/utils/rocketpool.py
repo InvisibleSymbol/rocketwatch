@@ -134,5 +134,18 @@ class RocketPool:
         value_eth = 1 / value_dai
         return value_eth
 
+    def get_minipool_count_per_status(self):
+        offset, limit = 0, 500
+        minipool_count_per_status = [0, 0, 0, 0, 0]
+        while True:
+            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
+            tmp = self.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
+            for i in range(len(tmp)):
+                minipool_count_per_status[i] += tmp[i]
+            if sum(tmp) < limit:
+                break
+            offset += limit
+        return minipool_count_per_status
+
 
 rp = RocketPool()
