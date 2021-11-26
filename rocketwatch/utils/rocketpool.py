@@ -18,10 +18,8 @@ class RocketPool:
     addresses = bidict()
 
     def __init__(self):
-        storage_address = cfg['rocketpool.storage_contract']
-        self.storage_contract = self.assemble_contract("rocketStorage", storage_address)
-        self.addresses["rocketStorage"] = storage_address
-        self.addresses["DAIETH_univ3"] = cfg['DAIETH_univ3.address']
+        for name, address in cfg["rocketpool.manual_addresses"].items():
+            self.addresses[name] = address
 
     @cached(cache={})
     def get_address_by_name(self, name):
@@ -33,7 +31,7 @@ class RocketPool:
     def uncached_get_address_by_name(self, name):
         log.debug(f"Retrieving address for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
-        address = self.storage_contract.functions.getAddress(sha3).call()
+        address = self.get_contract_by_name("rocketStorage").functions.getAddress(sha3).call()
         self.addresses[name] = address
         return address
 
@@ -44,7 +42,7 @@ class RocketPool:
     def uncached_get_abi_by_name(self, name):
         log.debug(f"Retrieving abi for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.abi", name])
-        compressed_string = self.storage_contract.functions.getString(sha3).call()
+        compressed_string = self.get_contract_by_name("rocketStorage").functions.getString(sha3).call()
         return decode_abi(compressed_string)
 
     @cached(cache={})

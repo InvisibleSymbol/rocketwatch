@@ -56,7 +56,7 @@ async def on_slash_command_error(ctx, excep):
             return await ctx.channel.send(msg)
 
 
-log.info(f"Running using Storage Contract {cfg['rocketpool.storage_contract']} (Chain: {cfg['rocketpool.chain']})")
+log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} (Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
 for path in Path("plugins").glob('**/*.py'):

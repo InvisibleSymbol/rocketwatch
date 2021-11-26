@@ -1,8 +1,12 @@
 log_level: `logging:DEBUG`,
 rocketpool: {
-  storage_contract: "0x0000000000000000000000000000000000000000",
+  manual_addresses: {
+    rocketStorage: "0x0000000000000000000000000000000000000000",
+    DAIETH_univ3:  "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8"
+  }
   chain: "mainnet",
-  infura_secret: "insert_secret_here"
+  alchemy_secret: "insert_secret_here",
+  mainnet_alchemy_secret: "insert_secret_here"
 },
 wakatime.secret = ""
 discord: {
