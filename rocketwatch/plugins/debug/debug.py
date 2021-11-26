@@ -36,18 +36,24 @@ class Debug(commands.Cog):
                                name="json_args",
                                description="json formated arguments. example: `[1, \"World\"]`",
                                option_type=3,
+                               required=False),
+                           create_option(
+                               name="block",
+                               description="call against block state",
+                               option_type=4,
                                required=False)
                        ]
                        )
-    async def call(self, ctx, command, json_args="[]"):
+    async def call(self, ctx, command, json_args="[]", block="latest"):
         """Call Function of Contract"""
+        await ctx.defer()
         # make sure the first character of the command is lowercase
         command = command[0].lower() + command[1:]
         try:
             args = json.loads(json_args)
             if not isinstance(args, list):
                 args = [args]
-            v = rp.call(command, *args)
+            v = rp.call(command, *args, block=block)
         except Exception as err:
             await ctx.send(f"Exception: `{repr(err)}`")
             return

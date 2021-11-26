@@ -74,13 +74,13 @@ class RocketPool:
         name = self.get_name_by_address(address)
         return self.assemble_contract(name, address)
 
-    def call(self, path, *args):
+    def call(self, path, *args, block="latest"):
         parts = path.split(".")
         if len(parts) != 2:
             raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
         name, function = parts
         contract = self.get_contract_by_name(name)
-        return contract.functions[function](*args).call()
+        return contract.functions[function](*args).call(block_identifier=block)
 
     def get_pubkey_using_transaction(self, receipt):
         # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
