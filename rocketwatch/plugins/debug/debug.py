@@ -55,13 +55,13 @@ class Debug(commands.Cog):
                 args = [args]
             v = rp.call(command, *args, block=block)
         except Exception as err:
-            await ctx.send(f"Exception: `{repr(err)}`")
+            await ctx.send(f"Exception: ```{repr(err)}```")
             return
 
         if isinstance(v, int) and abs(v) >= 10 ** 12:
             v = solidity.to_float(v)
 
-        await ctx.send(f"`{command}: {v}`")
+        await ctx.send(f"`block: {block}`\n`{command}({args}): {v}`")
 
     @cog_ext.cog_slash(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
