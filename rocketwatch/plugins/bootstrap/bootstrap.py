@@ -132,6 +132,10 @@ class Bootstrap(commands.Cog):
             for tnx in block.transactions:
                 if tnx.hash in self.tnx_hash_cache:
                     continue
+                if "to" not in tnx:
+                    # probably a contract creation transaction
+                    log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
+                    continue
                 if tnx.to in self.addresses:
                     self.tnx_hash_cache[tnx.hash] = True
                     contract_name = rp.get_name_by_address(tnx.to)
