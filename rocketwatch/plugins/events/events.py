@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -189,6 +190,8 @@ class Events(commands.Cog):
 
         for events in self.events:
             for event in reversed(list(events.get_new_entries())):
+                # small delay to make commands not timeout
+                await asyncio.sleep(0.01)
                 tnx_hash = event.transactionHash.hex()
                 result = None
 

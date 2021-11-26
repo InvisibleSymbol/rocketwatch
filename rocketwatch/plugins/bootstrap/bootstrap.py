@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -123,6 +124,8 @@ class Bootstrap(commands.Cog):
 
         messages = []
         for block_hash in reversed(list(self.block_event.get_new_entries())):
+            # small delay to make commands not timeout
+            await asyncio.sleep(0.01)
             log.debug(f"Checking Block: {block_hash.hex()}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)

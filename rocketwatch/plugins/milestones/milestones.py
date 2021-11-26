@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -55,6 +56,8 @@ class Milestones(commands.Cog):
 
         history = Query()
         for milestone in self.milestones:
+            # small delay to make commands not timeout
+            await asyncio.sleep(0.01)
             milestone = aDict(milestone)
             state = self.db.search(history.name == milestone.name)
 
