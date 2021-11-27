@@ -191,6 +191,45 @@ class Random(commands.Cog):
         embed.description = description
         await ctx.send(embed=embed, hidden=is_hidden(ctx))
 
+    @cog_ext.cog_slash(guild_ids=guilds)
+    async def current_rETH_apr(self, ctx):
+        await ctx.defer(hidden=is_hidden(ctx))
+        e = Embed(color=self.color)
+        e.title = "Current Estimated rETH APR"
+
+        # get update blocks
+        current_update_block = rp.call("rocketNetworkBalances.getBalancesBlock")
+        previous_update_block = rp.call("rocketNetworkBalances.getBalancesBlock", block=current_update_block - 1)
+
+        # get timestamps of blocks
+        current_update_timestamp = w3.eth.get_block(current_update_block).timestamp
+        previous_update_timestamp = w3.eth.get_block(previous_update_block).timestamp
+
+        # get ratios after and before current update block
+        current_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
+        previous_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=current_update_block - 1))
+
+        # calculate the percentage increase in ratio over 24 hours
+        ratio_increase = (current_ratio - previous_ratio) / (
+                current_update_timestamp - previous_update_timestamp) * 24 * 60 * 60
+
+        # turn into yearly percentage
+        yearly_percentage = ratio_increase * 365
+
+        e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
+                        "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
+                        " or a low minipool count combined with bad Luck simply resulting in lower rewards for a day. "
+
+        e.add_field(name="Latest rETH/ETH Updates:", value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
+                                                           f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>")
+
+        e.add_field(name="APR based on rETH/ETH Ratio Change:", value=f"{yearly_percentage:.3%}", inline=False)
+
+        e.set_footer(
+            text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")
+
+        await ctx.send(embed=e, hidden=is_hidden(ctx))
+
 
 def setup(bot):
     bot.add_cog(Random(bot))
