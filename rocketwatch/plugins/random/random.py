@@ -318,6 +318,21 @@ class Random(commands.Cog):
         # send embed
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
+    @cog_ext.cog_slash(guild_ids=guilds)
+    async def effective_rpl_staked(self, ctx):
+        await ctx.defer(hidden=is_hidden(ctx))
+        e = Embed(color=self.color)
+        # get total RPL staked
+        total_rpl_staked = solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake"))
+        e.add_field(name="Total RPL Staked:", value=f"{humanize.intcomma(total_rpl_staked, 2):>10} RPL", inline=False)
+        # get effective RPL staked
+        effective_rpl_stake = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
+        # calculate percentage staked
+        percentage_staked = effective_rpl_stake / total_rpl_staked
+        e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2):>10} RPL "
+                                                        f"({percentage_staked:.2%})", inline=False)
+        await ctx.send(embed=e, hidden=is_hidden(ctx))
+
 
 def setup(bot):
     bot.add_cog(Random(bot))
