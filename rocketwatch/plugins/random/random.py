@@ -12,7 +12,7 @@ from discord_slash import cog_ext
 from utils import solidity
 from utils.cfg import cfg
 from utils.deposit_pool_graph import get_graph
-from utils.readable import etherscan_url
+from utils.readable import etherscan_url, uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
