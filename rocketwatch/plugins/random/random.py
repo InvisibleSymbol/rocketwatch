@@ -324,12 +324,12 @@ class Random(commands.Cog):
         e = Embed(color=self.color)
         # get total RPL staked
         total_rpl_staked = solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake"))
-        e.add_field(name="Total RPL Staked:", value=f"{humanize.intcomma(total_rpl_staked, 2):>10} RPL", inline=False)
+        e.add_field(name="Total RPL Staked:", value=f"{humanize.intcomma(total_rpl_staked, 2)} RPL", inline=False)
         # get effective RPL staked
         effective_rpl_stake = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
         # calculate percentage staked
         percentage_staked = effective_rpl_stake / total_rpl_staked
-        e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2):>10} RPL "
+        e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2)} RPL "
                                                         f"({percentage_staked:.2%})", inline=False)
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
