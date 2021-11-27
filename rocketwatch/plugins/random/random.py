@@ -218,7 +218,7 @@ class Random(commands.Cog):
 
         e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
                         "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
-                        " or a low minipool count combined with bad Luck simply resulting in lower rewards for a day. "
+                        " or a low Minipool count combined with bad Luck simply resulting in lower rewards for a day. "
 
         e.add_field(name="Latest rETH/ETH Updates:", value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
                                                            f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>")
