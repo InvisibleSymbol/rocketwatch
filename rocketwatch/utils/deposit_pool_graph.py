@@ -66,7 +66,7 @@ def get_graph(file, current_commission, current_node_demand):
 
     # show current percentage boldly in the middle
     # add out-of-range rectangles
-    box_start = None
+    box_start = 0
     if current_node_demand <= left_border:
         color = "red"
         box_start = left_side
