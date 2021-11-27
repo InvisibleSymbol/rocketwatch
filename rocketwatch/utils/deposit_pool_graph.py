@@ -74,7 +74,6 @@ def get_graph(file, current_commission, current_node_demand):
         color = "green"
         box_start = right_border
     if box_start:
-        c = int(current_commission) if int(current_commission) == current_commission else round(current_commission, 2)
         ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
                                    max_fee - min_fee + 2,
