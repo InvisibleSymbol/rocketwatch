@@ -17,6 +17,7 @@ from utils.readable import etherscan_url, uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
+from utils.thegraph import get_average_commission
 from utils.visibility import is_hidden
 
 log = logging.getLogger("random")
@@ -221,10 +222,17 @@ class Random(commands.Cog):
                         "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
                         " or a low Minipool count combined with bad Luck simply resulting in lower rewards for a day. "
 
-        e.add_field(name="Latest rETH/ETH Updates:", value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
-                                                           f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>")
+        e.add_field(name="Latest rETH/ETH Updates:",
+                    value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
+                          f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>",
+                    inline=False)
 
         e.add_field(name="APR based on rETH/ETH Ratio Change:", value=f"{yearly_percentage:.3%}", inline=False)
+
+        # get current average commission
+        current_commission = get_average_commission()
+
+        e.add_field(name="Current rETH Commission Fee:", value=f"{current_commission:.2%}", inline=False)
 
         e.set_footer(
             text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")
