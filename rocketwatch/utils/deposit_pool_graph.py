@@ -78,7 +78,7 @@ def get_graph(file, current_commission, current_node_demand):
                                    right_side - right_border,
                                    max_fee - min_fee + 2,
                                    fill=False,
-                                   hatch='...',
+                                   hatch='///',
                                    color=color))
     if box_start < 0:
         # TODO load from file at module import
