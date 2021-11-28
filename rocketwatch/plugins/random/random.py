@@ -206,6 +206,8 @@ class Random(commands.Cog):
         # get timestamps of blocks
         current_update_timestamp = w3.eth.get_block(current_update_block).timestamp
         previous_update_timestamp = w3.eth.get_block(previous_update_block).timestamp
+        # estimate next update timestamp by last 2 updates
+        next_update_timestamp = current_update_timestamp + (current_update_timestamp - previous_update_timestamp)
 
         # get ratios after and before current update block
         current_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
@@ -220,19 +222,18 @@ class Random(commands.Cog):
 
         e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
                         "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
-                        " or a low Minipool count combined with bad Luck simply resulting in lower rewards for a day. "
+                        " or a low Minipool count combined with bad Luck simply resulting in lower rewards for a day."
 
         e.add_field(name="Latest rETH/ETH Updates:",
                     value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
-                          f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>",
+                          f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>\n"
+                          f"Next Update expected <t:{next_update_timestamp}:R>\n",
                     inline=False)
-
-        e.add_field(name="APR based on rETH/ETH Ratio Change:", value=f"{yearly_percentage:.3%}", inline=False)
 
         # get current average commission
         current_commission = get_average_commission()
 
-        e.add_field(name="Current rETH Commission Fee:", value=f"{current_commission:.2%}", inline=False)
+        e.add_field(name="Observed rETH APR:", value=f"{yearly_percentage:.2%} (Commission Fee of {current_commission:.2%} taken into account)", inline=False)
 
         e.set_footer(
             text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")
