@@ -26,7 +26,7 @@ class About(commands.Cog):
         self.bot = bot
         self.process = psutil.Process(os.getpid())
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def about(self, ctx):
         """Bot and Server Information"""
         await ctx.defer(hidden=is_hidden(ctx))
@@ -76,7 +76,7 @@ class About(commands.Cog):
 
         await ctx.send(embed=embed, hidden=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def donate(self, ctx):
         """Donate to the Bot Developer"""
         embed = Embed()

@@ -63,13 +63,13 @@ class Debug(commands.Cog):
 
         await ctx.send(f"`block: {block}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def get_abi_from_contract(self, ctx, contract):
         """retrieves the latest ABI for a contract"""
         with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
             await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def get_address_of_contract(self, ctx, contract):
         """retrieves the latest address for a contract"""
         await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))

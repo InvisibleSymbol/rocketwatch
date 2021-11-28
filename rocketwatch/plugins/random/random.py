@@ -29,7 +29,7 @@ class Random(commands.Cog):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def queue(self, ctx):
         """Show the next 10 minipools in the queue"""
         await ctx.defer(hidden=is_hidden(ctx))
@@ -58,12 +58,12 @@ class Random(commands.Cog):
         e.description = description
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def dp(self, ctx):
         """Deposit Pool Stats"""
         await self._dp(ctx)
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def deposit_pool(self, ctx):
         """Deposit Pool Stats"""
         await self._dp(ctx)
@@ -114,7 +114,7 @@ class Random(commands.Cog):
             await ctx.send(embed=e, hidden=is_hidden(ctx))
         img.close()
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def dev_time(self, ctx):
         """Timezones too confusing to you? Well worry no more, this command is here to help!"""
         embed = Embed(color=self.color)
@@ -131,7 +131,7 @@ class Random(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def tvl(self, ctx):
         await ctx.defer(hidden=is_hidden(ctx))
         tvl = []
@@ -240,7 +240,7 @@ class Random(commands.Cog):
 
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def rewards(self, ctx):
         await ctx.defer(hidden=is_hidden(ctx))
         e = Embed(color=self.color)
@@ -327,7 +327,7 @@ class Random(commands.Cog):
         # send embed
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def effective_rpl_staked(self, ctx):
         await ctx.defer(hidden=is_hidden(ctx))
         e = Embed(color=self.color)

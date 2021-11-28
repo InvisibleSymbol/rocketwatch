@@ -55,7 +55,7 @@ class FaQ(commands.Cog):
         else:
             await ctx.send(f"No entry named {name}")
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def faq(self, ctx, name):
         entries = Query()
         current_state = self.db.search(entries.name == name)
@@ -68,7 +68,7 @@ class FaQ(commands.Cog):
                 possible_entries.append(entry["name"])
             await ctx.send(f"No entry named {name}. Possible entries: `{', '.join(possible_entries)}`")
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @cog_ext.cog_slash()
     async def faq_list(self, ctx):
         entries = Query()
         current_state = self.db.search(entries.name != "")
