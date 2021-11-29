@@ -214,8 +214,8 @@ class Random(commands.Cog):
         previous_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=current_update_block - 1))
 
         # calculate the percentage increase in ratio over 24 hours
-        ratio_increase = (current_ratio - previous_ratio) / (
-                current_update_timestamp - previous_update_timestamp) * 24 * 60 * 60
+        ratio_temp = (current_ratio / previous_ratio) - 1
+        ratio_increase = ratio_temp * ((24 * 60 * 60) / (current_update_timestamp - previous_update_timestamp))
 
         # turn into yearly percentage
         yearly_percentage = ratio_increase * 365
