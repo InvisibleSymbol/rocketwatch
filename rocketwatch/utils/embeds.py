@@ -7,6 +7,7 @@ from discord import Embed, Color
 from web3.datastructures import MutableAttributeDict as aDict
 
 from strings import _
+from utils import solidity, readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.containers import Response
@@ -66,6 +67,10 @@ def prepare_args(args):
                 if not name:
                     # not an odao member, try to get their ens
                     name = ens.get_name(arg_value)
+                # get balance of address and add whale emoji if above 100 ETH
+                balance = solidity.to_float(w3.eth.getBalance(w3.toChecksumAddress(arg_value)))
+                if balance > 100:
+                    name = f"🐳 {readable.hex(arg_value)}"
 
             # handle validators
             if arg_key == "pubkey":
