@@ -63,14 +63,20 @@ def prepare_args(args):
 
             # handle addresses
             if w3.isAddress(arg_value):
-                name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
+                if arg_value in cfg["override_addresses"]:
+                    name = cfg["override_addresses"][arg_value]
+                if not name:
+                    name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
                 if not name:
                     # not an odao member, try to get their ens
                     name = ens.get_name(arg_value)
+                if not name:
+                    # fall back to shortened address
+                    name = readable.hex(arg_value)
                 # get balance of address and add whale emoji if above 100 ETH
                 balance = solidity.to_float(w3.eth.getBalance(w3.toChecksumAddress(arg_value)))
                 if balance > 100:
-                    name = f"🐳 {readable.hex(arg_value)}"
+                    name = f"🐳 {name}"
 
             # handle validators
             if arg_key == "pubkey":
