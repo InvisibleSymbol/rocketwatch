@@ -5,7 +5,6 @@ from pathlib import Path
 import discord.errors
 from discord import Intents
 from discord.ext import commands
-from discord_slash import SlashCommand
 
 from utils import reporter
 from utils.cfg import cfg
@@ -14,16 +13,14 @@ from utils.visibility import is_hidden
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
 log.setLevel(cfg["log_level"])
-logging.getLogger("discord_slash").setLevel(cfg["log_level"])
 
+"""
 bot = commands.Bot(command_prefix=';',
                    self_bot=True,
                    help_command=None,
                    intents=Intents.default())
-slash = SlashCommand(bot,
-                     sync_commands=True,
-                     sync_on_cog_reload=True)
-
+"""
+bot = discord.Bot()
 reporter.bot = bot
 
 
@@ -50,10 +47,16 @@ async def on_slash_command_error(ctx, excep):
         msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
         try:
             # try to inform the user. this might fail if it took too long to respond
-            return await ctx.send(msg, hidden=is_hidden(ctx))
+            return await ctx.respond(msg, ephemeral=is_hidden(ctx))
         except discord.errors.NotFound:
             # so fall back to a normal channel message if that happens
             return await ctx.channel.send(msg)
+
+
+# attach to ready event
+@bot.event
+async def on_ready():
+    log.info(f'Logged in as {bot.user.name} ({bot.user.id})')
 
 
 log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} (Chain: {cfg['rocketpool.chain']})")

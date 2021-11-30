@@ -1,6 +1,6 @@
 from discord import Embed, Color
 from discord.ext import commands
-from discord_slash import cog_ext
+from discord.commands import slash_command
 from tinydb import TinyDB, Query
 
 from utils.slash_permissions import guilds, owner_only_slash
@@ -42,7 +42,7 @@ class FaQ(commands.Cog):
         else:
             # create new entry
             self.db.insert({"name": name, "title": title, "description": description, "credits": credits, "image": image_url})
-        await ctx.send("Entry Updated!")
+        await ctx.respond("Entry Updated!")
 
     @owner_only_slash()
     async def delete_faq(self, ctx, name):
@@ -51,24 +51,24 @@ class FaQ(commands.Cog):
         current_state = self.db.search(entries.name == name)
         if current_state:
             self.db.remove(entries.name == name)
-            await ctx.send("Entry Deleted!")
+            await ctx.respond("Entry Deleted!")
         else:
-            await ctx.send(f"No entry named {name}")
+            await ctx.respond(f"No entry named {name}")
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def faq(self, ctx, name):
         entries = Query()
         current_state = self.db.search(entries.name == name)
         if current_state:
-            await ctx.send(embed=await self.created_embed(current_state[0]))
+            await ctx.respond(embed=await self.created_embed(current_state[0]))
         else:
             # if no entry found, return list of possible entries
             possible_entries = []
             for entry in self.db.all():
                 possible_entries.append(entry["name"])
-            await ctx.send(f"No entry named {name}. Possible entries: `{', '.join(possible_entries)}`")
+            await ctx.respond(f"No entry named {name}. Possible entries: `{', '.join(possible_entries)}`")
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def faq_list(self, ctx):
         entries = Query()
         current_state = self.db.search(entries.name != "")
@@ -77,9 +77,9 @@ class FaQ(commands.Cog):
             embed.title = "FAQ List"
             for entry in current_state:
                 embed.add_field(name=entry["name"], value=f"Name: `{entry['title']}`", inline=False)
-            await ctx.send(embed=embed)
+            await ctx.respond(embed=embed)
         else:
-            await ctx.send("No FAQs found!")
+            await ctx.respond("No FAQs found!")
 
 
 def setup(bot):

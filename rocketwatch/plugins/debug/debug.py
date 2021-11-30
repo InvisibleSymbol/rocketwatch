@@ -4,8 +4,7 @@ import random
 
 from discord import File
 from discord.ext import commands
-from discord_slash import cog_ext
-from discord_slash.utils.manage_commands import create_option
+from discord.commands import slash_command
 
 from utils import solidity
 from utils.cfg import cfg
@@ -55,31 +54,31 @@ class Debug(commands.Cog):
                 args = [args]
             v = rp.call(command, *args, block=block)
         except Exception as err:
-            await ctx.send(f"Exception: ```{repr(err)}```")
+            await ctx.respond(f"Exception: ```{repr(err)}```")
             return
 
         if isinstance(v, int) and abs(v) >= 10 ** 12:
             v = solidity.to_float(v)
 
-        await ctx.send(f"`block: {block}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
+        await ctx.respond(f"`block: {block}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
         """retrieves the latest ABI for a contract"""
         with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
-            await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+            await ctx.respond(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def get_address_of_contract(self, ctx, contract):
         """retrieves the latest address for a contract"""
-        await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))
+        await ctx.respond(etherscan_url(rp.uncached_get_address_by_name(contract)))
 
     @owner_only_slash()
     async def delete(self, ctx, channel_id, message_id):
         channel = await self.bot.fetch_channel(channel_id)
         msg = await channel.fetch_message(message_id)
         await msg.delete()
-        await ctx.send("Done", hidden=True)
+        await ctx.respond("Done", ephemeral=True)
 
     @owner_only_slash()
     async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
@@ -89,7 +88,7 @@ class Debug(commands.Cog):
         else:
             contract = rp.get_contract_by_address(tnx.to)
         data = contract.decode_function_input(tnx.input)
-        await ctx.send(f"```Input:\n{data}```", hidden=True)
+        await ctx.respond(f"```Input:\n{data}```", ephemeral=True)
 
 
 def setup(bot):

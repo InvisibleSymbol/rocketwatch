@@ -8,7 +8,7 @@ import requests
 import uptime
 from discord import Embed
 from discord.ext import commands
-from discord_slash import cog_ext
+from discord.commands import slash_command
 
 from utils import readable
 from utils.cfg import cfg
@@ -26,10 +26,10 @@ class About(commands.Cog):
         self.bot = bot
         self.process = psutil.Process(os.getpid())
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def about(self, ctx):
         """Bot and Server Information"""
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         embed = Embed()
         g = self.bot.guilds
         code_time = None
@@ -74,9 +74,9 @@ class About(commands.Cog):
         bot_uptime = time.time() - BOOT_TIME
         embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
-        await ctx.send(embed=embed, hidden=is_hidden(ctx))
+        await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def donate(self, ctx):
         """Donate to the Bot Developer"""
         embed = Embed()
@@ -101,9 +101,9 @@ class About(commands.Cog):
         embed.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
         embed.set_footer(text="Thank you for your support! <3")
-        await ctx.send(
+        await ctx.respond(
             embed=embed,
-            hidden=True)
+            ephemeral=True)
 
 
 def setup(bot):

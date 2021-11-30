@@ -9,7 +9,7 @@ bidict==0.21.4
 tinydb==4.5.2
 requests==2.26.0
 uptime==3.0.1
-discord-py-interactions==3.0.2
+git+git://github.com/Pycord-Development/pycord@64cd9676ed45fa5f50d3cbf0530b8dd551a813b6#egg=py-cord
 config==0.5.1
 pytz==2021.3
 matplotlib==3.5.0

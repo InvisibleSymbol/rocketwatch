@@ -8,7 +8,7 @@ import pytz
 from discord import Embed, Color
 from discord import File
 from discord.ext import commands
-from discord_slash import cog_ext
+from discord.commands import slash_command
 
 from utils import solidity
 from utils.cfg import cfg
@@ -29,10 +29,10 @@ class Random(commands.Cog):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def queue(self, ctx):
         """Show the next 10 minipools in the queue"""
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(colour=self.color)
         e.title = "Minipool queue"
 
@@ -66,20 +66,20 @@ class Random(commands.Cog):
         else:
             e.description = description
         
-        await ctx.send(embed=e, hidden=is_hidden(ctx))
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def dp(self, ctx):
         """Deposit Pool Stats"""
         await self._dp(ctx)
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def deposit_pool(self, ctx):
         """Deposit Pool Stats"""
         await self._dp(ctx)
 
     async def _dp(self, ctx):
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(colour=self.color)
         e.title = "Deposit Pool Stats"
 
@@ -119,12 +119,12 @@ class Random(commands.Cog):
         if rendered_graph:
             e.set_image(url="attachment://graph.png")
             f = File(img, filename="graph.png")
-            await ctx.send(embed=e, file=f, hidden=is_hidden(ctx))
+            await ctx.respond(embed=e, file=f, ephemeral=is_hidden(ctx))
         else:
-            await ctx.send(embed=e, hidden=is_hidden(ctx))
+            await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
         img.close()
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def dev_time(self, ctx):
         """Timezones too confusing to you? Well worry no more, this command is here to help!"""
         embed = Embed(color=self.color)
@@ -139,11 +139,11 @@ class Random(commands.Cog):
         joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
         embed.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
 
-        await ctx.send(embed=embed)
+        await ctx.respond(embed=embed)
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def tvl(self, ctx):
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         tvl = []
         description = []
         eth_price = rp.get_dai_eth_price()
@@ -201,11 +201,14 @@ class Random(commands.Cog):
         embed = Embed(color=self.color)
         embed.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
         embed.description = description
-        await ctx.send(embed=embed, hidden=is_hidden(ctx))
+        await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
-    async def current_rETH_apr(self, ctx):
-        await ctx.defer(hidden=is_hidden(ctx))
+    @slash_command(guild_ids=guilds)
+    async def flippening(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+    @slash_command(guild_ids=guilds)
+    async def current_reth_apr(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
         e.title = "Current Estimated rETH APR"
 
@@ -216,6 +219,10 @@ class Random(commands.Cog):
         # get timestamps of blocks
         current_update_timestamp = w3.eth.get_block(current_update_block).timestamp
         previous_update_timestamp = w3.eth.get_block(previous_update_block).timestamp
+
+        # average block time
+        average_block_time = (current_update_timestamp - previous_update_timestamp) / (current_update_block - previous_update_block)
+
         # estimate next update timestamp by last 2 updates
         next_update_timestamp = current_update_timestamp + (current_update_timestamp - previous_update_timestamp)
 
@@ -248,11 +255,11 @@ class Random(commands.Cog):
         e.set_footer(
             text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")
 
-        await ctx.send(embed=e, hidden=is_hidden(ctx))
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))  # respond
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def rewards(self, ctx):
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
         e.title = "Reward Period Stats"
         # get rpl price in dai
@@ -335,11 +342,11 @@ class Random(commands.Cog):
         e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
 
         # send embed
-        await ctx.send(embed=e, hidden=is_hidden(ctx))
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
-    @cog_ext.cog_slash()
+    @slash_command(guild_ids=guilds)
     async def effective_rpl_staked(self, ctx):
-        await ctx.defer(hidden=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
         # get total RPL staked
         total_rpl_staked = solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake"))
@@ -350,7 +357,7 @@ class Random(commands.Cog):
         percentage_staked = effective_rpl_stake / total_rpl_staked
         e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2)} RPL "
                                                         f"({percentage_staked:.2%})", inline=False)
-        await ctx.send(embed=e, hidden=is_hidden(ctx))
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
 
 def setup(bot):

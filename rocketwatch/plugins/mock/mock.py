@@ -20,7 +20,7 @@ class Debug(commands.Cog):
     @owner_only_slash()
     async def mock(self, ctx, event_name):
         if event_name not in self.mock_mapping:
-            return await ctx.send(f"No Mock Mapping available for this Event")
+            return await ctx.respond(f"No Mock Mapping available for this Event")
 
         args = aDict({})
         args.event_name = event_name
@@ -32,7 +32,7 @@ class Debug(commands.Cog):
         embed.set_footer(text=embed._footer["text"] + " · This is a mocked Event!")
 
         # trick to remove the command call message
-        tmp = await ctx.send("done")
+        tmp = await ctx.respond("done")
         await tmp.delete()
 
         await ctx.channel.send(embed=embed)
