@@ -38,9 +38,7 @@ class Random(commands.Cog):
 
         # Get the next 10 minipools per category
         minipools = rp.get_minipools(limit=10)
-        description = "Queues are processed from top to bottom.\n" \
-                      "This means that the \"Normal Minipool\" Queue *has to be empty*\n" \
-                      "before the \"Full Minipool Refund\" Queue gets processed!\n\n"
+        description = ""
         matchings = [
             ["half", "Normal Minipool Queue"],
             ["full", "Full Minipool Refund Queue"],
@@ -55,7 +53,19 @@ class Random(commands.Cog):
                 if data[0] > 10:
                     description += "\n- ..."
                 description += "\n\n"
-        e.description = description
+
+        # add explainer at the top of the description if both half and full are not empty
+        if minipools["half"][1] and minipools["full"][1]:
+            description = "Queues are processed from top to bottom.\n" \
+                      "This means that the \"Normal Minipool\" Queue *has to be empty*\n" \
+                      "before the \"Full Minipool Refund\" Queue gets processed!\n\n" + description
+        
+        # set gif if all queus are empty
+        if not description:
+            e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+        else:
+            e.description = description
+        
         await ctx.send(embed=e, hidden=is_hidden(ctx))
 
     @cog_ext.cog_slash()
