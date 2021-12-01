@@ -204,9 +204,6 @@ class Random(commands.Cog):
         await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
-    async def flippening(self, ctx):
-        await ctx.defer(ephemeral=is_hidden(ctx))
-    @slash_command(guild_ids=guilds)
     async def current_reth_apr(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
