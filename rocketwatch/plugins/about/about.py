@@ -89,6 +89,7 @@ class About(commands.Cog):
         embed.add_field(name="Donation Address",
                         value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
+        """
         # add address qrcode
         query_string = urlencode({
             "chs" : "128x128",
@@ -97,7 +98,9 @@ class About(commands.Cog):
             "choe": "UTF-8",
             "chld": "L|0"
         })
-        # embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        """
+        # POAP Event
         embed.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
         embed.set_footer(text="Thank you for your support! <3")
