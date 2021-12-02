@@ -20,15 +20,14 @@ reporter.bot = bot
 
 @bot.event
 async def on_application_command_error(ctx, excep):
-    else:
-        await reporter.report_error(excep, ctx=ctx)
-        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
-        try:
-            # try to inform the user. this might fail if it took too long to respond
-            return await ctx.respond(msg, ephemeral=is_hidden(ctx))
-        except NotFound:
-            # so fall back to a normal channel message if that happens
-            return await ctx.channel.send(msg)
+    await reporter.report_error(excep, ctx=ctx)
+    msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
+    try:
+        # try to inform the user. this might fail if it took too long to respond
+        return await ctx.respond(msg, ephemeral=is_hidden(ctx))
+    except NotFound:
+        # so fall back to a normal channel message if that happens
+        return await ctx.channel.send(msg)
 
 
 # attach to ready event
