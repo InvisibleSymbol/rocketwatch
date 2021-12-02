@@ -28,6 +28,7 @@ class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
+
     @slash_command(guild_ids=guilds)
     async def dev_time(self, ctx):
         """Timezones too confusing to you? Well worry no more, this command is here to help!"""
