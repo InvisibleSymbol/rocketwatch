@@ -61,13 +61,23 @@ class Debug(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
         """retrieves the latest ABI for a contract"""
-        with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
-            await ctx.respond(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+        await ctx.defer()
+        try:
+            with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
+                await ctx.respond(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+        except Exception as err:
+            await ctx.respond(f"Exception: ```{repr(err)}```")
+            return
 
     @slash_command(guild_ids=guilds)
     async def get_address_of_contract(self, ctx, contract):
         """retrieves the latest address for a contract"""
-        await ctx.respond(etherscan_url(rp.uncached_get_address_by_name(contract)))
+        await ctx.defer()
+        try:
+            await ctx.respond(etherscan_url(rp.uncached_get_address_by_name(contract)))
+        except Exception as err:
+            await ctx.respond(f"Exception: ```{repr(err)}```")
+            return
 
     @owner_only_slash()
     async def delete(self, ctx, channel_id, message_id):
