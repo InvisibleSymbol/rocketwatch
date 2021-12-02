@@ -32,6 +32,8 @@ class RocketPool:
         log.debug(f"Retrieving address for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
         address = self.get_contract_by_name("rocketStorage").functions.getAddress(sha3).call()
+        if not w3.toInt(hexstr=address):
+            raise Exception(f"No address found for {name} Contract")
         self.addresses[name] = address
         return address
 
@@ -43,6 +45,8 @@ class RocketPool:
         log.debug(f"Retrieving abi for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.abi", name])
         compressed_string = self.get_contract_by_name("rocketStorage").functions.getString(sha3).call()
+        if not compressed_string:
+            raise Exception(f"No abi found for {name} Contract")
         return decode_abi(compressed_string)
 
     @cached(cache={})
@@ -54,8 +58,6 @@ class RocketPool:
                 abi = f.read()
         if not abi:
             abi = self.get_abi_by_name(name)
-        if not abi:
-            raise Exception(f"No abi found for {name} Contract")
         return w3.eth.contract(address=address, abi=abi)
 
     def get_name_by_address(self, address):
@@ -63,8 +65,6 @@ class RocketPool:
 
     def get_contract_by_name(self, name):
         address = self.get_address_by_name(name)
-        if not address:
-            raise Exception(f"No address found for {name} Contract")
         return self.assemble_contract(name, address)
 
     def get_contract_by_address(self, address):
