@@ -7,7 +7,7 @@ from utils.embeds import assemble
 from utils.slash_permissions import owner_only_slash
 
 
-class Debug(commands.Cog):
+class Mock(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -39,4 +39,4 @@ class Debug(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Debug(bot))
+    bot.add_cog(Mock(bot))
