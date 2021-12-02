@@ -10,6 +10,7 @@ guilds = cfg["discord.guilds"]
 
 def owner_only_slash():
     return bot.slash_command(default_permission=False,
+                             guild_ids=[cfg["discord.owner.server_id"]],
                              permissions=[permissions.Permission(id=cfg["discord.owner.user_id"],
                                                                  type=2,
                                                                  permission=True,
