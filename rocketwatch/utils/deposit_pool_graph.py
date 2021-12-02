@@ -120,7 +120,7 @@ def get_graph(file, current_commission, current_node_demand):
     # store the graph in an file object
     fig.savefig(file, format='png')
     file.seek(0)
-    
+
     # clear plot from memory
     fig.clf()
     plt.close()

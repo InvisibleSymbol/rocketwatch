@@ -36,9 +36,6 @@ class RETHAPR(commands.Cog):
         current_update_timestamp = w3.eth.get_block(current_update_block).timestamp
         previous_update_timestamp = w3.eth.get_block(previous_update_block).timestamp
 
-        # average block time
-        average_block_time = (current_update_timestamp - previous_update_timestamp) / (current_update_block - previous_update_block)
-
         # estimate next update timestamp by last 2 updates
         next_update_timestamp = current_update_timestamp + (current_update_timestamp - previous_update_timestamp)
 
@@ -66,7 +63,9 @@ class RETHAPR(commands.Cog):
         # get current average commission
         current_commission = get_average_commission()
 
-        e.add_field(name="Observed rETH APR:", value=f"{yearly_percentage:.2%} (Commission Fee of {current_commission:.2%} taken into account)", inline=False)
+        e.add_field(name="Observed rETH APR:",
+                    value=f"{yearly_percentage:.2%} (Commission Fee of {current_commission:.2%} taken into account)",
+                    inline=False)
 
         e.set_footer(
             text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")

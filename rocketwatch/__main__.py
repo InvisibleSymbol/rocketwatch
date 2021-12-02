@@ -58,7 +58,8 @@ async def on_ready():
     log.info(f'Logged in as {bot.user.name} ({bot.user.id})')
 
 
-log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} (Chain: {cfg['rocketpool.chain']})")
+log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} "
+         f"(Chain: {cfg['rocketpool.chain']})")
 log.info(f"Loading Plugins")
 
 for path in Path("plugins").glob('**/*.py'):
