@@ -153,8 +153,9 @@ def assemble(args):
     # show sender address
     senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
     if senders:
+        sender = senders[0]
         embed.add_field(name="Sender Address",
-                        value=senders[0])
+                        value=sender)
 
     # show block number
     if "blockNumber" in args:
