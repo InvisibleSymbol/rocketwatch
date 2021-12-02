@@ -4,6 +4,7 @@ from pathlib import Path
 
 import discord.errors
 from discord.ext import commands
+from discord.errors import NotFound
 
 from utils import reporter
 from utils.cfg import cfg
@@ -13,41 +14,19 @@ logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%
 log = logging.getLogger("discord_bot")
 log.setLevel(cfg["log_level"])
 
-"""
-bot = commands.Bot(command_prefix=';',
-                   self_bot=True,
-                   help_command=None,
-                   intents=Intents.default())
-"""
 bot = discord.Bot()
 reporter.bot = bot
 
 
 @bot.event
-async def on_slash_command_error(ctx, excep):
-    if isinstance(excep, commands.CommandNotFound):
-        return
-
-    elif isinstance(excep, commands.CheckFailure):
-        try:
-            return await ctx.message.add_reaction('\N{NO ENTRY SIGN}')
-        except Exception as err:
-            log.exception(err)
-            return
-
-    elif isinstance(excep, commands.CommandOnCooldown):
-        return await ctx.channel.send(
-            f'Command is on cooldown, can be used again in '
-            f'{math.ceil(excep.retry_after)} seconds',
-            delete_after=min(excep.retry_after, 1))
-
+async def on_application_command_error(ctx, excep):
     else:
         await reporter.report_error(excep, ctx=ctx)
         msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
         try:
             # try to inform the user. this might fail if it took too long to respond
             return await ctx.respond(msg, ephemeral=is_hidden(ctx))
-        except discord.errors.NotFound:
+        except NotFound:
             # so fall back to a normal channel message if that happens
             return await ctx.channel.send(msg)
 
