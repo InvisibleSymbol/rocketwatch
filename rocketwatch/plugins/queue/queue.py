@@ -1,23 +1,13 @@
-import asyncio
 import logging
-from datetime import datetime
-from io import BytesIO
 
-import humanize
-import pytz
 from discord import Embed, Color
-from discord import File
-from discord.ext import commands
 from discord.commands import slash_command
+from discord.ext import commands
 
-from utils import solidity
 from utils.cfg import cfg
-from utils.deposit_pool_graph import get_graph
-from utils.readable import etherscan_url, uptime
+from utils.readable import etherscan_url
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
-from utils.thegraph import get_average_commission
 from utils.visibility import is_hidden
 
 log = logging.getLogger("Queue")

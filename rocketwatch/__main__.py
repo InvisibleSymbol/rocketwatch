@@ -3,7 +3,6 @@ import math
 from pathlib import Path
 
 import discord.errors
-from discord import Intents
 from discord.ext import commands
 
 from utils import reporter

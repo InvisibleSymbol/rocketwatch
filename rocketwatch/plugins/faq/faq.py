@@ -1,6 +1,6 @@
 from discord import Embed, Color
-from discord.ext import commands
 from discord.commands import slash_command
+from discord.ext import commands
 from tinydb import TinyDB, Query
 
 from utils.slash_permissions import guilds, owner_only_slash

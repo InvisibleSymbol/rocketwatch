@@ -1,8 +1,7 @@
-
 import requests
-from utils.cfg import cfg
 
 from utils import solidity
+from utils.cfg import cfg
 
 
 def get_average_commission():

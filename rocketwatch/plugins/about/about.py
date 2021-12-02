@@ -1,14 +1,13 @@
 import os
 import time
-from urllib.parse import urlencode
 
 import humanize
 import psutil
 import requests
 import uptime
 from discord import Embed
-from discord.ext import commands
 from discord.commands import slash_command
+from discord.ext import commands
 
 from utils import readable
 from utils.cfg import cfg

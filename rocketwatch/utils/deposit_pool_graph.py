@@ -1,15 +1,13 @@
-from io import BytesIO
+import random
 
 import matplotlib.pyplot as plt
 import numpy as np
-import random
 
 from utils import solidity
 from utils.rocketpool import rp
 
 
 def get_graph(file, current_commission, current_node_demand):
-
     # get values from contracts
     min_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMinimumNodeFee"), decimals=16)
     max_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMaximumNodeFee"), decimals=16)
