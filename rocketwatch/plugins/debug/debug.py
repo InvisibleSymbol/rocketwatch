@@ -3,8 +3,8 @@ import json
 import random
 
 from discord import File
+from discord.commands import slash_command, Option
 from discord.ext import commands
-from discord.commands import slash_command
 
 from utils import solidity
 from utils.cfg import cfg
@@ -24,26 +24,22 @@ class Debug(commands.Cog):
         with open(str(random.random()), "rb"):
             raise Exception("this should never happen wtf is your filesystem")
 
-    @cog_ext.cog_slash(guild_ids=guilds,
-                       options=[
-                           create_option(
-                               name="command",
-                               description="Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`",
-                               option_type=3,
-                               required=True),
-                           create_option(
-                               name="json_args",
-                               description="json formated arguments. example: `[1, \"World\"]`",
-                               option_type=3,
-                               required=False),
-                           create_option(
-                               name="block",
-                               description="call against block state",
-                               option_type=4,
-                               required=False)
-                       ]
-                       )
-    async def call(self, ctx, command, json_args="[]", block="latest"):
+    @owner_only_slash()
+    async def call(self,
+                   ctx,
+                   command: Option(
+                       str,
+                       "Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`"),
+                   json_args: Option(
+                       str,
+                       "json formatted arguments. example: `[1, \"World\"]`",
+                       default="[]",
+                       required=False),
+                   block: Option(
+                       int,
+                       "call against block state",
+                       default="latest",
+                       required=False)):
         """Call Function of Contract"""
         await ctx.defer()
         # make sure the first character of the command is lowercase
