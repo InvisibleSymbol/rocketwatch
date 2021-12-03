@@ -48,6 +48,7 @@ class Milestones(commands.Cog):
         try:
             return self.__init__(self.bot)
         except Exception as err:
+            self.state = "ERROR"
             await report_error(err)
 
     # noinspection PyTypeChecker
