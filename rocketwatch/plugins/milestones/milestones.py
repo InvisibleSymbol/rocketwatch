@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -32,7 +33,7 @@ class Milestones(commands.Cog):
         if not self.run_loop.is_running():
             self.run_loop.start()
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(seconds=60.0)
     async def run_loop(self):
         if self.state == "STOPPED":
             return
@@ -47,6 +48,7 @@ class Milestones(commands.Cog):
         try:
             return self.__init__(self.bot)
         except Exception as err:
+            self.state = "ERROR"
             await report_error(err)
 
     # noinspection PyTypeChecker
@@ -55,6 +57,8 @@ class Milestones(commands.Cog):
 
         history = Query()
         for milestone in self.milestones:
+            # small delay to make commands not timeout
+            await asyncio.sleep(0.01)
             milestone = aDict(milestone)
             state = self.db.search(history.name == milestone.name)
 

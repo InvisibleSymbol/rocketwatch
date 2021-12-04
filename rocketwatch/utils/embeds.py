@@ -7,6 +7,7 @@ from discord import Embed, Color
 from web3.datastructures import MutableAttributeDict as aDict
 
 from strings import _
+from utils import solidity, readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.containers import Response
@@ -62,10 +63,20 @@ def prepare_args(args):
 
             # handle addresses
             if w3.isAddress(arg_value):
-                name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
+                if arg_value in cfg["override_addresses"]:
+                    name = cfg["override_addresses"][arg_value]
+                if not name:
+                    name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
                 if not name:
                     # not an odao member, try to get their ens
                     name = ens.get_name(arg_value)
+                if not name:
+                    # fall back to shortened address
+                    name = readable.hex(arg_value)
+                # get balance of address and add whale emoji if above 100 ETH
+                balance = solidity.to_float(w3.eth.getBalance(w3.toChecksumAddress(arg_value)))
+                if balance > 100:
+                    name = f"🐳 {name}"
 
             # handle validators
             if arg_key == "pubkey":
@@ -142,8 +153,9 @@ def assemble(args):
     # show sender address
     senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
     if senders:
+        sender = senders[0]
         embed.add_field(name="Sender Address",
-                        value=senders[0])
+                        value=sender)
 
     # show block number
     if "blockNumber" in args:

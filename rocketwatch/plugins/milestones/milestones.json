@@ -7,7 +7,7 @@
         ],
         "formatter": "to_float",
         "min": 10000,
-        "step_size": 10000
+        "step_size": 50000
     },
     {
         "name": "milestone_reth_supply",

@@ -1,4 +1,4 @@
-from io import BytesIO
+import random
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,26 +6,13 @@ import numpy as np
 from utils import solidity
 from utils.rocketpool import rp
 
-cached_image_commission = None
-cached_image = None
 
-
-def get_graph(current_commission):
-    global cached_image_commission
-    global cached_image
-    if cached_image_commission == current_commission:
-        cached_image.seek(0)
-        return cached_image
-
-    current_commission = 5
-    current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
-
+def get_graph(file, current_commission, current_node_demand):
     # get values from contracts
     min_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMinimumNodeFee"), decimals=16)
     max_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getMaximumNodeFee"), decimals=16)
     if min_fee == max_fee:
         return None
-
     target_fee = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetNodeFee"), decimals=16)
     demand_range = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getNodeFeeDemandRange"))
 
@@ -60,46 +47,83 @@ def get_graph(current_commission):
     # prepare the graph
     fig, ax = plt.subplots()
     ax.set_xlim(left_side, right_side)
-    ax.set_ylim(min_fee - 5, max_fee + 5)
+    ax.set_ylim(min_fee - 1, max_fee + 1)
     ax.grid(True)
 
     # labels
     ax.set_xlabel("Node Demand (ETH)")
     ax.set_ylabel("Commission Fee (%)")
 
+    # draw the function
+    ax.plot(x, func, color='blue')
+
     # vertical indicators
     ax.axvline(x=current_node_demand, color='black')
     ax.axvline(x=left_border, color='red')
     ax.axvline(x=right_border, color='green')
 
-    # current commission dot
-    ax.plot(current_node_demand, func[np.argmin(np.abs(x - current_node_demand))], 'o', color='black')
-
     # show current percentage boldly in the middle
     # add out-of-range rectangles
-    box_start = None
-    if current_node_demand < left_border:
+    box_start = 0
+    if current_node_demand <= left_border:
+        color = "red"
         box_start = left_side
-    elif current_node_demand > right_border:
+    elif current_node_demand >= right_border:
+        color = "green"
         box_start = right_border
     if box_start:
-        ax.text(0, max_fee, f"{round(current_commission, 2)}%",
-                fontsize=32, color='black', ha='center', va='center', weight='bold')
-        ax.add_patch(plt.Rectangle((box_start, min_fee - 5),
+        ax.add_patch(plt.Rectangle((box_start, min_fee - 1),
                                    right_side - right_border,
-                                   max_fee - min_fee + 10,
+                                   max_fee - min_fee + 2,
                                    fill=False,
-                                   hatch='///'))
+                                   hatch='///',
+                                   color=color))
+    if box_start < 0:
+        # TODO load from file at module import
+        strings = [
+            "Maybe go outside. Its gonna take a while...",
+            "Yep. Still 5%",
+            "What did you expect?",
+            "How much longer must we suffer?",
+            "Remember when commissions were 15%?",
+            "And they don't stop coming",
+            "Hope you have 32ETH ready c:",
+            "Anybody want some cheap rETH?",
+            ":catJAM:",
+            "much stale eth. such queue",
+            "We need people depositing rETH... wait no!",
+            "o_O",
+            "¯\\_(°-°)_/¯",
+            "pls low gas wen",
+            "shouldve deployed on cardano",
+            "shouldve deployed on solana",
+            "woooo yeah 5% GO GO GO",
+            "too bullish",
+            "too bearish",
+            "Anybody seen the dot recently?",
+            "What if the queue never depletes?",
+            "RPL to 666$",
+            "RPL to 0.69 ETH",
+            "shouldve deployed on bitcoin",
+            "Negative Commissions wen?",
+            "dont tell anyone but im running out of ideas",
+            "This is a secret message. Or is it?",
+            "pog",
+        ]
+        text = random.choices(strings)
+        ax.text(0, max_fee - 2, text[0],
+                fontsize=12, color="black", ha='center', va='center')
 
-    # draw the function
-    ax.plot(x, func, color='blue')
+    # current commission dot
+    ax.plot(current_node_demand, current_commission, 'o', color='black')
 
     # store the graph in an file object
-    figfile = BytesIO()
-    fig.savefig(figfile, format='png')
-    figfile.seek(0)
+    fig.savefig(file, format='png')
+    file.seek(0)
+
+    # clear plot from memory
+    fig.clf()
+    plt.close()
 
     # store image in cache
-    cached_image_commission = current_commission
-    cached_image = figfile
-    return figfile
+    return True

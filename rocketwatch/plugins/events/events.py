@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -179,6 +180,7 @@ class Events(commands.Cog):
         try:
             return self.__init__(self.bot)
         except Exception as err:
+            self.state = "ERROR"
             await report_error(err)
 
     async def check_for_new_events(self):
@@ -189,6 +191,8 @@ class Events(commands.Cog):
 
         for events in self.events:
             for event in reversed(list(events.get_new_entries())):
+                # small delay to make commands not timeout
+                await asyncio.sleep(0.01)
                 tnx_hash = event.transactionHash.hex()
                 result = None
 

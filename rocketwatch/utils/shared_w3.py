@@ -4,11 +4,11 @@ from utils.cfg import cfg
 
 chain = cfg['rocketpool.chain']
 
-w3 = Web3(HTTPProvider(f"https://{cfg['rocketpool.chain']}.infura.io/v3/{cfg['rocketpool.infura_secret']}"))
+w3 = Web3(HTTPProvider(f"https://eth-{chain}.alchemyapi.io/v2/{cfg['rocketpool.alchemy_secret']}"))
 mainnet_w3 = w3
 
 if chain != "mainnet":
-    mainnet_w3 = Web3(HTTPProvider(f"https://mainnet.infura.io/v3/{cfg['rocketpool.infura_secret']}"))
+    mainnet_w3 = Web3(HTTPProvider(f"https://eth-mainnet.alchemyapi.io/v2/{cfg['rocketpool.mainnet_alchemy_secret']}"))
 
     # required for block parsing on PoA networks like goerli
     # https://web3py.readthedocs.io/en/stable/middleware.html#geth-style-proof-of-authority

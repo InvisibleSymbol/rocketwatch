@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -101,7 +102,7 @@ class Bootstrap(commands.Cog):
             embed=assemble(args),
             event_name=event_name)
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(seconds=30.0)
     async def run_loop(self):
         if self.state == "STOPPED":
             return
@@ -116,6 +117,7 @@ class Bootstrap(commands.Cog):
         try:
             return self.__init__(self.bot)
         except Exception as err:
+            self.state = "ERROR"
             await report_error(err)
 
     async def check_for_new_transactions(self):
@@ -123,6 +125,8 @@ class Bootstrap(commands.Cog):
 
         messages = []
         for block_hash in reversed(list(self.block_event.get_new_entries())):
+            # small delay to make commands not timeout
+            await asyncio.sleep(0.01)
             log.debug(f"Checking Block: {block_hash.hex()}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
@@ -131,6 +135,10 @@ class Bootstrap(commands.Cog):
                 continue
             for tnx in block.transactions:
                 if tnx.hash in self.tnx_hash_cache:
+                    continue
+                if "to" not in tnx:
+                    # probably a contract creation transaction
+                    log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
                     continue
                 if tnx.to in self.addresses:
                     self.tnx_hash_cache[tnx.hash] = True

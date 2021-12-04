@@ -3,9 +3,8 @@ import json
 import random
 
 from discord import File
+from discord.commands import slash_command, Option
 from discord.ext import commands
-from discord_slash import cog_ext
-from discord_slash.utils.manage_commands import create_option
 
 from utils import solidity
 from utils.cfg import cfg
@@ -25,56 +24,67 @@ class Debug(commands.Cog):
         with open(str(random.random()), "rb"):
             raise Exception("this should never happen wtf is your filesystem")
 
-    @cog_ext.cog_slash(guild_ids=guilds,
-                       options=[
-                           create_option(
-                               name="command",
-                               description="Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`",
-                               option_type=3,
-                               required=True),
-                           create_option(
-                               name="json_args",
-                               description="json formated arguments. example: `[1, \"World\"]`",
-                               option_type=3,
-                               required=False)
-                       ]
-                       )
-    async def call(self, ctx, command, json_args="[]", auto_format=True):
+    @owner_only_slash()
+    async def call(self,
+                   ctx,
+                   command: Option(
+                       str,
+                       "Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`"),
+                   json_args: Option(
+                       str,
+                       "json formatted arguments. example: `[1, \"World\"]`",
+                       default="[]",
+                       required=False),
+                   block: Option(
+                       int,
+                       "call against block state",
+                       default="latest",
+                       required=False)):
         """Call Function of Contract"""
+        await ctx.defer()
         # make sure the first character of the command is lowercase
         command = command[0].lower() + command[1:]
         try:
             args = json.loads(json_args)
             if not isinstance(args, list):
                 args = [args]
-            v = rp.call(command, *args)
+            v = rp.call(command, *args, block=block)
         except Exception as err:
-            await ctx.send(f"Exception: `{repr(err)}`")
+            await ctx.respond(f"Exception: ```{repr(err)}```")
             return
 
-        if auto_format:
-            if isinstance(v, int) and v >= 10 ** 12:
-                v = solidity.to_float(v)
+        if isinstance(v, int) and abs(v) >= 10 ** 12:
+            v = solidity.to_float(v)
 
-        await ctx.send(f"`{command}: {v}`")
+        await ctx.respond(f"`block: {block}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @slash_command(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
         """retrieves the latest ABI for a contract"""
-        with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
-            await ctx.send(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+        await ctx.defer()
+        try:
+            with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
+                await ctx.respond(file=File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json"))
+        except Exception as err:
+            await ctx.respond(f"Exception: ```{repr(err)}```")
+            return
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @slash_command(guild_ids=guilds)
     async def get_address_of_contract(self, ctx, contract):
         """retrieves the latest address for a contract"""
-        await ctx.send(etherscan_url(rp.uncached_get_address_by_name(contract)))
+        await ctx.defer()
+        try:
+            await ctx.respond(etherscan_url(rp.uncached_get_address_by_name(contract)))
+        except Exception as err:
+            await ctx.respond(f"Exception: ```{repr(err)}```")
+            return
 
     @owner_only_slash()
     async def delete(self, ctx, channel_id, message_id):
         channel = await self.bot.fetch_channel(channel_id)
         msg = await channel.fetch_message(message_id)
         await msg.delete()
-        await ctx.send("Done", hidden=True)
+        await ctx.respond("Done", ephemeral=True)
 
     @owner_only_slash()
     async def decode_tnx(self, ctx, tnx_hash, contract_name=None):
@@ -84,7 +94,7 @@ class Debug(commands.Cog):
         else:
             contract = rp.get_contract_by_address(tnx.to)
         data = contract.decode_function_input(tnx.input)
-        await ctx.send(f"```Input:\n{data}```", hidden=True)
+        await ctx.respond(f"```Input:\n{data}```", ephemeral=True)
 
 
 def setup(bot):

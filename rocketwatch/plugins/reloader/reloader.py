@@ -12,29 +12,29 @@ class Reloader(commands.Cog):
         """Loads a module."""
         try:
             self.bot.load_extension(f"plugins.{module}.{module}")
-            await ctx.send(f"Loaded {module} Plugin!", hidden=True)
+            await ctx.respond(f"Loaded {module} Plugin!", ephemeral=True)
         except commands.errors.ExtensionAlreadyLoaded:
-            await ctx.send(f"Plugin {module} already loaded!", hidden=True)
+            await ctx.respond(f"Plugin {module} already loaded!", ephemeral=True)
         except commands.errors.ExtensionNotFound:
-            await ctx.send(f"Plugin {module} not found!", hidden=True)
+            await ctx.respond(f"Plugin {module} not found!", ephemeral=True)
 
     @owner_only_slash()
     async def unload(self, ctx, module: str):
         """Unloads a module."""
         try:
             self.bot.unload_extension(f"plugins.{module}.{module}")
-            await ctx.send(f"Unloaded {module} Plugin!", hidden=True)
+            await ctx.respond(f"Unloaded {module} Plugin!", ephemeral=True)
         except commands.errors.ExtensionNotLoaded:
-            await ctx.send(f"Plugin {module} not loaded!", hidden=True)
+            await ctx.respond(f"Plugin {module} not loaded!", ephemeral=True)
 
     @owner_only_slash()
     async def reload(self, ctx, module: str):
         """Reloads a module."""
         try:
             self.bot.reload_extension(f"plugins.{module}.{module}")
-            await ctx.send(f"Reloaded {module} Plugin!", hidden=True)
+            await ctx.respond(f"Reloaded {module} Plugin!", ephemeral=True)
         except commands.errors.ExtensionNotLoaded:
-            await ctx.send(f"Plugin {module} not loaded!", hidden=True)
+            await ctx.respond(f"Plugin {module} not loaded!", ephemeral=True)
 
 
 def setup(bot):

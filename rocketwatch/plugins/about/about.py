@@ -1,20 +1,20 @@
 import os
 import time
-from urllib.parse import urlencode
 
 import humanize
 import psutil
 import requests
 import uptime
 from discord import Embed
+from discord.commands import slash_command
 from discord.ext import commands
-from discord_slash import cog_ext
 
 from utils import readable
 from utils.cfg import cfg
 from utils.readable import etherscan_url
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
+from utils.visibility import is_hidden
 
 psutil.getloadavg()
 BOOT_TIME = time.time()
@@ -25,9 +25,10 @@ class About(commands.Cog):
         self.bot = bot
         self.process = psutil.Process(os.getpid())
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @slash_command(guild_ids=guilds)
     async def about(self, ctx):
         """Bot and Server Information"""
+        await ctx.defer(ephemeral=is_hidden(ctx))
         embed = Embed()
         g = self.bot.guilds
         code_time = None
@@ -52,7 +53,7 @@ class About(commands.Cog):
                               f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
                         inline=False)
 
-        address = etherscan_url(cfg["rocketpool.storage_contract"])
+        address = etherscan_url(cfg["rocketpool.manual_addresses.rocketStorage"])
         embed.add_field(name="Storage Contract", value=address)
 
         embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
@@ -72,9 +73,9 @@ class About(commands.Cog):
         bot_uptime = time.time() - BOOT_TIME
         embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
-        await ctx.send(embed=embed)
+        await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
-    @cog_ext.cog_slash(guild_ids=guilds)
+    @slash_command(guild_ids=guilds)
     async def donate(self, ctx):
         """Donate to the Bot Developer"""
         embed = Embed()
@@ -87,6 +88,7 @@ class About(commands.Cog):
         embed.add_field(name="Donation Address",
                         value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
+        """
         # add address qrcode
         query_string = urlencode({
             "chs" : "128x128",
@@ -95,13 +97,15 @@ class About(commands.Cog):
             "choe": "UTF-8",
             "chld": "L|0"
         })
-        # embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        """
+        # POAP Event
         embed.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
         embed.set_footer(text="Thank you for your support! <3")
-        await ctx.send(
+        await ctx.respond(
             embed=embed,
-            hidden=True)
+            ephemeral=True)
 
 
 def setup(bot):

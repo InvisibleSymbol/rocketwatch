@@ -18,18 +18,22 @@ class RocketPool:
     addresses = bidict()
 
     def __init__(self):
-        storage_address = cfg['rocketpool.storage_contract']
-        self.storage_contract = self.assemble_contract("rocketStorage", storage_address)
-        self.addresses["rocketStorage"] = storage_address
+        for name, address in cfg["rocketpool.manual_addresses"].items():
+            self.addresses[name] = address
 
     @cached(cache={})
     def get_address_by_name(self, name):
+        # manual overwrite at init
+        if name in self.addresses:
+            return self.addresses[name]
         return self.uncached_get_address_by_name(name)
 
     def uncached_get_address_by_name(self, name):
         log.debug(f"Retrieving address for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
-        address = self.storage_contract.functions.getAddress(sha3).call()
+        address = self.get_contract_by_name("rocketStorage").functions.getAddress(sha3).call()
+        if not w3.toInt(hexstr=address):
+            raise Exception(f"No address found for {name} Contract")
         self.addresses[name] = address
         return address
 
@@ -40,7 +44,9 @@ class RocketPool:
     def uncached_get_abi_by_name(self, name):
         log.debug(f"Retrieving abi for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.abi", name])
-        compressed_string = self.storage_contract.functions.getString(sha3).call()
+        compressed_string = self.get_contract_by_name("rocketStorage").functions.getString(sha3).call()
+        if not compressed_string:
+            raise Exception(f"No abi found for {name} Contract")
         return decode_abi(compressed_string)
 
     @cached(cache={})
@@ -52,8 +58,6 @@ class RocketPool:
                 abi = f.read()
         if not abi:
             abi = self.get_abi_by_name(name)
-        if not abi:
-            raise Exception(f"No abi found for {name} Contract")
         return w3.eth.contract(address=address, abi=abi)
 
     def get_name_by_address(self, address):
@@ -61,8 +65,6 @@ class RocketPool:
 
     def get_contract_by_name(self, name):
         address = self.get_address_by_name(name)
-        if not address:
-            raise Exception(f"No address found for {name} Contract")
         return self.assemble_contract(name, address)
 
     def get_contract_by_address(self, address):
@@ -72,13 +74,13 @@ class RocketPool:
         name = self.get_name_by_address(address)
         return self.assemble_contract(name, address)
 
-    def call(self, path, *args):
+    def call(self, path, *args, block="latest"):
         parts = path.split(".")
         if len(parts) != 2:
             raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
         name, function = parts
         contract = self.get_contract_by_name(name)
-        return contract.functions[function](*args).call()
+        return contract.functions[function](*args).call(block_identifier=block)
 
     def get_pubkey_using_transaction(self, receipt):
         # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
@@ -103,6 +105,45 @@ class RocketPool:
         value = solidity.to_float(self.call("rocketTokenRPL.totalSwappedRPL"))
         percentage = (value / 18_000_000) * 100
         return round(percentage, 2)
+
+    def get_minipools_by_type(self, minipool_type, limit=10):
+        key = w3.soliditySha3(["string"], [minipool_type])
+        cap = self.call("addressQueueStorage.getLength", key)
+        limit = min(cap, limit)
+        results = []
+        for i in range(0, limit):
+            results.append(self.call("addressQueueStorage.getItem", key, i))
+        return cap, results
+
+    def get_minipools(self, limit=10):
+        result = {
+            "half" : self.get_minipools_by_type("minipools.available.half", limit),
+            "full" : self.get_minipools_by_type("minipools.available.full", limit),
+            "empty": self.get_minipools_by_type("minipools.available.empty", limit)
+        }
+        return result
+
+    def get_dai_eth_price(self):
+        observations = [self.call("DAIETH_univ3.observations", i) for i in range(0, 2)]
+        t = observations[1][0] - observations[0][0]
+        delta_ticks = observations[1][1] - observations[0][1]
+        avg_ticks = delta_ticks / t
+        value_dai = 1.0001 ** avg_ticks
+        value_eth = 1 / value_dai
+        return value_eth
+
+    def get_minipool_count_per_status(self):
+        offset, limit = 0, 500
+        minipool_count_per_status = [0, 0, 0, 0, 0]
+        while True:
+            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
+            tmp = self.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
+            for i in range(len(tmp)):
+                minipool_count_per_status[i] += tmp[i]
+            if sum(tmp) < limit:
+                break
+            offset += limit
+        return minipool_count_per_status
 
 
 rp = RocketPool()

@@ -21,8 +21,8 @@ async def report_error(excep, *args, ctx=None):
         desc += "\n".join(f"args[{i}]={arg}" for i, arg in enumerate(args))
         desc += "```\n"
     if ctx:
-        desc += f"```{ctx.command=}\n" \
-                f"{ctx.args=}\n" \
+        desc += f"```{ctx.command.name=}\n" \
+                f"{ctx.command.options=}\n" \
                 f"{ctx.channel=}\n" \
                 f"{ctx.author=}```"
 
