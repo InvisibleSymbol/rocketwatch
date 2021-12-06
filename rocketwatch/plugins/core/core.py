@@ -1,11 +1,16 @@
+import asyncio
+import importlib
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 
 import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
+import motor.motor_asyncio
 
 from utils import solidity
 from utils.cfg import cfg
@@ -20,95 +25,136 @@ log.setLevel(cfg["log_level"])
 
 
 class Core(commands.Cog):
-    message_queue = []
+    event_queue = []
     
     def __init__(self, bot):
         self.bot = bot
-        self.state = "OK"
+        self.state = "PENDING"
         self.channels = cfg["discord.channels"]
+        self.mongo = motor.motor_asyncio.AsyncIOMotorClient('mongodb://localhost:27017')
+        self.db = self.mongo.rocketwatch
+        # block filter
+        self.block_event = w3.eth.filter("latest")
 
         if not self.run_loop.is_running():
             self.run_loop.start()
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(seconds=30.0)
     async def run_loop(self):
-        if self.state == "STOPPED":
-            return
 
-        if self.state != "ERROR":
-            try:
-                self.state = "OK"
-                return await self.gather_and_process_messages()
-            except Exception as err:
-                self.state = "ERROR"
-                await report_error(err)
         try:
-            return self.__init__(self.bot)
+            await self.gather_and_process_messages()
+            await self.process_event_queue()
+            self.state = "OK"
+        except Exception as err:
+            self.state = "ERROR"
+            await report_error(err)
+        try:
+            await self.update_state_message()
         except Exception as err:
             await report_error(err)
 
-    async def gath_and_process_messages(self):
+    async def update_state_message(self):
+        # get the state message from the db
+        state_message = await self.db.state_messages.find_one({"_id": "state"})
+        if self.state == "OK" and not state_message:
+            return
+        channel = await self.bot.fetch_channel(self.channels["default"])
+        if self.state == "OK" and state_message:
+            # delete state message if state changed to OK
+            msg = await channel.fetch_message(state_message["message"])
+            await msg.delete()
+            await self.db.state_messages.delete_one({"_id": "state"})
+        elif self.state == "ERROR" and not state_message:
+            # send state message if state changed to ERROR
+            embed = assemble(aDict({
+                "event_name": "service_interrupted"
+            }))
+            msg = await channel.send(embed=embed)
+            await self.db.state_messages.insert_one({"_id": "state", "message": msg.id})
+
+    async def gather_and_process_messages(self):
         log.info("Gathering messages from submodules")
-        # so should these be in a folder inside the core pluging folder?
-        # because they dont really have to be discordpy plugins
-        # i just need a function i can call with a start block number that returns messages
-
-        # while im writing this, i need a better more global scoring function.
-        # milestones should be the last thing sent within a block, rest has to respect order
-        # maybe `score = block_number + (transaction_index * 10^-3) + (event_index * 10^-6)`?
-        # what is unspecified simply falls back to 999
-        # so like `def calc_score(block_number, transaction_index=999, event_index=999)`
-
         # okay so it would be really cool if the bot sent a message in the default channel
         # if it fails run any submodule
         # need to keep track of the sent warning message and delete it if it works again.
         # we already need some kind of db so it doesnt sound too hard to add
 
-        # temporary(?) submodule logic
-        tmp_message_queue =  []
-        for submodule in ["events", "transactions", "milestone"]:
-            log.debug(f"Running submodule {submodule}...")
-            response = []
-            try:
-                # async thread call here???????????????????????
-                # async would be very epic but would require the submodules to be stateless
-                # how do i prevent missing messages though if a reorg moves new transactions into a block i have already checked?
-                # okay so use a mongodb collection to keep track of (block_id, tnx_hash) for dedupping
-                # automatically discard entries that have a blocknumber older than reorg_distances * 2
-                # when the submodule starts it starts the filter from reorg_distance blocks away and gives me all new message
-                # then discard any transactions that we have seen no matter what block they were in- we only want to prevent dups
+        if self.state == "PENDING":
+            latest_block_number = await self.db.event_queue.find_one({"_id": "block_number"})
+            if latest_block_number:
+                latest_block_number = latest_block_number["block_number"]
+            else:
+                latest_block_number = w3.eth.get_block("latest")["number"]
+            look_back_distance = cfg["core.look_back_distance"]
+            starting_block = latest_block_number - look_back_distance
 
-                # await Thread(submodule.entry, args=[start_block, end_block]).join()
-                raise NotImplemented()
-            except Exception as err:
-                log.warning(f"Failed to run submodule {submodule}. Discarding temporary messages")
-                report_error(err)
-                return
+        # gather all currently cogs with the Queued prefix
+        submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
 
-            if response:<
-                log.debug(f"Got {len(response)} new messages from submodule")
-                self.message_queue.extend(response)
-                # TODO keep track of the last message block so we can start from there on the next loop
-                # store this in a db though. heck maybe also store the queue while we are doing that
+        log.debug(f"Running {len(submodules)} submodules...")
 
-        if self.message_queue:
-            log.info("Processing {len(self.message_queue)} Messages in queue")
-            # sort messages by score
-            self.message_queue.sort(key=lambda a: a["score"])
-            # try to send messages in order and stop if we fail to send one
-            # we can simply try again on the next run anyways, the list is permanent
-            while self.message_queue:
-                # get youngest message first
-                msg = self.message_queue[0]
-                # select channel for message
-                channel_candidates = [value for key, value in self.channels.items() if msg.result.event_name.startswith(key)]
-                try:
-                    channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else self.channels['default'])
-                except Exception as err:
-                    report_error(err)
-                await channel.send(embed=message.result.embed)
+        executor = ThreadPoolExecutor()
+        loop = asyncio.get_event_loop()
 
-            log.info("Finished sending Message(s)")
+        try:
+            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run_loop) for submodule in submodules]
+        except Exception as err:
+            log.error("Failed to prepare submodules.")
+            raise err
+
+        try:
+            results = await asyncio.gather(*futures)
+        except Exception as err:
+            log.error("Failed to gather submodules.")
+            raise err
+
+        tmp_event_queue = []
+        for result in results:
+            if result:
+                for entry in result:
+                    if await self.db.event_queue.find_one({"_id": entry.unique_id}):
+                        continue
+                    await self.db.event_queue.insert_one(entry.to_dict())
+                    tmp_event_queue.append(entry)
+
+        log.debug(f"{len(tmp_event_queue)} new Events gathered.")
+
+    async def process_event_queue(self):
+        log.debug("Processing events in event_queue collection...")
+        # get all non-processed unique channels from event_queue
+        channels = await self.db.event_queue.distinct("channel_id", {"processed": False})
+
+        if not channels:
+            log.debug("No pending events in event_queue collection.")
+            return
+
+        for channel in channels:
+            events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort([("score", 1)]).to_list(None)
+            log.debug(f"{len(events)} Events found for channel {channel}.")
+            target_channel = await self.bot.fetch_channel(channel)
+            # fetch webhook for channel
+            webhook = None
+            for w in await target_channel.webhooks():
+                if w.name == f"RocketWatch[{target_channel.name}]":
+                    webhook = w
+            if not webhook:
+                log.warning(f"No webhook found for channel {channel}. Attempting to create one...")
+                webhook = await target_channel.create_webhook(name=f"RocketWatch[{target_channel.name}]",
+                                                              avatar=await self.bot.user.avatar.read(),
+                                                              reason=f"Auto-created by RocketWatch for Channel {channel}")
+                log.info(f"Created webhook {webhook.id}.")
+            log.debug(webhook)
+            for i in range(0, len(events), 10):
+                batch = events[i:i + 10]
+                log.debug(f"Sending {len(batch)} events to webhook {webhook.id}.")
+                embeds = [Response.get_embed(event) for event in batch]
+                await webhook.send(embeds=embeds)
+                # mark batch as processed
+                await self.db.event_queue.update_many({"_id": {"$in": [event["_id"] for event in batch]}},
+                                                      {"$set": {"processed": True}})
+
+        log.info("Processed all events in event_queue collection.")
 
     def cog_unload(self):
         self.state = "STOPPED"
@@ -116,4 +162,4 @@ class Core(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(Events(bot))
+    bot.add_cog(Core(bot))

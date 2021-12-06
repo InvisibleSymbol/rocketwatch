@@ -23,7 +23,7 @@ DEPOSIT_EVENT = 2
 WITHDRAWABLE_EVENT = 3
 
 
-class Events(commands.Cog):
+class QueuedEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.state = "OK"
@@ -77,11 +77,7 @@ class Events(commands.Cog):
                     continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
 
-        if not self.run_loop.is_running():
-            self.run_loop.start()
-
-    @exception_fallback()
-    async def handle_global_event(self, event):
+    def handle_global_event(self, event):
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         event_name = self.internal_event_mapping[event["event"]]
 
@@ -89,7 +85,7 @@ class Events(commands.Cog):
                     rp.get_address_by_name("rocketNodeDeposit") == receipt.to]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
-            return Response()
+            return None
 
         # first need to make the container mutable
         event = aDict(event)
@@ -119,10 +115,9 @@ class Events(commands.Cog):
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
 
-        return await self.create_embed(event_name, event)
+        return self.create_embed(event_name, event), event_name
 
-    @exception_fallback()
-    async def create_embed(self, event_name, event):
+    def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
 
@@ -161,29 +156,18 @@ class Events(commands.Cog):
             args.rplAmount = eth / price
 
         args = prepare_args(args)
-        return Response(
-            embed=assemble(args),
-            event_name=event_name)
+        return assemble(args)
 
-    @tasks.loop(seconds=15.0)
-    async def run_loop(self):
-        if self.state == "STOPPED":
-            return
+    def run_loop(self):
+        if self.state == "RUNNING":
+            log.error("Boostrap plugin was interrupted while running. Re-initializing...")
+            self.__init__(self.bot)
+        self.state = "RUNNING"
+        result = self.check_for_new_events()
+        self.state = "OK"
+        return result
 
-        if self.state != "ERROR":
-            try:
-                self.state = "OK"
-                return await self.check_for_new_events()
-            except Exception as err:
-                self.state = "ERROR"
-                await report_error(err)
-        try:
-            return self.__init__(self.bot)
-        except Exception as err:
-            self.state = "ERROR"
-            await report_error(err)
-
-    async def check_for_new_events(self):
+    def check_for_new_events(self):
         log.info("Checking for new Events")
 
         messages = []
@@ -191,10 +175,9 @@ class Events(commands.Cog):
 
         for events in self.events:
             for event in reversed(list(events.get_new_entries())):
-                # small delay to make commands not timeout
-                await asyncio.sleep(0.01)
                 tnx_hash = event.transactionHash.hex()
-                result = None
+                embed = None
+                event_name = None
 
                 if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
                     continue
@@ -210,15 +193,15 @@ class Events(commands.Cog):
                     event = contract.events[contract_event]().processLog(event)
                     event_name = self.internal_event_mapping[event.event]
 
-                    result = await self.create_embed(event_name, event)
+                    embed = self.create_embed(event_name, event)
                 elif event.get("event", None) in self.internal_event_mapping:
                     if tnx_hash in tnx_hashes:
                         log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
                         continue
                     # deposit/exit event path
-                    result = await self.handle_global_event(event)
+                    embed, event_name = self.handle_global_event(event)
 
-                if result:
+                if embed:
                     # lazy way of making it sort events within a single block correctly
                     score = event.blockNumber
                     # sort within block
@@ -227,36 +210,24 @@ class Events(commands.Cog):
                     if "logIndex" in event:
                         score += event.logIndex * 10 ** -3
 
-                    messages.append(aDict({
-                        "score" : score,
-                        "result": result
-                    }))
+                    messages.append(Response(
+                        embed=embed,
+                        event_name=event_name,
+                        unique_id=f"{tnx_hash}:{event_name}",
+                        block_number=event.blockNumber,
+                        transaction_index=event.transactionIndex,
+                        event_index=event.logIndex
+                    ))
 
                 tnx_hashes.append(tnx_hash)
 
         log.debug("Finished Checking for new Events")
 
-        if messages:
-            log.info(f"Sending {len(messages)} Message(s)")
-
-            channels = cfg["discord.channels"]
-
-            for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-                log.debug(f"Sending \"{message.result.event_name}\" Event")
-                channel_candidates = [value for key, value in channels.items() if message.result.event_name.startswith(key)]
-                channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
-                await channel.send(embed=message.result.embed)
-
-            log.info("Finished sending Message(s)")
-
         # de-dupe logic:
         for tnx_hash in set(tnx_hashes):
             self.tnx_hash_cache[tnx_hash] = True
-
-    def cog_unload(self):
-        self.state = "STOPPED"
-        self.run_loop.cancel()
+        return messages
 
 
 def setup(bot):
-    bot.add_cog(Events(bot))
+    bot.add_cog(QueuedEvents(bot))
