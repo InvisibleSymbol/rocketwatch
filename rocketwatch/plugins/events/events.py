@@ -155,6 +155,26 @@ class QueuedEvents(commands.Cog):
             price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
+        if "rpl_claim_event" in event_name:
+            # reject if the amount is bellow 1000 RPL
+            if solidity.to_int(args.amount) < 1000:
+                return Response()
+            # get eth price by multiplying the amount by the current RPL ratio
+            rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+            args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
+
+        if "claimingContract" in args and args.claimingAddress == args.claimingContract:
+            possible_contracts = [
+                "rocketClaimNode",
+                "rocketClaimTrustedNode",
+                "rocketClaimDAO",
+            ]
+
+            # loop over all possible contracts if we get a match return empty response
+            for contract in possible_contracts:
+                if rp.get_address_by_name(contract) == args.claimingContract:
+                    return Response()
+
         args = prepare_args(args)
         return assemble(args)
 
