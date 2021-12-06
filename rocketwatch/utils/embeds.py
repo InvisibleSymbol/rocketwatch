@@ -88,7 +88,7 @@ def prepare_args(args):
 
 def assemble(args):
     color = Color.from_rgb(235, 142, 85)
-    if args.event_name == "fallback":
+    if args.event_name == "service_interrupted":
         color = Color.from_rgb(235, 86, 86)
     embed = Embed(color=color)
     footer_parts = ["Developed by InvisibleSymbol#2788",
