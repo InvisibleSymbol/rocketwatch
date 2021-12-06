@@ -15,7 +15,7 @@ def format_stacktrace(error):
 
 
 async def report_error(excep, *args, ctx=None):
-    desc = f"**`{repr(excep)}`**\n"
+    desc = f"**`{repr(excep)[:100]}`**\n"
     if args:
         desc += "```"
         desc += "\n".join(f"args[{i}]={arg}" for i, arg in enumerate(args))
