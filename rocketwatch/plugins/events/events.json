@@ -84,6 +84,15 @@
             ]
         },
         {
+            "contract_name": "rocketRewardsPool",
+            "events": [
+                {
+                    "event_name": "RPLTokensClaimed",
+                    "name": "rpl_claim_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketAuctionManager",
             "events": [
                 {

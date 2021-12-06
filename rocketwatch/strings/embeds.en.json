@@ -7,6 +7,10 @@
         "title": ":fire: rETH Burn",
         "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
     },
+    "rpl_claim_event": {
+        "title": ":moneybag: RPL Rewards Claimed",
+        "description": "%{claimingAddress} claimed %{amount} RPL (worth %{ethAmount} ETH)!"
+    },
     "minipool_deposit_event": {
         "title": ":rocket: Minipool Final Deposit ",
         "description": "Minipool %{minipool} has deposited its final 16 ETH to the Beacon Chain!"
