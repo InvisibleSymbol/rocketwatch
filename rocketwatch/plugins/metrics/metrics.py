@@ -24,28 +24,49 @@ class Metrics(commands.Cog):
         self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
-    async def command_metrics(self, ctx):
+    async def metrics(self, ctx):
         """
         Show various metrics about the bot.
         """
         await ctx.defer(ephemeral=True)
         try:
-            e = Embed(title="Command Metrics (last 7 days)", color=self.color)
+            e = Embed(title="Metrics from the last 7 days", color=self.color)
             desc = "```\n"
             # last 7 days
             start = datetime.utcnow() - timedelta(days=7)
 
+            # get the total number of processed events from the event_queue in the last 7 days
+            total_events_processed = await self.db.event_queue.count_documents({'time_seen': {'$gte': start}})
+            desc += f"Total Events Processed:\n\t{total_events_processed}\n\n"
+
             # get the total number of handled commands in the last 7 days
             total_commands_handled = await self.collection.count_documents({'timestamp': {'$gte': start}})
-            desc += f"Total Commands Handled: {total_commands_handled}\n\n"
+            desc += f"Total Commands Handled:\n\t{total_commands_handled}\n\n"
 
-            # get the 10 most used commands of the last 7 days
+            # get the average command response time in the last 7 days
+            avg_response_time = await self.collection.aggregate([
+                {'$match': {'timestamp': {'$gte': start}}},
+                {'$group': {'_id': None, 'avg': {'$avg': '$took'}}}
+            ]).to_list(length=1)
+            if avg_response_time[0]['avg'] is not None:
+                desc += f"Average Command Response Time:\n\t{avg_response_time[0]['avg']:.03} seconds\n\n"
+
+            # get completed rate in the last 7 days
+            completed_rate = await self.collection.aggregate([
+                {'$match': {'timestamp': {'$gte': start}, 'status': 'completed'}},
+                {'$group': {'_id': None, 'count': {'$sum': 1}}}
+            ]).to_list(length=1)
+            if completed_rate:
+                percent = completed_rate[0]['count'] / (total_commands_handled - 1)
+                desc += f"Command Success Rate:\n\t{percent:.03%}\n\n"
+
+            # get the 5 most used commands of the last 7 days
             most_used_commands = await self.collection.aggregate([
                 {'$match': {'timestamp': {'$gte': start}}},
                 {'$group': {'_id': '$command', 'count': {'$sum': 1}}},
                 {'$sort': {'count': -1}}
-            ]).to_list(length=10)
-            desc += "10 Most Used Commands:\n"
+            ]).to_list(length=5)
+            desc += "5 Most Used Commands:\n"
             for command in most_used_commands:
                 desc += f" - {command['_id']}: {command['count']}\n"
 
@@ -87,7 +108,15 @@ class Metrics(commands.Cog):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
 
         try:
-            await self.collection.update_one({'_id': ctx.interaction.id}, {'$set': {'status': 'completed'}})
+            # get the timestamp of when the command was called from the db
+            data = await self.collection.find_one({'_id': ctx.interaction.id})
+            await self.collection.update_one({'_id': ctx.interaction.id},
+                                             {
+                                                 '$set': {
+                                                     'status': 'completed',
+                                                     'took'  : (datetime.utcnow() - data['timestamp']).total_seconds()
+                                                 }
+                                             })
         except Exception as e:
             log.error(f"Failed to update command status to completed: {e}")
             await report_error(e)
@@ -97,7 +126,16 @@ class Metrics(commands.Cog):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
 
         try:
-            await self.collection.update_one({'_id': ctx.interaction.id}, {'$set': {'status': 'error', 'error': str(excep)}})
+            # get the timestamp of when the command was called from the db
+            data = await self.collection.find_one({'_id': ctx.interaction.id})
+            await self.collection.update_one({'_id': ctx.interaction.id},
+                                             {
+                                                 '$set': {
+                                                     'status': 'error',
+                                                     'took'  : (datetime.utcnow() - data['timestamp']).total_seconds(),
+                                                     'error' : str(excep)
+                                                 }
+                                             })
         except Exception as e:
             log.error(f"Failed to update command status to error: {e}")
             await report_error(e)
