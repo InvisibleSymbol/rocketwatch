@@ -8,7 +8,7 @@
         "description": "Burned %{amount} rETH for %{ethAmount} ETH!"
     },
     "rpl_claim_event": {
-        "title": ":moneybag: RPL Rewards Claimed",
+        "title": ":moneybag: Major RPL Rewards Claim",
         "description": "%{claimingAddress} claimed %{amount} RPL (worth %{ethAmount} ETH)!"
     },
     "minipool_deposit_event": {
