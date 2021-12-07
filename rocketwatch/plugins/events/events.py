@@ -161,12 +161,12 @@ class Events(commands.Cog):
             args.rplAmount = eth / price
 
         if "rpl_claim_event" in event_name:
-            # reject if the amount is bellow 1000 RPL
-            if solidity.to_int(args.amount) < 1000:
-                return Response()
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
             args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
+            # reject if the reward is less than 10 ETH worth of RPL
+            if args.ethAmount < 10:
+                return Response()
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [
