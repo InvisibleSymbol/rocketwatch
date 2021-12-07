@@ -24,7 +24,7 @@ class Debug(commands.Cog):
         with open(str(random.random()), "rb"):
             raise Exception("this should never happen wtf is your filesystem")
 
-    @owner_only_slash()
+    @slash_command(guild_ids=guilds)
     async def call(self,
                    ctx,
                    command: Option(
