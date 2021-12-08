@@ -10,7 +10,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
-from utils.thegraph import get_average_commission
+from utils.thegraph import get_average_commission, get_reth_ratio_past_week
 from utils.visibility import is_hidden
 
 log = logging.getLogger("RETHAPR")
@@ -26,51 +26,46 @@ class RETHAPR(commands.Cog):
     async def current_reth_apr(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
-        e.title = "Current Estimated rETH APR"
+        e.title = "rETH APR over the last 7 days"
 
-        # get update blocks
-        current_update_block = rp.call("rocketNetworkBalances.getBalancesBlock")
-        previous_update_block = rp.call("rocketNetworkBalances.getBalancesBlock", block=current_update_block - 1)
+        datapoints = get_reth_ratio_past_week()
 
-        # get timestamps of blocks
-        current_update_timestamp = w3.eth.get_block(current_update_block).timestamp
-        previous_update_timestamp = w3.eth.get_block(previous_update_block).timestamp
+        # get total duration between first and last datapoint
+        total_duration = datapoints[-1]["time"] - datapoints[0]["time"]
 
-        # estimate next update timestamp by last 2 updates
-        next_update_timestamp = current_update_timestamp + (current_update_timestamp - previous_update_timestamp)
+        # get average duration between datapoints
+        average_duration = total_duration / len(datapoints)
 
-        # get ratios after and before current update block
-        current_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
-        previous_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=current_update_block - 1))
+        # next estimated update
+        next_update = int(datapoints[-1]["time"] + average_duration)
 
-        # calculate the percentage increase in ratio over 24 hours
-        ratio_temp = (current_ratio / previous_ratio) - 1
-        ratio_increase = ratio_temp * ((24 * 60 * 60) / (current_update_timestamp - previous_update_timestamp))
+        # total change
+        total_change = datapoints[-1]["value"] - datapoints[0]["value"]
+
+        # get average change per 24h
+        average_daily_change = total_change / (total_duration / 86400)
 
         # turn into yearly percentage
-        yearly_percentage = ratio_increase * 365
+        yearly_change = average_daily_change * 365
 
         e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
                         "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
-                        " or a low Minipool count combined with bad luck simply resulting in lower rewards for a day."
+                        " or a low Minipool count combined with bad luck simply resulting in temporary lower rewards."
 
-        e.add_field(name="Latest rETH/ETH Updates:",
-                    value=f"`{current_ratio:.6f}` on <t:{current_update_timestamp}>\n"
-                          f"`{previous_ratio:.6f}` on <t:{previous_update_timestamp}>\n"
-                          f"Next Update expected <t:{next_update_timestamp}:R>\n",
+        e.add_field(name="Observed rETH APR:",
+                    value=f"{yearly_change:.2%} (Commissions Fees accounted for)",
                     inline=False)
 
         # get current average commission
         current_commission = get_average_commission()
+        e.add_field(name="Current Average Commission:", value=f"{current_commission:.2%}")
 
-        e.add_field(name="Observed rETH APR:",
-                    value=f"{yearly_percentage:.2%} (Commission Fee of {current_commission:.2%} taken into account)",
-                    inline=False)
+        # show next estimated update
+        e.add_field(name="Next Estimated Update:", value=f"<t:{next_update}:R>")
 
-        e.set_footer(
-            text=f"Duration between used ratio updates: {uptime(current_update_timestamp - previous_update_timestamp)}")
-
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))  # respond
+        # show average time between updates in footer
+        e.set_footer(text=f"Average time between updates: {uptime(average_duration)}. {len(datapoints)} datapoints used.")
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
 
 def setup(bot):
