@@ -13,7 +13,7 @@ class Response:
                  embed,
                  event_name,
                  unique_id,
-                 block_number=2**32,
+                 block_number=2 ** 32,
                  transaction_index=999,
                  event_index=999
                  ):
@@ -39,12 +39,12 @@ class Response:
 
     def to_dict(self):
         return {
-            "_id": self.unique_id,
-            "embed": pickle.dumps(self.embed),
-            "event_name": self.event_name,
+            "_id"         : self.unique_id,
+            "embed"       : pickle.dumps(self.embed),
+            "event_name"  : self.event_name,
             "block_number": self.block_number,
-            "score": self.score,
-            "time_seen": self.time_seen,
-            "channel_id": self.channel_id,
-            "processed": False
+            "score"       : self.score,
+            "time_seen"   : self.time_seen,
+            "channel_id"  : self.channel_id,
+            "processed"   : False
         }

@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 
 class Core(commands.Cog):
     event_queue = []
-    
+
     def __init__(self, bot):
         self.bot = bot
         self.state = "PENDING"

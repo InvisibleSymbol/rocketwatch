@@ -65,8 +65,8 @@ class QueuedMilestones(commands.Cog):
             if previous_milestone < latest_goal:
                 log.info(f"Goal for milestone {milestone.id} has increased. Triggering Milestone!")
                 embed = assemble(aDict({
-                    "event_name"     : milestone.id,
-                    "result_value"   : value
+                    "event_name"  : milestone.id,
+                    "result_value": value
                 }))
                 payload.append(Response(
                     embed=embed,
