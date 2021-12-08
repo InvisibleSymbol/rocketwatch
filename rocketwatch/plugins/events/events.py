@@ -159,6 +159,7 @@ class QueuedEvents(commands.Cog):
             args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
             # reject if the reward is less than 10 ETH worth of RPL
             if args.ethAmount < 10:
+                log.debug(f"Skipping {event.transactionHash.hex()} because the reward is less than 10 ETH worth of RPL")
                 return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
