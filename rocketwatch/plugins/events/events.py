@@ -174,6 +174,10 @@ class QueuedEvents(commands.Cog):
                 if rp.get_address_by_name(contract) == args.claimingContract:
                     return None
 
+        if "minipool_prestake_event" in event_name:
+            contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
+            args.commission = solidity.to_float(contract.functions.getNodeFee().call())
+
         args = prepare_args(args)
         return assemble(args)
 
