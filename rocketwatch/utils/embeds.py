@@ -117,12 +117,12 @@ def assemble(args):
     if "pubkey" in args:
         embed.add_field(name="Validator",
                         value=args.pubkey,
-                        inline="commission" in args)
+                        inline=False)
 
     if "commission" in args:
         embed.add_field(name="Commission Rate",
                         value=f"{args.commission:.2%}",
-                        inline=True)
+                        inline=False)
 
     if "settingContractName" in args:
         embed.add_field(name="Contract",
