@@ -1,18 +1,16 @@
-import asyncio
 import json
 import logging
 
 import termplotlib as tpl
 from cachetools import FIFOCache
-from discord.ext import commands, tasks
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args, exception_fallback
-from utils.reporter import report_error
+from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 

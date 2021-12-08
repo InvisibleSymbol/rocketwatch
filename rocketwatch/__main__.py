@@ -2,11 +2,9 @@ import logging
 from pathlib import Path
 
 import discord.errors
-from discord.errors import NotFound
 
 from utils import reporter
 from utils.cfg import cfg
-from utils.visibility import is_hidden
 
 logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
 log = logging.getLogger("discord_bot")
@@ -14,7 +12,6 @@ log.setLevel(cfg["log_level"])
 logging.getLogger().setLevel("INFO")
 bot = discord.Bot()
 reporter.bot = bot
-
 
 log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} "
          f"(Chain: {cfg['rocketpool.chain']})")

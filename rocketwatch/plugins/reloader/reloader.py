@@ -1,5 +1,5 @@
-from discord.ext import commands
 from discord import errors
+from discord.ext import commands
 
 from utils.slash_permissions import owner_only_slash
 

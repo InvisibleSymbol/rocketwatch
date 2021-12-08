@@ -1,11 +1,9 @@
-import asyncio
 import json
 import logging
 
-from discord.ext import commands, tasks
-from web3.datastructures import MutableAttributeDict as aDict
-import motor.motor_asyncio
 import pymongo
+from discord.ext import commands
+from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg

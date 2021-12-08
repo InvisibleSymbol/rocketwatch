@@ -1,17 +1,15 @@
-import asyncio
 import json
 import logging
 
 import web3.exceptions
 from cachetools import FIFOCache
-from discord.ext import commands, tasks
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args, exception_fallback
-from utils.reporter import report_error
+from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
