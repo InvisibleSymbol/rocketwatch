@@ -161,7 +161,7 @@ class QueuedEvents(commands.Cog):
             args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
             # reject if the reward is less than 10 ETH worth of RPL
             if args.ethAmount < 10:
-                return Response()
+                return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [
@@ -173,7 +173,7 @@ class QueuedEvents(commands.Cog):
             # loop over all possible contracts if we get a match return empty response
             for contract in possible_contracts:
                 if rp.get_address_by_name(contract) == args.claimingContract:
-                    return Response()
+                    return None
 
         args = prepare_args(args)
         return assemble(args)
