@@ -1,5 +1,5 @@
-from discord import errors
 from discord.ext import commands
+from discord import ExtensionNotLoaded, ExtensionNotFound, ExtensionAlreadyLoaded
 
 from utils.slash_permissions import owner_only_slash
 
@@ -8,15 +8,16 @@ class Reloader(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # todo add auto complet
     @owner_only_slash()
     async def load(self, ctx, module: str):
         """Loads a module."""
         try:
             self.bot.load_extension(f"plugins.{module}.{module}")
             await ctx.respond(f"Loaded {module} Plugin!", ephemeral=True)
-        except errors.ExtensionAlreadyLoaded:
+        except ExtensionAlreadyLoaded:
             await ctx.respond(f"Plugin {module} already loaded!", ephemeral=True)
-        except errors.ExtensionNotFound:
+        except ExtensionNotFound:
             await ctx.respond(f"Plugin {module} not found!", ephemeral=True)
 
     @owner_only_slash()
@@ -25,7 +26,7 @@ class Reloader(commands.Cog):
         try:
             self.bot.unload_extension(f"plugins.{module}.{module}")
             await ctx.respond(f"Unloaded {module} Plugin!", ephemeral=True)
-        except errors.ExtensionNotLoaded:
+        except ExtensionNotLoaded:
             await ctx.respond(f"Plugin {module} not loaded!", ephemeral=True)
 
     @owner_only_slash()
@@ -34,7 +35,7 @@ class Reloader(commands.Cog):
         try:
             self.bot.reload_extension(f"plugins.{module}.{module}")
             await ctx.respond(f"Reloaded {module} Plugin!", ephemeral=True)
-        except errors.ExtensionNotLoaded:
+        except ExtensionNotLoaded:
             await ctx.respond(f"Plugin {module} not loaded!", ephemeral=True)
 
 
