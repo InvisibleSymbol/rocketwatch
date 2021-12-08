@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 import requests
@@ -22,7 +23,7 @@ def get_average_commission():
     # do the request
     response = requests.post(
         cfg["graph_endpoint"],
-        json={'query': query},
+        json={'query': query}
     )
     # parse the response
     if "errors" in response.json():
@@ -50,7 +51,7 @@ def get_minipool_count_per_node_histogram():
         log.debug(f"Requesting {count} nodes from offset {offset}")
         response = requests.post(
             cfg["graph_endpoint"],
-            json={'query': query.format(count=count, offset=offset)},
+            json={'query': query.format(count=count, offset=offset)}
         )
         # parse the response
         if "errors" in response.json():
@@ -74,3 +75,29 @@ def get_minipool_count_per_node_histogram():
     return histogram
 
 
+def get_reth_ratio_past_week():
+    query = """
+{{
+    networkStakerBalanceCheckpoints(orderBy: blockTime, orderDirection: asc, where: {{blockTime_gte: "{timestamp}"}}) {{
+        rETHExchangeRate
+        blockTime
+    }}
+}}
+    """
+    # get timestamp 7 days ago
+    timestamp = datetime.datetime.now() - datetime.timedelta(days=7)
+    # do the request
+    response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': query.format(timestamp=int(timestamp.timestamp()))}
+    )
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+    # convert all entries to ints
+    data = response.json()["data"]["networkStakerBalanceCheckpoints"]
+    data = [{
+        "value": solidity.to_float(int(entry["rETHExchangeRate"])),
+        "time": int(entry["blockTime"])
+    } for entry in data]
+    return data
