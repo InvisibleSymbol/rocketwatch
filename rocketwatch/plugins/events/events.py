@@ -160,13 +160,15 @@ class Events(commands.Cog):
             price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
-        if "rpl_claim_event" in event_name:
+        if event_name in ["rpl_claim_event", "rpl_stake_event"]:
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
             args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
-            # reject if the reward is less than 10 ETH worth of RPL
-            if args.ethAmount < 10:
-                return Response()
+
+        # reject if the amount is not major
+        if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
+                "rpl_stake_event" in event_name and args.rplAmount < 160]):
+            return Response()
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [
