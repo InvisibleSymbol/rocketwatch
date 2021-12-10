@@ -29,10 +29,9 @@ class MinipoolDistribution(commands.Cog):
         e = Embed(color=self.color)
         e.title = "Minipool Distribution"
         description = "```\n"
-        for minipools in minipool_distribution:
-            node_count = minipool_distribution[minipools]
+        for minipools, nodes in minipool_distribution:
             description += f"{p.no('minipool', minipools):>14}: " \
-                           f"{node_count:>4} {p.plural('node', node_count)}\n"
+                           f"{nodes:>4} {p.plural('node', nodes)}\n"
         description += "```"
         e.description = description
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))

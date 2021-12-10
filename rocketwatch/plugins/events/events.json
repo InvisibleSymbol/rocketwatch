@@ -108,6 +108,15 @@
                     "name": "auction_rpl_recover_event"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketNodeStaking",
+            "events": [
+                {
+                    "event_name": "RPLStaked",
+                    "name": "rpl_stake_event"
+                }
+            ]
         }
     ],
     "global": [

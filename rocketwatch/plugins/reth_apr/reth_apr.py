@@ -34,7 +34,7 @@ class RETHAPR(commands.Cog):
         total_duration = datapoints[-1]["time"] - datapoints[0]["time"]
 
         # get average duration between datapoints
-        average_duration = total_duration / len(datapoints)
+        average_duration = total_duration / (len(datapoints) - 1)
 
         # next estimated update
         next_update = int(datapoints[-1]["time"] + average_duration)

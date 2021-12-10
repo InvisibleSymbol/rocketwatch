@@ -100,7 +100,7 @@ def assemble(args):
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc", "tnx_fee"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
@@ -117,12 +117,12 @@ def assemble(args):
     if "pubkey" in args:
         embed.add_field(name="Validator",
                         value=args.pubkey,
-                        inline="commission" in args)
+                        inline=False)
 
     if "commission" in args:
         embed.add_field(name="Commission Rate",
                         value=f"{args.commission:.2%}",
-                        inline=True)
+                        inline=False)
 
     if "settingContractName" in args:
         embed.add_field(name="Contract",
@@ -169,11 +169,15 @@ def assemble(args):
 
     # show timestamp
     times = [value for key, value in args.items() if "time" in key.lower()]
-    if times:
-        time = times[0]
-    else:
-        time = int(datetime.datetime.now().timestamp())
+    time = times[0] if times else int(datetime.datetime.now().timestamp())
     embed.add_field(name="Timestamp",
                     value=f"<t:{time}:R> (<t:{time}:f>)",
                     inline=False)
+
+    # show the transaction fees
+    if "tnx_fee" in args:
+        embed.add_field(name="Transaction Fee",
+                        value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
+                        inline=False)
+
     return embed

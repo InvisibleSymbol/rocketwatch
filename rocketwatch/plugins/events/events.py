@@ -107,17 +107,26 @@ class QueuedEvents(commands.Cog):
         if pubkey:
             event.args.pubkey = "0x" + pubkey
 
-        # while we are at it add the sender address so it shows up
+        # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]
 
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
+
+        # and add the transaction fee
+        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
+        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
         return self.create_embed(event_name, event), event_name
 
     def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
+
+        if "tnx_fee" not in args:
+            receipt = w3.eth.get_transaction_receipt(event.transactionHash)
+            args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
+            args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
 
         # store event_name in args
         args.event_name = event_name
@@ -153,14 +162,16 @@ class QueuedEvents(commands.Cog):
             price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
-        if "rpl_claim_event" in event_name:
+        if event_name in ["rpl_claim_event", "rpl_stake_event"]:
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
             args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
-            # reject if the reward is less than 10 ETH worth of RPL
-            if args.ethAmount < 10:
-                log.debug(f"Skipping {event.transactionHash.hex()} because the reward is less than 10 ETH worth of RPL")
-                return None
+
+        # reject if the amount is not major
+        if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
+                "rpl_stake_event" in event_name and args.ethAmount < 160]):
+            log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
+            return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [

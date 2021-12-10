@@ -11,6 +11,10 @@
         "title": ":moneybag: Major RPL Rewards Claim",
         "description": "%{claimingAddress} claimed %{amount} RPL (worth %{ethAmount} ETH)!"
     },
+    "rpl_stake_event": {
+        "title": ":moneybag: Major RPL Stake",
+        "description": "%{from} staked %{amount} RPL (worth %{ethAmount} ETH)!"
+    },
     "minipool_deposit_event": {
         "title": ":rocket: Minipool Final Deposit ",
         "description": "Minipool %{minipool} has deposited its final 16 ETH to the Beacon Chain!"
