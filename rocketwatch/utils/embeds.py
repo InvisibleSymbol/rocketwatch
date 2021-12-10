@@ -100,7 +100,7 @@ def assemble(args):
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc"]):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc", "tnx_fee"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
@@ -162,11 +162,6 @@ def assemble(args):
         embed.add_field(name="Sender Address",
                         value=sender)
 
-    # show block number
-    if "blockNumber" in args:
-        embed.add_field(name="Block Number",
-                        value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
-
     # show timestamp
     times = [value for key, value in args.items() if "time" in key.lower()]
     if times:
@@ -176,4 +171,11 @@ def assemble(args):
     embed.add_field(name="Timestamp",
                     value=f"<t:{time}:R> (<t:{time}:f>)",
                     inline=False)
+
+    # show the transaction fees
+    if "tnx_fee" in args:
+        embed.add_field(name="Transaction Fee",
+                        value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} USD)",
+                        inline=False)
+
     return embed

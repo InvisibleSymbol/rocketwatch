@@ -113,11 +113,15 @@ class Events(commands.Cog):
         if pubkey:
             event.args.pubkey = "0x" + pubkey
 
-        # while we are at it add the sender address so it shows up
+        # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]
 
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
+
+        # and add the transaction fee
+        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
+        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.tnx_fee
 
         return await self.create_embed(event_name, event)
 
@@ -125,6 +129,11 @@ class Events(commands.Cog):
     async def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
+
+        if "tnx_fee" not in args:
+            receipt = w3.eth.get_transaction_receipt(event.transactionHash)
+            args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
+            args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
 
         # store event_name in args
         args.event_name = event_name
