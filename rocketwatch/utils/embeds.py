@@ -162,12 +162,14 @@ def assemble(args):
         embed.add_field(name="Sender Address",
                         value=sender)
 
+    # show block number
+    if "blockNumber" in args:
+        embed.add_field(name="Block Number",
+                        value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
+
     # show timestamp
     times = [value for key, value in args.items() if "time" in key.lower()]
-    if times:
-        time = times[0]
-    else:
-        time = int(datetime.datetime.now().timestamp())
+    time = times[0] if times else int(datetime.datetime.now().timestamp())
     embed.add_field(name="Timestamp",
                     value=f"<t:{time}:R> (<t:{time}:f>)",
                     inline=False)
@@ -175,7 +177,7 @@ def assemble(args):
     # show the transaction fees
     if "tnx_fee" in args:
         embed.add_field(name="Transaction Fee",
-                        value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} USD)",
+                        value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
                         inline=False)
 
     return embed
