@@ -121,7 +121,7 @@ class Events(commands.Cog):
 
         # and add the transaction fee
         event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.tnx_fee
+        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
         return await self.create_embed(event_name, event)
 
