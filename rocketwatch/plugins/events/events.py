@@ -167,7 +167,8 @@ class Events(commands.Cog):
 
         # reject if the amount is not major
         if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
-                "rpl_stake_event" in event_name and args.rplAmount < 160]):
+                "rpl_stake_event" in event_name and args.ethAmount < 160]):
+            log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
             return Response()
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
