@@ -7,8 +7,12 @@ rocketpool: {
   chain: "mainnet",
   alchemy_secret: "insert_secret_here",
   mainnet_alchemy_secret: "insert_secret_here"
-},
+}
+override_addresses: {
+  "0xF0138d2e4037957D7b37De312a16a88A7f83A32a": "Invis(Dev)"
+}
 wakatime.secret = ""
+graph_endpoint = "https://gateway.thegraph.com/api/<apikey>/subgraphs/id/0xa508c16666c5b8981fa46eb32784fccc01942a71-3"
 discord: {
   secret: "insert_secret_here",
   owner: {
