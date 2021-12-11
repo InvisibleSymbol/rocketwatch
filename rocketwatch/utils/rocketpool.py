@@ -124,13 +124,9 @@ class RocketPool:
         return result
 
     def get_dai_eth_price(self):
-        observations = [self.call("DAIETH_univ3.observations", i) for i in range(0, 2)]
-        t = observations[1][0] - observations[0][0]
-        delta_ticks = observations[1][1] - observations[0][1]
-        avg_ticks = delta_ticks / t
-        value_dai = 1.0001 ** avg_ticks
-        value_eth = 1 / value_dai
-        return value_eth
+        data = self.call("DAIETH_univ3.slot0")
+        value_dai = data[0] ** 2 / 2 ** 192
+        return 1 / value_dai
 
     def get_minipool_count_per_status(self):
         offset, limit = 0, 500
