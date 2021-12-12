@@ -12,6 +12,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
+from utils.thegraph import get_unclaimed_rpl_reward_nodes
 from utils.visibility import is_hidden
 
 log = logging.getLogger("Rewards")
@@ -64,17 +65,32 @@ class Rewards(commands.Cog):
             percentage = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", contract))
             amount = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", contract))
             amount_formatted = humanize.intcomma(amount, 2)
-            distribution += f"{name}:\n\tAllocated:\t{amount_formatted:>10} RPL ({percentage:.0%})\n"
+            distribution += f"{name}:\n\tAllocated:\t{amount_formatted:>11} RPL ({percentage:.0%})\n"
 
             # show how much was already claimed
-            claimed = solidity.to_float(rp.call(f"rocketRewardsPool.getClaimingContractTotalClaimed", contract))
+            claimed = solidity.to_float(
+                rp.call(
+                    'rocketRewardsPool.getClaimingContractTotalClaimed', contract
+                )
+            )
+
             claimed_formatted = humanize.intcomma(claimed, 2)
 
             # percentage already claimed
             claimed_percentage = claimed / amount
-            distribution += f"\tClaimed:\t  {claimed_formatted:>10} RPL ({claimed_percentage:.0%})\n"
+            distribution += f"\tClaimed:\t{claimed_formatted:>13} RPL ({claimed_percentage:.0%})\n"
+
+            if "Node Operator" in name:
+                waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
+                waiting_percentage = waiting_for_claims / amount
+                waiting_for_claims = humanize.intcomma(waiting_for_claims, 2)
+                distribution += f"\tPending:\t{waiting_for_claims:>13} RPL ({waiting_percentage:.0%})\n"
+                rollover_percentage = potential_rollover / amount
+                potential_rollover = humanize.intcomma(potential_rollover, 2)
+                distribution += f"\tRollover*:\t{potential_rollover:>11} RPL ({rollover_percentage:.0%})\n"
 
         distribution += "```"
+        distribution += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
         e.add_field(name="Distribution", value=distribution, inline=False)
 
         # show how much a node operator can claim with 10% (1.6 ETH) collateral and 150% (24 ETH) collateral
