@@ -146,7 +146,7 @@ def get_unclaimed_rpl_reward_nodes():
     """
     # get reward period start
     reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
-    # show duration left
+    # duration left
     reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
     reward_end = reward_start + reward_duration
     # get timestamp 28 days from the last possible claim date
@@ -182,6 +182,67 @@ def get_unclaimed_rpl_reward_nodes():
     rewards_required = reward_per_staked_rpl * sum(
         solidity.to_float(v) for v in eligible_nodes.values()
     )
+    potential_rollover = (total_rewards - claimed_rewards) - rewards_required
+
+    return rewards_required, potential_rollover
+
+
+def get_unclaimed_rpl_reward_odao():
+    query = """
+{{
+    nodes(first: 1000, where: {{oracleNodeBlockTime_lte: "{timestamp}", oracleNodeBlockTime_gt: "0"}}) {{
+        id
+        effectiveRPLStaked
+    }}
+    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {{
+        totalODAORewardsClaimed
+        claimableODAORewards
+        rplRewardClaims(first: 1000, where: {{claimerType: ODAO}}) {{
+            claimer
+        }}
+    }}
+}}
+    """
+    # get reward period start
+    reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
+    # duration left
+    reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
+    reward_end = reward_start + reward_duration
+    # get timestamp 28 days from the last possible claim date
+    timestamp = reward_end - (solidity.days * 28)
+
+    # do the request
+    response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': query.format(timestamp=timestamp)}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+    # get the eligible nodes for this interval
+    eligible_nodes = [node["id"] for node in data["nodes"]]
+
+    # remove nodes that have already claimed rewards
+    for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
+        if claim["claimer"] in eligible_nodes:
+            eligible_nodes.remove(claim["claimer"])
+
+    # get total rewards
+    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableODAORewards"])
+    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalODAORewardsClaimed"])
+    total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
+
+    # get theoretical rewards per member
+    reward_per_member = total_rewards / total_odao_members
+
+    # calculate Rewards required for eligible nodes
+    rewards_required = reward_per_member * len(eligible_nodes)
+
+    # calculate potential rollover
     potential_rollover = (total_rewards - claimed_rewards) - rewards_required
 
     return rewards_required, potential_rollover

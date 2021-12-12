@@ -12,7 +12,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
-from utils.thegraph import get_unclaimed_rpl_reward_nodes
+from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao
 from utils.visibility import is_hidden
 
 log = logging.getLogger("Rewards")
@@ -80,8 +80,11 @@ class Rewards(commands.Cog):
             claimed_percentage = claimed / amount
             distribution += f"\tClaimed:\t{claimed_formatted:>13} RPL ({claimed_percentage:.0%})\n"
 
-            if "Node Operator" in name:
-                waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
+            if "Node" in contract:
+                if "oDAO Member" in name:
+                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_odao()
+                else:
+                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
                 waiting_percentage = waiting_for_claims / amount
                 waiting_for_claims = humanize.intcomma(waiting_for_claims, 2)
                 distribution += f"\tPending:\t{waiting_for_claims:>13} RPL ({waiting_percentage:.0%})\n"
@@ -108,6 +111,10 @@ class Rewards(commands.Cog):
         reward_150_percent_eth = humanize.intcomma(reward_150_percent * rpl_ratio, 2)
         reward_150_percent_dai = humanize.intcomma(reward_150_percent * rpl_price, 2)
 
+        # calculate current APR for node operators
+        apr = reward_per_staked_rpl / (reward_duration / 60 / 60 / 24) * 365
+        e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
+
         e.add_field(name="Current Rewards per Minipool:",
                     value=f"```\n"
                           f"10% collateralized Minipool:\n\t{humanize.intcomma(reward_10_percent, 2):>6} RPL"
@@ -119,10 +126,20 @@ class Rewards(commands.Cog):
                           f"```",
                     inline=False)
 
-        # calculate current APR for node operators
-        apr = reward_per_staked_rpl / (reward_duration / 60 / 60 / 24) * 365
-        e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
+        # show Rewards per oDAO Member
+        total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
+        odao_members_rewards = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimTrustedNode"))
+        rewards_per_odao_member = odao_members_rewards / total_odao_members
+        rewards_per_odao_member_eth = humanize.intcomma(rewards_per_odao_member * rpl_ratio, 2)
+        rewards_per_odao_member_dai = humanize.intcomma(rewards_per_odao_member * rpl_price, 2)
 
+        e.add_field(name="Current Rewards per oDAO Member:",
+                    value=f"```\n"
+                          f"{humanize.intcomma(rewards_per_odao_member, 2):>6} RPL"
+                          f" (worth {rewards_per_odao_member_eth} ETH or"
+                          f" {rewards_per_odao_member_dai} DAI)\n"
+                          f"```",
+                    inline=False)
         # send embed
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
