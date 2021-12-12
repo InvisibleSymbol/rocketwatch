@@ -34,7 +34,7 @@ def get_average_commission():
     return solidity.to_float(raw_value)
 
 
-def get_minipool_count_per_node_histogram():
+def get_minipool_counts_per_node():
     query = """
 {{
     nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
@@ -85,18 +85,8 @@ def get_minipool_count_per_node_histogram():
         else:
             break
 
-    # create a histogram by minipool count
-    histogram = {}
-    for node_id, mp_count in all_nodes.items():
-        if mp_count in histogram:
-            histogram[mp_count] += 1
-        else:
-            histogram[mp_count] = 1
-
-    return [
-        (mp_count, histogram[mp_count])
-        for mp_count in sorted(histogram, reverse=True)
-    ]
+    # return an array where each element represents a single node, and the value stored is the minipool count
+    return sorted([mp_count for _, mp_count in all_nodes.items()])
 
 
 def get_reth_ratio_past_week():
