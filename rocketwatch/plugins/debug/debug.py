@@ -2,6 +2,7 @@ import io
 import json
 import random
 
+import humanize
 from discord import File
 from discord.commands import slash_command, Option
 from discord.ext import commands
@@ -42,21 +43,22 @@ class Debug(commands.Cog):
                        required=False)):
         """Call Function of Contract"""
         await ctx.defer()
-        # make sure the first character of the command is lowercase
-        command = command[0].lower() + command[1:]
+
         try:
             args = json.loads(json_args)
             if not isinstance(args, list):
                 args = [args]
             v = rp.call(command, *args, block=block)
+            g = rp.estimate_gas_for_call(command, *args, block=block)
         except Exception as err:
             await ctx.respond(f"Exception: ```{repr(err)}```")
             return
 
         if isinstance(v, int) and abs(v) >= 10 ** 12:
             v = solidity.to_float(v)
+        g = humanize.intcomma(g)
 
-        await ctx.respond(f"`block: {block}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
+        await ctx.respond(f"`block: {block}`\n`Gas Estimate:{g}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
     @slash_command(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):

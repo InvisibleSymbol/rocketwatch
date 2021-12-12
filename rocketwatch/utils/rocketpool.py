@@ -74,7 +74,18 @@ class RocketPool:
         name = self.get_name_by_address(address)
         return self.assemble_contract(name, address)
 
+    def estimate_gas_for_call(self, path, *args, block="latest"):
+        log.debug(f"Estimating gas for {path} (block={block})")
+        parts = path.split(".")
+        if len(parts) != 2:
+            raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
+        name, function = parts
+        contract = self.get_contract_by_name(name)
+        return contract.functions[function](*args).estimateGas({"gas": 2 ** 32},
+                                                               block_identifier=block)
+
     def call(self, path, *args, block="latest"):
+        log.debug(f"Calling {path} (block={block})")
         parts = path.split(".")
         if len(parts) != 2:
             raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
