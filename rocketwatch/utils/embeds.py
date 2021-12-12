@@ -46,8 +46,8 @@ ens = CachedEns()
 
 
 def prepare_args(args):
-    rpl_price = rp.call("rocketNetworkPrices.getRPLPrice")
-    reth_price = rp.call("rocketTokenRETH.getExchangeRate")
+    rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+    reth_price = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
     for arg_key, arg_value in list(args.items()):
         # store raw value
         args[f"{arg_key}_raw"] = arg_value
@@ -80,7 +80,7 @@ def prepare_args(args):
                 # get rocketpool related holdings value for this address
                 address = w3.toChecksumAddress(arg_value)
                 # get their eth balance
-                eth_balance = w3.eth.getBalance(address)
+                eth_balance = solidity.to_float(w3.eth.getBalance(address))
                 # get ERC-20 token balance for this address
                 tokens = w3.provider.make_request("alchemy_getTokenBalances",
                                                   [address,
@@ -96,10 +96,9 @@ def prepare_args(args):
                     if token["error"]:
                         continue
                     if "RPL" in contract_name:
-                        eth_balance += w3.toInt(hexstr=token["tokenBalance"]) * rpl_price
+                        eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * rpl_price
                     if "RETH" in contract_name:
-                        eth_balance += w3.toInt(hexstr=token["tokenBalance"]) * reth_price
-                eth_balance = solidity.to_float(eth_balance)
+                        eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * reth_price
                 name = f"{get_sea_creature_for_holdings(eth_balance)} {name}"
 
             # handle validators
