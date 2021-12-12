@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from utils.cfg import cfg
 from utils.slash_permissions import guilds
+from utils.sea_creatures import sea_creatures
 
 log = logging.getLogger("random")
 log.setLevel(cfg["log_level"])
@@ -32,6 +33,17 @@ class Random(commands.Cog):
 
         joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
         embed.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
+
+        await ctx.respond(embed=embed)
+
+    @slash_command(guild_ids=guilds)
+    async def sea_creatures(self, ctx):
+        """List all sea creatures with their required minimum holding"""
+        embed = Embed(color=self.color)
+        embed.title = "Possible Sea Creatures"
+        embed.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
+        for holding_value, sea_creature in sea_creatures.items():
+            embed.add_field(name=sea_creature, value=f"holds over {holding_value} ETH worth of assets", inline=False)
 
         await ctx.respond(embed=embed)
 
