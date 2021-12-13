@@ -65,7 +65,7 @@ class Rewards(commands.Cog):
             percentage = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", contract))
             amount = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", contract))
             amount_formatted = humanize.intcomma(amount, 2)
-            distribution += f"{name}:\n\tAllocated:\t{amount_formatted:>11} RPL ({percentage:.0%})\n"
+            distribution += f"{name} ({percentage:.0%}):\n\tAllocated:\t{amount_formatted:>10} RPL\n"
 
             # show how much was already claimed
             claimed = solidity.to_float(
@@ -78,7 +78,7 @@ class Rewards(commands.Cog):
 
             # percentage already claimed
             claimed_percentage = claimed / amount
-            distribution += f"\tClaimed:\t{claimed_formatted:>13} RPL ({claimed_percentage:.0%})\n"
+            distribution += f"\t├Claimed:\t{claimed_formatted:>11} RPL ({claimed_percentage:.0%})\n"
 
             if "Node" in contract:
                 if "oDAO Member" in name:
@@ -87,10 +87,17 @@ class Rewards(commands.Cog):
                     waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
                 waiting_percentage = waiting_for_claims / amount
                 waiting_for_claims = humanize.intcomma(waiting_for_claims, 2)
-                distribution += f"\tPending:\t{waiting_for_claims:>13} RPL ({waiting_percentage:.0%})\n"
+                distribution += f"\t├Pending:\t{waiting_for_claims:>11} RPL ({waiting_percentage:.0%})\n"
                 rollover_percentage = potential_rollover / amount
                 potential_rollover = humanize.intcomma(potential_rollover, 2)
-                distribution += f"\tRollover*:\t{potential_rollover:>11} RPL ({rollover_percentage:.0%})\n"
+                distribution += f"\t├Rollover*:\t{potential_rollover:>9} RPL ({rollover_percentage:.0%})\n"
+
+            # reverse distribution string
+            distribution = distribution[::-1]
+            # replace (now first) last occurrence of ├ with └
+            distribution = distribution.replace("├", "└", 1)
+            # reverse again
+            distribution = distribution[::-1]
 
         distribution += "```"
         distribution += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
