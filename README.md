@@ -33,4 +33,4 @@ A Discord bot that tracks Rocket Pool Events
 
 -->
 ## Donate:
-[<kbd>0xF0138d2e4037957D7b37De312a16a88A7f83A32a</kbd>](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)
+[<kbd>0xinvis.eth</kbd>](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)

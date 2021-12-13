@@ -86,7 +86,7 @@ class About(commands.Cog):
                             "**Message me about your Donation for a free POAP!\***\n\n" \
                             "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
         embed.add_field(name="Donation Address",
-                        value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
+                        value="[`0xinvis.eth`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
         """
         # add address qrcode
