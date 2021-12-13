@@ -58,7 +58,7 @@ class Debug(commands.Cog):
             v = solidity.to_float(v)
         g = humanize.intcomma(g)
 
-        await ctx.respond(f"`block: {block}`\n`Gas Estimate:{g}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
+        await ctx.respond(f"`block: {block}`\n`gas estimate:{g}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
     @slash_command(guild_ids=guilds)
     async def get_abi_from_contract(self, ctx, contract):
