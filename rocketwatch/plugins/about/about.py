@@ -73,6 +73,20 @@ class About(commands.Cog):
         bot_uptime = time.time() - BOOT_TIME
         embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
+        # show credits
+        try:
+            contributors = [
+                f"[{c['login']}]({c['html_url']}) ({c['contributions']})"
+                for c in requests.get("https://api.github.com/repos/InvisibleSymbol/rocketwatch/contributors").json()
+                if "bot" not in c["login"].lower()
+            ]
+            contributors_str = ", ".join(contributors[:5])
+            if len(contributors) > 10:
+                contributors_str += " and more"
+            embed.add_field(name="Contributors", value=contributors_str)
+        except Exception as err:
+            await report_error(err)
+
         await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
