@@ -11,5 +11,5 @@ uptime==3.0.1
 git+git://github.com/Pycord-Development/pycord@45c52de5aa7597549a9923a084f6e12921bc6a82#egg=py-cord
 config==0.5.1
 pytz==2021.3
-matplotlib==3.5.0
+matplotlib==3.5.1
 inflect==5.3.0

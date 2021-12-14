@@ -73,6 +73,20 @@ class About(commands.Cog):
         bot_uptime = time.time() - BOOT_TIME
         embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
+        # show credits
+        try:
+            contributors = [
+                f"[{c['login']}]({c['html_url']}) ({c['contributions']})"
+                for c in requests.get("https://api.github.com/repos/InvisibleSymbol/rocketwatch/contributors").json()
+                if "bot" not in c["login"].lower()
+            ]
+            contributors_str = ", ".join(contributors[:5])
+            if len(contributors) > 10:
+                contributors_str += " and more"
+            embed.add_field(name="Contributors", value=contributors_str)
+        except Exception as err:
+            await report_error(err)
+
         await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
@@ -86,7 +100,7 @@ class About(commands.Cog):
                             "**Message me about your Donation for a free POAP!\***\n\n" \
                             "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
         embed.add_field(name="Donation Address",
-                        value="[`0xF0138d2e4037957D7b37De312a16a88A7f83A32a`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
+                        value="[`0xinvis.eth`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
         """
         # add address qrcode

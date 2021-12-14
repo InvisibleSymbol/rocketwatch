@@ -14,6 +14,7 @@ from utils.containers import Response
 from utils.readable import etherscan_url, beaconchain_url
 from utils.reporter import report_error
 from utils.rocketpool import rp
+from utils.sea_creatures import get_sea_creature_for_holdings
 from utils.shared_w3 import w3
 
 
@@ -45,6 +46,8 @@ ens = CachedEns()
 
 
 def prepare_args(args):
+    rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+    reth_price = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
     for arg_key, arg_value in list(args.items()):
         # store raw value
         args[f"{arg_key}_raw"] = arg_value
@@ -73,10 +76,36 @@ def prepare_args(args):
                 if not name:
                     # fall back to shortened address
                     name = readable.hex(arg_value)
-                # get balance of address and add whale emoji if above 100 ETH
-                balance = solidity.to_float(w3.eth.getBalance(w3.toChecksumAddress(arg_value)))
-                if balance > 100:
-                    name = f"🐳 {name}"
+                # only check balance if key is called "sender" or "from"
+                if arg_key in ["sender", "from"]:
+                    # get rocketpool related holdings value for this address
+                    address = w3.toChecksumAddress(arg_value)
+                    # get their eth balance
+                    eth_balance = solidity.to_float(w3.eth.getBalance(address))
+                    # get ERC-20 token balance for this address
+                    tokens = w3.provider.make_request("alchemy_getTokenBalances",
+                                                      [address,
+                                                       [
+                                                           rp.get_address_by_name("rocketTokenRPL"),
+                                                           rp.get_address_by_name("rocketTokenRPLFixedSupply"),
+                                                           rp.get_address_by_name("rocketTokenRETH")],
+                                                       ])["result"]["tokenBalances"]
+                    # add their tokens to their eth balance
+                    for token in tokens:
+                        contract_name = rp.get_name_by_address(token["contractAddress"])
+                        if token["error"]:
+                            continue
+                        if "RPL" in contract_name:
+                            eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * rpl_price
+                        if "RETH" in contract_name:
+                            eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * reth_price
+                    # get minipool count
+                    minipools = solidity.to_int(rp.call("rocketMinipoolManager.getNodeValidatingMinipoolCount", address))
+                    eth_balance += minipools * 16
+                    # add their staked RPL
+                    staked_rpl = solidity.to_int(rp.call("rocketNodeStaking.getNodeRPLStake", address))
+                    eth_balance += staked_rpl * rpl_price
+                    name = f"{get_sea_creature_for_holdings(eth_balance)} {name}"
 
             # handle validators
             if arg_key == "pubkey":

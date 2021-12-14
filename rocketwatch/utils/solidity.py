@@ -8,8 +8,8 @@ years = 365 * days
 
 
 def to_float(n, decimals=18):
-    return n / 10 ** decimals
+    return int(n) / 10 ** decimals
 
 
 def to_int(n, decimals=18):
-    return n // 10 ** decimals
+    return int(n) // 10 ** decimals

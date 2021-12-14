@@ -5,6 +5,7 @@ import requests
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.rocketpool import rp
 
 log = logging.getLogger("Rewards")
 log.setLevel(cfg["log_level"])
@@ -33,7 +34,7 @@ def get_average_commission():
     return solidity.to_float(raw_value)
 
 
-def get_minipool_count_per_node_histogram():
+def get_minipool_counts_per_node():
     query = """
 {{
     nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
@@ -84,18 +85,8 @@ def get_minipool_count_per_node_histogram():
         else:
             break
 
-    # create a histogram by minipool count
-    histogram = {}
-    for node_id, mp_count in all_nodes.items():
-        if mp_count in histogram:
-            histogram[mp_count] += 1
-        else:
-            histogram[mp_count] = 1
-
-    return [
-        (mp_count, histogram[mp_count])
-        for mp_count in sorted(histogram, reverse=True)
-    ]
+    # return an array where each element represents a single node, and the value stored is the minipool count
+    return sorted([mp_count for _, mp_count in all_nodes.items()])
 
 
 def get_reth_ratio_past_week():
@@ -124,3 +115,124 @@ def get_reth_ratio_past_week():
         "time": int(entry["blockTime"])
     } for entry in data]
     return data
+
+
+def get_unclaimed_rpl_reward_nodes():
+    # TODO: Make work with over 1000 nodes
+    query = """
+{{
+    nodes(first: 1000, where: {{blockTime_lte: "{timestamp}", effectiveRPLStaked_gt: "0"}}) {{
+        id
+        effectiveRPLStaked
+    }}
+    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {{
+        totalNodeRewardsClaimed
+        claimableNodeRewards
+        rplRewardClaims(first: 1000, where: {{claimerType: Node}}) {{
+            claimer
+        }}
+    }}
+}}
+    """
+    # get reward period start
+    reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
+    # duration left
+    reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
+    reward_end = reward_start + reward_duration
+    # get timestamp 28 days from the last possible claim date
+    timestamp = reward_end - (solidity.days * 28)
+
+    # do the request
+    response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': query.format(timestamp=timestamp)}
+    )
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+    # get the eligible nodes for this interval
+    eligible_nodes = {node["id"]:node["effectiveRPLStaked"] for node in data["nodes"]}
+
+    # remove nodes that have already claimed rewards
+    for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
+        if claim["claimer"] in eligible_nodes:
+            eligible_nodes.pop(claim["claimer"])
+
+    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableNodeRewards"])
+    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalNodeRewardsClaimed"])
+    total_rpl_staked = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
+
+    # get theoretical rewards per staked RPL
+    reward_per_staked_rpl = total_rewards / total_rpl_staked
+
+    # calculate Rewards required for eligible nodes
+    rewards_required = reward_per_staked_rpl * sum(
+        solidity.to_float(v) for v in eligible_nodes.values()
+    )
+    potential_rollover = (total_rewards - claimed_rewards) - rewards_required
+
+    return rewards_required, potential_rollover
+
+
+def get_unclaimed_rpl_reward_odao():
+    query = """
+{{
+    nodes(first: 1000, where: {{oracleNodeBlockTime_lte: "{timestamp}", oracleNodeBlockTime_gt: "0"}}) {{
+        id
+        effectiveRPLStaked
+    }}
+    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {{
+        totalODAORewardsClaimed
+        claimableODAORewards
+        rplRewardClaims(first: 1000, where: {{claimerType: ODAO}}) {{
+            claimer
+        }}
+    }}
+}}
+    """
+    # get reward period start
+    reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
+    # duration left
+    reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
+    reward_end = reward_start + reward_duration
+    # get timestamp 28 days from the last possible claim date
+    timestamp = reward_end - (solidity.days * 28)
+
+    # do the request
+    response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': query.format(timestamp=timestamp)}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+    # get the eligible nodes for this interval
+    eligible_nodes = [node["id"] for node in data["nodes"]]
+
+    # remove nodes that have already claimed rewards
+    for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
+        if claim["claimer"] in eligible_nodes:
+            eligible_nodes.remove(claim["claimer"])
+
+    # get total rewards
+    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableODAORewards"])
+    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalODAORewardsClaimed"])
+    total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
+
+    # get theoretical rewards per member
+    reward_per_member = total_rewards / total_odao_members
+
+    # calculate Rewards required for eligible nodes
+    rewards_required = reward_per_member * len(eligible_nodes)
+
+    # calculate potential rollover
+    potential_rollover = (total_rewards - claimed_rewards) - rewards_required
+
+    return rewards_required, potential_rollover

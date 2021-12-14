@@ -12,6 +12,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
+from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao
 from utils.visibility import is_hidden
 
 log = logging.getLogger("Rewards")
@@ -64,17 +65,42 @@ class Rewards(commands.Cog):
             percentage = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", contract))
             amount = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", contract))
             amount_formatted = humanize.intcomma(amount, 2)
-            distribution += f"{name}:\n\tAllocated:\t{amount_formatted:>10} RPL ({percentage:.0%})\n"
+            distribution += f"{name} ({percentage:.0%}):\n\tAllocated:\t{amount_formatted:>10} RPL\n"
 
             # show how much was already claimed
-            claimed = solidity.to_float(rp.call(f"rocketRewardsPool.getClaimingContractTotalClaimed", contract))
+            claimed = solidity.to_float(
+                rp.call(
+                    'rocketRewardsPool.getClaimingContractTotalClaimed', contract
+                )
+            )
+
             claimed_formatted = humanize.intcomma(claimed, 2)
 
             # percentage already claimed
             claimed_percentage = claimed / amount
-            distribution += f"\tClaimed:\t  {claimed_formatted:>10} RPL ({claimed_percentage:.0%})\n"
+            distribution += f"\t├Claimed:\t{claimed_formatted:>11} RPL ({claimed_percentage:.0%})\n"
+
+            if "Node" in contract:
+                if "oDAO Member" in name:
+                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_odao()
+                else:
+                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
+                waiting_percentage = waiting_for_claims / amount
+                waiting_for_claims = humanize.intcomma(waiting_for_claims, 2)
+                distribution += f"\t├Pending:\t{waiting_for_claims:>11} RPL ({waiting_percentage:.0%})\n"
+                rollover_percentage = potential_rollover / amount
+                potential_rollover = humanize.intcomma(potential_rollover, 2)
+                distribution += f"\t├Rollover*:\t{potential_rollover:>9} RPL ({rollover_percentage:.0%})\n"
+
+            # reverse distribution string
+            distribution = distribution[::-1]
+            # replace (now first) last occurrence of ├ with └
+            distribution = distribution.replace("├", "└", 1)
+            # reverse again
+            distribution = distribution[::-1]
 
         distribution += "```"
+        distribution += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
         e.add_field(name="Distribution", value=distribution, inline=False)
 
         # show how much a node operator can claim with 10% (1.6 ETH) collateral and 150% (24 ETH) collateral
@@ -92,6 +118,10 @@ class Rewards(commands.Cog):
         reward_150_percent_eth = humanize.intcomma(reward_150_percent * rpl_ratio, 2)
         reward_150_percent_dai = humanize.intcomma(reward_150_percent * rpl_price, 2)
 
+        # calculate current APR for node operators
+        apr = reward_per_staked_rpl / (reward_duration / 60 / 60 / 24) * 365
+        e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
+
         e.add_field(name="Current Rewards per Minipool:",
                     value=f"```\n"
                           f"10% collateralized Minipool:\n\t{humanize.intcomma(reward_10_percent, 2):>6} RPL"
@@ -103,10 +133,20 @@ class Rewards(commands.Cog):
                           f"```",
                     inline=False)
 
-        # calculate current APR for node operators
-        apr = reward_per_staked_rpl / (reward_duration / 60 / 60 / 24) * 365
-        e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
+        # show Rewards per oDAO Member
+        total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
+        odao_members_rewards = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimTrustedNode"))
+        rewards_per_odao_member = odao_members_rewards / total_odao_members
+        rewards_per_odao_member_eth = humanize.intcomma(rewards_per_odao_member * rpl_ratio, 2)
+        rewards_per_odao_member_dai = humanize.intcomma(rewards_per_odao_member * rpl_price, 2)
 
+        e.add_field(name="Current Rewards per oDAO Member:",
+                    value=f"```\n"
+                          f"{humanize.intcomma(rewards_per_odao_member, 2):>6} RPL"
+                          f" (worth {rewards_per_odao_member_eth} ETH or"
+                          f" {rewards_per_odao_member_dai} DAI)\n"
+                          f"```",
+                    inline=False)
         # send embed
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 

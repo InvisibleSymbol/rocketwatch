@@ -74,7 +74,18 @@ class RocketPool:
         name = self.get_name_by_address(address)
         return self.assemble_contract(name, address)
 
+    def estimate_gas_for_call(self, path, *args, block="latest"):
+        log.debug(f"Estimating gas for {path} (block={block})")
+        parts = path.split(".")
+        if len(parts) != 2:
+            raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
+        name, function = parts
+        contract = self.get_contract_by_name(name)
+        return contract.functions[function](*args).estimateGas({"gas": 2 ** 32},
+                                                               block_identifier=block)
+
     def call(self, path, *args, block="latest"):
+        log.debug(f"Calling {path} (block={block})")
         parts = path.split(".")
         if len(parts) != 2:
             raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
@@ -124,16 +135,12 @@ class RocketPool:
         return result
 
     def get_dai_eth_price(self):
-        observations = [self.call("DAIETH_univ3.observations", i) for i in range(0, 2)]
-        t = observations[1][0] - observations[0][0]
-        delta_ticks = observations[1][1] - observations[0][1]
-        avg_ticks = delta_ticks / t
-        value_dai = 1.0001 ** avg_ticks
-        value_eth = 1 / value_dai
-        return value_eth
+        data = self.call("DAIETH_univ3.slot0")
+        value_dai = data[0] ** 2 / 2 ** 192
+        return 1 / value_dai
 
     def get_minipool_count_per_status(self):
-        offset, limit = 0, 500
+        offset, limit = 0, 10000
         minipool_count_per_status = [0, 0, 0, 0, 0]
         while True:
             log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
