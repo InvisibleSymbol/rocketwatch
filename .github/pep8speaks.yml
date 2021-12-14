@@ -1,0 +1,19 @@
+# File : .pep8speaks.yml
+
+scanner:
+    diff_only: True
+    linter: pycodestyle
+
+pycodestyle:
+    max-line-length: 128
+    ignore:
+        - E261
+        - E501
+        - W605
+        - E111
+        - E114
+        - E231
+        - E702
+        - E203
+
+no_blank_comment: True  # If True, no comment is made on PR without any errors.
