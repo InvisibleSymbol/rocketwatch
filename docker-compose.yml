@@ -5,3 +5,11 @@ services:
     volumes:
       - ./rocketwatch:/app
     restart: unless-stopped
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - ./mongodb:/data/db
+    restart: unless-stopped

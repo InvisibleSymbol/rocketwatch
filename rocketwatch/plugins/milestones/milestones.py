@@ -1,71 +1,56 @@
-import asyncio
 import json
 import logging
 
-from discord.ext import commands, tasks
-from tinydb import TinyDB, Query
+import pymongo
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.containers import Response
 from utils.embeds import assemble
-from utils.reporter import report_error
 from utils.rocketpool import rp
+from utils.shared_w3 import w3
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
 
 
-class Milestones(commands.Cog):
+class QueuedMilestones(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.state = "OK"
         self.state = {}
-        self.db = TinyDB('./plugins/milestones/state.db',
-                         create_dirs=True,
-                         sort_keys=True,
-                         indent=4,
-                         separators=(',', ': '))
+        self.mongo = pymongo.MongoClient('mongodb://mongodb:27017')
+        self.db = self.mongo.rocketwatch
+        self.collection = self.db.milestones
 
         with open("./plugins/milestones/milestones.json") as f:
             self.milestones = json.load(f)
 
-        if not self.run_loop.is_running():
-            self.run_loop.start()
-
-    @tasks.loop(seconds=60.0)
-    async def run_loop(self):
-        if self.state == "STOPPED":
-            return
-
-        if self.state != "ERROR":
-            try:
-                self.state = "OK"
-                return await self.check_for_new_events()
-            except Exception as err:
-                self.state = "ERROR"
-                await report_error(err)
-        try:
-            return self.__init__(self.bot)
-        except Exception as err:
-            self.state = "ERROR"
-            await report_error(err)
+    def run_loop(self):
+        if self.state == "RUNNING":
+            log.error("Milestones plugin was interrupted while running. Re-initializing...")
+            self.__init__(self.bot)
+        self.state = "RUNNING"
+        result = self.check_for_new_events()
+        self.state = "OK"
+        return result
 
     # noinspection PyTypeChecker
-    async def check_for_new_events(self):
+    def check_for_new_events(self):
         log.info("Checking Milestones")
+        payload = []
 
-        history = Query()
         for milestone in self.milestones:
-            # small delay to make commands not timeout
-            await asyncio.sleep(0.01)
             milestone = aDict(milestone)
-            state = self.db.search(history.name == milestone.name)
+
+            state = self.collection.find_one({"_id": milestone["id"]})
 
             value = getattr(rp, milestone.function)(*milestone.args)
             if milestone.formatter:
                 value = getattr(solidity, milestone.formatter)(value)
-            log.debug(f"{milestone.name}:{value}")
+            log.debug(f"{milestone.id}:{value}")
             if value < milestone.min:
                 continue
 
@@ -73,35 +58,30 @@ class Milestones(commands.Cog):
             latest_goal = (value // step_size + 1) * step_size
 
             if state:
-                previous_milestone = state[0]["current_goal"]
+                previous_milestone = state["current_goal"]
             else:
-                log.debug(f"First time we have processed Milestones for milestone {milestone.name}. Adding it to the Database.")
-                self.db.insert({
-                    "name"        : milestone.name,
-                    "current_goal": latest_goal
-                })
+                log.debug(f"First time we have processed Milestones for milestone {milestone.id}. Adding it to the Database.")
+                self.collection.insert_one({"_id": milestone["id"], "current_goal": latest_goal})
                 previous_milestone = milestone.min
             if previous_milestone < latest_goal:
-                log.info(f"Goal for milestone {milestone.name} has increased. Triggering Milestone!")
+                log.info(f"Goal for milestone {milestone.id} has increased. Triggering Milestone!")
                 embed = assemble(aDict({
-                    "event_name"     : milestone.name,
-                    "milestone_value": previous_milestone,
-                    "result_value"   : value
+                    "event_name"  : milestone.id,
+                    "result_value": value
                 }))
-                default_channel = await self.bot.fetch_channel(cfg["discord.channels.default"])
-                await default_channel.send(embed=embed)
-                self.db.upsert({
-                    "name"        : milestone.name,
-                    "current_goal": latest_goal
-                },
-                    history.name == milestone.name)
+                payload.append(Response(
+                    embed=embed,
+                    topic="milestones",
+                    block_number=w3.eth.getBlock("latest").number,
+                    event_name=milestone.id,
+                    unique_id=f"{milestone.id}:{latest_goal}",
+                ))
+                # update the current goal in collection
+                self.collection.update_one({"_id": milestone["id"]}, {"$set": {"current_goal": latest_goal}})
 
         log.debug("Finished Checking Milestones")
-
-    def cog_unload(self):
-        self.state = "STOPPED"
-        self.run_loop.cancel()
+        return payload
 
 
 def setup(bot):
-    bot.add_cog(Milestones(bot))
+    bot.add_cog(QueuedMilestones(bot))

@@ -1,7 +1,7 @@
 {
-    "fallback": {
+    "service_interrupted": {
         "title": ":warning: Failure in Event Processing",
-        "description": "Event `%{fallback_event_name}` failed to process.\nThe developer has already been notified of this Error."
+        "description": "The developer has automatically been notified of this Error.\nNo further action is required."
     },
     "reth_burn_event": {
         "title": ":fire: rETH Burn",

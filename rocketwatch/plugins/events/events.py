@@ -1,18 +1,16 @@
-import asyncio
 import json
 import logging
 
+import pymongo
 import termplotlib as tpl
-from cachetools import FIFOCache
-from discord.ext import commands, tasks
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args, exception_fallback
-from utils.reporter import report_error
+from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
@@ -23,17 +21,25 @@ DEPOSIT_EVENT = 2
 WITHDRAWABLE_EVENT = 3
 
 
-class Events(commands.Cog):
+class QueuedEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.state = "OK"
-        self.tnx_hash_cache = FIFOCache(maxsize=256)
+        self.state = "INIT"
         self.events = []
         self.internal_event_mapping = {}
         self.topic_mapping = {}
+        self.mongo = pymongo.MongoClient('mongodb://mongodb:27017')
+        self.db = self.mongo.rocketwatch
 
         with open("./plugins/events/events.json") as f:
             events_config = json.load(f)
+
+        try:
+            latest_block = self.db.last_checked_block.find_one({"_id": "events"})["block"]
+            self.start_block = latest_block - cfg["core.look_back_distance"]
+        except Exception as err:
+            log.error(f"Failed to get latest block from db: {err}")
+            self.start_block = w3.eth.getBlock("latest").number - cfg["core.look_back_distance"]
 
         # Generate Filter for direct Events
         addresses = []
@@ -58,7 +64,7 @@ class Events(commands.Cog):
         self.events.append(w3.eth.filter({
             "address"  : addresses,
             "topics"   : [aggregated_topics],
-            "fromBlock": "latest",
+            "fromBlock": self.start_block,
             "toBlock"  : "latest"
         }))
 
@@ -68,7 +74,7 @@ class Events(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=self.start_block,
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
@@ -77,11 +83,7 @@ class Events(commands.Cog):
                     continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
 
-        if not self.run_loop.is_running():
-            self.run_loop.start()
-
-    @exception_fallback()
-    async def handle_global_event(self, event):
+    def handle_global_event(self, event):
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         event_name = self.internal_event_mapping[event["event"]]
 
@@ -89,7 +91,7 @@ class Events(commands.Cog):
                     rp.get_address_by_name("rocketNodeDeposit") == receipt.to]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
-            return Response()
+            return None
 
         # first need to make the container mutable
         event = aDict(event)
@@ -123,10 +125,9 @@ class Events(commands.Cog):
         event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
         event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
-        return await self.create_embed(event_name, event)
+        return self.create_embed(event_name, event), event_name
 
-    @exception_fallback()
-    async def create_embed(self, event_name, event):
+    def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
 
@@ -178,7 +179,7 @@ class Events(commands.Cog):
         if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
                 "rpl_stake_event" in event_name and args.ethAmount < 160]):
             log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
-            return Response()
+            return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [
@@ -190,49 +191,41 @@ class Events(commands.Cog):
             # loop over all possible contracts if we get a match return empty response
             for contract in possible_contracts:
                 if rp.get_address_by_name(contract) == args.claimingContract:
-                    return Response()
+                    return None
 
         if "minipool_prestake_event" in event_name:
             contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
             args.commission = solidity.to_float(contract.functions.getNodeFee().call())
 
         args = prepare_args(args)
-        return Response(
-            embed=assemble(args),
-            event_name=event_name)
+        return assemble(args)
 
-    @tasks.loop(seconds=15.0)
-    async def run_loop(self):
-        if self.state == "STOPPED":
-            return
+    def run_loop(self):
+        if self.state == "RUNNING":
+            log.error("Boostrap plugin was interrupted while running. Re-initializing...")
+            self.__init__(self.bot)
+        return self.check_for_new_events()
 
-        if self.state != "ERROR":
-            try:
-                self.state = "OK"
-                return await self.check_for_new_events()
-            except Exception as err:
-                self.state = "ERROR"
-                await report_error(err)
-        try:
-            return self.__init__(self.bot)
-        except Exception as err:
-            self.state = "ERROR"
-            await report_error(err)
-
-    async def check_for_new_events(self):
+    def check_for_new_events(self):
         log.info("Checking for new Events")
 
         messages = []
-        tnx_hashes = []
+        do_full_check = self.state == "INIT"
+        if do_full_check:
+            log.info("Doing full check")
+        self.state = "RUNNING"
 
         for events in self.events:
-            for event in reversed(list(events.get_new_entries())):
-                # small delay to make commands not timeout
-                await asyncio.sleep(0.01)
+            if do_full_check:
+                pending_events = events.get_all_entries()
+            else:
+                pending_events = events.get_new_entries()
+            for event in reversed(list(pending_events)):
                 tnx_hash = event.transactionHash.hex()
-                result = None
+                embed = None
+                event_name = None
 
-                if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
+                if event.get("removed", False):
                     continue
 
                 log.debug(f"Checking Event {event}")
@@ -246,15 +239,12 @@ class Events(commands.Cog):
                     event = contract.events[contract_event]().processLog(event)
                     event_name = self.internal_event_mapping[event.event]
 
-                    result = await self.create_embed(event_name, event)
+                    embed = self.create_embed(event_name, event)
                 elif event.get("event", None) in self.internal_event_mapping:
-                    if tnx_hash in tnx_hashes:
-                        log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
-                        continue
                     # deposit/exit event path
-                    result = await self.handle_global_event(event)
+                    embed, event_name = self.handle_global_event(event)
 
-                if result:
+                if embed:
                     # lazy way of making it sort events within a single block correctly
                     score = event.blockNumber
                     # sort within block
@@ -263,36 +253,24 @@ class Events(commands.Cog):
                     if "logIndex" in event:
                         score += event.logIndex * 10 ** -3
 
-                    messages.append(aDict({
-                        "score" : score,
-                        "result": result
-                    }))
-
-                tnx_hashes.append(tnx_hash)
+                    messages.append(Response(
+                        embed=embed,
+                        topic="events",
+                        event_name=event_name,
+                        unique_id=f"{tnx_hash}:{event_name}",
+                        block_number=event.blockNumber,
+                        transaction_index=event.transactionIndex,
+                        event_index=event.logIndex
+                    ))
+                if event.blockNumber > self.start_block:
+                    self.start_block = event.blockNumber
 
         log.debug("Finished Checking for new Events")
-
-        if messages:
-            log.info(f"Sending {len(messages)} Message(s)")
-
-            channels = cfg["discord.channels"]
-
-            for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-                log.debug(f"Sending \"{message.result.event_name}\" Event")
-                channel_candidates = [value for key, value in channels.items() if message.result.event_name.startswith(key)]
-                channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
-                await channel.send(embed=message.result.embed)
-
-            log.info("Finished sending Message(s)")
-
-        # de-dupe logic:
-        for tnx_hash in set(tnx_hashes):
-            self.tnx_hash_cache[tnx_hash] = True
-
-    def cog_unload(self):
-        self.state = "STOPPED"
-        self.run_loop.cancel()
+        # store last checked block in db if its bigger than the one we have stored
+        self.state = "OK"
+        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block}, upsert=True)
+        return messages
 
 
 def setup(bot):
-    bot.add_cog(Events(bot))
+    bot.add_cog(QueuedEvents(bot))

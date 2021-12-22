@@ -21,6 +21,8 @@ class RichActivity(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        if self.run_loop.is_running():
+            return
         self.run_loop.start()
 
     @tasks.loop(seconds=60.0)

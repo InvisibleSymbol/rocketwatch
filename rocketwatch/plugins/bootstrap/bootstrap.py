@@ -1,17 +1,14 @@
-import asyncio
 import json
 import logging
 
 import web3.exceptions
-from cachetools import FIFOCache
-from discord.ext import commands, tasks
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args, exception_fallback
-from utils.reporter import report_error
+from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
@@ -22,11 +19,10 @@ DEPOSIT_EVENT = 2
 WITHDRAWABLE_EVENT = 3
 
 
-class Bootstrap(commands.Cog):
+class QueuedBootstrap(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.state = "OK"
-        self.tnx_hash_cache = FIFOCache(maxsize=256)
+        self.state = "INIT"
         self.addresses = []
         self.internal_function_mapping = {}
 
@@ -39,11 +35,7 @@ class Bootstrap(commands.Cog):
             self.addresses.append(rp.get_address_by_name(contract_name))
             self.internal_function_mapping[contract_name] = event_mapping
 
-        if not self.run_loop.is_running():
-            self.run_loop.start()
-
-    @exception_fallback()
-    async def create_embed(self, event_name, event):
+    def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event.args)
 
@@ -98,50 +90,40 @@ class Bootstrap(commands.Cog):
                 raise Exception(f"Network Upgrade of type {args.type} is not known.")
 
         args = prepare_args(args)
-        return Response(
-            embed=assemble(args),
-            event_name=event_name)
+        return assemble(args)
 
-    @tasks.loop(seconds=30.0)
-    async def run_loop(self):
-        if self.state == "STOPPED":
-            return
+    def run_loop(self):
+        if self.state == "RUNNING":
+            log.error("Boostrap plugin was interrupted while running. Re-initializing...")
+            self.__init__(self.bot)
+        return self.check_for_new_transactions()
 
-        if self.state != "ERROR":
-            try:
-                self.state = "OK"
-                return await self.check_for_new_transactions()
-            except Exception as err:
-                self.state = "ERROR"
-                await report_error(err)
-        try:
-            return self.__init__(self.bot)
-        except Exception as err:
-            self.state = "ERROR"
-            await report_error(err)
-
-    async def check_for_new_transactions(self):
+    def check_for_new_transactions(self):
         log.info("Checking for new Bootstrap Commands")
+        payload = []
 
-        messages = []
-        for block_hash in reversed(list(self.block_event.get_new_entries())):
-            # small delay to make commands not timeout
-            await asyncio.sleep(0.01)
-            log.debug(f"Checking Block: {block_hash.hex()}")
+        do_full_check = self.state == "INIT"
+        self.state = "RUNNING"
+        if do_full_check:
+            log.info("Doing full check")
+            latest_block = w3.eth.getBlock("latest").number
+            blocks = list(range(latest_block - cfg["core.look_back_distance"], latest_block))
+        else:
+            blocks = list(self.block_event.get_new_entries())
+
+        for block_hash in blocks:
+            log.debug(f"Checking Block: {block_hash}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
             except web3.exceptions.BlockNotFound:
-                log.error(f"Skipping Block {block_hash.hex()} as it can't be found")
+                log.error(f"Skipping Block {block_hash} as it can't be found")
                 continue
             for tnx in block.transactions:
-                if tnx.hash in self.tnx_hash_cache:
-                    continue
                 if "to" not in tnx:
                     # probably a contract creation transaction
                     log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
                     continue
                 if tnx.to in self.addresses:
-                    self.tnx_hash_cache[tnx.hash] = True
                     contract_name = rp.get_name_by_address(tnx.to)
 
                     # get receipt and check if the transaction reverted using status attribute
@@ -169,41 +151,23 @@ class Bootstrap(commands.Cog):
                         event.args["timestamp"] = block.timestamp
                         event.args["function_name"] = function
 
-                        result = await self.create_embed(event_name, event)
+                        embed = self.create_embed(event_name, event)
 
-                        if result:
-                            # lazy way of making it sort events within a single block correctly
-                            score = event.blockNumber
-                            # sort within block
-                            score += event.transactionIndex * 10 ** -3
-                            # sort within transaction
-                            if "logIndex" in event:
-                                score += event.logIndex * 10 ** -3
-
-                            messages.append(aDict({
-                                "score" : score,
-                                "result": result
-                            }))
+                        if embed:
+                            payload.append(Response(
+                                topic="bootstrap",
+                                embed=embed,
+                                event_name=event_name,
+                                unique_id=f"{tnx.hash.hex()}:{event_name}",
+                                block_number=event.blockNumber,
+                                transaction_index=event.transactionIndex
+                            ))
 
         log.debug("Finished Checking for new Bootstrap Commands")
+        self.state = "OK"
 
-        if messages:
-            log.info(f"Sending {len(messages)} Message(s)")
-
-            channels = cfg["discord.channels"]
-
-            for message in sorted(messages, key=lambda a: a["score"], reverse=False):
-                log.debug(f"Sending \"{message.result.event_name}\" Event")
-                channel_candidates = [value for key, value in channels.items() if message.result.event_name.startswith(key)]
-                channel = await self.bot.fetch_channel(channel_candidates[0] if channel_candidates else channels['default'])
-                await channel.send(embed=message.result.embed)
-
-            log.info("Finished sending Message(s)")
-
-    def cog_unload(self):
-        self.state = "STOPPED"
-        self.run_loop.cancel()
+        return payload
 
 
 def setup(bot):
-    bot.add_cog(Bootstrap(bot))
+    bot.add_cog(QueuedBootstrap(bot))

@@ -112,7 +112,7 @@ def get_reth_ratio_past_week():
     data = response.json()["data"]["networkStakerBalanceCheckpoints"]
     data = [{
         "value": solidity.to_float(int(entry["rETHExchangeRate"])),
-        "time": int(entry["blockTime"])
+        "time" : int(entry["blockTime"])
     } for entry in data]
     return data
 
@@ -154,7 +154,7 @@ def get_unclaimed_rpl_reward_nodes():
     # get the data
     data = response.json()["data"]
     # get the eligible nodes for this interval
-    eligible_nodes = {node["id"]:node["effectiveRPLStaked"] for node in data["nodes"]}
+    eligible_nodes = {node["id"]: node["effectiveRPLStaked"] for node in data["nodes"]}
 
     # remove nodes that have already claimed rewards
     for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:

@@ -8,11 +8,11 @@ sea_creatures = {
     # 32 * 10: dolphin emoji
     32 * 10: '🐬',
     # 32 * 5: octopus emoji
-    32 * 5: '🐙',
+    32 * 5 : '🐙',
     # 32 * 2: fish emoji
-    32 * 2: '🐟',
+    32 * 2 : '🐟',
     # 32 * 1: fired shrimp emoji
-    32 * 1: '🍤',
+    32 * 1 : '🍤',
 }
 
 

@@ -7,8 +7,8 @@ from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
-from utils.slash_permissions import guilds
 from utils.sea_creatures import sea_creatures
+from utils.slash_permissions import guilds
 
 log = logging.getLogger("random")
 log.setLevel(cfg["log_level"])
