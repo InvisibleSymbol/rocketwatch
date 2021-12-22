@@ -15,7 +15,7 @@ reporter.bot = bot
 
 log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} "
          f"(Chain: {cfg['rocketpool.chain']})")
-log.info(f"Loading Plugins")
+log.info('Loading Plugins')
 
 for path in Path("plugins").glob('**/*.py'):
     plugin_name = path.parts[1]
@@ -30,7 +30,7 @@ for path in Path("plugins").glob('**/*.py'):
         log.error(f"Failed to load plugin \"{extension_name}\"")
         log.exception(err)
 
-log.info(f"Finished loading Plugins")
+log.info('Finished loading Plugins')
 
-log.info(f"Starting bot")
+log.info('Starting bot')
 bot.run(cfg["discord.secret"])

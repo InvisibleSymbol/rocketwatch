@@ -3,7 +3,6 @@ import logging
 
 import pymongo
 import termplotlib as tpl
-from cachetools import FIFOCache
 from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound

@@ -43,7 +43,7 @@ class Response:
         return {
             "_id"         : self.unique_id,
             "embed"       : pickle.dumps(self.embed),
-            "topic"      : self.source,
+            "topic"       : self.source,
             "event_name"  : self.event_name,
             "block_number": self.block_number,
             "score"       : self.score,

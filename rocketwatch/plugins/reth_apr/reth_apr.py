@@ -4,11 +4,8 @@ from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
-from utils import solidity
 from utils.cfg import cfg
 from utils.readable import uptime
-from utils.rocketpool import rp
-from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.thegraph import get_average_commission, get_reth_ratio_past_week
 from utils.visibility import is_hidden

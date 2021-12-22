@@ -1,15 +1,14 @@
 import logging
-
-import matplotlib.pyplot as plt
-import matplotlib.scale as scale
-from matplotlib.ticker import ScalarFormatter
 from io import BytesIO
-import numpy as np
 
 import inflect
+import matplotlib.pyplot as plt
+import matplotlib.scale as scale
+import numpy as np
 from discord import Embed, Color, File, Option
 from discord.commands import slash_command
 from discord.ext import commands
+from matplotlib.ticker import ScalarFormatter
 
 from utils.cfg import cfg
 from utils.slash_permissions import guilds
@@ -20,9 +19,11 @@ log = logging.getLogger("RETHAPR")
 log.setLevel(cfg["log_level"])
 p = inflect.engine()
 
+
 def get_percentiles(percentiles, counts):
     for p in percentiles:
         yield (p, np.percentile(counts, p, interpolation='nearest'))
+
 
 class MinipoolDistribution(commands.Cog):
     def __init__(self, bot):
@@ -55,7 +56,7 @@ class MinipoolDistribution(commands.Cog):
         # where the first item is the number of minipools and the second item is the
         # number of nodes, eg [ (0, 3), (1, 2), (2, 1) ]
         bins = np.bincount(counts)
-        distribution = [ (i, bins[i]) for i in range(0, len(bins)) if bins[i] > 0 ]
+        distribution = [(i, bins[i]) for i in range(0, len(bins)) if bins[i] > 0]
 
         # If the raw data were requested, print them and exit early
         if raw:
@@ -66,7 +67,7 @@ class MinipoolDistribution(commands.Cog):
         fig, (ax, ax2) = plt.subplots(2, 1)
 
         # First chart is sorted bars showing total minipools provided by nodes with x minipools per node
-        bars = { x: x*y for x, y in distribution }
+        bars = {x: x * y for x, y in distribution}
         # Remove the 0,0 value, since it doesn't provide any insight
         del bars[0]
         x_keys = [str(x) for x in bars.keys()]
@@ -99,10 +100,11 @@ class MinipoolDistribution(commands.Cog):
         e.title = "Minipool Distribution"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
-        percentile_strings = [f"{x[0]}th percentile: {p.no('minipool', x[1])} per node" for x in get_percentiles([50, 75, 90, 99], counts)]
+        percentile_strings = [f"{x[0]}th percentile: {p.no('minipool', x[1])} per node" for x in
+                              get_percentiles([50, 75, 90, 99], counts)]
         percentile_strings.append(f"Max: {distribution[-1][0]} minipools per node")
         percentile_strings.append(f"Total: {p.no('minipool', sum(counts))}")
-        e.set_footer(text= "\n".join(percentile_strings))
+        e.set_footer(text="\n".join(percentile_strings))
         await ctx.respond(embed=e, file=f, ephemeral=is_hidden(ctx))
         img.close()
 
