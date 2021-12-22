@@ -82,7 +82,10 @@ class Debug(commands.Cog):
             return
 
     @owner_only_slash()
-    async def delete(self, ctx, channel_id, message_id):
+    async def delete(self,
+                     ctx,
+                     message):
+        channel_id, message_id = message.split("/")[-2:]
         channel = await self.bot.fetch_channel(channel_id)
         msg = await channel.fetch_message(message_id)
         await msg.delete()
