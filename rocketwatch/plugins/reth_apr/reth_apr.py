@@ -26,27 +26,17 @@ class RETHAPR(commands.Cog):
     async def current_reth_apr(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(color=self.color)
-        e.title = "rETH APR over the last 7 days"
 
         datapoints = get_reth_ratio_past_week()
 
         # get total duration between first and last datapoint
         total_duration = datapoints[-1]["time"] - datapoints[0]["time"]
 
-        # get average duration between datapoints
-        average_duration = total_duration / (len(datapoints) - 1)
+        # get percentage change between first and last datapoint
+        total_change_percent = datapoints[-1]["value"] / datapoints[0]["value"] - 1
 
-        # next estimated update
-        next_update = int(datapoints[-1]["time"] + average_duration)
-
-        # total change
-        total_change = datapoints[-1]["value"] - datapoints[0]["value"]
-
-        # get average change per 24h
-        average_daily_change = total_change / (total_duration / 86400)
-
-        # turn into yearly percentage
-        yearly_change = average_daily_change * 365
+        # extrapolate change to 1 year
+        yearly_change = total_change_percent / total_duration * 365 * 24 * 60 * 60
 
         e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
                         "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
@@ -59,6 +49,12 @@ class RETHAPR(commands.Cog):
         # get current average commission
         current_commission = get_average_commission()
         e.add_field(name="Current Average Commission:", value=f"{current_commission:.2%}")
+
+        # get average duration between datapoints
+        average_duration = total_duration / (len(datapoints) - 1)
+
+        # next estimated update
+        next_update = int(datapoints[-1]["time"] + average_duration)
 
         # show next estimated update
         e.add_field(name="Next Estimated Update:", value=f"<t:{next_update}:R>")
