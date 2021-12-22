@@ -33,18 +33,23 @@ class Core(commands.Cog):
 
     @tasks.loop(seconds=30.0)
     async def run_loop(self):
-
+        # try to gather new events
         try:
-            await self.gather_and_process_messages()
-            await self.process_event_queue()
-            self.state = "OK"
+            await self.gather_new_events()
         except Exception as err:
             self.state = "ERROR"
             await report_error(err)
+        # update the state message
         try:
             await self.update_state_message()
         except Exception as err:
             await report_error(err)
+        # process the messages as long as we are in a non-error state
+        if self.state != "ERROR":
+            try:
+                await self.process_event_queue()
+            except Exception as err:
+                await report_error(err)
 
     async def update_state_message(self):
         # get the state message from the db
@@ -65,21 +70,9 @@ class Core(commands.Cog):
             msg = await channel.send(embed=embed)
             await self.db.state_messages.insert_one({"_id": "state", "message": msg.id})
 
-    async def gather_and_process_messages(self):
+    async def gather_new_events(self):
         log.info("Gathering messages from submodules")
-        # okay so it would be really cool if the bot sent a message in the default channel
-        # if it fails run any submodule
-        # need to keep track of the sent warning message and delete it if it works again.
-        # we already need some kind of db so it doesnt sound too hard to add
-
-        if self.state == "PENDING":
-            latest_block_number = await self.db.event_queue.find_one({"_id": "block_number"})
-            if latest_block_number:
-                latest_block_number = latest_block_number["block_number"]
-            else:
-                latest_block_number = w3.eth.get_block("latest")["number"]
-            look_back_distance = cfg["core.look_back_distance"]
-            starting_block = latest_block_number - look_back_distance
+        self.state = "OK"
 
         # gather all currently cogs with the Queued prefix
         submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
@@ -96,13 +89,20 @@ class Core(commands.Cog):
             raise err
 
         try:
-            results = await asyncio.gather(*futures)
+            results = await asyncio.gather(*futures, return_exceptions=True)
         except Exception as err:
             log.error("Failed to gather submodules.")
             raise err
 
         tmp_event_queue = []
         for result in results:
+            # check if the result is an exception
+            if isinstance(result, Exception):
+                self.state = "ERROR"
+                log.error(f"Submodule returned an exception: {result}")
+                log.exception(result)
+                await report_error(result)
+                continue
             if result:
                 for entry in result:
                     if await self.db.event_queue.find_one({"_id": entry.unique_id}):
@@ -125,26 +125,10 @@ class Core(commands.Cog):
             events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort([("score", 1)]).to_list(None)
             log.debug(f"{len(events)} Events found for channel {channel}.")
             target_channel = await self.bot.fetch_channel(channel)
-            # fetch webhook for channel
-            webhook = None
-            for w in await target_channel.webhooks():
-                if w.name == f"RocketWatch[{target_channel.name}]":
-                    webhook = w
-            if not webhook:
-                log.warning(f"No webhook found for channel {channel}. Attempting to create one...")
-                webhook = await target_channel.create_webhook(name=f"RocketWatch[{target_channel.name}]",
-                                                              avatar=await self.bot.user.avatar.read(),
-                                                              reason=f"Auto-created by RocketWatch for Channel {channel}")
-                log.info(f"Created webhook {webhook.id}.")
-            log.debug(webhook)
-            for i in range(0, len(events), 10):
-                batch = events[i:i + 10]
-                log.debug(f"Sending {len(batch)} events to webhook {webhook.id}.")
-                embeds = [Response.get_embed(event) for event in batch]
-                await webhook.send(embeds=embeds)
-                # mark batch as processed
-                await self.db.event_queue.update_many({"_id": {"$in": [event["_id"] for event in batch]}},
-                                                      {"$set": {"processed": True}})
+            for event in events:
+                await target_channel.send(embed=Response.get_embed(event))
+                # mark event as processed
+                await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True}})
 
         log.info("Processed all events in event_queue collection.")
 
