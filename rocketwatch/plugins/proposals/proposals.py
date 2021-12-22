@@ -74,7 +74,7 @@ class Proposals(commands.Cog):
                 break
             index += 1
             start += amount
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
         log.info("finished gathering new proposals")
 
     async def gather_pubkeys(self):
@@ -94,7 +94,7 @@ class Proposals(commands.Cog):
             for validator_id, validator_data in zip(validator_ids, data):
                 await self.collection.update_many({"validator": int(validator_id)},
                                                   {"$set": {"pubkey": validator_data["pubkey"]}})
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
         log.info("finished gathering pubkeys")
 
     @slash_command(guild_ids=guilds)
