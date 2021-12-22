@@ -10,6 +10,7 @@ from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble
 from utils.rocketpool import rp
+from utils.shared_w3 import w3
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
@@ -70,6 +71,8 @@ class QueuedMilestones(commands.Cog):
                 }))
                 payload.append(Response(
                     embed=embed,
+                    topic="milestones",
+                    block_number=w3.eth.getBlock("latest").number,
                     event_name=milestone.id,
                     unique_id=f"{milestone.id}:{latest_goal}",
                 ))
