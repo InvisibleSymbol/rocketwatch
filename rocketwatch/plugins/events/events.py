@@ -1,6 +1,7 @@
 import json
 import logging
 
+import pymongo
 import termplotlib as tpl
 from cachetools import FIFOCache
 from discord.ext import commands
@@ -24,14 +25,22 @@ WITHDRAWABLE_EVENT = 3
 class QueuedEvents(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.state = "OK"
-        self.tnx_hash_cache = FIFOCache(maxsize=256)
+        self.state = "INIT"
         self.events = []
         self.internal_event_mapping = {}
         self.topic_mapping = {}
+        self.mongo = pymongo.MongoClient('mongodb://localhost:27017')
+        self.db = self.mongo.rocketwatch
 
         with open("./plugins/events/events.json") as f:
             events_config = json.load(f)
+
+        try:
+            latest_block = self.db.last_checked_block.find_one({"_id": "events"})["block"]
+            self.start_block = latest_block - cfg["core.look_back_distance"]
+        except Exception as err:
+            log.error(f"Failed to get latest block from db: {err}")
+            self.start_block = w3.eth.getBlock("latest").number - cfg["core.look_back_distance"]
 
         # Generate Filter for direct Events
         addresses = []
@@ -56,7 +65,7 @@ class QueuedEvents(commands.Cog):
         self.events.append(w3.eth.filter({
             "address"  : addresses,
             "topics"   : [aggregated_topics],
-            "fromBlock": "latest",
+            "fromBlock": self.start_block,
             "toBlock"  : "latest"
         }))
 
@@ -66,7 +75,7 @@ class QueuedEvents(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock="latest",
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=self.start_block,
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
@@ -196,24 +205,28 @@ class QueuedEvents(commands.Cog):
         if self.state == "RUNNING":
             log.error("Boostrap plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
-        self.state = "RUNNING"
-        result = self.check_for_new_events()
-        self.state = "OK"
-        return result
+        return self.check_for_new_events()
 
     def check_for_new_events(self):
         log.info("Checking for new Events")
 
         messages = []
-        tnx_hashes = []
+        do_full_check = self.state == "INIT"
+        if do_full_check:
+            log.info("Doing full check")
+        self.state = "RUNNING"
 
         for events in self.events:
-            for event in reversed(list(events.get_new_entries())):
+            if do_full_check:
+                pending_events = events.get_all_entries()
+            else:
+                pending_events = events.get_new_entries()
+            for event in reversed(list(pending_events)):
                 tnx_hash = event.transactionHash.hex()
                 embed = None
                 event_name = None
 
-                if event.get("removed", False) or tnx_hash in self.tnx_hash_cache:
+                if event.get("removed", False):
                     continue
 
                 log.debug(f"Checking Event {event}")
@@ -229,9 +242,6 @@ class QueuedEvents(commands.Cog):
 
                     embed = self.create_embed(event_name, event)
                 elif event.get("event", None) in self.internal_event_mapping:
-                    if tnx_hash in tnx_hashes:
-                        log.debug("Skipping Event as we have already seen it. (Double statusUpdated Emit Bug)")
-                        continue
                     # deposit/exit event path
                     embed, event_name = self.handle_global_event(event)
 
@@ -246,20 +256,20 @@ class QueuedEvents(commands.Cog):
 
                     messages.append(Response(
                         embed=embed,
+                        topic="events",
                         event_name=event_name,
                         unique_id=f"{tnx_hash}:{event_name}",
                         block_number=event.blockNumber,
                         transaction_index=event.transactionIndex,
                         event_index=event.logIndex
                     ))
-
-                tnx_hashes.append(tnx_hash)
+                if event.blockNumber > self.start_block:
+                    self.start_block = event.blockNumber
 
         log.debug("Finished Checking for new Events")
-
-        # de-dupe logic:
-        for tnx_hash in set(tnx_hashes):
-            self.tnx_hash_cache[tnx_hash] = True
+        # store last checked block in db if its bigger than the one we have stored
+        self.state = "OK"
+        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block}, upsert=True)
         return messages
 
 
