@@ -1,6 +1,7 @@
 import json
 import logging
 
+import pymongo
 import web3.exceptions
 from cachetools import FIFOCache
 from discord.ext import commands
@@ -23,8 +24,7 @@ WITHDRAWABLE_EVENT = 3
 class QueuedBootstrap(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.state = "OK"
-        self.tnx_hash_cache = FIFOCache(maxsize=256)
+        self.state = "INIT"
         self.addresses = []
         self.internal_function_mapping = {}
 
@@ -98,31 +98,34 @@ class QueuedBootstrap(commands.Cog):
         if self.state == "RUNNING":
             log.error("Boostrap plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
-        self.state = "RUNNING"
-        result = self.check_for_new_transactions()
-        self.state = "OK"
-        return result
+        return self.check_for_new_transactions()
 
     def check_for_new_transactions(self):
         log.info("Checking for new Bootstrap Commands")
         payload = []
 
-        for block_hash in reversed(list(self.block_event.get_new_entries())):
-            log.debug(f"Checking Block: {block_hash.hex()}")
+        do_full_check = self.state == "INIT"
+        self.state = "RUNNING"
+        if do_full_check:
+            log.info("Doing full check")
+            latest_block = w3.eth.getBlock("latest").number
+            blocks = list(range(latest_block - cfg["core.look_back_distance"], latest_block))
+        else:
+            blocks = list(self.block_event.get_new_entries())
+
+        for block_hash in blocks:
+            log.debug(f"Checking Block: {block_hash}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
             except web3.exceptions.BlockNotFound:
-                log.error(f"Skipping Block {block_hash.hex()} as it can't be found")
+                log.error(f"Skipping Block {block_hash} as it can't be found")
                 continue
             for tnx in block.transactions:
-                if tnx.hash in self.tnx_hash_cache:
-                    continue
                 if "to" not in tnx:
                     # probably a contract creation transaction
                     log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
                     continue
                 if tnx.to in self.addresses:
-                    self.tnx_hash_cache[tnx.hash] = True
                     contract_name = rp.get_name_by_address(tnx.to)
 
                     # get receipt and check if the transaction reverted using status attribute
@@ -153,15 +156,8 @@ class QueuedBootstrap(commands.Cog):
                         embed = self.create_embed(event_name, event)
 
                         if embed:
-                            # lazy way of making it sort events within a single block correctly
-                            score = event.blockNumber
-                            # sort within block
-                            score += event.transactionIndex * 10 ** -3
-                            # sort within transaction
-                            if "logIndex" in event:
-                                score += event.logIndex * 10 ** -3
-
                             payload.append(Response(
+                                topic="bootstrap",
                                 embed=embed,
                                 event_name=event_name,
                                 unique_id=f"{tnx.hash.hex()}:{event_name}",
@@ -170,6 +166,7 @@ class QueuedBootstrap(commands.Cog):
                             ))
 
         log.debug("Finished Checking for new Bootstrap Commands")
+        self.state = "OK"
 
         return payload
 
