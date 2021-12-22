@@ -28,7 +28,7 @@ class Metrics(commands.Cog):
         """
         Show various metrics about the bot.
         """
-        await ctx.defer(ephemeral=True)
+        await ctx.defer(ephemeral=is_hidden(ctx))
         try:
             e = Embed(title="Metrics from the last 7 days", color=self.color)
             desc = "```\n"
@@ -71,7 +71,7 @@ class Metrics(commands.Cog):
                 desc += f" - {command['_id']}: {command['count']}\n"
 
             e.description = desc + "```"
-            await ctx.respond(embed=e, ephemeral=True)
+            await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
         except Exception as e:
             log.error(f"Failed to get command metrics: {e}")
             await report_error(e)
