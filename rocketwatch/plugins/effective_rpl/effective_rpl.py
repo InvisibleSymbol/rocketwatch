@@ -33,6 +33,11 @@ class EffectiveRPL(commands.Cog):
         percentage_staked = effective_rpl_stake / total_rpl_staked
         e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2)} RPL "
                                                         f"({percentage_staked:.2%})", inline=False)
+        # get total supply
+        total_rpl_supply = solidity.to_float(rp.call("rocketTokenRPL.totalSupply"))
+        # calculate total staked as a percentage of total supply
+        percentage_of_total_staked = total_rpl_staked / total_rpl_supply
+        e.add_field(name="Percentage of RPL Supply Staked:", value=f"{percentage_of_total_staked:.2%}", inline=False)
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
 
