@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 class Metrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.mongo = motor.motor_asyncio.AsyncIOMotorClient('mongodb://localhost:27017')
+        self.mongo = motor.motor_asyncio.AsyncIOMotorClient('mongodb://mongodb:27017')
         self.db = self.mongo.rocketwatch
         self.collection = self.db.command_metrics
         self.color = Color.from_rgb(235, 142, 85)

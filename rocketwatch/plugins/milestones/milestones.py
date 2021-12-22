@@ -21,7 +21,7 @@ class QueuedMilestones(commands.Cog):
         self.bot = bot
         self.state = "OK"
         self.state = {}
-        self.mongo = pymongo.MongoClient('mongodb://localhost:27017')
+        self.mongo = pymongo.MongoClient('mongodb://mongodb:27017')
         self.db = self.mongo.rocketwatch
         self.collection = self.db.milestones
 

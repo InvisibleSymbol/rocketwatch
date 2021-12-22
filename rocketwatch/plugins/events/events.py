@@ -29,7 +29,7 @@ class QueuedEvents(commands.Cog):
         self.events = []
         self.internal_event_mapping = {}
         self.topic_mapping = {}
-        self.mongo = pymongo.MongoClient('mongodb://localhost:27017')
+        self.mongo = pymongo.MongoClient('mongodb://mongodb:27017')
         self.db = self.mongo.rocketwatch
 
         with open("./plugins/events/events.json") as f:
