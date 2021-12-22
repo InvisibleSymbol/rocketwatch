@@ -11,13 +11,15 @@ def calc_score(block_number, transaction_index=999, event_index=999):
 class Response:
     def __init__(self,
                  embed,
+                 topic,
                  event_name,
                  unique_id,
-                 block_number=2 ** 32,
+                 block_number,
                  transaction_index=999,
                  event_index=999
                  ):
         self.embed = embed
+        self.source = topic
         self.event_name = event_name
         self.unique_id = unique_id
         self.block_number = block_number
@@ -41,6 +43,7 @@ class Response:
         return {
             "_id"         : self.unique_id,
             "embed"       : pickle.dumps(self.embed),
+            "topic"      : self.source,
             "event_name"  : self.event_name,
             "block_number": self.block_number,
             "score"       : self.score,
