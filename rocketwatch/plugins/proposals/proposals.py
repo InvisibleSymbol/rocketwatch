@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
-from utils.slash_permissions import guilds
+from utils.slash_permissions import guilds, owner_only_slash
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -27,6 +27,14 @@ class Proposals(commands.Cog):
         self.db = AsyncIOMotorClient("mongodb://mongodb:27017").get_database("rocketwatch")
         self.collection = self.db.proposals
         self.tmp_data = {}
+
+    @owner_only_slash()
+    async def drop_proposals(self, ctx):
+        await ctx.defer()
+        log.info("dropping all proposals")
+        await self.collection.delete_many({})
+        log.info("finished dropping all proposals")
+        await ctx.respond("dropped all proposals")
 
     async def gather_new_proposals(self):
         log.info("getting proposals with rocket pool graffiti...")
