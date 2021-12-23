@@ -162,10 +162,13 @@ class Proposals(commands.Cog):
         img = BytesIO()
         plt.savefig(img, format="png")
         img.seek(0)
+        fig.clf()
+        plt.close()
         e.set_image(url="attachment://chart.png")
 
         # send data
         await ctx.respond(embed=e, file=File(img, "chart.png"))
+        img.close()
 
 
 def setup(bot):
