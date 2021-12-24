@@ -107,9 +107,12 @@ class Proposals(commands.Cog):
 
     @slash_command(guild_ids=guilds)
     async def version_chart(self, ctx):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer()
+        msg = await ctx.respond("gathering new proposals...", ephemeral=is_hidden(ctx))
         await self.gather_new_proposals()
+        await msg.edit(content="gathering pubkeys...")
         await self.gather_pubkeys()
+        await msg.edit(content="generating version chart...")
 
         e = Embed(title="Version Chart", color=self.color)
 
@@ -166,7 +169,8 @@ class Proposals(commands.Cog):
         e.set_image(url="attachment://chart.png")
 
         # send data
-        await ctx.respond(embed=e, file=File(img, "chart.png"))
+        await msg.edit(embed=e, file=File(img, filename="chart.png"))
+        # await ctx.respond(embed=e, file=File(img, "chart.png"))
         img.close()
 
 
