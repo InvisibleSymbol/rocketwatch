@@ -169,7 +169,7 @@ class Proposals(commands.Cog):
         e.set_image(url="attachment://chart.png")
 
         # send data
-        await msg.edit(embed=e, file=File(img, filename="chart.png"))
+        await msg.edit(content="", embed=e, file=File(img, filename="chart.png"))
         # await ctx.respond(embed=e, file=File(img, "chart.png"))
         img.close()
 
