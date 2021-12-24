@@ -107,7 +107,7 @@ class Proposals(commands.Cog):
 
     @slash_command(guild_ids=guilds)
     async def version_chart(self, ctx):
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await ctx.respond("gathering new proposals...", ephemeral=is_hidden(ctx))
         await self.gather_new_proposals()
         await msg.edit(content="gathering pubkeys...")
