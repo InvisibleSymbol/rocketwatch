@@ -18,7 +18,7 @@ from utils.sea_creatures import get_sea_creature_for_holdings
 from utils.shared_w3 import w3
 
 
-def etherscan_url(target, name=None, prefix=""):
+def etherscan_url(target, name=None, prefix=None):
     if w3.isAddress(target):
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
@@ -30,9 +30,11 @@ def etherscan_url(target, name=None, prefix=""):
     if not name:
         # fall back to shortened address
         name = readable.hex(target)
+    if prefix:
+        name = prefix + name
     chain = cfg["rocketpool.chain"]
     url_prefix = chain + "." if chain != "mainnet" else ""
-    return f"[{prefix}{name}](https://{url_prefix}etherscan.io/search?q={target})"
+    return f"[{name}](https://{url_prefix}etherscan.io/search?q={target})"
 
 
 def exception_fallback():
