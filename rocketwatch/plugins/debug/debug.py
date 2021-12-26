@@ -9,7 +9,8 @@ from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.readable import etherscan_url, prettify_json_string
+from utils.readable import prettify_json_string
+from utils.embeds import etherscan_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds

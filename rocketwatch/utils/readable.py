@@ -40,14 +40,6 @@ def hex(string):
     return f"{string[:10]}..."
 
 
-def etherscan_url(target, name=None):
-    if not name:
-        name = hex(target)
-    chain = cfg["rocketpool.chain"]
-    prefix = chain + "." if chain != "mainnet" else ""
-    return f"[{name}](https://{prefix}etherscan.io/search?q={target})"
-
-
 def beaconchain_url(target, name=None):
     if not name:
         name = hex(target)

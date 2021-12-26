@@ -11,11 +11,28 @@ from utils import solidity, readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.readable import etherscan_url, beaconchain_url
+from utils.readable import beaconchain_url
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_holdings
 from utils.shared_w3 import w3
+
+
+def etherscan_url(target, name=None, prefix=""):
+    if w3.isAddress(target):
+        if target in cfg["override_addresses"]:
+            name = cfg["override_addresses"][target]
+        if not name:
+            name = rp.call("rocketDAONodeTrusted.getMemberID", target)
+        if not name:
+            # not an odao member, try to get their ens
+            name = ens.get_name(target)
+    if not name:
+        # fall back to shortened address
+        name = readable.hex(target)
+    chain = cfg["rocketpool.chain"]
+    url_prefix = chain + "." if chain != "mainnet" else ""
+    return f"[{prefix}{name}](https://{url_prefix}etherscan.io/search?q={target})"
 
 
 def exception_fallback():
@@ -62,21 +79,9 @@ def prepare_args(args):
 
         # handle hex strings
         if str(arg_value).startswith("0x"):
-            name = None
+            prefix = None
 
-            # handle addresses
             if w3.isAddress(arg_value):
-                if arg_value in cfg["override_addresses"]:
-                    name = cfg["override_addresses"][arg_value]
-                if not name:
-                    name = rp.call("rocketDAONodeTrusted.getMemberID", arg_value)
-                if not name:
-                    # not an odao member, try to get their ens
-                    name = ens.get_name(arg_value)
-                if not name:
-                    # fall back to shortened address
-                    name = readable.hex(arg_value)
-
                 # get rocketpool related holdings value for this address
                 address = w3.toChecksumAddress(arg_value)
                 # get their eth balance
@@ -104,13 +109,13 @@ def prepare_args(args):
                 # add their staked RPL
                 staked_rpl = solidity.to_int(rp.call("rocketNodeStaking.getNodeRPLStake", address))
                 eth_balance += staked_rpl * rpl_price
-                name = f"{get_sea_creature_for_holdings(eth_balance)} {name}"
+                prefix = get_sea_creature_for_holdings(eth_balance)
 
             # handle validators
             if arg_key == "pubkey":
                 args[arg_key] = beaconchain_url(arg_value)
             else:
-                args[arg_key] = etherscan_url(arg_value, name)
+                args[arg_key] = etherscan_url(arg_value, prefix=prefix)
     return args
 
 

@@ -11,7 +11,7 @@ from discord.ext import commands
 
 from utils import readable
 from utils.cfg import cfg
-from utils.readable import etherscan_url
+from utils.embeds import etherscan_url
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden

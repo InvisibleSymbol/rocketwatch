@@ -58,6 +58,14 @@ class Proposals(commands.Cog):
         log.info("finished dropping all proposals")
         await ctx.respond("dropped all proposals")
 
+    @owner_only_slash()
+    async def drop_node_operators(self, ctx):
+        await ctx.defer()
+        log.info("dropping all node operators")
+        await self.db.node_operators.delete_many({})
+        log.info("finished dropping node operators")
+        await ctx.respond("dropped all node operators")
+
     async def gather_new_allnodes_proposals(self):
         log.info("getting proposals with allnodes + rocketpool graffiti...")
         amount = 100
@@ -189,16 +197,16 @@ class Proposals(commands.Cog):
             # handle when we only get a single validator back
             if not isinstance(data, list):
                 data = [data]
-            for validator_id, validator_data in zip(validator_ids, data):
+            for validator_data in data:
+                validator_id = int(validator_data["validatorindex"])
                 # look up pubkey in rp
                 pubkey = validator_data["pubkey"]
                 # get minipool address
                 minipool = rp.call("rocketMinipoolManager.getMinipoolByPubkey", pubkey)
-                # get node operator
                 node_operator = rp.call("rocketMinipool.getNodeAddress", address=minipool)
-                # store (validator, pubkey, node_operator) in node_operators collection
-                await self.db.node_operators.replace_one({"validator": int(validator_id)},
-                                                         {"validator"    : int(validator_id),
+                # get node operator
+                await self.db.node_operators.replace_one({"validator": validator_id},
+                                                         {"validator"    : validator_id,
                                                           "pubkey"       : pubkey,
                                                           "node_operator": node_operator},
                                                          upsert=True)
@@ -216,6 +224,13 @@ class Proposals(commands.Cog):
 
     async def gather_latest_proposal_per_node_operator(self):
         data = await self.db.node_operators.aggregate([
+            {
+                '$match': {
+                    'node_operator': {
+                        '$ne': None
+                    }
+                }
+            },
             # get the proposals per validator
             {
                 '$lookup': {
@@ -230,6 +245,13 @@ class Proposals(commands.Cog):
                             }
                         }
                     ]
+                }
+                # remove validators that have no proposals
+            }, {
+                '$match': {
+                    'proposals': {
+                        '$ne': []
+                    }
                 }
                 # only keep the latest one
             }, {
