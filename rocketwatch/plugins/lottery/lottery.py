@@ -12,6 +12,7 @@ from utils.embeds import etherscan_url
 from utils.readable import beaconchain_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
+from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -162,8 +163,11 @@ class Lottery(commands.Cog):
         # get stats about the current period
         stats = await self.db.sync_committee_stats.find_one({"period": period})
         perc = len(validators) / 512
-        description = f"**Participation:** {len(validators)}/512 ({perc:.2%})\n"
-        description += f"Duration: {stats['start_epoch']} - {stats['end_epoch']}\n"
+        description = f"Participation: {len(validators)}/512 ({perc:.2%})\n"
+        start_timestamp = BEACON_START_DATE + (stats['start_epoch'] * BEACON_EPOCH_LENGTH)
+        description += f"Start: Epoch {stats['start_epoch']} <t:{start_timestamp}> (<t:{start_timestamp}:R>)\n"
+        end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
+        description += f"End: Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
         # validators (called minipools here)
         description += f"Minipools: {', '.join(beaconchain_url(v['pubkey']) for v in validators)}\n"
         # node operators
