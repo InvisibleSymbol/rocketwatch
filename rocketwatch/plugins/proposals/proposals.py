@@ -405,7 +405,7 @@ class Proposals(commands.Cog):
 
         # create 2 subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-        plt.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
+        fig.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
         plt.rcParams.update({'font.size': 15})
 
         ax1.pie(
@@ -439,6 +439,7 @@ class Proposals(commands.Cog):
         plt.savefig(img, format="png")
         img.seek(0)
         plt.close()
+        plt.rcParams.update({'font.size': 10})
         e.set_image(url="attachment://chart.png")
 
         # send data
