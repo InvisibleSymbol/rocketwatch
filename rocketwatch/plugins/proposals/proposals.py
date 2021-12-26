@@ -15,6 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from wordcloud import WordCloud
 
 from utils.cfg import cfg
+from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds, owner_only_slash
 from utils.visibility import is_hidden
@@ -22,7 +23,7 @@ from utils.visibility import is_hidden
 log = logging.getLogger("proposals")
 log.setLevel(cfg["log_level"])
 
-CLIENTS = {
+LOOKUP = {
     "N": "Nimbus",
     "P": "Prysm",
     "L": "Lighthouse",
@@ -34,6 +35,8 @@ COLORS = {
     "Prysm": "#40bfbf",
     "Lighthouse": "#9933cc",
     "Teku": "#3357cc",
+    "Smart Node": "#cc6e33",
+    "Allnodes": "#4533cc",
     "unknown": "#B0B0B0",
 }
 
@@ -55,7 +58,52 @@ class Proposals(commands.Cog):
         log.info("finished dropping all proposals")
         await ctx.respond("dropped all proposals")
 
-    async def gather_new_proposals(self):
+    async def gather_new_allnodes_proposals(self):
+        log.info("getting proposals with allnodes + rocketpool graffiti...")
+        amount = 100
+        index = 0
+        start = 0
+        should_continue = True
+        while True:
+            log.debug(f"requesting proposals {start} to {start + amount}")
+            async with aiohttp.ClientSession() as session:
+                res = await session.get(
+                    self.slots_url,
+                    params={
+                        "draw"         : index,
+                        "start"        : start,
+                        "length"       : amount,
+                        "search[value]": "Rocket Pool ⚡️Allnodes"
+                    })
+                res = await res.json()
+            proposals = res["data"]
+            for entry in proposals:
+                slot = int(entry[1].split(">")[-2].split("<")[0].replace(",", ""))
+
+                # break if the slot is already in the database
+                if await self.db.proposals.count_documents({"slot": slot}) > 0:
+                    log.debug(f"slot {slot} already in the database")
+                    should_continue = False
+                    continue
+
+                should_continue = True
+                data = {
+                    "slot"     : slot,
+                    "validator": int(entry[4].split("/validator/")[1].split("\">")[0]),
+                    "client"   : "T",
+                    "type"     : "Allnodes",
+                }
+                await self.db.proposals.replace_one({"slot": data["slot"]}, data, upsert=True)
+
+            if len(proposals) != amount or not should_continue:
+                log.debug(f"stopping proposal gathering: {len(proposals)=}, {should_continue=}")
+                break
+            index += 1
+            start += amount
+            await asyncio.sleep(10)
+        log.info("finished gathering new proposals")
+
+    async def gather_new_rocket_pool_proposals(self):
         log.info("getting proposals with rocket pool graffiti...")
         amount = 100
         index = 0
@@ -90,19 +138,20 @@ class Proposals(commands.Cog):
                     data = {
                         "slot"     : slot,
                         "validator": int(entry[4].split("/validator/")[1].split("\">")[0]),
-                        "client"   : parts[0].split("-")[1], "version": parts[1]
+                        "client"   : parts[0].split("-")[1], "version": parts[1],
+                        "type"     : "Smart Node",
                     }
                     if len(parts) > 2:
                         comment = " ".join(parts[2:]).lstrip("(").rstrip(")")
                         data["comment"] = html.unescape(comment)
                     await self.db.proposals.replace_one({"slot": data["slot"]}, data, upsert=True)
 
-            if len(proposals) != 100 or not should_continue:
+            if len(proposals) != amount or not should_continue:
                 log.debug(f"stopping proposal gathering: {len(proposals)=}, {should_continue=}")
                 break
             index += 1
             start += amount
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
         log.info("finished gathering new proposals")
 
     async def lookup_validators(self):
@@ -153,12 +202,14 @@ class Proposals(commands.Cog):
                                                           "pubkey"       : pubkey,
                                                           "node_operator": node_operator},
                                                          upsert=True)
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
         log.info("finished looking up new validators")
 
     async def chore(self, ctx):
-        msg = await ctx.respond("gathering new proposals...", ephemeral=is_hidden(ctx))
-        await self.gather_new_proposals()
+        msg = await ctx.respond("gathering new rocket pool proposals...", ephemeral=is_hidden(ctx))
+        await self.gather_new_rocket_pool_proposals()
+        await msg.edit(content="gathering new allnodes proposals...")
+        await self.gather_new_allnodes_proposals()
         await msg.edit(content="looking up new validators...")
         await self.lookup_validators()
         return msg
@@ -231,7 +282,8 @@ class Proposals(commands.Cog):
                     'slot': '$proposal.slot',
                     'client': '$proposal.client',
                     'version': '$proposal.version',
-                    'comment': '$proposal.comment'
+                    'comment': '$proposal.comment',
+                    'type': '$proposal.type'
                 }
             }
         ]).to_list(length=None)
@@ -246,7 +298,7 @@ class Proposals(commands.Cog):
         e = Embed(title="Version Chart", color=self.color)
 
         # get proposals
-        proposals = await self.db.proposals.find().sort("slot", 1).to_list(None)
+        proposals = await self.db.proposals.find({"version": {"$exists": 1}}).sort("slot", 1).to_list(None)
         batch_size = int(60 / 12 * 60 * 24 * 2)
         data = {}
         versions = []
@@ -301,24 +353,25 @@ class Proposals(commands.Cog):
         await msg.edit(content="", embed=e, file=File(img, filename="chart.png"))
         img.close()
 
-    @slash_command(guild_ids=guilds)
-    async def client_distribution(self, ctx):
-        await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await msg.edit(content="generating client distribution graph...")
+    async def proposal_vs_node_operators_embed(self, attribute, name, msg):
+        await msg.edit(content=f"generating {name} distribution graph...")
 
         e = Embed(title="Client Distribution", color=self.color)
 
-        # get proposals
-        proposals = await self.db.proposals.find().sort("slot", 1).to_list(None)
+        # group by client and get count
+        data = await self.db.proposals.aggregate([
+            {
+                '$group': {
+                    '_id': f'${attribute}',
+                    'count': {
+                        '$sum': 1
+                    }
+                }
+            }
+        ]).to_list(None)
 
         # get the total client distribution
-        total_data = {}
-        for proposal in proposals:
-            client = CLIENTS.get(proposal["client"], "unknown")
-            if client not in total_data:
-                total_data[client] = 0
-            total_data[client] += 1
+        total_data = {LOOKUP.get(d["_id"], d["_id"]): d["count"] for d in data}
 
         # sort data
         total_data = sorted(total_data.items(), key=lambda x: x[1])
@@ -332,7 +385,7 @@ class Proposals(commands.Cog):
         # get the node operator client distribution
         node_operator_data = {}
         for proposal in node_operators:
-            client = CLIENTS.get(proposal["client"], "unknown")
+            client = LOOKUP.get(proposal[attribute], proposal[attribute])
             if client not in node_operator_data:
                 node_operator_data[client] = 0
             node_operator_data[client] += 1
@@ -342,8 +395,9 @@ class Proposals(commands.Cog):
         node_operator_data.insert(0, ("unknown", unknown_count))
 
         # create description
-        descriptions = [
-            f"{d[0]}: {d[1]}" for d in reversed(total_data)
+        descriptions = ["Proposal Counts:"]
+        descriptions += [
+            f"\t{d[0]}: {d[1]}" for d in reversed(total_data)
         ]
 
         descriptions = "```\n" + "\n".join(descriptions) + "```"
@@ -351,6 +405,8 @@ class Proposals(commands.Cog):
 
         # create 2 subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        plt.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
+        plt.rcParams.update({'font.size': 15})
 
         ax1.pie(
             [x[1] for x in total_data],
@@ -363,7 +419,7 @@ class Proposals(commands.Cog):
             [f"{x[0]} ({x[1]})" for x in total_data],
             loc="upper left",
         )
-        ax1.set_title("Client Distribution based on Proposals")
+        ax1.set_title(f"{name} Distribution based on Proposals")
 
         ax2.pie(
             [x[1] for x in node_operator_data],
@@ -376,7 +432,7 @@ class Proposals(commands.Cog):
             [f"{x[0]} ({x[1]})" for x in node_operator_data],
             loc="upper left"
         )
-        ax2.set_title("Client Distribution based on Node Operators")
+        ax2.set_title(f"{name} Distribution based on Node Operators")
 
         # respond with image
         img = BytesIO()
@@ -388,6 +444,18 @@ class Proposals(commands.Cog):
         # send data
         await msg.edit(content="", embed=e, file=File(img, filename="chart.png"))
         img.close()
+
+    @slash_command(guild_ids=guilds)
+    async def client_distribution(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        msg = await self.chore(ctx)
+        await self.proposal_vs_node_operators_embed("client", "Client", msg)
+
+    @slash_command(guild_ids=guilds)
+    async def user_distribution(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        msg = await self.chore(ctx)
+        await self.proposal_vs_node_operators_embed("type", "User", msg)
 
     @slash_command(guild_ids=guilds)
     async def comments(self, ctx):
