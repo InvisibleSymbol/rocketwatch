@@ -37,7 +37,7 @@ def uptime(time):
 
 
 def hex(string):
-    return f"{string[:10]}..."
+    return string[:10]
 
 
 def beaconchain_url(target, name=None):
