@@ -236,3 +236,31 @@ def get_unclaimed_rpl_reward_odao():
     potential_rollover = (total_rewards - claimed_rewards) - rewards_required
 
     return rewards_required, potential_rollover
+
+
+def get_claims_current_period():
+    query = """
+{
+    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {
+        rplRewardClaims(first: 1000, orderBy: ethAmount, where: {claimerType: Node}) {
+            amount
+            claimer
+            ethAmount
+        }
+    }
+}
+    """
+    # do the request
+    response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': query}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+
+    return data["rplrewardIntervals"][0]["rplRewardClaims"]

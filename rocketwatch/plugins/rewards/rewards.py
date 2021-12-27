@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from statistics import median
 
 import humanize
 from discord import Embed, Color
@@ -8,11 +9,12 @@ from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.embeds import etherscan_url
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
-from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao
+from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao, get_claims_current_period
 from utils.visibility import is_hidden
 
 log = logging.getLogger("Rewards")
@@ -148,6 +150,31 @@ class Rewards(commands.Cog):
                           f"```",
                     inline=False)
         # send embed
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+
+    @slash_command(guild_ids=guilds)
+    async def median_claim(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed(color=self.color)
+        e.title = "Median Claim for this Period"
+        counts = get_claims_current_period()
+        # top 5 claims
+        top_claims = sorted(counts, key=lambda x: int(x["amount"]), reverse=True)[:5]
+        top_claims_str = [
+            f"{i + 1}. {etherscan_url(w3.toChecksumAddress(claim['claimer']))}:"
+            f" {solidity.to_float(claim['amount']):.2f} RPL"
+            f" (worth {solidity.to_float(claim['ethAmount']):.2f} ETH)"
+            for i, claim in enumerate(top_claims)
+        ]
+
+        e.add_field(name="Top 5 Claims", value="\n".join(top_claims_str), inline=False)
+        # show median claim
+        rpl_amounts = sorted([solidity.to_float(claim["amount"]) for claim in counts])
+        median_claim = humanize.intcomma(median(rpl_amounts), 2)
+        eth_amounts = sorted([solidity.to_float(claim["ethAmount"]) for claim in counts])
+        median_claim_eth = humanize.intcomma(median(eth_amounts), 2)
+        e.add_field(name="Median Claim:", value=f"{median_claim} RPL (worth {median_claim_eth} ETH)", inline=False)
+
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
 
