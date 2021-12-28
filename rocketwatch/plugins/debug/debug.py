@@ -102,6 +102,12 @@ class Debug(commands.Cog):
         data = contract.decode_function_input(tnx.input)
         await ctx.respond(f"```Input:\n{data}```", ephemeral=True)
 
+    @owner_only_slash()
+    async def debug_transaction(self, ctx, tnx_hash):
+        transaction_receipt = w3.eth.getTransaction(tnx_hash)
+        revert_reason = rp.get_revert_reason(transaction_receipt)
+        await ctx.respond(f"```Revert Reason: {revert_reason}```", ephemeral=True)
+
 
 def setup(bot):
     bot.add_cog(Debug(bot))

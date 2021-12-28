@@ -4,6 +4,7 @@ import warnings
 
 from bidict import bidict
 from cachetools import cached
+from web3.exceptions import ContractLogicError
 
 from utils import solidity
 from utils.cfg import cfg
@@ -36,6 +37,32 @@ class RocketPool:
             raise Exception(f"No address found for {name} Contract")
         self.addresses[name] = address
         return address
+
+    def get_revert_reason(self, tnx):
+        try:
+            w3.eth.call(
+                {
+                    "from"    : tnx["from"],
+                    "to"      : tnx["to"],
+                    "data"    : tnx["input"],
+                    "gas"     : tnx["gas"],
+                    "gasPrice": tnx["gasPrice"],
+                    "value"   : tnx["value"]
+                },
+                block_identifier=tnx.blockNumber
+            )
+        except ContractLogicError as err:
+            log.debug(f"Transaction: {tnx.hash} ContractLogicError: {err}")
+            return ", ".join(err.args)
+        except ValueError as err:
+            log.debug(f"Transaction: {tnx.hash} ValueError: {err}")
+            match err.args[0]["code"]:
+                case -32000:
+                    return "Out of gas"
+                case _:
+                    return "Hidden Error"
+        else:
+            return None
 
     @cached(cache={})
     def get_abi_by_name(self, name):

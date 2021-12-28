@@ -202,6 +202,11 @@ def assemble(args):
         embed.add_field(name="Block Number",
                         value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
 
+    if "reason" in args and args["reason"]:
+        embed.add_field(name="Revert Reason",
+                        value=f"`{args.reason}`",
+                        inline=False)
+
     # show timestamp
     times = [value for key, value in args.items() if "time" in key.lower()]
     time = times[0] if times else int(datetime.datetime.now().timestamp())

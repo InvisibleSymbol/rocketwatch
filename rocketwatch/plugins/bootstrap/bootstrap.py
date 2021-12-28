@@ -150,6 +150,8 @@ class QueuedBootstrap(commands.Cog):
                             event.args[arg.lstrip("_")] = value
                         event.args["timestamp"] = block.timestamp
                         event.args["function_name"] = function
+                        if not receipt.status:
+                            event.args["reason"] = rp.get_revert_reason(tnx)
 
                         embed = self.create_embed(event_name, event)
 
