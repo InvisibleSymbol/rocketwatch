@@ -10,7 +10,7 @@ from utils.slash_permissions import guilds
 from utils.thegraph import get_average_commission, get_reth_ratio_past_week
 from utils.visibility import is_hidden
 
-log = logging.getLogger("RETHAPR")
+log = logging.getLogger("reth_apr")
 log.setLevel(cfg["log_level"])
 
 

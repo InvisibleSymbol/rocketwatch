@@ -7,7 +7,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.rocketpool import rp
 
-log = logging.getLogger("Rewards")
+log = logging.getLogger("thegraph")
 log.setLevel(cfg["log_level"])
 
 

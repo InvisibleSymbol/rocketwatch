@@ -12,7 +12,7 @@ from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
-log = logging.getLogger("TVL")
+log = logging.getLogger("tvl")
 log.setLevel(cfg["log_level"])
 
 

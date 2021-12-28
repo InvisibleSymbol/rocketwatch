@@ -15,7 +15,7 @@ from utils.slash_permissions import guilds
 from utils.thegraph import get_minipool_counts_per_node
 from utils.visibility import is_hidden
 
-log = logging.getLogger("RETHAPR")
+log = logging.getLogger("minipool_distribution")
 log.setLevel(cfg["log_level"])
 p = inflect.engine()
 

@@ -15,7 +15,7 @@ from utils.cfg import cfg
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
-log = logging.getLogger("RPL APR")
+log = logging.getLogger("rpl_apr")
 log.setLevel(cfg["log_level"])
 
 

@@ -11,7 +11,7 @@ from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
-log = logging.getLogger("EffectiveRPL")
+log = logging.getLogger("effective_rpl")
 log.setLevel(cfg["log_level"])
 
 

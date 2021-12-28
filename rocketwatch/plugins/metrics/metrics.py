@@ -11,7 +11,7 @@ from utils.reporter import report_error
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
-log = logging.getLogger("Metrics")
+log = logging.getLogger("metrics")
 log.setLevel(cfg["log_level"])
 
 
