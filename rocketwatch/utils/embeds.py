@@ -1,21 +1,19 @@
 import datetime
-import functools
 import math
 
 import humanize
 from discord import Embed, Color
-from web3.datastructures import MutableAttributeDict as aDict
 
 from strings import _
-from utils import solidity, readable
+from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
-from utils.containers import Response
-from utils.readable import beaconchain_url
-from utils.reporter import report_error
+from utils.readable import beaconchain_url, advanced_tnx_url, s_hex
 from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_holdings
 from utils.shared_w3 import w3
+
+ens = CachedEns()
 
 
 def etherscan_url(target, name=None, prefix=None):
@@ -29,39 +27,12 @@ def etherscan_url(target, name=None, prefix=None):
             name = ens.get_name(target)
     if not name:
         # fall back to shortened address
-        name = readable.hex(target)
+        name = s_hex(target)
     if prefix:
         name = prefix + name
     chain = cfg["rocketpool.chain"]
     url_prefix = chain + "." if chain != "mainnet" else ""
     return f"[{name}](https://{url_prefix}etherscan.io/search?q={target})"
-
-
-def exception_fallback():
-    def wrapper(func):
-        @functools.wraps(func)
-        async def wrapped(*args):
-            try:
-                return await func(*args)
-            except Exception as err:
-                await report_error(err, *args)
-                event_name = args[2]["event"] if len(args) >= 3 and "event" in args[2] else "unknown"
-                # create fallback embed
-                e = assemble(aDict({
-                    "event_name"         : "fallback",
-                    "fallback_event_name": event_name
-                }))
-                return Response(
-                    embed=e,
-                    event_name=event_name
-                )
-
-        return wrapped
-
-    return wrapper
-
-
-ens = CachedEns()
 
 
 def prepare_args(args):
@@ -187,8 +158,9 @@ def assemble(args):
 
     # show transaction hash if possible
     if "transactionHash" in args:
+        content = f"{args.transactionHash}{advanced_tnx_url(args.transactionHash_raw)}"
         embed.add_field(name="Transaction Hash",
-                        value=args.transactionHash)
+                        value=content)
 
     # show sender address
     senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
