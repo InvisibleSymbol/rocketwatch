@@ -179,8 +179,8 @@ class Lottery(commands.Cog):
             node_operators[v['node_operator']] += 1
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
-        description += "Node Operators:\n"
-        description += f", ".join([f"{etherscan_url(node_operator)} ({count})" for node_operator, count in node_operators])
+        description += "Node Operators:"
+        description += f", ".join([f"{count}x {etherscan_url(node_operator)}" for node_operator, count in node_operators])
         return description
 
     @slash_command(guild_ids=guilds)
