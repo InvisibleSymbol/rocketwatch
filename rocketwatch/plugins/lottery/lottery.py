@@ -180,7 +180,7 @@ class Lottery(commands.Cog):
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
         description += "Node Operators:\n"
-        description += f", ".join([f"{node_operator} ({count})" for node_operator, count in node_operators])
+        description += f", ".join([f"{etherscan_url(node_operator)} ({count})" for node_operator, count in node_operators])
         return description
 
     @slash_command(guild_ids=guilds)
@@ -192,7 +192,7 @@ class Lottery(commands.Cog):
         description = ""
         description += "**Current sync committee:**\n"
         description += await self.generate_sync_committee_description("latest")
-        description += "\n"
+        description += "\n\n"
         description += "**Next sync committee:**\n"
         description += await self.generate_sync_committee_description("next")
         e.description = description
