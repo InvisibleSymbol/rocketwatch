@@ -19,6 +19,7 @@ class Mock(commands.Cog):
 
     @owner_only_slash()
     async def mock(self, ctx, event_name):
+        await ctx.defer()
         if event_name not in self.mock_mapping:
             return await ctx.respond(f"No Mock Mapping available for this Event")
 

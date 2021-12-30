@@ -102,6 +102,10 @@
             "ethValue",
             "transactionHash",
             "blockNumber"
+        ],
+        "bootstrap_odao_disable": [
+            "transactionHash",
+            "blockNumber"
         ]
     },
     "data": {
