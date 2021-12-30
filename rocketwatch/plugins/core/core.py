@@ -23,7 +23,7 @@ class Core(commands.Cog):
         self.bot = bot
         self.state = "PENDING"
         self.channels = cfg["discord.channels"]
-        self.mongo = motor.motor_asyncio.AsyncIOMotorClient('mongodb://mongodb:27017')
+        self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         # block filter
         self.block_event = w3.eth.filter("latest")

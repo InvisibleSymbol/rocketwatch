@@ -48,7 +48,7 @@ class Proposals(commands.Cog):
         self.slots_url = "https://beaconcha.in/blocks/data"
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
-        self.db = AsyncIOMotorClient("mongodb://mongodb:27017").get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @owner_only_slash()
     async def drop_proposals(self, ctx):

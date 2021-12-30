@@ -26,7 +26,7 @@ class Lottery(commands.Cog):
         self.endpoint = "https://beaconcha.in/api/v1/sync_committee"
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
-        self.db = AsyncIOMotorClient("mongodb://mongodb:27017").get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     async def load_sync_committee(self, period):
         async with aiohttp.ClientSession() as session:
