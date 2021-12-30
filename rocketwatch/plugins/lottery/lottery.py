@@ -163,7 +163,7 @@ class Lottery(commands.Cog):
         # get stats about the current period
         stats = await self.db.sync_committee_stats.find_one({"period": period})
         perc = len(validators) / 512
-        description = f"Participation: {len(validators)}/512 ({perc:.2%})\n"
+        description = f"Rocket Pool Participation: {len(validators)}/512 ({perc:.2%})\n"
         start_timestamp = BEACON_START_DATE + (stats['start_epoch'] * BEACON_EPOCH_LENGTH)
         description += f"Start: Epoch {stats['start_epoch']} <t:{start_timestamp}> (<t:{start_timestamp}:R>)\n"
         end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
@@ -171,7 +171,16 @@ class Lottery(commands.Cog):
         # validators (called minipools here)
         description += f"Minipools: {', '.join(beaconchain_url(v['pubkey']) for v in validators)}\n"
         # node operators
-        description += f"Node operators: {', '.join(etherscan_url(v['node_operator']) for v in validators)}\n"
+        # gather count per
+        node_operators = {}
+        for v in validators:
+            if v['node_operator'] not in node_operators:
+                node_operators[v['node_operator']] = 0
+            node_operators[v['node_operator']] += 1
+        # sort by count
+        node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
+        description += "Node Operators:\n"
+        description += f", ".join([f"{node_operator} ({count})" for node_operator, count in node_operators])
         return description
 
     @slash_command(guild_ids=guilds)
@@ -181,10 +190,10 @@ class Lottery(commands.Cog):
         await msg.edit(content="generating lottery embed...")
         e = Embed(title="Sync Committee Lottery", color=self.color)
         description = ""
-        description += "*Current sync committee:**\n"
+        description += "**Current sync committee:**\n"
         description += await self.generate_sync_committee_description("latest")
         description += "\n"
-        description += "*Next sync committee:**\n"
+        description += "**Next sync committee:**\n"
         description += await self.generate_sync_committee_description("next")
         e.description = description
 
