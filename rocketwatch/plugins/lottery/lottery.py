@@ -180,12 +180,13 @@ class Lottery(commands.Cog):
         msg = await self.chore(ctx)
         await msg.edit(content="generating lottery embed...")
         e = Embed(title="Sync Committee Lottery", color=self.color)
-        e.add_field(name="Current Sync Committee",
-                    value=await self.generate_sync_committee_description("latest"),
-                    inline=False)
-        e.add_field(name="Next Sync Committee",
-                    value=await self.generate_sync_committee_description("next"),
-                    inline=False)
+        description = ""
+        description += "*Current sync committee:**\n"
+        description += await self.generate_sync_committee_description("latest")
+        description += "\n"
+        description += "*Next sync committee:**\n"
+        description += await self.generate_sync_committee_description("next")
+        e.description = description
 
         await msg.edit(content="", embed=e)
 
