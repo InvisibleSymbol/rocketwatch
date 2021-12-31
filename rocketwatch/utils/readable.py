@@ -49,4 +49,4 @@ def beaconchain_url(target, name=None):
 
 
 def advanced_tnx_url(tx_hash):
-    return f"[\[A\]](https://ethtx.info/mainnet/{tx_hash})"
+    return f"[[A]](https://ethtx.info/mainnet/{tx_hash})"
