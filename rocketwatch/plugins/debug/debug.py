@@ -11,6 +11,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.readable import prettify_json_string
 from utils.embeds import etherscan_url
+from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
@@ -50,10 +51,15 @@ class Debug(commands.Cog):
             if not isinstance(args, list):
                 args = [args]
             v = rp.call(command, *args, block=block)
-            g = rp.estimate_gas_for_call(command, *args, block=block)
         except Exception as err:
             await ctx.respond(f"Exception: ```{repr(err)}```")
             return
+        try:
+            g = rp.estimate_gas_for_call(command, *args, block=block)
+        except Exception as err:
+            g = "N/A"
+            if isinstance(err, ValueError) and err.args[0]["code"] == -32000:
+                g += f" ({err.args[0]['message']})"
 
         if isinstance(v, int) and abs(v) >= 10 ** 12:
             v = solidity.to_float(v)
