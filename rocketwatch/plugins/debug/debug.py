@@ -1,21 +1,42 @@
 import io
 import json
 import random
+from pathlib import Path
 
 import humanize
-from discord import File
+from discord import File, AutocompleteContext
 from discord.commands import slash_command, Option
 from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.readable import prettify_json_string
 from utils.embeds import etherscan_url
-from utils.reporter import report_error
+from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.slash_permissions import owner_only_slash
+
+# generate list of all file names with the .sol extension from the rocketpool submodule
+contract_files = []
+for path in Path("contracts/rocketpool/contracts/contract").glob('**/*.sol'):
+    # append to list but ensure that the first character is lowercase
+    file_name = path.stem
+    contract_files.append(file_name[0].lower() + file_name[1:])
+
+
+async def match_contract_names(ctx: AutocompleteContext):
+    return [name for name in contract_files if ctx.value.lower() in name.lower()]
+
+
+async def match_function_name(ctx: AutocompleteContext):
+    # return nothing if contract name hasn't been specified in the options yet
+    if "contract" not in ctx.options:
+        return []
+    # get the contract name from the options
+    contract_name = ctx.options["contract"]
+    contract = rp.get_contract_by_name(contract_name)
+    return [function_name for function_name in contract.functions if ctx.value.lower() in function_name.lower()]
 
 
 class Debug(commands.Cog):
@@ -30,9 +51,14 @@ class Debug(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def call(self,
                    ctx,
-                   command: Option(
+                   contract: Option(
                        str,
-                       "Syntax: `contractName.functionName`. Example: `rocketTokenRPL.totalSupply`"),
+                       autocomplete=match_contract_names,
+                       required=True),
+                   function: Option(
+                       str,
+                       autocomplete=match_function_name,
+                       required=True),
                    json_args: Option(
                        str,
                        "json formatted arguments. example: `[1, \"World\"]`",
@@ -45,6 +71,7 @@ class Debug(commands.Cog):
                        required=False)):
         """Call Function of Contract"""
         await ctx.defer()
+        command = f"{contract}.{function}"
 
         try:
             args = json.loads(json_args)
@@ -68,7 +95,7 @@ class Debug(commands.Cog):
         await ctx.respond(f"`block: {block}`\n`gas estimate: {g}`\n`{command}({', '.join([repr(a) for a in args])}): {v}`")
 
     @slash_command(guild_ids=guilds)
-    async def get_abi_from_contract(self, ctx, contract):
+    async def get_abi_of_contract(self, ctx, contract: Option(str, autocomplete=match_contract_names)):
         """retrieves the latest ABI for a contract"""
         await ctx.defer()
         try:
@@ -79,7 +106,7 @@ class Debug(commands.Cog):
             return
 
     @slash_command(guild_ids=guilds)
-    async def get_address_of_contract(self, ctx, contract):
+    async def get_address_of_contract(self, ctx, contract: Option(str, autocomplete=match_contract_names)):
         """retrieves the latest address for a contract"""
         await ctx.defer()
         try:
