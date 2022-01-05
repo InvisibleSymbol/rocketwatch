@@ -10,6 +10,7 @@ logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%
 log = logging.getLogger("discord_bot")
 log.setLevel(cfg["log_level"])
 logging.getLogger().setLevel("INFO")
+logging.getLogger("discord.client").setLevel(cfg["log_level"])
 bot = discord.Bot()
 reporter.bot = bot
 
