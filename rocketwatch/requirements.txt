@@ -8,7 +8,7 @@ bidict==0.21.4
 tinydb==4.5.2
 requests==2.26.0
 uptime==3.0.1
-git+git://github.com/Pycord-Development/pycord@025d7725dcff27e2744a65d0cf8f4fae0f20a423#egg=py-cord
+git+git://github.com/Pycord-Development/pycord@99e2312ffef447f4ae60feebd9c04319e04d4b39#egg=py-cord
 config==0.5.1
 pytz==2021.3
 matplotlib==3.5.1
