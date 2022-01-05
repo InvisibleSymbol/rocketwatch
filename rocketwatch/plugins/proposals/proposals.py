@@ -1,12 +1,10 @@
-import html
-import random
-
 import asyncio
+import html
 import logging
+import random
 from io import BytesIO
 
 import aiohttp
-import matplotlib
 from discord import Embed, Color, File
 from discord.commands import slash_command
 from discord.ext import commands
@@ -15,7 +13,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from wordcloud import WordCloud
 
 from utils.cfg import cfg
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds, owner_only_slash
 from utils.visibility import is_hidden
@@ -31,13 +28,13 @@ LOOKUP = {
 }
 
 COLORS = {
-    "Nimbus": "#cc9133",
-    "Prysm": "#40bfbf",
+    "Nimbus"    : "#cc9133",
+    "Prysm"     : "#40bfbf",
     "Lighthouse": "#9933cc",
-    "Teku": "#3357cc",
+    "Teku"      : "#3357cc",
     "Smart Node": "#cc6e33",
-    "Allnodes": "#4533cc",
-    "unknown": "#B0B0B0",
+    "Allnodes"  : "#4533cc",
+    "unknown"   : "#B0B0B0",
 }
 
 
@@ -172,10 +169,10 @@ class Proposals(commands.Cog):
                 }
             }, {
                 '$lookup': {
-                    'from': 'node_operators',
-                    'localField': '_id',
+                    'from'        : 'node_operators',
+                    'localField'  : '_id',
                     'foreignField': 'validator',
-                    'as': 'data'
+                    'as'          : 'data'
                 }
             }, {
                 '$match': {
@@ -222,6 +219,34 @@ class Proposals(commands.Cog):
         await self.lookup_validators()
         return msg
 
+    async def gather_latest_proposal_per_validator(self):
+        # get the latest proposal per validator
+        proposals = await self.db.proposals.aggregate([
+            {
+                '$sort': {
+                    'slot': -1
+                }
+            }, {
+                '$group': {
+                    '_id'     : '$validator',
+                    'proposal': {
+                        '$first': '$$ROOT'
+                    }
+                }
+            }, {
+                '$project': {
+                    'slot'     : '$proposal.slot',
+                    'validator': '$proposal.validator',
+                    'client'   : '$proposal.client',
+                    'version'  : '$proposal.version',
+                    'comment'  : '$proposal.comment',
+                    'type'     : '$proposal.type'
+                }
+            }
+        ]).to_list(length=None)
+
+        return proposals
+
     async def gather_latest_proposal_per_node_operator(self):
         data = await self.db.node_operators.aggregate([
             {
@@ -234,11 +259,11 @@ class Proposals(commands.Cog):
             # get the proposals per validator
             {
                 '$lookup': {
-                    'from': 'proposals',
-                    'localField': 'validator',
+                    'from'        : 'proposals',
+                    'localField'  : 'validator',
                     'foreignField': 'validator',
-                    'as': 'proposals',
-                    'pipeline': [
+                    'as'          : 'proposals',
+                    'pipeline'    : [
                         {
                             '$sort': {
                                 'slot': -1
@@ -257,8 +282,8 @@ class Proposals(commands.Cog):
             }, {
                 '$project': {
                     'node_operator': 1,
-                    'validator': 1,
-                    'proposal': {
+                    'validator'    : 1,
+                    'proposal'     : {
                         '$arrayElemAt': [
                             '$proposals', 0
                         ]
@@ -268,13 +293,13 @@ class Proposals(commands.Cog):
             }, {
                 '$project': {
                     'node_operator': 1,
-                    'validator': 1,
-                    'slot': '$proposal.slot'
+                    'validator'    : 1,
+                    'slot'         : '$proposal.slot'
                 }
                 # group by node_operator, keep the latest slot
             }, {
                 '$group': {
-                    '_id': '$node_operator',
+                    '_id' : '$node_operator',
                     'slot': {
                         '$max': '$slot'
                     }
@@ -282,16 +307,16 @@ class Proposals(commands.Cog):
                 # get the proposals per node_operator using the latest slot
             }, {
                 '$lookup': {
-                    'from': 'proposals',
-                    'localField': 'slot',
+                    'from'        : 'proposals',
+                    'localField'  : 'slot',
                     'foreignField': 'slot',
-                    'as': 'proposal'
+                    'as'          : 'proposal'
                 }
                 # only keep the latest proposal
             }, {
                 '$project': {
                     'node_operator': 1,
-                    'proposal': {
+                    'proposal'     : {
                         '$arrayElemAt': [
                             '$proposal', 0
                         ]
@@ -301,11 +326,11 @@ class Proposals(commands.Cog):
             }, {
                 '$project': {
                     'node_operator': 1,
-                    'slot': '$proposal.slot',
-                    'client': '$proposal.client',
-                    'version': '$proposal.version',
-                    'comment': '$proposal.comment',
-                    'type': '$proposal.type'
+                    'slot'         : '$proposal.slot',
+                    'client'       : '$proposal.client',
+                    'version'      : '$proposal.version',
+                    'comment'      : '$proposal.comment',
+                    'type'         : '$proposal.type'
                 }
             }
         ]).to_list(length=None)
@@ -381,22 +406,18 @@ class Proposals(commands.Cog):
         e = Embed(title="Client Distribution", color=self.color)
 
         # group by client and get count
-        data = await self.db.proposals.aggregate([
-            {
-                '$group': {
-                    '_id': f'${attribute}',
-                    'count': {
-                        '$sum': 1
-                    }
-                }
-            }
-        ]).to_list(None)
+        validators = await self.gather_latest_proposal_per_validator()
 
-        # get the total client distribution
-        total_data = {LOOKUP.get(d["_id"], d["_id"]): d["count"] for d in data}
+        # get the distribution
+        validator_data = {}
+        for proposal in validators:
+            client = LOOKUP.get(proposal[attribute], proposal[attribute])
+            if client not in validator_data:
+                validator_data[client] = 0
+            validator_data[client] += 1
 
         # sort data
-        total_data = sorted(total_data.items(), key=lambda x: x[1])
+        validator_data = sorted(validator_data.items(), key=lambda x: x[1])
 
         # get node operators
         node_operators = await self.gather_latest_proposal_per_node_operator()
@@ -404,7 +425,7 @@ class Proposals(commands.Cog):
         # get total node operator count from rp
         unknown_count = rp.call("rocketNodeManager.getNodeCount") - len(node_operators)
 
-        # get the node operator client distribution
+        # get the node operator distribution
         node_operator_data = {}
         for proposal in node_operators:
             client = LOOKUP.get(proposal[attribute], proposal[attribute])
@@ -417,9 +438,9 @@ class Proposals(commands.Cog):
         node_operator_data.insert(0, ("unknown", unknown_count))
 
         # create description
-        descriptions = ["Proposal Counts:"]
+        descriptions = ["Validator Counts:"]
         descriptions += [
-            f"\t{d[0]}: {d[1]}" for d in reversed(total_data)
+            f"\t{d[0]}: {d[1]}" for d in reversed(validator_data)
         ]
 
         descriptions = "```\n" + "\n".join(descriptions) + "```"
@@ -431,17 +452,17 @@ class Proposals(commands.Cog):
         plt.rcParams.update({'font.size': 15})
 
         ax1.pie(
-            [x[1] for x in total_data],
-            colors=[COLORS[x[0]] for x in total_data],
+            [x[1] for x in validator_data],
+            colors=[COLORS[x[0]] for x in validator_data],
             autopct="%1.1f%%",
             startangle=90
         )
         # legend
         ax1.legend(
-            [f"{x[0]} ({x[1]})" for x in total_data],
+            [f"{x[0]} ({x[1]})" for x in validator_data],
             loc="upper left",
         )
-        ax1.set_title(f"{name} Distribution based on Proposals")
+        ax1.set_title(f"{name} Distribution based on Validators")
 
         ax2.pie(
             [x[1] for x in node_operator_data],
