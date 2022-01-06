@@ -11,7 +11,10 @@ log = logging.getLogger("discord_bot")
 log.setLevel(cfg["log_level"])
 logging.getLogger().setLevel("INFO")
 logging.getLogger("discord.client").setLevel(cfg["log_level"])
-bot = discord.Bot()
+
+intents = discord.Intents.none()
+intents.guilds = True
+bot = discord.Bot(intents=intents)
 reporter.bot = bot
 
 log.info(f"Running using Storage Contract {cfg['rocketpool.manual_addresses.rocketStorage']} "
