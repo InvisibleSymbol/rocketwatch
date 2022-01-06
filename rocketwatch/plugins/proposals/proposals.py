@@ -406,24 +406,37 @@ class Proposals(commands.Cog):
         e = Embed(title="Client Distribution", color=self.color)
 
         # group by client and get count
-        validators = await self.gather_latest_proposal_per_validator()
+        minipools = await self.gather_latest_proposal_per_validator()
 
         # get the distribution
-        validator_data = {}
-        for proposal in validators:
+        minipool_data = {}
+        for proposal in minipools:
             client = LOOKUP.get(proposal[attribute], proposal[attribute])
-            if client not in validator_data:
-                validator_data[client] = 0
-            validator_data[client] += 1
+            if client not in minipool_data:
+                minipool_data[client] = 0
+            minipool_data[client] += 1
 
         # sort data
-        validator_data = sorted(validator_data.items(), key=lambda x: x[1])
+        minipool_data = sorted(minipool_data.items(), key=lambda x: x[1])
+
+        # create description
+        descriptions = ["Minipool Counts:"]
+        descriptions += [
+            f"\t{d[0]}: {d[1]}" for d in reversed(minipool_data)
+        ]
+
+        descriptions = "```\n" + "\n".join(descriptions) + "```"
+        e.description = descriptions
+
+        # get total minipool count from rocketpool
+        unknown_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - len(minipools)
+        minipool_data.insert(0, ("unknown", unknown_minipools))
 
         # get node operators
         node_operators = await self.gather_latest_proposal_per_node_operator()
 
         # get total node operator count from rp
-        unknown_count = rp.call("rocketNodeManager.getNodeCount") - len(node_operators)
+        unknown_node_operators = rp.call("rocketNodeManager.getNodeCount") - len(node_operators)
 
         # get the node operator distribution
         node_operator_data = {}
@@ -435,16 +448,7 @@ class Proposals(commands.Cog):
 
         # sort data
         node_operator_data = sorted(node_operator_data.items(), key=lambda x: x[1])
-        node_operator_data.insert(0, ("unknown", unknown_count))
-
-        # create description
-        descriptions = ["Validator Counts:"]
-        descriptions += [
-            f"\t{d[0]}: {d[1]}" for d in reversed(validator_data)
-        ]
-
-        descriptions = "```\n" + "\n".join(descriptions) + "```"
-        e.description = descriptions
+        node_operator_data.insert(0, ("unknown", unknown_node_operators))
 
         # create 2 subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
@@ -452,17 +456,17 @@ class Proposals(commands.Cog):
         plt.rcParams.update({'font.size': 15})
 
         ax1.pie(
-            [x[1] for x in validator_data],
-            colors=[COLORS[x[0]] for x in validator_data],
+            [x[1] for x in minipool_data],
+            colors=[COLORS[x[0]] for x in minipool_data],
             autopct="%1.1f%%",
             startangle=90
         )
         # legend
         ax1.legend(
-            [f"{x[0]} ({x[1]})" for x in validator_data],
+            [f"{x[0]} ({x[1]})" for x in minipool_data],
             loc="upper left",
         )
-        ax1.set_title(f"{name} Distribution based on Validators")
+        ax1.set_title(f"{name} Distribution based on Minipools")
 
         ax2.pie(
             [x[1] for x in node_operator_data],
