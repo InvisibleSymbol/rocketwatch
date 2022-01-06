@@ -492,7 +492,7 @@ class Proposals(commands.Cog):
                               background_color="white",
                               prefer_horizontal=0.9,
                               # color func for random color
-                              color_func=lambda *args, **kwargs: list(COLORS.values())[random.randint(0, len(COLORS) - 2)]
+                              color_func=lambda *args, **kwargs: list(COLORS.values())[random.randint(0, len(COLORS) - 3)]
                               ).fit_words(comment_words)
 
         # respond with image
