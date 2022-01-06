@@ -1,7 +1,7 @@
 import asyncio
-import html
 import logging
 import random
+import time
 from io import BytesIO
 
 import aiohttp
@@ -34,7 +34,8 @@ COLORS = {
     "Teku"      : "#3357cc",
     "Smart Node": "#cc6e33",
     "Allnodes"  : "#4533cc",
-    "unknown"   : "#B0B0B0",
+    "Unobserved": "#E0E0E0",
+    "N/A"       : "#999999",
 }
 
 
@@ -42,7 +43,8 @@ class Proposals(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
-        self.slots_url = "https://beaconcha.in/blocks/data"
+        self.rocketscan_proposals_url = "https://rocketscan.dev/api/mainnet/beacon/blocks/all"
+        self.last_chore_run = 0
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
@@ -63,101 +65,56 @@ class Proposals(commands.Cog):
         log.info("finished dropping node operators")
         await ctx.respond("dropped all node operators")
 
-    async def gather_new_allnodes_proposals(self):
-        log.info("getting proposals with allnodes + rocketpool graffiti...")
-        amount = 100
-        index = 0
-        start = 0
-        should_continue = True
-        while True:
-            log.debug(f"requesting proposals {start} to {start + amount}")
-            async with aiohttp.ClientSession() as session:
-                res = await session.get(
-                    self.slots_url,
-                    params={
-                        "draw"         : index,
-                        "start"        : start,
-                        "length"       : amount,
-                        "search[value]": "Rocket Pool ⚡️Allnodes"
-                    })
-                res = await res.json()
-            proposals = res["data"]
-            for entry in proposals:
-                slot = int(entry[1].split(">")[-2].split("<")[0].replace(",", ""))
+    async def gather_all_proposals(self):
+        log.info("getting all proposals using the rocketscan.dev API")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.rocketscan_proposals_url) as resp:
+                if resp.status != 200:
+                    log.error("failed to get proposals using the rocketscan.dev API")
+                    return
 
-                # break if the slot is already in the database
-                if await self.db.proposals.count_documents({"slot": slot}) > 0:
-                    log.debug(f"slot {slot} already in the database")
-                    should_continue = False
-                    continue
-
-                should_continue = True
-                data = {
-                    "slot"     : slot,
-                    "validator": int(entry[4].split("/validator/")[1].split("\">")[0]),
-                    "client"   : "T",
-                    "type"     : "Allnodes",
-                }
-                await self.db.proposals.replace_one({"slot": data["slot"]}, data, upsert=True)
-
-            if len(proposals) != amount or not should_continue:
-                log.debug(f"stopping proposal gathering: {len(proposals)=}, {should_continue=}")
-                break
-            index += 1
-            start += amount
-            await asyncio.sleep(10)
-        log.info("finished gathering new proposals")
-
-    async def gather_new_rocket_pool_proposals(self):
-        log.info("getting proposals with rocket pool graffiti...")
-        amount = 100
-        index = 0
-        start = 0
-        should_continue = True
-        while True:
-            log.debug(f"requesting proposals {start} to {start + amount}")
-            async with aiohttp.ClientSession() as session:
-                res = await session.get(
-                    self.slots_url,
-                    params={
-                        "draw"         : index,
-                        "start"        : start,
-                        "length"       : amount,
-                        "search[value]": "RP-"
-                    })
-                res = await res.json()
-            proposals = res["data"]
-            for entry in proposals:
-                slot = int(entry[1].split(">")[-2].split("<")[0].replace(",", ""))
-
-                # break if the slot is already in the database
-                if await self.db.proposals.count_documents({"slot": slot}) > 0:
-                    log.debug(f"slot {slot} already in the database")
-                    should_continue = False
-                    continue
-
-                graffiti = entry[11].split(">")[-3].split("<")[0]
-                if graffiti.startswith("RP-"):
-                    should_continue = True
-                    parts = graffiti.split(" ")
-                    data = {
-                        "slot"     : slot,
-                        "validator": int(entry[4].split("/validator/")[1].split("\">")[0]),
-                        "client"   : parts[0].split("-")[1], "version": parts[1],
-                        "type"     : "Smart Node",
-                    }
-                    if len(parts) > 2:
-                        comment = " ".join(parts[2:]).lstrip("(").rstrip(")")
-                        data["comment"] = html.unescape(comment)
-                    await self.db.proposals.replace_one({"slot": data["slot"]}, data, upsert=True)
-
-            if len(proposals) != amount or not should_continue:
-                log.debug(f"stopping proposal gathering: {len(proposals)=}, {should_continue=}")
-                break
-            index += 1
-            start += amount
-            await asyncio.sleep(10)
-        log.info("finished gathering new proposals")
+                proposals = await resp.json()
+                log.info("got all proposals using the rocketscan.dev API")
+                for entry in proposals:
+                    validator = int(entry["validator"]["index"])
+                    slot = int(entry["number"])
+                    graffiti = bytes.fromhex(entry["validator"]["graffiti"][2:]).decode("utf-8").rstrip('\x00')
+                    if graffiti.startswith("RP-"):
+                        # smart node proposal
+                        parts = graffiti.split(" ")
+                        data = {
+                            "slot"     : slot,
+                            "validator": validator,
+                            "client"   : LOOKUP.get(parts[0].split("-")[1], "N/A"),
+                            "version"  : parts[1],
+                            "comment"  : " ".join(parts[2:]).lstrip("(").rstrip(")"),
+                            "type"     : "Smart Node",
+                        }
+                    elif "⚡️Allnodes" in graffiti:
+                        # Allnodes proposal
+                        data = {
+                            "slot"     : slot,
+                            "validator": validator,
+                            "client"   : "Teku",  # could change in the future
+                            "type"     : "Allnodes"
+                        }
+                    else:
+                        # normal proposal
+                        data = {
+                            "slot"     : slot,
+                            "validator": validator,
+                            "type"     : "N/A",
+                            "client"   : "N/A"
+                        }
+                        for client in LOOKUP.values():
+                            if client.lower() in graffiti.lower():
+                                data["client"] = client
+                                break
+                    # add it to the db if its not already there
+                    await self.db.proposals.update_one(
+                        {"slot": slot}, {"$set": data}, upsert=True
+                    )
+        log.info("finished gathering all proposals")
 
     async def lookup_validators(self):
         log.info("looking up new validators")
@@ -211,18 +168,25 @@ class Proposals(commands.Cog):
         log.info("finished looking up new validators")
 
     async def chore(self, ctx):
-        msg = await ctx.respond("gathering new rocket pool proposals...", ephemeral=is_hidden(ctx))
-        await self.gather_new_rocket_pool_proposals()
-        await msg.edit(content="gathering new allnodes proposals...")
-        await self.gather_new_allnodes_proposals()
-        await msg.edit(content="looking up new validators...")
-        await self.lookup_validators()
+        msg = await ctx.respond("doing chores...", ephemeral=is_hidden(ctx))
+        # only run if self.last_chore_run timestamp is older than 1 hour
+        if (time.time() - self.last_chore_run) > 3600:
+            self.last_chore_run = time.time()
+            await msg.edit(content="gathering proposals...")
+            await self.gather_all_proposals()
+            await msg.edit(content="looking up new validators...")
+            await self.lookup_validators()
+        else:
+            log.debug("skipping chore")
         return msg
 
-    async def gather_latest_proposal_per_validator(self):
-        # get the latest proposal per validator
-        proposals = await self.db.proposals.aggregate([
+    async def gather_attribute_per_validator(self, attribute):
+        distribution = await self.db.proposals.aggregate([
             {
+                "$match": {
+                    attribute: {"$exists": True}
+                }
+            }, {
                 '$sort': {
                     'slot': -1
                 }
@@ -235,20 +199,26 @@ class Proposals(commands.Cog):
                 }
             }, {
                 '$project': {
-                    'slot'     : '$proposal.slot',
-                    'validator': '$proposal.validator',
-                    'client'   : '$proposal.client',
-                    'version'  : '$proposal.version',
-                    'comment'  : '$proposal.comment',
-                    'type'     : '$proposal.type'
+                    'attribute': '$proposal.' + attribute
+                }
+            }, {
+                '$group': {
+                    '_id'  : '$attribute',
+                    'count': {
+                        '$sum': 1
+                    },
+                }
+            }, {
+                '$sort': {
+                    'count': 1
                 }
             }
         ]).to_list(length=None)
 
-        return proposals
+        return distribution
 
-    async def gather_latest_proposal_per_node_operator(self):
-        data = await self.db.node_operators.aggregate([
+    async def gather_attributel_per_node_operator(self, attribute):
+        distribution = await self.db.node_operators.aggregate([
             {
                 '$match': {
                     'node_operator': {
@@ -268,7 +238,12 @@ class Proposals(commands.Cog):
                             '$sort': {
                                 'slot': -1
                             }
-                        }
+                        },
+                        {
+                            "$match": {
+                                attribute: {"$exists": True}
+                            }
+                        },
                     ]
                 }
                 # remove validators that have no proposals
@@ -322,19 +297,25 @@ class Proposals(commands.Cog):
                         ]
                     }
                 }
-                # extract the proposal metadata
+
             }, {
                 '$project': {
-                    'node_operator': 1,
-                    'slot'         : '$proposal.slot',
-                    'client'       : '$proposal.client',
-                    'version'      : '$proposal.version',
-                    'comment'      : '$proposal.comment',
-                    'type'         : '$proposal.type'
+                    'attribute': '$proposal.' + attribute
+                }
+            }, {
+                '$group': {
+                    '_id'  : '$attribute',
+                    'count': {
+                        '$sum': 1
+                    },
+                }
+            }, {
+                '$sort': {
+                    'count': 1
                 }
             }
         ]).to_list(length=None)
-        return data
+        return distribution
 
     @slash_command(guild_ids=guilds)
     async def version_chart(self, ctx):
@@ -406,77 +387,64 @@ class Proposals(commands.Cog):
         e = Embed(title="Client Distribution", color=self.color)
 
         # group by client and get count
-        minipools = await self.gather_latest_proposal_per_validator()
-
-        # get the distribution
-        minipool_data = {}
-        for proposal in minipools:
-            client = LOOKUP.get(proposal[attribute], proposal[attribute])
-            if client not in minipool_data:
-                minipool_data[client] = 0
-            minipool_data[client] += 1
-
-        # sort data
-        minipool_data = sorted(minipool_data.items(), key=lambda x: x[1])
+        minipools = await self.gather_attribute_per_validator(attribute)
+        minipools = [list(x.values()) for x in minipools]
 
         # create description
         descriptions = ["Minipool Counts:"]
         descriptions += [
-            f"\t{d[0]}: {d[1]}" for d in reversed(minipool_data)
+            f"\t{d[0]}: {d[1]}" for d in reversed(minipools)
         ]
 
         descriptions = "```\n" + "\n".join(descriptions) + "```"
         e.description = descriptions
 
         # get total minipool count from rocketpool
-        unknown_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - len(minipools)
-        minipool_data.insert(0, ("unknown", unknown_minipools))
+        unobserved_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - sum(d[1] for d in minipools)
+        minipools.insert(0, ("Unobserved", unobserved_minipools))
 
         # get node operators
-        node_operators = await self.gather_latest_proposal_per_node_operator()
+        node_operators = await self.gather_attributel_per_node_operator(attribute)
+        node_operators = [list(x.values()) for x in node_operators]
 
         # get total node operator count from rp
-        unknown_node_operators = rp.call("rocketNodeManager.getNodeCount") - len(node_operators)
-
-        # get the node operator distribution
-        node_operator_data = {}
-        for proposal in node_operators:
-            client = LOOKUP.get(proposal[attribute], proposal[attribute])
-            if client not in node_operator_data:
-                node_operator_data[client] = 0
-            node_operator_data[client] += 1
+        unobserved_node_operators = rp.call("rocketNodeManager.getNodeCount") - sum(d[1] for d in node_operators)
 
         # sort data
-        node_operator_data = sorted(node_operator_data.items(), key=lambda x: x[1])
-        node_operator_data.insert(0, ("unknown", unknown_node_operators))
+        node_operators.insert(0, ("Unobserved", unobserved_node_operators))
 
         # create 2 subplots
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
         fig.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
         plt.rcParams.update({'font.size': 15})
 
+        def my_autopct(pct):
+            return ('%.1f%%' % pct) if pct > 3 else ''
+
         ax1.pie(
-            [x[1] for x in minipool_data],
-            colors=[COLORS[x[0]] for x in minipool_data],
-            autopct="%1.1f%%",
+            [x[1] for x in minipools],
+            colors=[COLORS[x[0]] for x in minipools],
+            autopct=my_autopct,
             startangle=90
         )
         # legend
+        total_minipols = sum([x[1] for x in minipools])
         ax1.legend(
-            [f"{x[0]} ({x[1]})" for x in minipool_data],
+            [f"{x[1]} {x[0]} ({x[1] / total_minipols:.2%})" for x in minipools],
             loc="upper left",
         )
         ax1.set_title(f"{name} Distribution based on Minipools")
 
         ax2.pie(
-            [x[1] for x in node_operator_data],
-            colors=[COLORS[x[0]] for x in node_operator_data],
-            autopct="%1.1f%%",
+            [x[1] for x in node_operators],
+            colors=[COLORS[x[0]] for x in node_operators],
+            autopct=my_autopct,
             startangle=90
         )
         # legend
+        total_node_operators = sum([x[1] for x in node_operators])
         ax2.legend(
-            [f"{x[0]} ({x[1]})" for x in node_operator_data],
+            [f"{x[1]} {x[0]} ({x[1] / total_node_operators:.2%})" for x in node_operators],
             loc="upper left"
         )
         ax2.set_title(f"{name} Distribution based on Node Operators")
