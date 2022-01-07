@@ -17,14 +17,14 @@ log = logging.getLogger("node_fee_distribution")
 log.setLevel(cfg["log_level"])
 p = inflect.engine()
 
-PERCENTILES = [50, 75, 90, 99]
-
 
 def get_percentiles(percentiles, values):
     return {p: np.percentile(values, p, interpolation='nearest') for p in percentiles}
 
 
 class NodeFeeDistribution(commands.Cog):
+    PERCENTILES = [50, 75, 90, 99]
+
     def __init__(self, bot):
         self.bot = bot
         self.color = Color.from_rgb(235, 142, 85)
@@ -35,9 +35,9 @@ class NodeFeeDistribution(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def node_fee_distribution(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        deposit_txs = get_recent_account_transactions(
+        deposit_txs = await get_recent_account_transactions(
             self.node_deposit_address)
-        rpl_staking_txs = get_recent_account_transactions(
+        rpl_staking_txs = await get_recent_account_transactions(
             self.rpl_staking_address)
 
         e = Embed(color=self.color)
@@ -46,28 +46,30 @@ class NodeFeeDistribution(commands.Cog):
         if len(deposit_txs) > 0:
             since = min([int(x["timeStamp"]) for x in deposit_txs.values()])
             deposit_gas_percentiles = get_percentiles(
-                PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in deposit_txs.values()])
-            deposit_fee_percentiles = get_percentiles(PERCENTILES, [int(
+                NodeFeeDistribution.PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in deposit_txs.values()])
+            deposit_fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, [int(
                 x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in deposit_txs.values()])
 
             e.description = f"**Minipool Deposit Fees:**\n"
             e.description += f"_Since {time.asctime(time.localtime(since))}_\n"
-            for p in PERCENTILES:
+            for p in NodeFeeDistribution.PERCENTILES:
                 e.description += f"{str(p)}th percentile: {int(deposit_gas_percentiles[p])} gwei gas, {deposit_fee_percentiles[p]:.4f} eth total\n"
         else:
             e.description = "No recent minipool deposit transactions found.\n"
+
+        e.description += "\n"
 
         if len(rpl_staking_txs) > 0:
             since = min([int(x["timeStamp"])
                         for x in rpl_staking_txs.values()])
             rpl_staking_gas_percentiles = get_percentiles(
-                PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in rpl_staking_txs.values()])
-            rpl_staking_fee_percentiles = get_percentiles(PERCENTILES, [int(
+                NodeFeeDistribution.PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in rpl_staking_txs.values()])
+            rpl_staking_fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, [int(
                 x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in rpl_staking_txs.values()])
 
             e.description += f"**RPL Staking Fees:**\n"
             e.description += f"_Since {time.asctime(time.localtime(since))}_\n"
-            for p in PERCENTILES:
+            for p in NodeFeeDistribution.PERCENTILES:
                 e.description += f"{str(p)}th percentile: {int(rpl_staking_gas_percentiles[p])} gwei gas, {rpl_staking_fee_percentiles[p]:.4f} eth total\n"
         else:
             e.description += "No recent minipool deposit transactions found.\n"
