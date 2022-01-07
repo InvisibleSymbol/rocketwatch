@@ -1,6 +1,4 @@
 import logging
-import time
-import inflect
 import numpy as np
 from discord import Embed, Color
 from discord.commands import slash_command
@@ -15,7 +13,6 @@ from utils.etherscan import get_recent_account_transactions
 
 log = logging.getLogger("node_fee_distribution")
 log.setLevel(cfg["log_level"])
-p = inflect.engine()
 
 
 def get_percentiles(percentiles, values):
@@ -68,7 +65,7 @@ class NodeFeeDistribution(commands.Cog):
                 x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in rpl_staking_txs.values()])
 
             e.description += f"**RPL Staking Fees:**\n"
-            e.description += f"_Since {time.asctime(time.localtime(since))}_\n"
+            e.description += f"_Since <t:{since}>_\n"
             for p in NodeFeeDistribution.PERCENTILES:
                 e.description += f"{str(p)}th percentile: {int(rpl_staking_gas_percentiles[p])} gwei gas, {rpl_staking_fee_percentiles[p]:.4f} eth total\n"
         else:
