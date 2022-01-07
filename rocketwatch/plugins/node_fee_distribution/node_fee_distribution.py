@@ -72,7 +72,7 @@ class NodeFeeDistribution(commands.Cog):
             for p in NodeFeeDistribution.PERCENTILES:
                 e.description += f"{str(p)}th percentile: {int(rpl_staking_gas_percentiles[p])} gwei gas, {rpl_staking_fee_percentiles[p]:.4f} eth total\n"
         else:
-            e.description += "No recent minipool deposit transactions found.\n"
+            e.description += "No recent RPL stake transactions found.\n"
 
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
