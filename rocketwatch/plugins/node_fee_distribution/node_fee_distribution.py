@@ -51,7 +51,7 @@ class NodeFeeDistribution(commands.Cog):
                 x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in deposit_txs.values()])
 
             e.description = f"**Minipool Deposit Fees:**\n"
-            e.description += f"_Since {time.asctime(time.localtime(since))}_\n"
+            e.description += f"_Since <t:{since}>_\n"
             for p in NodeFeeDistribution.PERCENTILES:
                 e.description += f"{str(p)}th percentile: {int(deposit_gas_percentiles[p])} gwei gas, {deposit_fee_percentiles[p]:.4f} eth total\n"
         else:
