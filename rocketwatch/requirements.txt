@@ -6,7 +6,7 @@ termplotlib==0.3.9
 cachetools==5.0.0
 bidict==0.21.4
 tinydb==4.5.2
-requests==2.26.0
+requests==2.27.1
 uptime==3.0.1
 git+git://github.com/Pycord-Development/pycord@99e2312ffef447f4ae60feebd9c04319e04d4b39#egg=py-cord
 config==0.5.1
