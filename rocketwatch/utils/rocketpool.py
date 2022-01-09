@@ -5,6 +5,7 @@ import warnings
 from bidict import bidict
 from cachetools import cached
 from web3.exceptions import ContractLogicError
+from web3_multicall import Multicall
 
 from utils import solidity
 from utils.cfg import cfg
@@ -19,6 +20,7 @@ class RocketPool:
     addresses = bidict()
 
     def __init__(self):
+        self.multicall = Multicall(w3.eth)
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
 

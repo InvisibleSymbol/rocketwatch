@@ -10,6 +10,7 @@ from discord.commands import slash_command
 from discord.ext import commands
 from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import UpdateOne
 from wordcloud import WordCloud
 
 from utils.cfg import cfg
@@ -49,24 +50,9 @@ class Proposals(commands.Cog):
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @owner_only_slash()
-    async def drop_proposals(self, ctx):
-        await ctx.defer()
-        log.info("dropping all proposals")
-        await self.db.proposals.delete_many({})
-        log.info("finished dropping all proposals")
-        await ctx.respond("dropped all proposals")
-
-    @owner_only_slash()
-    async def drop_node_operators(self, ctx):
-        await ctx.defer()
-        log.info("dropping all node operators")
-        await self.db.node_operators.delete_many({})
-        log.info("finished dropping node operators")
-        await ctx.respond("dropped all node operators")
-
     async def gather_all_proposals(self):
         log.info("getting all proposals using the rocketscan.dev API")
+        payload = []
         async with aiohttp.ClientSession() as session:
             async with session.get(self.rocketscan_proposals_url) as resp:
                 if resp.status != 200:
@@ -110,62 +96,9 @@ class Proposals(commands.Cog):
                             if client.lower() in graffiti.lower():
                                 data["client"] = client
                                 break
-                    # add it to the db if its not already there
-                    await self.db.proposals.update_one(
-                        {"slot": slot}, {"$set": data}, upsert=True
-                    )
+                    payload.append(UpdateOne({"slot": slot}, {"$set": data}, upsert=True))
+        await self.db.proposals.bulk_write(payload)
         log.info("finished gathering all proposals")
-
-    async def lookup_validators(self):
-        log.info("looking up new validators")
-        # get all validators that arent in the node_operators collection
-        validators = await self.db.proposals.aggregate([
-            {
-                '$group': {
-                    '_id': '$validator'
-                }
-            }, {
-                '$lookup': {
-                    'from'        : 'node_operators',
-                    'localField'  : '_id',
-                    'foreignField': 'validator',
-                    'as'          : 'data'
-                }
-            }, {
-                '$match': {
-                    'data': {
-                        '$size': 0
-                    }
-                }
-            }
-        ]).to_list(length=None)
-        validators = [str(x["_id"]) for x in validators]
-        # filter out validators that are already in the
-        for i in range(0, len(validators), 100):
-            log.debug(f"requesting pubkeys {i} to {i + 100}")
-            validator_ids = validators[i:i + 100]
-            async with aiohttp.ClientSession() as session:
-                res = await session.get(self.validator_url + ",".join(validator_ids))
-                res = await res.json()
-            data = res["data"]
-            # handle when we only get a single validator back
-            if not isinstance(data, list):
-                data = [data]
-            for validator_data in data:
-                validator_id = int(validator_data["validatorindex"])
-                # look up pubkey in rp
-                pubkey = validator_data["pubkey"]
-                # get minipool address
-                minipool = rp.call("rocketMinipoolManager.getMinipoolByPubkey", pubkey)
-                node_operator = rp.call("rocketMinipool.getNodeAddress", address=minipool)
-                # get node operator
-                await self.db.node_operators.replace_one({"validator": validator_id},
-                                                         {"validator"    : validator_id,
-                                                          "pubkey"       : pubkey,
-                                                          "node_operator": node_operator},
-                                                         upsert=True)
-            await asyncio.sleep(10)
-        log.info("finished looking up new validators")
 
     async def chore(self, ctx):
         msg = await ctx.respond("doing chores...", ephemeral=is_hidden(ctx))
@@ -174,60 +107,19 @@ class Proposals(commands.Cog):
             self.last_chore_run = time.time()
             await msg.edit(content="gathering proposals...")
             await self.gather_all_proposals()
-            await msg.edit(content="looking up new validators...")
-            await self.lookup_validators()
         else:
             log.debug("skipping chore")
         return msg
 
-    async def gather_attribute_per_validator(self, attribute):
-        distribution = await self.db.proposals.aggregate([
-            {
-                "$match": {
-                    attribute: {"$exists": True}
-                }
-            }, {
-                '$sort': {
-                    'slot': -1
-                }
-            }, {
-                '$group': {
-                    '_id'     : '$validator',
-                    'proposal': {
-                        '$first': '$$ROOT'
-                    }
-                }
-            }, {
-                '$project': {
-                    'attribute': '$proposal.' + attribute
-                }
-            }, {
-                '$group': {
-                    '_id'  : '$attribute',
-                    'count': {
-                        '$sum': 1
-                    },
-                }
-            }, {
-                '$sort': {
-                    'count': 1
-                }
-            }
-        ]).to_list(length=None)
-
-        return distribution
-
-    async def gather_attributel_per_node_operator(self, attribute):
-        distribution = await self.db.node_operators.aggregate([
+    async def gather_attribute(self, attribute):
+        distribution = await self.db.minipools.aggregate([
             {
                 '$match': {
                     'node_operator': {
                         '$ne': None
                     }
                 }
-            },
-            # get the proposals per validator
-            {
+            }, {
                 '$lookup': {
                     'from'        : 'proposals',
                     'localField'  : 'validator',
@@ -238,22 +130,15 @@ class Proposals(commands.Cog):
                             '$sort': {
                                 'slot': -1
                             }
-                        },
-                        {
-                            "$match": {
-                                attribute: {"$exists": True}
+                        }, {
+                            '$match': {
+                                attribute: {
+                                    '$exists': 1
+                                }
                             }
-                        },
+                        }
                     ]
                 }
-                # remove validators that have no proposals
-            }, {
-                '$match': {
-                    'proposals': {
-                        '$ne': []
-                    }
-                }
-                # only keep the latest one
             }, {
                 '$project': {
                     'node_operator': 1,
@@ -264,22 +149,28 @@ class Proposals(commands.Cog):
                         ]
                     }
                 }
-                # extract slot from proposal
             }, {
                 '$project': {
                     'node_operator': 1,
                     'validator'    : 1,
                     'slot'         : '$proposal.slot'
                 }
-                # group by node_operator, keep the latest slot
             }, {
                 '$group': {
-                    '_id' : '$node_operator',
-                    'slot': {
+                    '_id'            : '$node_operator',
+                    'slot'           : {
                         '$max': '$slot'
+                    },
+                    'validator_count': {
+                        '$sum': 1
                     }
                 }
-                # get the proposals per node_operator using the latest slot
+            }, {
+                '$match': {
+                    'slot': {
+                        '$ne': None
+                    }
+                }
             }, {
                 '$lookup': {
                     'from'        : 'proposals',
@@ -287,27 +178,30 @@ class Proposals(commands.Cog):
                     'foreignField': 'slot',
                     'as'          : 'proposal'
                 }
-                # only keep the latest proposal
             }, {
                 '$project': {
-                    'node_operator': 1,
-                    'proposal'     : {
+                    'node_operator'  : 1,
+                    'proposal'       : {
                         '$arrayElemAt': [
                             '$proposal', 0
                         ]
-                    }
+                    },
+                    'validator_count': 1
                 }
-
             }, {
                 '$project': {
-                    'attribute': '$proposal.' + attribute
+                    'attribute'      : f'$proposal.{attribute}',
+                    'validator_count': 1
                 }
             }, {
                 '$group': {
-                    '_id'  : '$attribute',
-                    'count': {
+                    '_id'            : '$attribute',
+                    'count'          : {
                         '$sum': 1
                     },
+                    'validator_count': {
+                        '$sum': '$validator_count'
+                    }
                 }
             }, {
                 '$sort': {
@@ -387,25 +281,20 @@ class Proposals(commands.Cog):
         e = Embed(title="Client Distribution", color=self.color)
 
         # group by client and get count
-        minipools = await self.gather_attribute_per_validator(attribute)
-        minipools = [list(x.values()) for x in minipools]
+        start = time.time()
+        data = await self.gather_attribute(attribute)
+        log.debug(f"gather_attribute took {time.time() - start} seconds")
 
-        # create description
-        descriptions = ["Minipool Counts:"]
-        descriptions += [
-            f"\t{d[0]}: {d[1]}" for d in reversed(minipools)
-        ]
-
-        descriptions = "```\n" + "\n".join(descriptions) + "```"
-        e.description = descriptions
+        minipools = [(x['_id'], x["validator_count"]) for x in data]
+        minipools = sorted(minipools, key=lambda x: x[1])
 
         # get total minipool count from rocketpool
         unobserved_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - sum(d[1] for d in minipools)
         minipools.insert(0, ("Unobserved", unobserved_minipools))
 
         # get node operators
-        node_operators = await self.gather_attributel_per_node_operator(attribute)
-        node_operators = [list(x.values()) for x in node_operators]
+        node_operators = [(x['_id'], x["count"]) for x in data]
+        node_operators = sorted(node_operators, key=lambda x: x[1])
 
         # get total node operator count from rp
         unobserved_node_operators = rp.call("rocketNodeManager.getNodeCount") - sum(d[1] for d in node_operators)
