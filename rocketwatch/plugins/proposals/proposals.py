@@ -278,7 +278,7 @@ class Proposals(commands.Cog):
     async def proposal_vs_node_operators_embed(self, attribute, name, msg):
         await msg.edit(content=f"generating {name} distribution graph...")
 
-        e = Embed(title="Client Distribution", color=self.color)
+        e = Embed(title=f"{name} Distribution", color=self.color)
 
         # group by client and get count
         start = time.time()
