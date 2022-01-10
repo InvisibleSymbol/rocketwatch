@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import random
 import time
@@ -10,12 +9,12 @@ from discord.commands import slash_command
 from discord.ext import commands
 from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import UpdateOne
+from pymongo import ReplaceOne
 from wordcloud import WordCloud
 
 from utils.cfg import cfg
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds, owner_only_slash
+from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -93,7 +92,7 @@ class Proposals(commands.Cog):
                             if client.lower() in graffiti.lower():
                                 extra_data["client"] = client
                                 break
-                    payload.append(UpdateOne({"slot": slot}, {"$set": data}, upsert=True))
+                    payload.append(ReplaceOne({"slot": slot}, base_data | extra_data, upsert=True))
         await self.db.proposals.bulk_write(payload)
         log.info("finished gathering all proposals")
 
