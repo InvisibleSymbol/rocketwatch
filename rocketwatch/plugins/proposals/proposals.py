@@ -65,36 +65,33 @@ class Proposals(commands.Cog):
                     validator = int(entry["validator"]["index"])
                     slot = int(entry["number"])
                     graffiti = bytes.fromhex(entry["validator"]["graffiti"][2:]).decode("utf-8").rstrip('\x00')
-                    if graffiti.startswith("RP-"):
-                        # smart node proposal
+                    base_data = {
+                        "slot"     : slot,
+                        "validator": validator,
+                        "graffiti" : graffiti,
+                        "type"     : "N/A",
+                        "client"   : "N/A",
+                    }
+                    extra_data = {}
+                    if graffiti.startswith(("RP-", "RP v")):
                         parts = graffiti.split(" ")
-                        data = {
-                            "slot"     : slot,
-                            "validator": validator,
-                            "client"   : LOOKUP.get(parts[0].split("-")[1], "N/A"),
-                            "version"  : parts[1],
-                            "comment"  : " ".join(parts[2:]).lstrip("(").rstrip(")"),
-                            "type"     : "Smart Node",
-                        }
+                        # smart node proposal
+                        extra_data["type"] = "Smart Node"
+                        if "RP-" in parts[0]:
+                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "N/A")
+                        extra_data["version"] = parts[1]
+                        if len(parts) >= 3:
+                            extra_data["comment"] = " ".join(parts[2:]).lstrip("(").rstrip(")")
                     elif "⚡️Allnodes" in graffiti:
                         # Allnodes proposal
-                        data = {
-                            "slot"     : slot,
-                            "validator": validator,
-                            "client"   : "Teku",  # could change in the future
-                            "type"     : "Allnodes"
-                        }
+                        extra_data["type"] = "Allnodes"
+                        extra_data["client"] = "Teku"
                     else:
                         # normal proposal
-                        data = {
-                            "slot"     : slot,
-                            "validator": validator,
-                            "type"     : "N/A",
-                            "client"   : "N/A"
-                        }
+                        # try to detect the client from the graffiti
                         for client in LOOKUP.values():
                             if client.lower() in graffiti.lower():
-                                data["client"] = client
+                                extra_data["client"] = client
                                 break
                     payload.append(UpdateOne({"slot": slot}, {"$set": data}, upsert=True))
         await self.db.proposals.bulk_write(payload)
