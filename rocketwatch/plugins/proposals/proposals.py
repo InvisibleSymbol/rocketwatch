@@ -4,6 +4,7 @@ import time
 from io import BytesIO
 
 import aiohttp
+import matplotlib as mpl
 from discord import Embed, Color, File
 from discord.commands import slash_command
 from discord.ext import commands
@@ -217,28 +218,57 @@ class Proposals(commands.Cog):
 
         # get proposals
         proposals = await self.db.proposals.find({"version": {"$exists": 1}}).sort("slot", 1).to_list(None)
-        batch_size = int(60 / 12 * 60 * 24 * 2)
+        look_back = int(60 / 12 * 60 * 24 * 5)  # last 5 days
+        max_slot = proposals[-1]["slot"]
+        # get version used after max_slot - look_back
+        # and have at least 10 occurrences
+        start_slot = max_slot - look_back
+        recent_versions = await self.db.proposals.aggregate([
+            {
+                '$match': {
+                    'slot'   : {
+                        '$gte': start_slot
+                    },
+                    'version': {
+                        '$exists': 1
+                    }
+                }
+
+            }, {
+                '$group': {
+                    '_id'  : '$version',
+                    'count': {
+                        '$sum': 5
+                    }
+                }
+            }, {
+                '$match': {
+                    'count': {
+                        '$gte': 10
+                    }
+                }
+            }, {
+                '$sort': {
+                    '_id': 1
+                }
+            }
+        ]).to_list(None)
+        recent_versions = [v['_id'] for v in recent_versions]
         data = {}
         versions = []
+        proposal_buffer = []
+        tmp_data = {}
         for proposal in proposals:
-            slot = proposal["slot"] // batch_size * batch_size
-            if slot not in data:
-                data[slot] = {}
-            if proposal["version"] not in data[slot]:
-                data[slot][proposal["version"]] = 0
+            proposal_buffer.append(proposal)
             if proposal["version"] not in versions:
                 versions.append(proposal["version"])
-            data[slot][proposal["version"]] += 1
-
-        latest_slot = int(max(data.keys()))
-        versions_from_latest = [x for x in versions if x in data[latest_slot]]
-        # show stats from the latest batch
-        descriptions = [
-            f"{version}: {data[latest_slot][version]}" for version in versions_from_latest
-        ]
-
-        descriptions = "```\n" + "\n".join(descriptions) + "```"
-        e.add_field(name=f"Statistics for slots {latest_slot} - {latest_slot + batch_size}", value=descriptions)
+            tmp_data[proposal["version"]] = tmp_data.get(proposal["version"], 0) + 1
+            slot = proposal["slot"]
+            if len(proposal_buffer) < 200:
+                continue
+            data[slot] = tmp_data.copy()
+            to_remove = proposal_buffer.pop(0)
+            tmp_data[to_remove["version"]] -= 1
 
         # normalize data
         for slot, value in data.items():
@@ -253,7 +283,19 @@ class Proposals(commands.Cog):
             for version in versions:
                 y[version].append(value_.get(version, 0))
 
-        plt.stackplot(x, *y.values(), labels=versions)
+        # matplotlib default color
+        matplotlib_colors = [color['color'] for color in list(mpl.rcParams['axes.prop_cycle'])]
+        # cap recent versions to available colors
+        recent_versions = recent_versions[:len(matplotlib_colors)]
+        recent_colors = [matplotlib_colors[i] for i in range(len(recent_versions))]
+        # generate color mapping
+        colors = ["gray"] * len(versions)
+        for i, version in enumerate(versions):
+            if version in recent_versions:
+                colors[i] = recent_colors[recent_versions.index(version)]
+
+        labels = [v if v in recent_versions else "_nolegend_" for v in versions]
+        plt.stackplot(x, *y.values(), labels=labels, colors=colors)
         plt.title("Version Chart")
         plt.xlabel("slot")
         plt.ylabel("Percentage")
