@@ -32,44 +32,39 @@ class NodeFeeDistribution(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def node_fee_distribution(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
+
+        e = Embed(color=self.color)
+        e.title = "Node Fee Distributions"
+        e.description = ""
+
         deposit_txs = await get_recent_account_transactions(
             self.node_deposit_address)
         rpl_staking_txs = await get_recent_account_transactions(
             self.rpl_staking_address)
+        first = True
 
-        e = Embed(color=self.color)
-        e.title = "Node Fee Distributions"
+        for title, txs in [('Minipool Deposit', deposit_txs), ('RPL Staking', rpl_staking_txs)]:
+            if not first:
+                e.description += "\n"
+            else:
+                first = False
 
-        if len(deposit_txs) > 0:
-            since = min([int(x["timeStamp"]) for x in deposit_txs.values()])
-            deposit_gas_percentiles = get_percentiles(
-                NodeFeeDistribution.PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in deposit_txs.values()])
-            deposit_fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, [int(
-                x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in deposit_txs.values()])
+            if len(txs) > 0:
+                since = min([int(x["timeStamp"]) for x in txs.values()])
+                gas = [int(x["gasPrice"]) // int(1E9) for x in txs.values()]
+                totals = [int(x["gasUsed"]) * int(x["gasPrice"]) /
+                          1E18 for x in txs.values()]
+                gas_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, gas)
+                fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, totals)
 
-            e.description = f"**Minipool Deposit Fees:**\n"
-            e.description += f"_Since <t:{since}>_\n"
-            for p in NodeFeeDistribution.PERCENTILES:
-                e.description += f"{str(p)}th percentile: {int(deposit_gas_percentiles[p])} gwei gas, {deposit_fee_percentiles[p]:.4f} eth total\n"
-        else:
-            e.description = "No recent minipool deposit transactions found.\n"
-
-        e.description += "\n"
-
-        if len(rpl_staking_txs) > 0:
-            since = min([int(x["timeStamp"])
-                        for x in rpl_staking_txs.values()])
-            rpl_staking_gas_percentiles = get_percentiles(
-                NodeFeeDistribution.PERCENTILES, [int(x["gasPrice"]) / 1E9 for x in rpl_staking_txs.values()])
-            rpl_staking_fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, [int(
-                x["gasUsed"]) * int(x["gasPrice"]) / float(1E18) for x in rpl_staking_txs.values()])
-
-            e.description += f"**RPL Staking Fees:**\n"
-            e.description += f"_Since <t:{since}>_\n"
-            for p in NodeFeeDistribution.PERCENTILES:
-                e.description += f"{str(p)}th percentile: {int(rpl_staking_gas_percentiles[p])} gwei gas, {rpl_staking_fee_percentiles[p]:.4f} eth total\n"
-        else:
-            e.description += "No recent RPL stake transactions found.\n"
+                e.description += f"**{title} Fees:**\n"
+                e.description += f"_Since <t:{since}>_\n"
+                e.description += f"Minimum: {min(gas)} gwei gas, {min(totals):.4f} eth total\n"
+                for p in NodeFeeDistribution.PERCENTILES:
+                    e.description += f"{str(p)}th percentile: {int(gas_percentiles[p])} gwei gas, {fee_percentiles[p]:.4f} eth total\n"
+                e.description += f"Maximum: {max(gas)} gwei gas, {max(totals):.4f} eth total\n"
+            else:
+                e.description += f"No recent {title} transactions found.\n"
 
         await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
