@@ -36,7 +36,7 @@ COLORS = {
     "Smart Node"      : "#cc6e33",
     "Allnodes"        : "#4533cc",
     "No proposals yet": "#E0E0E0",
-    "Undetectable"    : "#999999",
+    "Unknown"         : "#999999",
 }
 
 
@@ -69,8 +69,8 @@ class Proposals(commands.Cog):
                         "slot"     : slot,
                         "validator": validator,
                         "graffiti" : graffiti,
-                        "type"     : "Undetectable",
-                        "client"   : "Undetectable",
+                        "type"     : "Unknown",
+                        "client"   : "Unknown",
                     }
                     extra_data = {}
                     if graffiti.startswith(("RP-", "RP v")):
@@ -78,7 +78,7 @@ class Proposals(commands.Cog):
                         # smart node proposal
                         extra_data["type"] = "Smart Node"
                         if "RP-" in parts[0]:
-                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "Undetectable")
+                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "Unknown")
                         extra_data["version"] = parts[1]
                         if len(parts) >= 3:
                             extra_data["comment"] = " ".join(parts[2:]).lstrip("(").rstrip(")")
