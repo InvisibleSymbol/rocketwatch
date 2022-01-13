@@ -29,14 +29,14 @@ LOOKUP = {
 }
 
 COLORS = {
-    "Nimbus"    : "#cc9133",
-    "Prysm"     : "#40bfbf",
-    "Lighthouse": "#9933cc",
-    "Teku"      : "#3357cc",
-    "Smart Node": "#cc6e33",
-    "Allnodes"  : "#4533cc",
-    "Unobserved": "#E0E0E0",
-    "N/A"       : "#999999",
+    "Nimbus"          : "#cc9133",
+    "Prysm"           : "#40bfbf",
+    "Lighthouse"      : "#9933cc",
+    "Teku"            : "#3357cc",
+    "Smart Node"      : "#cc6e33",
+    "Allnodes"        : "#4533cc",
+    "No proposals yet": "#E0E0E0",
+    "Undetectable"    : "#999999",
 }
 
 
@@ -69,8 +69,8 @@ class Proposals(commands.Cog):
                         "slot"     : slot,
                         "validator": validator,
                         "graffiti" : graffiti,
-                        "type"     : "N/A",
-                        "client"   : "N/A",
+                        "type"     : "Undetectable",
+                        "client"   : "Undetectable",
                     }
                     extra_data = {}
                     if graffiti.startswith(("RP-", "RP v")):
@@ -78,7 +78,7 @@ class Proposals(commands.Cog):
                         # smart node proposal
                         extra_data["type"] = "Smart Node"
                         if "RP-" in parts[0]:
-                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "N/A")
+                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "Undetectable")
                         extra_data["version"] = parts[1]
                         if len(parts) >= 3:
                             extra_data["comment"] = " ".join(parts[2:]).lstrip("(").rstrip(")")
@@ -328,7 +328,7 @@ class Proposals(commands.Cog):
 
         # get total minipool count from rocketpool
         unobserved_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - sum(d[1] for d in minipools)
-        minipools.insert(0, ("Unobserved", unobserved_minipools))
+        minipools.insert(0, ("No proposals yet", unobserved_minipools))
 
         # get node operators
         node_operators = [(x['_id'], x["count"]) for x in data]
@@ -338,7 +338,7 @@ class Proposals(commands.Cog):
         unobserved_node_operators = rp.call("rocketNodeManager.getNodeCount") - sum(d[1] for d in node_operators)
 
         # sort data
-        node_operators.insert(0, ("Unobserved", unobserved_node_operators))
+        node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
 
         # create 2 subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
