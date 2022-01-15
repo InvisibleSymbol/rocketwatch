@@ -5,7 +5,7 @@ from io import BytesIO
 
 import aiohttp
 import matplotlib as mpl
-from discord import Embed, Color, File
+from discord import File
 from discord.commands import slash_command
 from discord.ext import commands
 from matplotlib import pyplot as plt
@@ -14,6 +14,7 @@ from pymongo import ReplaceOne
 from wordcloud import WordCloud
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -43,7 +44,6 @@ COLORS = {
 class Proposals(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
         self.rocketscan_proposals_url = "https://rocketscan.dev/api/mainnet/beacon/blocks/all"
         self.last_chore_run = 0
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
@@ -214,7 +214,7 @@ class Proposals(commands.Cog):
         msg = await self.chore(ctx)
         await msg.edit(content="generating version chart...")
 
-        e = Embed(title="Version Chart", color=self.color)
+        e = Embed(title="Version Chart")
 
         # get proposals
         proposals = await self.db.proposals.find({"version": {"$exists": 1}}).sort("slot", 1).to_list(None)
@@ -316,7 +316,7 @@ class Proposals(commands.Cog):
     async def proposal_vs_node_operators_embed(self, attribute, name, msg):
         await msg.edit(content=f"generating {name} distribution graph...")
 
-        e = Embed(title=f"{name} Distribution", color=self.color)
+        e = Embed(title=f"{name} Distribution")
 
         # group by client and get count
         start = time.time()
@@ -427,7 +427,7 @@ class Proposals(commands.Cog):
         wordcloud.to_image().save(img, format="png")
         img.seek(0)
         plt.close()
-        e = Embed(title="Rocket Pool Proposal Comments", color=self.color)
+        e = Embed(title="Rocket Pool Proposal Comments")
         e.set_image(url="attachment://image.png")
         await msg.edit(content="", embed=e, file=File(img, filename="image.png"))
         img.close()

@@ -1,17 +1,15 @@
-import asyncio
 import logging
 
 import aiohttp
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReplaceOne
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.embeds import etherscan_url
 from utils.readable import beaconchain_url
-from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.visibility import is_hidden
@@ -23,7 +21,6 @@ log.setLevel(cfg["log_level"])
 class Lottery(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
         self.endpoint = "https://beaconcha.in/api/v1/sync_committee"
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
@@ -135,7 +132,7 @@ class Lottery(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await self.chore(ctx)
         await msg.edit(content="generating lottery embed...")
-        e = Embed(title="Sync Committee Lottery", color=self.color)
+        e = Embed(title="Sync Committee Lottery")
         description = ""
         description += "**Current sync committee:**\n"
         description += await self.generate_sync_committee_description("latest")

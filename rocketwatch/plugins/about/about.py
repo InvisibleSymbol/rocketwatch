@@ -5,12 +5,12 @@ import humanize
 import psutil
 import requests
 import uptime
-from discord import Embed
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils import readable
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.embeds import etherscan_url
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
@@ -29,7 +29,7 @@ class About(commands.Cog):
     async def about(self, ctx):
         """Bot and Server Information"""
         await ctx.defer(ephemeral=is_hidden(ctx))
-        embed = Embed()
+        e = Embed()
         g = self.bot.guilds
         code_time = None
 
@@ -44,34 +44,34 @@ class About(commands.Cog):
                 await report_error(err)
 
         if code_time:
-            embed.add_field(name="Project Statistics",
-                            value=f"An estimate of {code_time} has been spent developing this bot!",
-                            inline=False)
-
-        embed.add_field(name="Bot Statistics",
-                        value=f"{len(g)} Guilds joined and "
-                              f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
+            e.add_field(name="Project Statistics",
+                        value=f"An estimate of {code_time} has been spent developing this bot!",
                         inline=False)
 
+        e.add_field(name="Bot Statistics",
+                    value=f"{len(g)} Guilds joined and "
+                          f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
+                    inline=False)
+
         address = etherscan_url(cfg["rocketpool.manual_addresses.rocketStorage"])
-        embed.add_field(name="Storage Contract", value=address)
+        e.add_field(name="Storage Contract", value=address)
 
-        embed.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
+        e.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())
 
-        embed.add_field(name="Plugins loaded", value=str(len(self.bot.cogs)))
+        e.add_field(name="Plugins loaded", value=str(len(self.bot.cogs)))
 
-        embed.add_field(name="Host CPU", value=f"{psutil.cpu_percent():.2f}%")
-        embed.add_field(name="Host Memory", value=f"{psutil.virtual_memory().percent}% used")
-        embed.add_field(name="Bot Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)} used")
+        e.add_field(name="Host CPU", value=f"{psutil.cpu_percent():.2f}%")
+        e.add_field(name="Host Memory", value=f"{psutil.virtual_memory().percent}% used")
+        e.add_field(name="Bot Memory", value=f"{humanize.naturalsize(self.process.memory_info().rss)} used")
 
         load = psutil.getloadavg()
-        embed.add_field(name="Host Load", value='/'.join(str(l) for l in load))
+        e.add_field(name="Host Load", value='/'.join(str(l) for l in load))
 
         system_uptime = uptime.uptime()
-        embed.add_field(name="Host Uptime", value=f"{readable.uptime(system_uptime)}")
+        e.add_field(name="Host Uptime", value=f"{readable.uptime(system_uptime)}")
 
         bot_uptime = time.time() - BOOT_TIME
-        embed.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
+        e.add_field(name="Bot Uptime", value=f"{readable.uptime(bot_uptime)}")
 
         # show credits
         try:
@@ -83,24 +83,24 @@ class About(commands.Cog):
             contributors_str = ", ".join(contributors[:5])
             if len(contributors) > 10:
                 contributors_str += " and more"
-            embed.add_field(name="Contributors", value=contributors_str)
+            e.add_field(name="Contributors", value=contributors_str)
         except Exception as err:
             await report_error(err)
 
-        await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
     async def donate(self, ctx):
         """Donate to the Bot Developer"""
-        embed = Embed()
-        embed.title = "Donate to the Developer"
-        embed.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
-                            "Donations will help me keep doing what I love (and pay the server bills haha)\n\n" \
-                            "I accept Donations on all Ethereum related Chains! (Mainnet, Polygon, Rollups, etc.)\n\n" \
-                            "**Message me about your Donation for a free POAP!\***\n\n" \
-                            "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
-        embed.add_field(name="Donation Address",
-                        value="[`0xinvis.eth`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
+        e = Embed()
+        e.title = "Donate to the Developer"
+        e.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
+                        "Donations will help me keep doing what I love (and pay the server bills haha)\n\n" \
+                        "I accept Donations on all Ethereum related Chains! (Mainnet, Polygon, Rollups, etc.)\n\n" \
+                        "**Message me about your Donation for a free POAP!\***\n\n" \
+                        "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
+        e.add_field(name="Donation Address",
+                    value="[`0xinvis.eth`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
         """
         # add address qrcode
@@ -111,14 +111,14 @@ class About(commands.Cog):
             "choe": "UTF-8",
             "chld": "L|0"
         })
-        embed.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        e.set_image(url="https://chart.googleapis.com/chart?" + query_string)
         """
         # POAP Event
-        embed.set_image(url="https://i.imgur.com/hNOX3Bj.png")
+        e.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
-        embed.set_footer(text="Thank you for your support! <3")
+        e.set_footer(text="Thank you for your support! <3")
         await ctx.respond(
-            embed=embed,
+            embed=e,
             ephemeral=True)
 
 

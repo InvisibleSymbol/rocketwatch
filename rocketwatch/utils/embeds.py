@@ -1,8 +1,9 @@
 import datetime
 import math
 
+import discord
 import humanize
-from discord import Embed, Color
+from discord import Color
 
 from strings import _
 from utils import solidity
@@ -14,6 +15,17 @@ from utils.sea_creatures import get_sea_creature_for_holdings
 from utils.shared_w3 import w3
 
 ens = CachedEns()
+
+
+class Embed(discord.Embed):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.colour = Color.from_rgb(235, 142, 85)
+        footer_parts = ["Developed by 0xinvis.eth",
+                        "/donate for POAP"]
+        if cfg["rocketpool.chain"] != "mainnet":
+            footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
+        self.set_footer(text=" · ".join(footer_parts))
 
 
 def etherscan_url(target, name=None, prefix=None):
@@ -93,16 +105,10 @@ def prepare_args(args):
 
 
 def assemble(args):
-    color = Color.from_rgb(235, 142, 85)
+    e = Embed()
     if args.event_name == "service_interrupted":
-        color = Color.from_rgb(235, 86, 86)
-    embed = Embed(color=color)
-    footer_parts = ["Developed by InvisibleSymbol#2788",
-                    "/donate for POAP"]
-    if cfg["rocketpool.chain"] != "mainnet":
-        footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
-    embed.set_footer(text=" · ".join(footer_parts))
-    embed.title = _(f"embeds.{args.event_name}.title")
+        e.colour = Color.from_rgb(235, 86, 86)
+    e.title = _(f"embeds.{args.event_name}.title")
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
@@ -117,79 +123,79 @@ def assemble(args):
                 arg_value = int(arg_value)
             args[arg_key] = humanize.intcomma(arg_value)
 
-    embed.description = _(f"embeds.{args.event_name}.description", **args)
+    e.description = _(f"embeds.{args.event_name}.description", **args)
 
     # show public key if we have one
     if "pubkey" in args:
-        embed.add_field(name="Validator",
-                        value=args.pubkey,
-                        inline=False)
+        e.add_field(name="Validator",
+                    value=args.pubkey,
+                    inline=False)
 
     if "commission" in args:
-        embed.add_field(name="Commission Rate",
-                        value=f"{args.commission:.2%}",
-                        inline=False)
+        e.add_field(name="Commission Rate",
+                    value=f"{args.commission:.2%}",
+                    inline=False)
 
     if "settingContractName" in args:
-        embed.add_field(name="Contract",
-                        value=f"`{args.settingContractName}`",
-                        inline=False)
+        e.add_field(name="Contract",
+                    value=f"`{args.settingContractName}`",
+                    inline=False)
 
     if "invoiceID" in args:
-        embed.add_field(name="Invoice ID",
-                        value=f"`{args.invoiceID}`",
-                        inline=False)
+        e.add_field(name="Invoice ID",
+                    value=f"`{args.invoiceID}`",
+                    inline=False)
 
     if "contractAddress" in args and "Contract" in args.type:
-        embed.add_field(name="Contract Address",
-                        value=args.contractAddress,
-                        inline=False)
+        e.add_field(name="Contract Address",
+                    value=args.contractAddress,
+                    inline=False)
 
     if "url" in args:
-        embed.add_field(name="URL",
-                        value=args.url,
-                        inline=False)
+        e.add_field(name="URL",
+                    value=args.url,
+                    inline=False)
 
     # show current inflation
     if "inflation" in args:
-        embed.add_field(name="Current Inflation",
-                        value=f"{args.inflation}%",
-                        inline=False)
+        e.add_field(name="Current Inflation",
+                    value=f"{args.inflation}%",
+                    inline=False)
 
     # show transaction hash if possible
     if "transactionHash" in args:
         content = f"{args.transactionHash}{advanced_tnx_url(args.transactionHash_raw)}"
-        embed.add_field(name="Transaction Hash",
-                        value=content)
+        e.add_field(name="Transaction Hash",
+                    value=content)
 
     # show sender address
     senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
     if senders:
         sender = senders[0]
-        embed.add_field(name="Sender Address",
-                        value=sender)
+        e.add_field(name="Sender Address",
+                    value=sender)
 
     # show block number
     if "blockNumber" in args:
-        embed.add_field(name="Block Number",
-                        value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
+        e.add_field(name="Block Number",
+                    value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
 
     if "reason" in args and args["reason"]:
-        embed.add_field(name="Revert Reason",
-                        value=f"`{args.reason}`",
-                        inline=False)
+        e.add_field(name="Revert Reason",
+                    value=f"`{args.reason}`",
+                    inline=False)
 
     # show timestamp
     times = [value for key, value in args.items() if "time" in key.lower()]
     time = times[0] if times else int(datetime.datetime.now().timestamp())
-    embed.add_field(name="Timestamp",
-                    value=f"<t:{time}:R> (<t:{time}:f>)",
-                    inline=False)
+    e.add_field(name="Timestamp",
+                value=f"<t:{time}:R> (<t:{time}:f>)",
+                inline=False)
 
     # show the transaction fees
     if "tnx_fee" in args:
-        embed.add_field(name="Transaction Fee",
-                        value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
-                        inline=False)
+        e.add_field(name="Transaction Fee",
+                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
+                    inline=False)
 
-    return embed
+    return e

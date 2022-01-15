@@ -5,12 +5,13 @@ import inflect
 import matplotlib.pyplot as plt
 import matplotlib.scale as scale
 import numpy as np
-from discord import Embed, Color, File, Option
+from discord import File, Option
 from discord.commands import slash_command
 from discord.ext import commands
 from matplotlib.ticker import ScalarFormatter
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.slash_permissions import guilds
 from utils.thegraph import get_minipool_counts_per_node
 from utils.visibility import is_hidden
@@ -28,10 +29,9 @@ def get_percentiles(percentiles, counts):
 class MinipoolDistribution(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     async def minipool_distribution_raw(self, ctx, distribution):
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Minipool Distribution"
         description = "```\n"
         for minipools, nodes in distribution:
@@ -96,7 +96,7 @@ class MinipoolDistribution(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Minipool Distribution"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")

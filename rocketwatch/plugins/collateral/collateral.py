@@ -4,12 +4,13 @@ from io import BytesIO
 import inflect
 import matplotlib.pyplot as plt
 import numpy as np
-from discord import Embed, Color, File, Option
+from discord import File, Option
 from discord.commands import slash_command
 from discord.ext import commands
 from matplotlib.ticker import FuncFormatter
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.slash_permissions import guilds
 from utils.thegraph import get_average_collateral_percentage_per_node
 from utils.visibility import is_hidden
@@ -27,10 +28,9 @@ def get_percentiles(percentiles, counts):
 class Collateral(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     async def collateral_distribution_raw(self, ctx, distribution):
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Collateral Distribution"
         description = "```\n"
         for collateral, nodes in distribution:
@@ -108,7 +108,7 @@ class Collateral(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Average Collateral Distribution"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")

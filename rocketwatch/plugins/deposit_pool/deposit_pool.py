@@ -2,7 +2,6 @@ import logging
 from io import BytesIO
 
 import humanize
-from discord import Embed, Color
 from discord import File
 from discord.commands import slash_command
 from discord.ext import commands
@@ -10,6 +9,7 @@ from discord.ext import commands
 from utils import solidity
 from utils.cfg import cfg
 from utils.deposit_pool_graph import get_graph
+from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -21,7 +21,6 @@ log.setLevel(cfg["log_level"])
 class DepositPool(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def dp(self, ctx):
@@ -35,7 +34,7 @@ class DepositPool(commands.Cog):
 
     async def _dp(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(colour=self.color)
+        e = Embed()
         e.title = "Deposit Pool Stats"
 
         deposit_pool = solidity.to_float(rp.call("rocketDepositPool.getBalance"))

@@ -1,12 +1,12 @@
 import logging
 
 import humanize
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
@@ -19,7 +19,6 @@ log.setLevel(cfg["log_level"])
 class TVL(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def tvl(self, ctx):
@@ -78,10 +77,10 @@ class TVL(commands.Cog):
 
         description = "```diff\n" + "\n".join(description) + "```"
         # send embed with tvl
-        embed = Embed(color=self.color)
-        embed.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
-        embed.description = description
-        await ctx.respond(embed=embed, ephemeral=is_hidden(ctx))
+        e = Embed()
+        e.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
+        e.description = description
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
 
 
 def setup(bot):

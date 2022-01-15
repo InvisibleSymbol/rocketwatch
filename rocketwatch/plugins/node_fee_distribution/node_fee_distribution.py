@@ -1,15 +1,15 @@
 import logging
+
 import numpy as np
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
+from utils.embeds import Embed
+from utils.etherscan import get_recent_account_transactions
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
-
-from utils.etherscan import get_recent_account_transactions
 
 log = logging.getLogger("node_fee_distribution")
 log.setLevel(cfg["log_level"])
@@ -24,7 +24,6 @@ class NodeFeeDistribution(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
         self.node_deposit_address = rp.get_address_by_name("rocketNodeDeposit")
         self.rpl_staking_address = rp.get_address_by_name("rocketNodeStaking")
@@ -33,7 +32,7 @@ class NodeFeeDistribution(commands.Cog):
     async def node_fee_distribution(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
 
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Node Fee Distributions"
         e.description = ""
 

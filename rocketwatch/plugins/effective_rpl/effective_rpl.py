@@ -1,12 +1,12 @@
 import logging
 
 import humanize
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -18,12 +18,11 @@ log.setLevel(cfg["log_level"])
 class EffectiveRPL(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def effective_rpl_staked(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(color=self.color)
+        e = Embed()
         # get total RPL staked
         total_rpl_staked = solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake"))
         e.add_field(name="Total RPL Staked:", value=f"{humanize.intcomma(total_rpl_staked, 2)} RPL", inline=False)

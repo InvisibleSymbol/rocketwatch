@@ -3,12 +3,12 @@ import logging
 from statistics import median
 
 import humanize
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils import solidity
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.embeds import etherscan_url
 from utils.readable import uptime
 from utils.rocketpool import rp
@@ -24,12 +24,11 @@ log.setLevel(cfg["log_level"])
 class Rewards(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def rewards(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Reward Period Stats"
         # get rpl price in dai
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
@@ -155,7 +154,7 @@ class Rewards(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def median_claim(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "Median Claim for this Period"
         counts = get_claims_current_period()
         # top 5 claims

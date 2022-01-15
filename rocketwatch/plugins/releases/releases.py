@@ -1,11 +1,11 @@
 import logging
 
 import aiohttp
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
@@ -16,7 +16,6 @@ log.setLevel(cfg["log_level"])
 class Releases(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
         self.tag_url = "https://github.com/rocket-pool/smartnode-install/releases/tag/"
 
     @slash_command(guild_ids=guilds)
@@ -32,7 +31,7 @@ class Releases(commands.Cog):
             if tag["name"].split(".")[-1].isnumeric():
                 latest_mainnet_release = f"[{tag['name']}]({self.tag_url + tag['name']})"
                 break
-        e = Embed(color=self.color)
+        e = Embed()
         e.add_field(name="Latest Mainnet Release", value=latest_mainnet_release, inline=False)
         e.add_field(name="Latest Prater Release", value=latest_prater_release, inline=False)
 

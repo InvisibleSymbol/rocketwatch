@@ -1,15 +1,14 @@
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 from tinydb import TinyDB, Query
 
+from utils.embeds import Embed
 from utils.slash_permissions import guilds, owner_only_slash
 
 
 class FaQ(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
         self.db = TinyDB('./plugins/faq/state.db',
                          create_dirs=True,
                          sort_keys=True,
@@ -17,13 +16,13 @@ class FaQ(commands.Cog):
                          separators=(',', ': '))
 
     async def created_embed(self, data):
-        embed = Embed(color=self.color)
-        embed.title = f"FAQ: {data['title']}"
-        embed.description = data["description"].encode('raw_unicode_escape').decode('unicode_escape')
-        embed.set_footer(text=f"Credits: {data['credits']}")
+        e = Embed()
+        e.title = f"FAQ: {data['title']}"
+        e.description = data["description"].encode('raw_unicode_escape').decode('unicode_escape')
+        e.set_footer(text=f"Credits: {data['credits']}")
         if data["image"]:
-            embed.set_image(url=data["image"])
-        return embed
+            e.set_image(url=data["image"])
+        return e
 
     @owner_only_slash()
     async def store_faq(self, ctx, name, title="", description="", credits="", image_url=""):
@@ -73,11 +72,11 @@ class FaQ(commands.Cog):
         entries = Query()
         current_state = self.db.search(entries.name != "")
         if current_state:
-            embed = Embed(color=self.color)
-            embed.title = "FAQ List"
+            e = Embed()
+            e.title = "FAQ List"
             for entry in current_state:
-                embed.add_field(name=entry["name"], value=f"Name: `{entry['title']}`", inline=False)
-            await ctx.respond(embed=embed)
+                e.add_field(name=entry["name"], value=f"Name: `{entry['title']}`", inline=False)
+            await ctx.respond(embed=e)
         else:
             await ctx.respond("No FAQs found!")
 

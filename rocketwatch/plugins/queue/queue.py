@@ -1,10 +1,10 @@
 import logging
 
-from discord import Embed, Color
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.embeds import etherscan_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
@@ -17,13 +17,12 @@ log.setLevel(cfg["log_level"])
 class Queue(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def queue(self, ctx):
         """Show the next 10 minipools in the queue"""
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(colour=self.color)
+        e = Embed()
         e.title = "Minipool queue"
 
         # Get the next 10 minipools per category

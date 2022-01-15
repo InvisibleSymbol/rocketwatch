@@ -1,17 +1,16 @@
-
 import logging
-
 from io import BytesIO
+
 import matplotlib.pyplot as plt
 import numpy as np
-
-from discord import Embed, Color, File
+from discord import File
 from discord.commands import slash_command
 from discord.ext import commands
 
 from utils import solidity
-from utils.rocketpool import rp
 from utils.cfg import cfg
+from utils.embeds import Embed
+from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
@@ -22,7 +21,6 @@ log.setLevel(cfg["log_level"])
 class RplApr(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def rpl_apr(self, ctx):
@@ -40,6 +38,7 @@ class RplApr(commands.Cog):
 
         def apr_curve(staked):
             return (node_operator_rewards / staked) / (reward_duration / 60 / 60 / 24) * 365
+
         apr = apr_curve(total_rpl_staked)
         y = apr_curve(x)
         fig = plt.figure()
@@ -66,7 +65,7 @@ class RplApr(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed(color=self.color)
+        e = Embed()
         e.title = "RPL APR Graph"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
