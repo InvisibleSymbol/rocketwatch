@@ -1,7 +1,9 @@
 import logging
+import math
 from datetime import datetime, timedelta
 
 import motor.motor_asyncio
+from cachetools import TTLCache
 from discord import Color, NotFound, slash_command, Embed
 from discord.ext import commands
 
@@ -18,6 +20,7 @@ log.setLevel(cfg["log_level"])
 class Metrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.notice_ttl_cache = TTLCache(math.inf, ttl=60*15)
         self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.collection = self.db.command_metrics
@@ -106,6 +109,13 @@ class Metrics(commands.Cog):
     @commands.Cog.listener()
     async def on_application_command_completion(self, ctx):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
+        if not is_hidden(ctx) and ctx.author not in self.notice_ttl_cache:
+            self.notice_ttl_cache[ctx.author] = True
+            await ctx.respond(
+                "**Did you know?**\n"
+                "> Calling this command (or any!) in other channels will make them only appear for you! "
+                "Give it a try next time!",
+                ephemeral=True)
 
         try:
             # get the timestamp of when the command was called from the db
