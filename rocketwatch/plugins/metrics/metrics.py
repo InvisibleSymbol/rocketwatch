@@ -4,11 +4,12 @@ from datetime import datetime, timedelta
 
 import motor.motor_asyncio
 from cachetools import TTLCache
-from discord import Color, NotFound, slash_command, Embed
+from discord import NotFound, slash_command
 from discord.ext import commands
 
 from utils import reporter
 from utils.cfg import cfg
+from utils.embeds import Embed
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -24,7 +25,6 @@ class Metrics(commands.Cog):
         self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.collection = self.db.command_metrics
-        self.color = Color.from_rgb(235, 142, 85)
 
     @slash_command(guild_ids=guilds)
     async def metrics(self, ctx):
@@ -33,7 +33,7 @@ class Metrics(commands.Cog):
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         try:
-            e = Embed(title="Metrics from the last 7 days", color=self.color)
+            e = Embed(title="Metrics from the last 7 days")
             desc = "```\n"
             # last 7 days
             start = datetime.utcnow() - timedelta(days=7)
@@ -111,11 +111,11 @@ class Metrics(commands.Cog):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
         if not is_hidden(ctx) and ctx.author not in self.notice_ttl_cache:
             self.notice_ttl_cache[ctx.author] = True
-            await ctx.respond(
-                "**Did you know?**\n"
-                "> Calling this command (or any!) in other channels will make them only appear for you! "
-                "Give it a try next time!",
-                ephemeral=True)
+            e = Embed()
+            e.title = 'Did you know?'
+            e.description = "Calling this command (or any!) in other channels will make them only appear for you! " \
+                            "Give it a try next time!"
+            await ctx.respond(embed=e, ephemeral=True)
 
         try:
             # get the timestamp of when the command was called from the db
