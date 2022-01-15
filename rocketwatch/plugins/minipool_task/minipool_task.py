@@ -110,10 +110,10 @@ class MinipoolTask(commands.Cog):
         log.debug("Gathering all Minipool validator indexes...")
         validator_indexes = self.get_validator_indexes(minipool_pubkeys)
         data = [{
-            "address": a,
-            "pubkey" : p,
-            "node_operator"    : n,
-            "validator" : validator_indexes[p]
+            "address"      : a,
+            "pubkey"       : p,
+            "node_operator": n,
+            "validator"    : validator_indexes[p]
         } for a, p, n in zip(minipool_addresses, minipool_pubkeys, node_addresses) if p in validator_indexes]
         if data:
             log.debug(f"Inserting {len(data)} Minipools into the database...")

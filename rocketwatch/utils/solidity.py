@@ -8,7 +8,7 @@ years = 365 * days
 
 # beaconchain stuff that I can't dynamically get yet
 BEACON_START_DATE = 1606824023
-BEACON_EPOCH_LENGTH = 12*32
+BEACON_EPOCH_LENGTH = 12 * 32
 
 
 def to_float(n, decimals=18):

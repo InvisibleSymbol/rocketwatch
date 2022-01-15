@@ -20,7 +20,7 @@ log.setLevel(cfg["log_level"])
 class Metrics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.notice_ttl_cache = TTLCache(math.inf, ttl=60*15)
+        self.notice_ttl_cache = TTLCache(math.inf, ttl=60 * 15)
         self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.collection = self.db.command_metrics
