@@ -20,7 +20,7 @@ def get_percentiles(percentiles, values):
 
 
 class NodeFeeDistribution(commands.Cog):
-    PERCENTILES = [50, 75, 90, 99]
+    PERCENTILES = [1, 10, 25, 50, 75, 90, 99]
 
     def __init__(self, bot):
         self.bot = bot
@@ -58,10 +58,10 @@ class NodeFeeDistribution(commands.Cog):
 
                 e.description += f"**{title} Fees:**\n"
                 e.description += f"_Since <t:{since}>_\n"
-                e.description += f"Minimum: {min(gas)} gwei gas, {min(totals):.4f} eth total\n"
+                e.description += f"Minimum: {min(gas)} gwei gas, {min(totals):.4f} eth total\n```"
                 for p in NodeFeeDistribution.PERCENTILES:
                     e.description += f"{str(p)}th percentile: {int(gas_percentiles[p])} gwei gas, {fee_percentiles[p]:.4f} eth total\n"
-                e.description += f"Maximum: {max(gas)} gwei gas, {max(totals):.4f} eth total\n"
+                e.description += f"```\nMaximum: {max(gas)} gwei gas, {max(totals):.4f} eth total\n"
             else:
                 e.description += f"No recent {title} transactions found.\n"
 
