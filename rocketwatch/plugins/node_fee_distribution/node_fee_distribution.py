@@ -57,11 +57,11 @@ class NodeFeeDistribution(commands.Cog):
                 fee_percentiles = get_percentiles(NodeFeeDistribution.PERCENTILES, totals)
 
                 e.description += f"**{title} Fees:**\n"
-                e.description += f"_Since <t:{since}>_\n"
-                e.description += f"Minimum: {min(gas)} gwei gas, {min(totals):.4f} eth total\n```"
+                e.description += f"_Since <t:{since}>_\n```"
+                e.description += f"Minimum: {min(gas)} gwei gas, {min(totals):.4f} eth total\n"
                 for p in NodeFeeDistribution.PERCENTILES:
-                    e.description += f"{str(p)}th percentile: {int(gas_percentiles[p])} gwei gas, {fee_percentiles[p]:.4f} eth total\n"
-                e.description += f"```\nMaximum: {max(gas)} gwei gas, {max(totals):.4f} eth total\n"
+                    e.description += f"{str(p):>2}th percentile: {int(gas_percentiles[p]):>4} gwei gas, {fee_percentiles[p]:.4f} eth total\n"
+                e.description += f"Maximum: {max(gas)} gwei gas, {max(totals):.4f} eth total```\n"
             else:
                 e.description += f"No recent {title} transactions found.\n"
 
