@@ -50,6 +50,8 @@ class MinipoolDistribution(commands.Cog):
                                         default=False,
                                         required=False)):
         await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed()
+
         # Get the minipool distribution
         counts = get_minipool_counts_per_node()
         # Converts the array of counts, eg [ 0, 0, 0, 1, 1, 2 ], to a list of tuples
@@ -71,7 +73,7 @@ class MinipoolDistribution(commands.Cog):
         # Remove the 0,0 value, since it doesn't provide any insight
         del bars[0]
         x_keys = [str(x) for x in bars.keys()]
-        rects = ax.bar(x_keys, bars.values(), color=str(self.color))
+        rects = ax.bar(x_keys, bars.values(), color=str(e.color))
         ax.bar_label(rects)
         ax.set_ylabel("Total Minipools")
         # Offset every other x tick, so the numbers don't bunch up
@@ -81,7 +83,7 @@ class MinipoolDistribution(commands.Cog):
         ax.set_ylim(top=(ax.get_ylim()[1] * 1.05))
 
         # Second chart is a line graph showing the total number of nodes with x minipools per node, logscale
-        ax2.plot([x[0] for x in distribution], [x[1] for x in distribution], color=str(self.color))
+        ax2.plot([x[0] for x in distribution], [x[1] for x in distribution], color=str(e.color))
         ax2.set_xscale(scale.SymmetricalLogScale(ax2, base=10, linthresh=10))
         ax2.set_yscale(scale.SymmetricalLogScale(ax2, base=10, linthresh=1))
         ax2.xaxis.set_major_formatter(ScalarFormatter())
@@ -96,7 +98,6 @@ class MinipoolDistribution(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed()
         e.title = "Minipool Distribution"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")

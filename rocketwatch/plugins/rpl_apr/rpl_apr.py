@@ -25,6 +25,7 @@ class RplApr(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def rpl_apr(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed()
 
         reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
         total_rpl_staked = solidity.to_float(
@@ -42,7 +43,7 @@ class RplApr(commands.Cog):
         apr = apr_curve(total_rpl_staked)
         y = apr_curve(x)
         fig = plt.figure()
-        plt.plot(x, y, color=str(self.color))
+        plt.plot(x, y, color=str(e.color))
         plt.xlim(xmin, xmax)
         plt.ylim(apr_curve(xmax) * 0.9, apr_curve(xmin) * 1.1)
         plt.plot(total_rpl_staked, apr, 'bo')
@@ -65,7 +66,6 @@ class RplApr(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed()
         e.title = "RPL APR Graph"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")

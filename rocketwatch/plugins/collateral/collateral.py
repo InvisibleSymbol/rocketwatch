@@ -54,6 +54,8 @@ class Collateral(commands.Cog):
                                           default=True,
                                           required=False)):
         await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed()
+
         data = get_average_collateral_percentage_per_node(cap_collateral)
         counts = []
         for collateral, nodes in data.items():
@@ -76,7 +78,7 @@ class Collateral(commands.Cog):
         if 0 in bars:
             del bars[0]
         x_keys = [str(x) for x in bars]
-        rects = ax.bar(x_keys, bars.values(), color=str(self.color))
+        rects = ax.bar(x_keys, bars.values(), color=str(e.color))
         ax.bar_label(rects)
 
         ax.set_xticklabels(x_keys, rotation=45, ha="right")
@@ -108,7 +110,6 @@ class Collateral(commands.Cog):
         fig.clf()
         plt.close()
 
-        e = Embed()
         e.title = "Average Collateral Distribution"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
