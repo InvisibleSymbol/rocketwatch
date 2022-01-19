@@ -11,6 +11,7 @@ from discord.ext import commands
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import etherscan_url
+from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -140,6 +141,16 @@ class Debug(commands.Cog):
         transaction_receipt = w3.eth.getTransaction(tnx_hash)
         revert_reason = rp.get_revert_reason(transaction_receipt)
         await ctx.respond(f"```Revert Reason: {revert_reason}```", ephemeral=True)
+
+    @owner_only_slash()
+    async def get_block_by_timestamp(self, ctx, timestamp:int):
+        await ctx.defer()
+        block = get_block_by_timestamp(timestamp)
+        found_timestamp = w3.eth.get_block(block).timestamp
+        if found_timestamp == timestamp:
+            await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\nBlock: {block}```", ephemeral=True)
+        else:
+            await ctx.respond(f"```Found closest match for timestamp: {timestamp}\nFound: {found_timestamp}\nBlock: {block}```", ephemeral=True)
 
 
 def setup(bot):

@@ -60,13 +60,14 @@ class Rewards(commands.Cog):
             ["rocketClaimDAO", "pDAO Rewards"]
         ]
 
-        distribution = "```\n"
+        parts = []
         for contract, name in claiming_contracts:
+            distribution = ""
             await asyncio.sleep(0.01)
             percentage = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", contract))
             amount = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", contract))
             amount_formatted = humanize.intcomma(amount, 2)
-            distribution += f"{name} ({percentage:.0%}):\n\tAllocated:\t{amount_formatted:>10} RPL\n"
+            distribution += f"{name} ({percentage:.0%}):\n\tAllocated: {amount_formatted:>14} RPL\n"
 
             # show how much was already claimed
             claimed = solidity.to_float(
@@ -79,30 +80,51 @@ class Rewards(commands.Cog):
 
             # percentage already claimed
             claimed_percentage = claimed / amount
-            distribution += f"\t├Claimed:\t{claimed_formatted:>11} RPL ({claimed_percentage:.0%})\n"
+            distribution += f"\t├Claimed: {claimed_formatted:>15} RPL ({claimed_percentage:.0%})\n"
+            available = amount - claimed
+            rollover = 0
 
             if "Node" in contract:
                 if "oDAO Member" in name:
-                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_odao()
+                    waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_odao()
                 else:
-                    waiting_for_claims, potential_rollover = get_unclaimed_rpl_reward_nodes()
+                    waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_nodes()
                 waiting_percentage = waiting_for_claims / amount
-                waiting_for_claims = humanize.intcomma(waiting_for_claims, 2)
-                distribution += f"\t├Pending:\t{waiting_for_claims:>11} RPL ({waiting_percentage:.0%})\n"
-                rollover_percentage = potential_rollover / amount
-                potential_rollover = humanize.intcomma(potential_rollover, 2)
-                distribution += f"\t├Rollover*:\t{potential_rollover:>9} RPL ({rollover_percentage:.0%})\n"
+                waiting_for_claims_fmt = humanize.intcomma(waiting_for_claims, 2)
+                distribution += f"\t├Eligible: {waiting_for_claims_fmt:>14} RPL ({waiting_percentage:.0%})\n"
+
+                if impossible_amount:
+                    impossible_amount_formatted = humanize.intcomma(impossible_amount, 2)
+                    impossible_percentage = impossible_amount / waiting_for_claims
+                    distribution += f"\t│├Not Claimable: {impossible_amount_formatted:>8} RPL ({impossible_percentage:.0%})\n"
+                possible_amount = waiting_for_claims - impossible_amount
+                if possible_amount:
+                    possible_amount_formatted = humanize.intcomma(possible_amount, 2)
+                    possible_percentage = possible_amount / waiting_for_claims
+                    distribution += f"\t│├Claimable: {possible_amount_formatted:>12} RPL ({possible_percentage:.0%})\n"
+            # possible amount
+            available_percentage = available / amount
+            available_formatted = humanize.intcomma(available, 2)
+            distribution += f"\t├Available: {available_formatted:>13} RPL ({available_percentage:.0%})\n"
+            if rollover:
+                rollover_formatted = humanize.intcomma(rollover, 2)
+                rollover_percentage = rollover / available
+                distribution += f"\t └est. Rollover: {rollover_formatted:>8} RPL ({rollover_percentage:.0%})\n"
 
             # reverse distribution string
             distribution = distribution[::-1]
             # replace (now first) last occurrence of ├ with └
-            distribution = distribution.replace("├", "└", 1)
+            distribution = distribution.replace("├\t\n", "└\t\n", 1)
+            distribution = distribution.replace("├│\t\n", "└│\t\n", 1)
             # reverse again
             distribution = distribution[::-1]
+            parts.append(distribution)
 
-        distribution += "```"
-        distribution += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
-        e.add_field(name="Distribution", value=distribution, inline=False)
+        text = "\n".join(parts)
+        text = "```\n" + text + "```"
+        if "Rollover" in text:
+            text += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
+        e.add_field(name="Distribution", value=text, inline=False)
 
         # show how much a node operator can claim with 10% (1.6 ETH) collateral and 150% (24 ETH) collateral
         node_operator_rewards = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimNode"))

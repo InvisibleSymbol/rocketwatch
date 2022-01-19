@@ -168,13 +168,25 @@ def get_unclaimed_rpl_reward_nodes():
     # get theoretical rewards per staked RPL
     reward_per_staked_rpl = total_rewards / total_rpl_staked
 
-    # calculate Rewards required for eligible nodes
-    rewards_required = reward_per_staked_rpl * sum(
-        solidity.to_float(v) for v in eligible_nodes.values()
-    )
-    potential_rollover = (total_rewards - claimed_rewards) - rewards_required
+    # get list of eligible claims and sort by largest first
+    eligible_effective = sorted([solidity.to_float(v) for v in eligible_nodes.values()], reverse=True)
 
-    return rewards_required, potential_rollover
+    # calculate Rewards required for eligible nodes
+    rewards_required = reward_per_staked_rpl * sum(eligible_effective)
+
+    eligible_claims = [v * reward_per_staked_rpl for v in eligible_effective]
+    impossible_amount = 0
+    current_available_amount = total_rewards - claimed_rewards
+    # simulate claims starting from largest to smallest
+    for claim in eligible_claims:
+        # if the claim is impossible, skip it
+        if claim > current_available_amount:
+            impossible_amount += claim
+            continue
+        # if the claim is possible, decrease the available amount
+        current_available_amount -= claim
+
+    return rewards_required, impossible_amount, current_available_amount
 
 
 def get_unclaimed_rpl_reward_odao():
@@ -232,10 +244,20 @@ def get_unclaimed_rpl_reward_odao():
     # calculate Rewards required for eligible nodes
     rewards_required = reward_per_member * len(eligible_nodes)
 
-    # calculate potential rollover
-    potential_rollover = (total_rewards - claimed_rewards) - rewards_required
+    # get list of eligible claims and sort by largest first
+    eligible_claims = [reward_per_member] * len(eligible_nodes)
+    impossible_amount = 0
+    current_available_amount = total_rewards - claimed_rewards
+    # simulate claims starting from largest to smallest
+    for claim in eligible_claims:
+        # if the claim is impossible, skip it
+        if claim > current_available_amount:
+            impossible_amount += claim
+            continue
+        # if the claim is possible, decrease the available amount
+        current_available_amount -= claim
 
-    return rewards_required, potential_rollover
+    return rewards_required, impossible_amount, current_available_amount
 
 
 def get_claims_current_period():
