@@ -142,15 +142,15 @@ class Debug(commands.Cog):
         revert_reason = rp.get_revert_reason(transaction_receipt)
         await ctx.respond(f"```Revert Reason: {revert_reason}```", ephemeral=True)
 
-    @owner_only_slash()
+    @slash_command(guild_ids=guilds)
     async def get_block_by_timestamp(self, ctx, timestamp:int):
         await ctx.defer()
-        block = get_block_by_timestamp(timestamp)
+        block, steps = get_block_by_timestamp(timestamp)
         found_timestamp = w3.eth.get_block(block).timestamp
         if found_timestamp == timestamp:
-            await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\nBlock: {block}```", ephemeral=True)
+            await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\nBlock: {block}\nSteps took: {steps}```", ephemeral=True)
         else:
-            await ctx.respond(f"```Found closest match for timestamp: {timestamp}\nFound: {found_timestamp}\nBlock: {block}```", ephemeral=True)
+            await ctx.respond(f"```Found closest match for timestamp: {timestamp}\nFound: {found_timestamp}\nBlock: {block}\nSteps took: {steps}```", ephemeral=True)
 
 
 def setup(bot):

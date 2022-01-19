@@ -59,22 +59,6 @@ def get_block_by_timestamp(timestamp):
             log.debug(f"Block {i_expected} matches timestamp {timestamp}")
             return i_expected
 
-        """
-        while abs(error) < 1 and i_expected not in history:
-            history.append(i_expected)
-            # do manual steps
-            if error > 0:
-                i_expected += 1
-            else:
-                i_expected -= 1
-            if i_expected in history:
-                break
-            t_expected = _get_timestamp(i_expected)
-            error = (timestamp - t_expected) / av_block_time
-            error_map[i_expected] = error
-            log.debug(f"Estimated Block {i_expected} with timestamp {t_expected} is off {timestamp - t_expected}s ({error:=.3f} Blocks) (manual)")
-        """
-
         if i_expected not in history:
             history.append(i_expected)
 
@@ -87,25 +71,4 @@ def get_block_by_timestamp(timestamp):
     # find the block with the smallest error in the error_map
     best_guess = min(error_map.items(), key=lambda x: abs(x[1]))
     log.debug(f"Closest Block is {best_guess[0]} with error {best_guess[1]:=.3f}")
-    return best_guess[0]
-
-
-def _iblock_near(sefl, tunix_s, ipre=1, ipost=None):
-
-
-
-    # get the ACTUAL time for that block
-    texpected = T(iexpected)
-
-    # use the discrepancy to improve our guess
-    est_nblocks_from_expected_to_target = int((tunix_s - texpected) / av_block_time)
-    iexpected_adj = iexpected + est_nblocks_from_expected_to_target
-
-    print(f'target timestamp ({tunix_s}) lies {k:.3f} of the way from block# {ipre} (t={t0}) to block# {ipost} (t={t1})')
-    print(f'Expected block# assuming linearity: {iexpected} (t={texpected})')
-    print('Expected nblocks required to reach target (again assuming linearity):', est_nblocks_from_expected_to_target)
-    print('New guess at block #:', iexpected_adj)
-
-    r = abs(est_nblocks_from_expected_to_target)
-
-    return iblock_near(tunix_s, iexpected_adj - r, iexpected_adj + r)
+    return best_guess[0], len(history)
