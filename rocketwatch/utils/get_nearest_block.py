@@ -24,7 +24,8 @@ def get_block_by_timestamp(timestamp):
     log.debug(f"Looking for block with timestamp {timestamp}")
     while (i_pre, i_post) not in history:
         log.debug(f'Searching between blocks {i_pre} and {i_post}')
-
+        if i_post == i_pre:
+            break
         t0, t1 = _get_timestamp(i_pre), _get_timestamp(i_post)
         av_block_time = (t1 - t0) / (i_post - i_pre)
 
@@ -57,7 +58,7 @@ def get_block_by_timestamp(timestamp):
 
         if error == 0:
             log.debug(f"Block {i_expected} matches timestamp {timestamp}")
-            return i_expected
+            return i_expected, len(history)
 
         if i_expected not in history:
             history.append(i_expected)
