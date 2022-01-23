@@ -41,8 +41,10 @@ def s_hex(string):
 
 
 def beaconchain_url(target, name=None):
-    if not name:
+    if not name and isinstance(target, str):
         name = s_hex(target)
+    else:
+        name = target
     chain = cfg["rocketpool.chain"]
     prefix = "prater." if chain == "goerli" else ""
     return f"[{name}](https://{prefix}beaconcha.in/validator/{target})"
