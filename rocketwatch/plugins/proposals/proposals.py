@@ -258,17 +258,18 @@ class Proposals(commands.Cog):
         versions = []
         proposal_buffer = []
         tmp_data = {}
-        for proposal in proposals:
+        for i, proposal in enumerate(proposals):
             proposal_buffer.append(proposal)
             if proposal["version"] not in versions:
                 versions.append(proposal["version"])
             tmp_data[proposal["version"]] = tmp_data.get(proposal["version"], 0) + 1
             slot = proposal["slot"]
-            if len(proposal_buffer) < 200:
+            if i < 200:
                 continue
+            while proposal_buffer[0]["slot"] < slot - (60/12 * 60 * 24 * 5):
+                to_remove = proposal_buffer.pop(0)
+                tmp_data[to_remove["version"]] -= 1
             data[slot] = tmp_data.copy()
-            to_remove = proposal_buffer.pop(0)
-            tmp_data[to_remove["version"]] -= 1
 
         # normalize data
         for slot, value in data.items():
