@@ -108,7 +108,7 @@ class Leaderboard(commands.Cog):
             desc += f"\n{f'#{i + 1}':>5}: {validator} - {data['current']:.2f}ETH (APR: {data['apr']:>5.2f}%)"
         desc += f"\n{'...':>5}"
         for i, (validator, data) in enumerate(sorted_balances[-10:]):
-            i = len(sorted_balances) - i
+            i = len(sorted_balances) - 10 + i
             desc += f"\n{f'#{i}':>5}: {validator} - {data['current']:.2f}ETH (APR: {data['apr']:>5.2f}%)"
         desc += "\n```"
         e.description = desc
