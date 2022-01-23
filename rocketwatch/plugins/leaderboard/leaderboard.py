@@ -1,14 +1,17 @@
+import asyncio
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import inflect
+import pymongo
 from discord.commands import slash_command
 from discord.ext import commands, tasks
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.make_async import make_async
+from utils.reporter import report_error
 from utils.shared_w3 import bacon
 from utils.slash_permissions import guilds
 from utils.solidity import to_float
@@ -23,17 +26,17 @@ class Leaderboard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.sync_db = pymongo.MongoClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-        if not self.cache_embed.is_running() and bot.is_ready():
-            self.cache_embed.start()
+        if not self.run_loop.is_running() and bot.is_ready():
+            self.run_loop.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if self.cache_embed.is_running():
+        if self.run_loop.is_running():
             return
-        self.cache_embed.start()
+        self.run_loop.start()
 
-    @make_async
     def get_balances(self, slot):
         log.debug(f"Getting balances for slot {slot}")
         start = time.time()
@@ -42,16 +45,25 @@ class Leaderboard(commands.Cog):
         return data
 
     @tasks.loop(seconds=60 ** 2)
-    async def cache_embed(self):
+    async def run_loop(self):
+        executor = ThreadPoolExecutor()
+        loop = asyncio.get_event_loop()
+        futures = [loop.run_in_executor(executor, self.cache_embed)]
+        try:
+            await asyncio.gather(*futures)
+        except Exception as err:
+            await report_error(err)
+
+    def cache_embed(self):
         # get current slot
         current = int(bacon._make_get_request("/eth/v2/beacon/blocks/head")["data"]["message"]["slot"])
         # get balances now
-        current_balances = await self.get_balances(current)
+        current_balances = self.get_balances(current)
         # get balances a week ago
         last_week = current - int(60 / 12 * 60 * 24 * 7)
-        last_week_balances = await self.get_balances(last_week)
+        last_week_balances = self.get_balances(last_week)
         # get all validators from db
-        validators = await self.db.minipools.distinct("validator")
+        validators = self.sync_db.minipools.distinct("validator")
         # get all validators that are in the balances' dict from the last week
         last_week_validators = {
             int(v["index"]): to_float(v["balance"], 9) for v in last_week_balances if all(
@@ -101,11 +113,13 @@ class Leaderboard(commands.Cog):
         desc += "\n```"
         e.description = desc
 
-        await self.db.leaderboard.update_one(
+        self.sync_db.leaderboard.update_one(
             {"_id": "leaderboard"},
             {"$set": {"embed": e.to_dict()}},
             upsert=True
         )
+
+        log.debug(f"Cached embed for slot {current}")
 
     @slash_command(guild_ids=guilds)
     async def leaderboard(self, ctx):
