@@ -148,9 +148,14 @@ class Debug(commands.Cog):
         block, steps = get_block_by_timestamp(timestamp)
         found_timestamp = w3.eth.get_block(block).timestamp
         if found_timestamp == timestamp:
-            await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\nBlock: {block}\nSteps took: {steps}```", ephemeral=True)
+            await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\n"
+                              f"Block: {block}\n"
+                              f"Steps taken: {steps}```", ephemeral=True)
         else:
-            await ctx.respond(f"```Found closest match for timestamp: {timestamp}\nFound: {found_timestamp}\nBlock: {block}\nSteps took: {steps}```", ephemeral=True)
+            await ctx.respond(f"```Found closest match for timestamp: {timestamp}\n"
+                              f"Timestamp: {found_timestamp}\n"
+                              f"Block: {block}\n"
+                              f"Steps took: {steps}```", ephemeral=True)
 
 
 def setup(bot):
