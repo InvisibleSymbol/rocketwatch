@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 
 import humanize
+from colorama import Fore, Style
 from discord import File, AutocompleteContext
 from discord.commands import slash_command, Option
 from discord.ext import commands
@@ -143,7 +144,7 @@ class Debug(commands.Cog):
         await ctx.respond(f"```Revert Reason: {revert_reason}```", ephemeral=True)
 
     @slash_command(guild_ids=guilds)
-    async def get_block_by_timestamp(self, ctx, timestamp:int):
+    async def get_block_by_timestamp(self, ctx, timestamp: int):
         await ctx.defer()
         block, steps = get_block_by_timestamp(timestamp)
         found_timestamp = w3.eth.get_block(block).timestamp
@@ -156,6 +157,18 @@ class Debug(commands.Cog):
                               f"Timestamp: {found_timestamp}\n"
                               f"Block: {block}\n"
                               f"Steps took: {steps}```", ephemeral=True)
+
+    @slash_command(guild_ids=guilds)
+    async def color_test(self, ctx):
+        await ctx.defer()
+        payload = "```ansi"
+        for i, (fg_name, fg) in enumerate(Fore.__dict__.items()):
+            if fg_name.endswith("_EX"):
+                continue
+            payload += f"\n{fg}Hello World"
+        payload += Style.RESET_ALL + "```"
+        print(len(payload))
+        await ctx.respond(payload)
 
 
 def setup(bot):
