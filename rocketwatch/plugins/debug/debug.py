@@ -18,8 +18,9 @@ from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.slash_permissions import owner_only_slash
-
 # generate list of all file names with the .sol extension from the rocketpool submodule
+from utils.visibility import is_hidden
+
 contract_files = []
 for path in Path("contracts/rocketpool/contracts/contract").glob('**/*.sol'):
     # append to list but ensure that the first character is lowercase
@@ -145,30 +146,29 @@ class Debug(commands.Cog):
 
     @slash_command(guild_ids=guilds)
     async def get_block_by_timestamp(self, ctx, timestamp: int):
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden(ctx))
         block, steps = get_block_by_timestamp(timestamp)
         found_timestamp = w3.eth.get_block(block).timestamp
         if found_timestamp == timestamp:
             await ctx.respond(f"```Found perfect match for timestamp: {timestamp}\n"
                               f"Block: {block}\n"
-                              f"Steps taken: {steps}```", ephemeral=True)
+                              f"Steps taken: {steps}```", ephemeral=is_hidden(ctx))
         else:
             await ctx.respond(f"```Found closest match for timestamp: {timestamp}\n"
                               f"Timestamp: {found_timestamp}\n"
                               f"Block: {block}\n"
-                              f"Steps took: {steps}```", ephemeral=True)
+                              f"Steps took: {steps}```", ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
     async def color_test(self, ctx):
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden(ctx))
         payload = "```ansi"
-        for i, (fg_name, fg) in enumerate(Fore.__dict__.items()):
+        for fg_name, fg in Fore.__dict__.items():
             if fg_name.endswith("_EX"):
                 continue
             payload += f"\n{fg}Hello World"
         payload += Style.RESET_ALL + "```"
-        print(len(payload))
-        await ctx.respond(payload)
+        await ctx.respond(payload, ephemeral=is_hidden(ctx))
 
 
 def setup(bot):
