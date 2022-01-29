@@ -1,10 +1,11 @@
 import logging
-import random
 import time
 from io import BytesIO
 
 import aiohttp
 import matplotlib as mpl
+import numpy as np
+from PIL import Image
 from discord import File
 from discord.commands import slash_command
 from discord.ext import commands
@@ -266,7 +267,7 @@ class Proposals(commands.Cog):
             slot = proposal["slot"]
             if i < 200:
                 continue
-            while proposal_buffer[0]["slot"] < slot - (60/12 * 60 * 24 * 5):
+            while proposal_buffer[0]["slot"] < slot - (60 / 12 * 60 * 24 * 5):
                 to_remove = proposal_buffer.pop(0)
                 tmp_data[to_remove["version"]] -= 1
             data[slot] = tmp_data.copy()
@@ -407,6 +408,20 @@ class Proposals(commands.Cog):
         msg = await self.chore(ctx)
         await msg.edit(content="generating comments word cloud...")
 
+        # load image
+        mask = np.array(Image.open("./plugins/proposals/assets/logo-words.png"))
+
+        # load font
+        font_path = "./plugins/proposals/assets/noto.ttf"
+
+        wc = WordCloud(max_words=2000,
+                       mask=mask,
+                       max_font_size=100,
+                       background_color="white",
+                       relative_scaling=0,
+                       font_path=font_path,
+                       color_func=lambda *args, **kwargs: "rgb(235, 142, 85)")
+
         # aggregate comments with their count
         comments = await self.db.proposals.aggregate([
             {"$match": {"comment": {"$exists": 1}}},
@@ -414,18 +429,13 @@ class Proposals(commands.Cog):
             {"$sort": {"count": -1}}
         ]).to_list(None)
         comment_words = {x['_id']: x["count"] for x in comments}
-        wordcloud = WordCloud(width=800,
-                              height=400,
-                              margin=10,
-                              background_color="white",
-                              prefer_horizontal=0.9,
-                              # color func for random color
-                              color_func=lambda *args, **kwargs: list(COLORS.values())[random.randint(0, len(COLORS) - 3)]
-                              ).fit_words(comment_words)
+
+        # generate word cloud
+        wc.fit_words(comment_words)
 
         # respond with image
         img = BytesIO()
-        wordcloud.to_image().save(img, format="png")
+        wc.to_image().save(img, format="png")
         img.seek(0)
         plt.close()
         e = Embed(title="Rocket Pool Proposal Comments")
