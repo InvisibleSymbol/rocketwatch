@@ -173,11 +173,12 @@ class QueuedEvents(commands.Cog):
         if event_name in ["rpl_claim_event", "rpl_stake_event"]:
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-            args.ethAmount = solidity.to_float(args.amount) * rpl_ratio
+            args.amount = solidity.to_float(args.amount)
+            args.ethAmount = args.amount * rpl_ratio
 
         # reject if the amount is not major
         if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
-                "rpl_stake_event" in event_name and args.ethAmount < 160]):
+                "rpl_stake_event" in event_name and args.amount < 1000]):
             log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
             return None
 
