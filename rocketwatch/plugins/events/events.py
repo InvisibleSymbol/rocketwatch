@@ -177,7 +177,7 @@ class QueuedEvents(commands.Cog):
             args.ethAmount = args.amount * rpl_ratio
 
         # reject if the amount is not major
-        if any(["rpl_claim_event" in event_name and args.ethAmount < 10,
+        if any(["rpl_claim_event" in event_name and args.ethAmount < 5,
                 "rpl_stake_event" in event_name and args.amount < 1000]):
             log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
             return None
