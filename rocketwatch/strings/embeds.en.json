@@ -12,7 +12,7 @@
         "description": "%{claimingAddress} claimed %{amount} RPL (worth %{ethAmount} ETH)!"
     },
     "rpl_stake_event": {
-        "title": ":moneybag: Major RPL Stake",
+        "title": ":moneybag: RPL Stake",
         "description": "%{from} staked %{amount} RPL (worth %{ethAmount} ETH)!"
     },
     "minipool_deposit_event": {
