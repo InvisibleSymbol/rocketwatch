@@ -1,23 +1,19 @@
-import json
 import logging
 
 import pymongo
-import web3.exceptions
 from discord.ext import commands
 from requests import HTTPError
 from web3.datastructures import MutableAttributeDict as aDict
 
-from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import beaconchain_url
-from utils.rocketpool import rp
-from utils.shared_w3 import w3, bacon
+from utils.shared_w3 import bacon
 from utils.solidity import beacon_block_to_date
 
-log = logging.getLogger("bootstrap")
+log = logging.getLogger("beacon_slashings")
 log.setLevel(cfg["log_level"])
 
 DEPOSIT_EVENT = 2
@@ -67,16 +63,16 @@ class QueuedSlashings(commands.Cog):
                 for index in offending_indieces:
                     slashings.append({
                         "slashing_type": "Attestation",
-                        "minipool": index,
-                        "slasher": block["proposer_index"],
-                        "timestamp": timestamp
+                        "minipool"     : index,
+                        "slasher"      : block["proposer_index"],
+                        "timestamp"    : timestamp
                     })
             for slash in block["body"]["proposer_slashings"]:
                 slashings.append({
                     "slashing_type": "Proposal",
-                    "minipool": slash["signed_header_1"]["message"]["proposer_index"],
-                    "slasher": block["proposer_index"],
-                    "timestamp": timestamp
+                    "minipool"     : slash["signed_header_1"]["message"]["proposer_index"],
+                    "slasher"      : block["proposer_index"],
+                    "timestamp"    : timestamp
                 })
             for slash in slashings:
                 lookup = self.db.minipools.find_one({"validator": int(slash["minipool"])})
@@ -98,7 +94,7 @@ class QueuedSlashings(commands.Cog):
                         event_name=slash["event_name"],
                         unique_id=unique_id,
                         block_number=closest_block
-                        ))
+                    ))
 
         log.debug("Finished Checking for new Slashes Commands")
         self.state = "OK"
