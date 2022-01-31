@@ -131,6 +131,14 @@ def assemble(args):
                     value=args.pubkey,
                     inline=False)
 
+    if "node_operator" in args:
+        e.add_field(name="Node Operator",
+                    value=args.node_operator)
+
+    if "slashing_type" in args:
+        e.add_field(name="Reason",
+                    value=f"`{args.slashing_type} Violation`")
+
     if "commission" in args:
         e.add_field(name="Commission Rate",
                     value=f"{args.commission:.2%}",
@@ -197,5 +205,8 @@ def assemble(args):
         e.add_field(name="Transaction Fee",
                     value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
                     inline=False)
+
+    if "_slash_" in args.event_name:
+        e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
 
     return e

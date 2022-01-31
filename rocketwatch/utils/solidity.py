@@ -17,3 +17,7 @@ def to_float(n, decimals=18):
 
 def to_int(n, decimals=18):
     return int(n) // 10 ** decimals
+
+
+def beacon_block_to_date(block_num):
+    return BEACON_START_DATE + (block_num * 12)

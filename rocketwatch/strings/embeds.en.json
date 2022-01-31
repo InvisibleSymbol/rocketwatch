@@ -146,5 +146,9 @@
     "minipool_failed_deposit": {
         "title": ":fire: Failed Minipool Deposit",
         "description": ":fire_engine: %{node} burned **%{burnedValue} ETH** trying to create a minipool! :fire_engine:"
+    },
+    "minipool_slash_event": {
+        "title": ":rotating_light: Minipool Slashed",
+        "description": "Minipool %{minipool} has been slashed by %{slasher}"
     }
 }
