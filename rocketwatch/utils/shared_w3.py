@@ -8,6 +8,7 @@ chain = cfg['rocketpool.chain']
 w3 = Web3(HTTPProvider(f"https://eth-{chain}.alchemyapi.io/v2/{cfg['rocketpool.alchemy_secret']}"))
 mainnet_w3 = w3
 bacon = Bacon(f"https://{cfg['rocketpool.infura_beacon_id']}:{cfg['rocketpool.infura_beacon_secret']}@eth2-beacon-mainnet.infura.io")
+bacon.get_block = lambda block: bacon._make_get_request(f"/eth/v2/beacon/blocks/{block}")
 
 if chain != "mainnet":
     mainnet_w3 = Web3(HTTPProvider(f"https://eth-mainnet.alchemyapi.io/v2/{cfg['rocketpool.mainnet_alchemy_secret']}"))
