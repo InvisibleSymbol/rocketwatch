@@ -8,6 +8,7 @@ from colorama import Fore, Style
 from discord import File, AutocompleteContext
 from discord.commands import slash_command, Option
 from discord.ext import commands
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -45,6 +46,7 @@ async def match_function_name(ctx: AutocompleteContext):
 class Debug(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @owner_only_slash()
     async def raise_exception(self, ctx):
@@ -169,6 +171,15 @@ class Debug(commands.Cog):
             payload += f"\n{fg}Hello World"
         payload += Style.RESET_ALL + "```"
         await ctx.respond(payload, ephemeral=is_hidden(ctx))
+
+    @owner_only_slash()
+    async def purge_minipools(self, ctx, confirm=False):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        if not confirm:
+            await ctx.respond("Not running. Set `confirm` to `true` to run.")
+            return
+        await self.db.minipools.delete_many({})
+        await ctx.respond("Done", ephemeral=is_hidden(ctx))
 
 
 def setup(bot):
