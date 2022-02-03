@@ -73,6 +73,15 @@ class Metrics(commands.Cog):
             for command in most_used_commands:
                 desc += f" - {command['_id']}: {command['count']}\n"
 
+            # get the top 5 channels of the last 7 days
+            top_channels = await self.collection.aggregate([
+                {'$match': {'timestamp': {'$gte': start}}},
+                {'$group': {'_id': '$channel', 'count': {'$sum': 1}}},
+                {'$sort': {'count': -1}}
+            ]).to_list(length=5)
+            desc += "\n5 Most Active Channels:\n"
+            for channel in top_channels:
+                desc += f" - {channel['_id']['name']}: {channel['count']}\n"
             e.description = desc + "```"
             await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
         except Exception as e:
