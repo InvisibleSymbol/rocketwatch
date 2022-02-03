@@ -11,6 +11,7 @@ from utils.cfg import cfg
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.solidity import to_float
 
 log = logging.getLogger("minipool_task")
 log.setLevel(cfg["log_level"])
@@ -62,6 +63,12 @@ class MinipoolTask(commands.Cog):
         node_addresses = [w3.toChecksumAddress(r.results[0]) for r in node_addresses.results]
         return node_addresses
 
+    def get_node_fee(self, addresses):
+        minipool_contracts = [rp.assemble_contract("rocketMinipool", w3.toChecksumAddress(a)) for a in addresses]
+        node_fees = rp.multicall.aggregate(m.functions.getNodeFee() for m in minipool_contracts)
+        node_fees = [to_float(r.results[0]) for r in node_fees.results]
+        return node_fees
+
     def get_validator_indexes(self, pubkeys):
         result = {}
         batch_size = 80
@@ -107,14 +114,17 @@ class MinipoolTask(commands.Cog):
         minipool_pubkeys = self.get_public_keys(minipool_addresses)
         log.debug("Gathering all Minipool node operators...")
         node_addresses = self.get_node_operator(minipool_addresses)
+        log.debug("Gather commission rates...")
+        node_fees = self.get_node_fee(minipool_addresses)
         log.debug("Gathering all Minipool validator indexes...")
         validator_indexes = self.get_validator_indexes(minipool_pubkeys)
         data = [{
             "address"      : a,
             "pubkey"       : p,
             "node_operator": n,
+            "node_fee"     : f,
             "validator"    : validator_indexes[p]
-        } for a, p, n in zip(minipool_addresses, minipool_pubkeys, node_addresses) if p in validator_indexes]
+        } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_indexes]
         if data:
             log.debug(f"Inserting {len(data)} Minipools into the database...")
             self.db.minipools.insert_many(data)
