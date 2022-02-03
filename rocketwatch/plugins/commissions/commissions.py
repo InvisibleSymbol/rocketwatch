@@ -68,7 +68,7 @@ class Commissions(commands.Cog):
         plt.close()
         e.set_image(url="attachment://chart.png")
         e.add_field(name="Total Minipools", value=len(minipools))
-        e.add_field(name="Bar Width", value=step_size)
+        e.add_field(name="Bar Width", value=f"{step_size} minipools")
 
         # send data
         await ctx.respond(content="", embed=e, file=File(img, filename="chart.png"))

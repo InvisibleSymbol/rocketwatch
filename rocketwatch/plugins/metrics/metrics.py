@@ -69,7 +69,7 @@ class Metrics(commands.Cog):
                 {'$group': {'_id': '$command', 'count': {'$sum': 1}}},
                 {'$sort': {'count': -1}}
             ]).to_list(length=5)
-            desc += "5 Most Used Commands:\n"
+            desc += "Top 5 Commands based on usage:\n"
             for command in most_used_commands:
                 desc += f" - {command['_id']}: {command['count']}\n"
 
@@ -79,7 +79,7 @@ class Metrics(commands.Cog):
                 {'$group': {'_id': '$channel', 'count': {'$sum': 1}}},
                 {'$sort': {'count': -1}}
             ]).to_list(length=5)
-            desc += "\n5 Most Active Channels:\n"
+            desc += "\nTop 5 Channels based on commands handled:\n"
             for channel in top_channels:
                 desc += f" - {channel['_id']['name']}: {channel['count']}\n"
             e.description = desc + "```"
