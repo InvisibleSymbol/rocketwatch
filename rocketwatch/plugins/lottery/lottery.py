@@ -113,7 +113,7 @@ class Lottery(commands.Cog):
         end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
         description += f"End: Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
         # validators (called minipools here)
-        description += f"Minipools: {', '.join(beaconchain_url(v['pubkey']) for v in validators)}\n"
+        description += f"Minipools: {', '.join(beaconchain_url(v['validator']) for v in validators)}\n"
         # node operators
         # gather count per
         node_operators = {}
