@@ -1,7 +1,7 @@
 import logging
 
 import pymongo
-from discord.ext import commands
+from discord.ext import commands, tasks
 from requests import HTTPError
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -39,13 +39,17 @@ class QueuedSlashings(commands.Cog):
         payload = []
 
         self.state = "RUNNING"
-        latest_block = self.db.last_checked_block.find_one({"_id": "slashings"})
-        head_block = int(bacon.get_block("finalized")["data"]["message"]["slot"])
-        if not latest_block:
+        latest_db_block = self.db.last_checked_block.find_one({"_id": "slashings"})
+        infura_finalized = int(bacon.get_block("finalized")["data"]["message"]["slot"])
+        if not latest_db_block:
             log.info("Doing full check")
-            blocks = list(range(head_block - cfg["core.look_back_distance"], head_block))
+            blocks = list(range(infura_finalized - cfg["core.look_back_distance"], infura_finalized))
+        elif latest_db_block["block"] <= infura_finalized:
+            blocks = list(range(latest_db_block["block"], infura_finalized))
         else:
-            blocks = list(range(latest_block["block"], head_block))
+            log.warning("Infura is being stupid and returned a block that is smaller than a previously seen finalized block: "
+                        f"{infura_finalized=} < {latest_db_block['block']=}. Skipping this check.")
+            return
         for block_number in blocks:
             log.debug(f"Checking Beacon block {block_number}")
             timestamp = beacon_block_to_date(block_number)
@@ -99,7 +103,7 @@ class QueuedSlashings(commands.Cog):
         log.debug("Finished Checking for new Slashes Commands")
         self.state = "OK"
 
-        self.db.last_checked_block.replace_one({"_id": "slashings"}, {"_id": "slashings", "block": head_block}, upsert=True)
+        self.db.last_checked_block.replace_one({"_id": "slashings"}, {"_id": "slashings", "block": infura_finalized}, upsert=True)
 
         return payload
 
