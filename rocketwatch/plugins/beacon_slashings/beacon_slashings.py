@@ -40,7 +40,7 @@ class QueuedSlashings(commands.Cog):
 
         self.state = "RUNNING"
         latest_block = self.db.last_checked_block.find_one({"_id": "slashings"})
-        head_block = int(bacon.get_block("head")["data"]["message"]["slot"])
+        head_block = int(bacon.get_block("finalized")["data"]["message"]["slot"])
         if not latest_block:
             log.info("Doing full check")
             blocks = list(range(head_block - cfg["core.look_back_distance"], head_block))
