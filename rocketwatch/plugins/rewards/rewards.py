@@ -85,20 +85,27 @@ class Rewards(commands.Cog):
             rollover = 0
 
             if "Node" in contract:
-                if "oDAO Member" in name:
-                    waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_odao()
-                else:
-                    waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_nodes()
-                waiting_percentage = waiting_for_claims / amount
-                waiting_for_claims_fmt = humanize.intcomma(waiting_for_claims, 2)
-                distribution += f"\t├Eligible: {waiting_for_claims_fmt:>14} RPL ({waiting_percentage:.0%})\n"
+                waiting_for_claims, impossible_amount, rollover = None, None, None
+                try:
+                    raise Exception
+                    if "oDAO Member" in name:
+                        waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_odao()
+                    else:
+                        waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_nodes()
+                except Exception as err:
+                    log.error(f"Failed to get unclaimed rewards for {contract}")
+                    log.exception(err)
+
+                if waiting_for_claims:
+                    waiting_percentage = waiting_for_claims / amount
+                    waiting_for_claims_fmt = humanize.intcomma(waiting_for_claims, 2)
+                    distribution += f"\t├Eligible: {waiting_for_claims_fmt:>14} RPL ({waiting_percentage:.0%})\n"
 
                 if impossible_amount:
                     impossible_amount_formatted = humanize.intcomma(impossible_amount, 2)
                     impossible_percentage = impossible_amount / waiting_for_claims
                     distribution += f"\t│├Not Claimable: {impossible_amount_formatted:>8} RPL ({impossible_percentage:.0%})\n"
-                possible_amount = waiting_for_claims - impossible_amount
-                if possible_amount:
+                if waiting_for_claims and impossible_amount and (possible_amount := waiting_for_claims - impossible_amount):
                     possible_amount_formatted = humanize.intcomma(possible_amount, 2)
                     possible_percentage = possible_amount / waiting_for_claims
                     distribution += f"\t│├Claimable: {possible_amount_formatted:>12} RPL ({possible_percentage:.0%})\n"
