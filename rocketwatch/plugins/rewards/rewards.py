@@ -87,7 +87,6 @@ class Rewards(commands.Cog):
             if "Node" in contract:
                 waiting_for_claims, impossible_amount, rollover = None, None, None
                 try:
-                    raise Exception
                     if "oDAO Member" in name:
                         waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_odao()
                     else:
