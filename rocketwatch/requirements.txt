@@ -5,7 +5,7 @@ humanize==4.0.0
 termplotlib==0.3.9
 cachetools==5.0.0
 bidict==0.21.4
-tinydb==4.6.1
+tinydb==4.7.0
 requests==2.27.1
 uptime==3.0.1
 git+git://github.com/Pycord-Development/pycord@68e9cf3db5c311153899a0c577c68d88c0feb4cf#egg=py-cord[speed]
