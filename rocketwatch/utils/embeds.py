@@ -89,7 +89,7 @@ def prepare_args(args):
                     if "RETH" in contract_name:
                         eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * reth_price
                 # get minipool count
-                minipools = solidity.to_int(rp.call("rocketMinipoolManager.getNodeValidatingMinipoolCount", address))
+                minipools = solidity.to_int(rp.call("rocketMinipoolManager.getNodeMinipoolCount", address))
                 eth_balance += minipools * 16
                 # add their staked RPL
                 staked_rpl = solidity.to_int(rp.call("rocketNodeStaking.getNodeRPLStake", address))
