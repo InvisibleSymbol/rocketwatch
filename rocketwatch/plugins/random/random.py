@@ -25,7 +25,17 @@ class Random(commands.Cog):
         time_format = "%A %H:%M:%S %Z"
 
         dev_time = datetime.now(tz=pytz.timezone("UTC"))
-        e.add_field(name="Coordinated Universal Time", value=dev_time.strftime(time_format), inline=False)
+        # seconds since midnight
+        midnight = dev_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        percentage_of_day = (dev_time - midnight).seconds / (24 * 60 * 60)
+        # convert to uint16
+        uint_day = int(percentage_of_day * 65535)
+        # generate binary string
+        binary_day = f"{uint_day:016b}"
+        e.add_field(name="Coorddinated Universal Time",
+                    value=f"{dev_time.strftime(time_format)}\n"
+                          f"`{binary_day} (0x{uint_day:04x})`",
+                    inline=False)
 
         dev_time = datetime.now(tz=pytz.timezone("Australia/Lindeman"))
         e.add_field(name="Time for most of the Dev Team", value=dev_time.strftime(time_format), inline=False)
