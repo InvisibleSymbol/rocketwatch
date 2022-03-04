@@ -3,6 +3,7 @@ import logging
 import humanize
 from discord.commands import slash_command
 from discord.ext import commands
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -19,6 +20,7 @@ log.setLevel(cfg["log_level"])
 class TVL(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @slash_command(guild_ids=guilds)
     async def tvl(self, ctx):
@@ -33,6 +35,26 @@ class TVL(commands.Cog):
         log.debug(minipool_count_per_status)
         tvl.append(minipool_count_per_status[2] * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
+
+        tmp = await self.db.minipools.aggregate(
+            [
+                {
+                    "$match": {
+                        "balance": {"$exists": True},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "total",
+                        "total": {"$sum": "$balance"},
+                        "count": {"$sum": 1},
+                    }
+                }
+            ]
+        ).to_list(length=None)
+        rewards = tmp[0]["total"] - (tmp[0]["count"] * 32)
+        tvl.append(rewards)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Beacon chain rewards")
 
         tvl.append(minipool_count_per_status[1] * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Minipools")

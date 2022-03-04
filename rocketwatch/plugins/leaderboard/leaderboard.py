@@ -74,6 +74,19 @@ class Leaderboard(commands.Cog):
         last_week_data = self.get_general_data(last_week)
         # get all validators from db
         validators = self.sync_db.minipools.distinct("validator")
+        # update balances of validators
+        batch = []
+        cvb = {int(v["index"]): to_float(v["balance"], 9) for v in current_balances}
+        for v in validators:
+            if b := cvb.get(v):
+                if b == 16: continue
+                batch.append(
+                    pymongo.UpdateOne(
+                        {"validator": v},
+                        {"$set": {"balance": b}}
+                    )
+                )
+        self.sync_db.minipools.bulk_write(batch)
         # filter
         last_week_data = [v for v in last_week_data if int(v["index"]) in validators]
         last_week_validators = {}
