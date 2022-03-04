@@ -2,6 +2,7 @@ import logging
 
 from discord.commands import slash_command
 from discord.ext import commands
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -17,6 +18,7 @@ log.setLevel(cfg["log_level"])
 class RETHAPR(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @slash_command(guild_ids=guilds)
     async def current_reth_apr(self, ctx):
@@ -42,9 +44,13 @@ class RETHAPR(commands.Cog):
                     value=f"{yearly_change:.2%} (Commissions Fees accounted for)",
                     inline=False)
 
-        # get current average commission
-        current_commission = get_average_commission()
-        e.add_field(name="Current Average Commission:", value=f"{current_commission:.2%}")
+        # get average node_fee from db
+        node_fee = await self.db.minipools.aggregate([
+            {"$match": {"node_fee": {"$exists": True}}},
+            {"$group": {"_id": None, "avg": {"$avg": "$node_fee"}}}
+        ]).to_list(length=1)
+
+        e.add_field(name="Current Average Commission:", value=f"{node_fee[0]['avg']:.2%}")
 
         # get average duration between datapoints
         average_duration = total_duration / (len(datapoints) - 1)
