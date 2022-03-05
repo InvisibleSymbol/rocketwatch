@@ -54,7 +54,7 @@ class TVL(commands.Cog):
         ).to_list(length=None)
         rewards = tmp[0]["total"] - (tmp[0]["count"] * 32)
         tvl.append(rewards)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Beacon chain rewards")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Beacon Chain Rewards")
 
         tvl.append(minipool_count_per_status[1] * 32)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Pending Minipools")
