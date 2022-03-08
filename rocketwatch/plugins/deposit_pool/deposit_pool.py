@@ -46,9 +46,7 @@ class DepositPool(commands.Cog):
         current_node_demand = solidity.to_float(rp.call("rocketNetworkFees.getNodeDemand"))
 
         if deposit_cap - deposit_pool < 0.01:
-            e.add_field(name="Status:",
-                        value=f"Deposit Pool Cap Reached!",
-                        inline=False)
+            e.add_field(name="Status:", value="Deposit Pool Cap Reached!", inline=False)
         else:
             percentage_filled = round(deposit_pool / deposit_cap * 100, 2)
             free_capacity = deposit_cap - deposit_pool

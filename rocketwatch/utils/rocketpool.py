@@ -152,18 +152,18 @@ class RocketPool:
         key = w3.soliditySha3(["string"], [minipool_type])
         cap = self.call("addressQueueStorage.getLength", key)
         limit = min(cap, limit)
-        results = []
-        for i in range(0, limit):
-            results.append(self.call("addressQueueStorage.getItem", key, i))
+        results = [
+            self.call("addressQueueStorage.getItem", key, i) for i in range(limit)
+        ]
+
         return cap, results
 
     def get_minipools(self, limit=10):
-        result = {
+        return {
             "half" : self.get_minipools_by_type("minipools.available.half", limit),
             "full" : self.get_minipools_by_type("minipools.available.full", limit),
             "empty": self.get_minipools_by_type("minipools.available.empty", limit)
         }
-        return result
 
     def get_dai_eth_price(self):
         data = self.call("DAIETH_univ3.slot0")

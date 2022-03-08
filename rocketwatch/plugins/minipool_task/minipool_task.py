@@ -118,14 +118,19 @@ class MinipoolTask(commands.Cog):
         node_fees = self.get_node_fee(minipool_addresses)
         log.debug("Gathering all Minipool validator indexes...")
         validator_indexes = self.get_validator_indexes(minipool_pubkeys)
-        data = [{
-            "address"      : a,
-            "pubkey"       : p,
-            "node_operator": n,
-            "node_fee"     : f,
-            "validator"    : validator_indexes[p]
-        } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_indexes]
-        if data:
+        if data := [
+            {
+                "address": a,
+                "pubkey": p,
+                "node_operator": n,
+                "node_fee": f,
+                "validator": validator_indexes[p],
+            }
+            for a, p, n, f in zip(
+                minipool_addresses, minipool_pubkeys, node_addresses, node_fees
+            )
+            if p in validator_indexes
+        ]:
             log.debug(f"Inserting {len(data)} Minipools into the database...")
             self.db.minipools.insert_many(data)
         else:

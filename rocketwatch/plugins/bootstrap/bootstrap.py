@@ -141,21 +141,17 @@ class QueuedBootstrap(commands.Cog):
                     log.debug(decoded)
 
                     function = decoded[0].function_identifier
-                    event_name = self.internal_function_mapping[contract_name].get(function, None)
-
-                    if event_name:
+                    if event_name := self.internal_function_mapping[
+                        contract_name
+                    ].get(function, None):
                         event = aDict(tnx)
-                        event.args = {}
-                        for arg, value in decoded[1].items():
-                            event.args[arg.lstrip("_")] = value
+                        event.args = {arg.lstrip("_"): value for arg, value in decoded[1].items()}
                         event.args["timestamp"] = block.timestamp
                         event.args["function_name"] = function
                         if not receipt.status:
                             event.args["reason"] = rp.get_revert_reason(tnx)
 
-                        embed = self.create_embed(event_name, event)
-
-                        if embed:
+                        if embed := self.create_embed(event_name, event):
                             payload.append(Response(
                                 topic="bootstrap",
                                 embed=embed,

@@ -26,11 +26,15 @@ class Releases(commands.Cog):
             res = await session.get("https://api.github.com/repos/rocket-pool/smartnode-install/tags")
             res = await res.json()
         latest_prater_release = f"[{res[0]['name']}]({self.tag_url + res[0]['name']})"
-        latest_mainnet_release = None
-        for tag in res:
-            if tag["name"].split(".")[-1].isnumeric():
-                latest_mainnet_release = f"[{tag['name']}]({self.tag_url + tag['name']})"
-                break
+        latest_mainnet_release = next(
+            (
+                f"[{tag['name']}]({self.tag_url + tag['name']})"
+                for tag in res
+                if tag["name"].split(".")[-1].isnumeric()
+            ),
+            None,
+        )
+
         e = Embed()
         e.add_field(name="Latest Mainnet Release", value=latest_mainnet_release, inline=False)
         e.add_field(name="Latest Prater Release", value=latest_prater_release, inline=False)

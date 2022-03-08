@@ -43,7 +43,7 @@ def etherscan_url(target, name=None, prefix=None):
     if prefix:
         name = prefix + name
     chain = cfg["rocketpool.chain"]
-    url_prefix = chain + "." if chain != "mainnet" else ""
+    url_prefix = f'{chain}.' if chain != "mainnet" else ""
     return f"[{name}](https://{url_prefix}etherscan.io/search?q={target})"
 
 
@@ -176,9 +176,11 @@ def assemble(args):
         e.add_field(name="Transaction Hash",
                     value=content)
 
-    # show sender address
-    senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
-    if senders:
+    if senders := [
+        value
+        for key, value in args.items()
+        if key.lower() in ["sender", "from"]
+    ]:
         sender = senders[0]
         e.add_field(name="Sender Address",
                     value=sender)

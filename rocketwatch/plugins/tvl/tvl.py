@@ -25,17 +25,14 @@ class TVL(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def tvl(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        tvl = []
-        description = []
         eth_price = rp.get_dai_eth_price()
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
         minipool_count_per_status = rp.get_minipool_count_per_status()
 
         log.debug(minipool_count_per_status)
-        tvl.append(minipool_count_per_status[2] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
-
+        tvl = [minipool_count_per_status[2] * 32]
+        description = [f"+ {tvl[-1]:12.2f} ETH: Staking Minipools"]
         tmp = await self.db.minipools.aggregate(
             [
                 {

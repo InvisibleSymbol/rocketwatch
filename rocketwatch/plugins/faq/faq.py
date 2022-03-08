@@ -27,8 +27,7 @@ class FaQ(commands.Cog):
     @owner_only_slash()
     async def store_faq(self, ctx, name, title="", description="", credits="", image_url=""):
         entries = Query()
-        current_state = self.db.search(entries.name == name)
-        if current_state:
+        if current_state := self.db.search(entries.name == name):
             # only update what has been set
             if title:
                 current_state[0]["title"] = title
@@ -57,21 +56,17 @@ class FaQ(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def faq(self, ctx, name):
         entries = Query()
-        current_state = self.db.search(entries.name == name)
-        if current_state:
+        if current_state := self.db.search(entries.name == name):
             await ctx.respond(embed=await self.created_embed(current_state[0]))
         else:
             # if no entry found, return list of possible entries
-            possible_entries = []
-            for entry in self.db.all():
-                possible_entries.append(entry["name"])
+            possible_entries = [entry["name"] for entry in self.db.all()]
             await ctx.respond(f"No entry named {name}. Possible entries: `{', '.join(possible_entries)}`")
 
     @slash_command(guild_ids=guilds)
     async def faq_list(self, ctx):
         entries = Query()
-        current_state = self.db.search(entries.name != "")
-        if current_state:
+        if current_state := self.db.search(entries.name != ""):
             e = Embed()
             e.title = "FAQ List"
             for entry in current_state:

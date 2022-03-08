@@ -64,20 +64,18 @@ class QueuedSlashings(commands.Cog):
             for slash in block["body"]["attester_slashings"]:
                 set_a = set(slash["attestation_2"]["attesting_indices"])
                 offending_indieces = set_a.intersection(slash["attestation_1"]["attesting_indices"])
-                for index in offending_indieces:
-                    slashings.append({
+                slashings.extend({
                         "slashing_type": "Attestation",
                         "minipool"     : index,
                         "slasher"      : block["proposer_index"],
                         "timestamp"    : timestamp
-                    })
-            for slash in block["body"]["proposer_slashings"]:
-                slashings.append({
+                    } for index in offending_indieces)
+            slashings.extend({
                     "slashing_type": "Proposal",
                     "minipool"     : slash["signed_header_1"]["message"]["proposer_index"],
                     "slasher"      : block["proposer_index"],
                     "timestamp"    : timestamp
-                })
+                } for slash in block["body"]["proposer_slashings"])
             for slash in slashings:
                 lookup = self.db.minipools.find_one({"validator": int(slash["minipool"])})
                 if not lookup:
@@ -89,8 +87,7 @@ class QueuedSlashings(commands.Cog):
                 slash["node_operator"] = lookup["node_operator"]
                 slash["event_name"] = "minipool_slash_event"
                 args = prepare_args(aDict(slash))
-                embed = assemble(args)
-                if embed:
+                if embed := assemble(args):
                     closest_block = get_block_by_timestamp(timestamp)[0]
                     payload.append(Response(
                         topic="bootstrap",

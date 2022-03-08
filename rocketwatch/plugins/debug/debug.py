@@ -169,7 +169,7 @@ class Debug(commands.Cog):
             if fg_name.endswith("_EX"):
                 continue
             payload += f"\n{fg}Hello World"
-        payload += Style.RESET_ALL + "```"
+        payload += f'{Style.RESET_ALL}```'
         await ctx.respond(payload, ephemeral=is_hidden(ctx))
 
     @owner_only_slash()

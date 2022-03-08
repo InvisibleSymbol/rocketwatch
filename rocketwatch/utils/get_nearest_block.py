@@ -47,13 +47,19 @@ def get_block_by_timestamp(timestamp):
         # if the block before this one has a positive error, and we currently have a negative error,
         # then we know we have overshot the target
         if i_expected - 1 in error_map and error_map[i_expected - 1] > 0 and error < 0:
-            log.debug(f'Overshot target, previous Block is behind target, current Block is ahead')
+            log.debug(
+                'Overshot target, previous Block is behind target, current Block is ahead'
+            )
+
             break
 
         # if the block after this one has a negative error, and we currently have a positive error,
         # then we know we have undershot the target
         if i_expected + 1 in error_map and error_map[i_expected + 1] < 0 and error > 0:
-            log.debug(f'Undershot target, next Block is ahead of target, current Block is behind')
+            log.debug(
+                'Undershot target, next Block is ahead of target, current Block is behind'
+            )
+
             break
 
         if error == 0:

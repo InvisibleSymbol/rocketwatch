@@ -74,7 +74,7 @@ class Collateral(commands.Cog):
         fig, ax = plt.subplots()
         ax2 = ax.twinx()
 
-        bars = {x: y for x, y in distribution}
+        bars = dict(distribution)
         if 0 in bars:
             del bars[0]
         x_keys = [str(x) for x in bars]
@@ -93,7 +93,7 @@ class Collateral(commands.Cog):
             (collateral, sum(nodes)) for collateral, nodes in sorted(data.items(), key=lambda x: x[0])
         ]
 
-        bars = {x: y for x, y in staked_distribution}
+        bars = dict(staked_distribution)
         if 0 in bars:
             del bars[0]
         line = ax2.plot(x_keys, bars.values())

@@ -21,7 +21,7 @@ class Mock(commands.Cog):
     async def mock(self, ctx, event_name):
         await ctx.defer()
         if event_name not in self.mock_mapping:
-            return await ctx.respond(f"No Mock Mapping available for this Event")
+            return await ctx.respond("No Mock Mapping available for this Event")
 
         args = aDict({})
         args.event_name = event_name

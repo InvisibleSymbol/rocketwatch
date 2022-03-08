@@ -98,22 +98,20 @@ class QueuedEvents(commands.Cog):
         # so we can make the args mutable
         event.args = aDict(event.args)
 
-        pubkey = None
-
-        # is the pubkey in the event arguments?
-        if "validatorPubkey" in event.args:
-            pubkey = event.args.validatorPubkey.hex()
-
-        # maybe the contract has it stored?
-        if not pubkey:
-            pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", event.address).hex()
-
-        # maybe its in the transaction?
-        if not pubkey:
-            pubkey = rp.get_pubkey_using_transaction(receipt)
+        pubkey = (
+            (
+                event.args.validatorPubkey.hex()
+                if "validatorPubkey" in event.args
+                else None
+            )
+            or rp.call(
+                "rocketMinipoolManager.getMinipoolPubkey", event.address
+            ).hex()
+            or rp.get_pubkey_using_transaction(receipt)
+        )
 
         if pubkey:
-            event.args.pubkey = "0x" + pubkey
+            event.args.pubkey = f"0x{pubkey}"
 
         # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]

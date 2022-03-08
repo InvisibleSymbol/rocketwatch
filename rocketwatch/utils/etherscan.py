@@ -39,9 +39,9 @@ async def get_recent_account_transactions(address, block_count=44800):
             return
 
         def valid_tx(tx):
-            if not tx["to"] == address.lower():
+            if tx["to"] != address.lower():
                 return False
-            if not int(tx["isError"]) == 0:
+            if int(tx["isError"]) != 0:
                 return False
             return True
 
