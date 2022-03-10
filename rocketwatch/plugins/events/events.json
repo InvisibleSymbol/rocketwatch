@@ -117,6 +117,15 @@
                     "name": "rpl_stake_event"
                 }
             ]
+        },
+        {
+            "contract_name": "AirSwap",
+            "events": [
+                {
+                    "event_name": "Swap",
+                    "name": "otc_swap_event"
+                }
+            ]
         }
     ],
     "global": [

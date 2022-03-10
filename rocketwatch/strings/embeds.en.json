@@ -150,5 +150,9 @@
     "minipool_slash_event": {
         "title": ":rotating_light: Minipool Slashed",
         "description": "Minipool %{minipool} has been slashed by %{slasher}"
+    },
+    "otc_swap_event": {
+        "title": ":currency_exchange: OTC Swap",
+        "description": "%{seller_clean} exchanged %{sellAmount} %{sellToken} for %{buyAmount} %{buyToken} with %{buyer_clean}"
     }
 }

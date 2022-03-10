@@ -131,6 +131,34 @@ class QueuedEvents(commands.Cog):
         # prepare args
         args = aDict(event['args'])
 
+        if "otc_swap" in event_name:
+            # signer = seller
+            # sender = buyer
+            # either the selling or buying token has to be the RPL token
+            rpl = rp.get_address_by_name("rocketTokenRPL")
+            if args.signerToken != rpl and args.senderToken != rpl:
+                return None
+            args.seller = w3.toChecksumAddress(f"0x{event.topics[2][-40:]}")
+            args.buyer = w3.toChecksumAddress(f"0x{event.topics[3][-40:]}")
+            # token amounts
+            args.sellAmount = args.signerAmount
+            args.buyAmount = args.senderAmount
+            # token names
+            args.sellToken = rp.assemble_contract(name="ERC20", address=args.signerToken).functions.symbol().call()
+            args.buyToken = rp.assemble_contract(name="ERC20", address=args.senderToken).functions.symbol().call()
+            # RPL/- exchange rate
+            if args.signerToken == rpl:
+                args.exchangeRate = args.buyAmount / args.sellAmount
+                args.otherToken = args.buyToken
+            else:
+                args.exchangeRate = args.sellAmount / args.buyAmount
+                args.otherToken = args.sellToken
+            if "eth" in args.otherToken.lower():
+                # get exchange rate from rp
+                args.marketExchangeRate = rp.call("rocketNetworkPrices.getRPLPrice")
+                # calculate the discount received compared to the market price
+                args.discountAmount = (1 - args.exchangeRate / solidity.to_float(args.marketExchangeRate)) * 100
+
         if "tnx_fee" not in args:
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
@@ -237,7 +265,9 @@ class QueuedEvents(commands.Cog):
                     # default event path
                     contract = rp.get_contract_by_address(address)
                     contract_event = self.topic_mapping[event.topics[0].hex()]
-                    event = contract.events[contract_event]().processLog(event)
+                    topics = [w3.toHex(t) for t in event.topics]
+                    event = aDict(contract.events[contract_event]().processLog(event))
+                    event.topics = topics
                     event_name = self.internal_event_mapping[event.event]
 
                     embed = self.create_embed(event_name, event)

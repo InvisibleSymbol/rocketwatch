@@ -55,7 +55,7 @@ def prepare_args(args):
         args[f"{arg_key}_raw"] = arg_value
 
         # handle numbers
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value"]) and isinstance(arg_value, int):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate"]) and isinstance(arg_value, int):
             args[arg_key] = arg_value / 10 ** 18
 
         # handle percentages
@@ -101,6 +101,7 @@ def prepare_args(args):
                 args[arg_key] = beaconchain_url(arg_value)
             else:
                 args[arg_key] = etherscan_url(arg_value, prefix=prefix)
+                args[arg_key + "_clean"] = etherscan_url(arg_value)
     return args
 
 
@@ -112,7 +113,7 @@ def assemble(args):
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc", "tnx_fee"]):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc", "tnx_fee", "rate"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
@@ -124,6 +125,12 @@ def assemble(args):
             args[arg_key] = humanize.intcomma(arg_value)
 
     e.description = _(f"embeds.{args.event_name}.description", **args)
+
+    if "exchangeRate" in args:
+        e.add_field(name="Exchange Rate",
+                    value=f"`{args.exchangeRate} RPL/{args.otherToken}`" +
+                          (f" (`{args.discountAmount}%` Discount, oDAO: `{args.marketExchangeRate} RPL/ETH`)" if "discountAmount" in args else ""),
+                    inline=False)
 
     # show public key if we have one
     if "pubkey" in args:
