@@ -36,10 +36,6 @@ class RETHAPR(commands.Cog):
         # extrapolate change to 1 year
         yearly_change = total_change_percent / total_duration * 365 * 24 * 60 * 60
 
-        e.description = "**Note**: In the early stages of rETH the calculated APR might be lower than expected!\n" \
-                        "This is caused by many things, such as a high stale ETH ratio lowering the earned rewards per ETH" \
-                        " or a low Minipool count combined with bad luck simply resulting in temporary lower rewards."
-
         e.add_field(name="Observed rETH APR:",
                     value=f"{yearly_change:.2%} (Commissions Fees accounted for)",
                     inline=False)

@@ -159,7 +159,7 @@ class Debug(commands.Cog):
             await ctx.respond(f"```Found closest match for timestamp: {timestamp}\n"
                               f"Timestamp: {found_timestamp}\n"
                               f"Block: {block}\n"
-                              f"Steps took: {steps}```", ephemeral=is_hidden(ctx))
+                              f"Steps taken: {steps}```", ephemeral=is_hidden(ctx))
 
     @slash_command(guild_ids=guilds)
     async def color_test(self, ctx):
