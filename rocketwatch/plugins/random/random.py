@@ -10,6 +10,7 @@ from utils.embeds import Embed, ens, etherscan_url
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
+from utils.visibility import is_hidden
 
 log = logging.getLogger("random")
 log.setLevel(cfg["log_level"])
@@ -49,7 +50,7 @@ class Random(commands.Cog):
     @slash_command(guild_ids=guilds)
     async def sea_creatures(self, ctx, address: str = None):
         """List all sea creatures with their required minimum holding"""
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         if address is not None:
             try:
@@ -58,7 +59,7 @@ class Random(commands.Cog):
                 address = w3.toChecksumAddress(address)
             except (ValueError, TypeError):
                 e.description = "Invalid address"
-                await ctx.respond(embed=e)
+                await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
                 return
             creature = get_sea_creature_for_address(address)
             if not creature:
@@ -73,7 +74,7 @@ class Random(commands.Cog):
             e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
             for holding_value, sea_creature in sea_creatures.items():
                 e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets", inline=False)
-        await ctx.respond(embed=e)
+        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
         return
 
 
