@@ -68,12 +68,13 @@ class Random(commands.Cog):
                 holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
                 e.add_field(name="Visualization", value=etherscan_url(address, prefix=creature), inline=False)
                 e.add_field(name="Required holding", value=f"{holding * len(creature)} ETH", inline=False)
-            await ctx.respond(embed=e)
-            return
-        e.title = "Possible Sea Creatures"
-        e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
-        for holding_value, sea_creature in sea_creatures.items():
-            e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets", inline=False)
+        else:
+            e.title = "Possible Sea Creatures"
+            e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
+            for holding_value, sea_creature in sea_creatures.items():
+                e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets", inline=False)
+        await ctx.respond(embed=e)
+        return
 
 
 def setup(bot):
