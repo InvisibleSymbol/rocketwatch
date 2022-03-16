@@ -6,8 +6,9 @@ from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
-from utils.embeds import Embed
-from utils.sea_creatures import sea_creatures
+from utils.embeds import Embed, ens, etherscan_url
+from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
+from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 
 log = logging.getLogger("random")
@@ -46,15 +47,33 @@ class Random(commands.Cog):
         await ctx.respond(embed=e)
 
     @slash_command(guild_ids=guilds)
-    async def sea_creatures(self, ctx):
+    async def sea_creatures(self, ctx, address: str = None):
         """List all sea creatures with their required minimum holding"""
+        await ctx.defer()
         e = Embed()
+        if address is not None:
+            try:
+                if ".eth" in address:
+                    address = ens.resolve_name(address)
+                address = w3.toChecksumAddress(address)
+            except (ValueError, TypeError):
+                e.description = "Invalid address"
+                await ctx.respond(embed=e)
+                return
+            creature = get_sea_creature_for_address(address)
+            if not creature:
+                e.description = f"No sea creature for {address}"
+            else:
+                # get the required holding from the dictionary
+                holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
+                e.add_field(name="Visualization", value=etherscan_url(address, prefix=creature), inline=False)
+                e.add_field(name="Required holding", value=f"{holding * len(creature)} ETH", inline=False)
+            await ctx.respond(embed=e)
+            return
         e.title = "Possible Sea Creatures"
         e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
         for holding_value, sea_creature in sea_creatures.items():
-            e.add_field(name=sea_creature, value=f"holds over {holding_value} ETH worth of assets", inline=False)
-
-        await ctx.respond(embed=e)
+            e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets", inline=False)
 
 
 def setup(bot):
