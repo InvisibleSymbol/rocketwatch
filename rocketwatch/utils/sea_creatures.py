@@ -67,7 +67,7 @@ def get_sea_creature_for_address(address):
         if "RETH" in contract_name:
             eth_balance += solidity.to_float(w3.toInt(hexstr=token["tokenBalance"])) * price_cache["reth_price"]
     # get minipool count
-    minipools = solidity.to_int(rp.call("rocketMinipoolManager.getNodeMinipoolCount", address))
+    minipools = rp.call("rocketMinipoolManager.getNodeMinipoolCount", address)
     eth_balance += minipools * 16
     # add their staked RPL
     staked_rpl = solidity.to_int(rp.call("rocketNodeStaking.getNodeRPLStake", address))
