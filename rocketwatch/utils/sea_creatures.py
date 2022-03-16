@@ -9,20 +9,26 @@ price_cache = {
 }
 
 sea_creatures = {
-    # 32 * 60: spouting whale emoji
-    32 * 60: '🐳',
-    # 32 * 30: whale emoji
-    32 * 30: '🐋',
-    # 32 * 15: shark emoji
-    32 * 15: '🦈',
-    # 32 * 10: dolphin emoji
-    32 * 10: '🐬',
+    # 32 * 100: spouting whale emoji
+    32 * 100: '🐳',
+    # 32 * 50: whale emoji
+    32 * 50: '🐋',
+    # 32 * 30: shark emoji
+    32 * 30: '🦈',
+    # 32 * 20: dolphin emoji
+    32 * 20: '🐬',
+    # 32 * 10: otter emoji
+    32 * 10: '🦦',
     # 32 * 5: octopus emoji
     32 * 5 : '🐙',
     # 32 * 2: fish emoji
     32 * 2 : '🐟',
-    # 32 * 1: fired shrimp emoji
+    # 32 * 1: fried shrimp emoji
     32 * 1 : '🍤',
+    # 5: snail emoji
+    5 : '🐌',
+    # 1: microbe emoji
+    1 : '🦠'
 }
 
 
