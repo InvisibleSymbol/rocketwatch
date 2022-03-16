@@ -67,7 +67,7 @@ def prepare_args(args):
             if w3.isAddress(arg_value):
                 # get rocketpool related holdings value for this address
                 address = w3.toChecksumAddress(arg_value)
-                prefix = get_sea_creature_for_holdings(get_sea_creature_for_address(address))
+                prefix = get_sea_creature_for_address(address)
 
             # handle validators
             if arg_key == "pubkey":
