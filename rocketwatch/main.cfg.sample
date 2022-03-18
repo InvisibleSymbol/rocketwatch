@@ -2,7 +2,11 @@ log_level: `logging:DEBUG`,
 rocketpool: {
   manual_addresses: {
     rocketStorage: "0x0000000000000000000000000000000000000000",
-    DAIETH_univ3:  "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8"
+    DAIETH_univ3:  "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8",
+    AirSwap:       "0x4572f2554421Bd64Bef1c22c8a81840E8D496BeA",
+    yearnPool:     "0x5c0A86A32c129538D62C106Eb8115a8b02358d57",
+    curvePool:     "0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08",
+    wstETHToken:   "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"
   }
   chain: "mainnet",
   alchemy_secret: "insert_secret_here",
@@ -30,6 +34,7 @@ discord: {
     errors: -1,
     default: -1,
     odao: -1,
-    bootstrap: -1
+    bootstrap: -1,
+    otc: -1,
   }
 }
