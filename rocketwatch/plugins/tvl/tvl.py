@@ -52,6 +52,7 @@ class TVL(commands.Cog):
                 }
             ]
         ).to_list(length=None)
+        log.debug(f"tmp: {tmp}")
         rewards = tmp[0]["total"] - (tmp[0]["count"] * 32)
         tvl.append(rewards)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Beacon Chain Rewards")
