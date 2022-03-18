@@ -40,7 +40,7 @@ class TVL(commands.Cog):
             [
                 {
                     "$match": {
-                        "balance": {"$exists": True},
+                        "balance": {"$ne": 16, "$exists": True},
                     }
                 },
                 {
