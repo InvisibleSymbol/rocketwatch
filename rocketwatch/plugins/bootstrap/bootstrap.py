@@ -63,17 +63,17 @@ class QueuedBootstrap(commands.Cog):
                 # these are the only types rocketDAOProtocolProposals checks, so fine to hard code until further changes
                 # SettingType.UINT256
                 if args.types[i] == 0:
-                    value = w3.toInt(args.data[i])
+                    value = w3.toInt(args.values[i])
                 # SettingType.BOOL
                 elif args.types[i] == 1:
-                    value = bool(args.data[i])
+                    value = bool(args.values[i])
                 # SettingType.ADDRESS
                 elif args.types[i] == 3:
-                    value = w3.toChecksumAddress(args.data[i])
+                    value = w3.toChecksumAddress(args.values[i])
                 else:
                     value = "???"
                 description_parts.append(
-                    f"`{args.settingContractNames[i]}`: `{args.settingsPath[i]}` set to `{value}`!"
+                    f"`{args.settingPaths[i]} set to {value}`!"
                 )
             args.description = "\n".join(description_parts)
 
