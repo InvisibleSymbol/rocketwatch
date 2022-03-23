@@ -73,7 +73,7 @@ class QueuedBootstrap(commands.Cog):
                 else:
                     value = "???"
                 description_parts.append(
-                    f"`{args.settingPaths[i]} set to {value}`!"
+                    f"`{args.settingPaths[i]} set to {value}`"
                 )
             args.description = "\n".join(description_parts)
 
