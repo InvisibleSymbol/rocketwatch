@@ -111,6 +111,11 @@ def assemble(args):
                     value=args.pubkey,
                     inline=False)
 
+    if "timezone" in args:
+        e.add_field(name="Timezone",
+                    value=args.timezone,
+                    inline=False)
+
     if "node_operator" in args:
         e.add_field(name="Node Operator",
                     value=args.node_operator)

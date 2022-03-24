@@ -226,6 +226,9 @@ class QueuedEvents(commands.Cog):
             contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
             args.commission = solidity.to_float(contract.functions.getNodeFee().call())
 
+        if "node_register_event" in event_name:
+            args.timezone = rp.call("rocketNodeManager.getNodeTimezoneLocation", args.node)
+
         args = prepare_args(args)
         return assemble(args)
 
