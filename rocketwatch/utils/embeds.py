@@ -113,7 +113,7 @@ def assemble(args):
 
     if "timezone" in args:
         e.add_field(name="Timezone",
-                    value=args.timezone,
+                    value=f"`{args.timezone}`",
                     inline=False)
 
     if "node_operator" in args:
