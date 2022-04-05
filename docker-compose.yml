@@ -7,9 +7,20 @@ services:
     restart: unless-stopped
     depends_on:
       - mongodb
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
 
   mongodb:
     image: mongo:latest
     volumes:
       - ./mongodb:/data/db
     restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
