@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -7,6 +8,7 @@ import pymongo
 import requests
 from discord.ext import commands, tasks
 
+from plugins.debug.debug import timerun
 from utils.cfg import cfg
 from utils.reporter import report_error
 from utils.rocketpool import rp
@@ -43,6 +45,7 @@ class MinipoolTask(commands.Cog):
         except Exception as err:
             await report_error(err)
 
+    @timerun
     def get_untracked_minipools(self):
         minipool_count = rp.call("rocketMinipoolManager.getMinipoolCount")
         minipool_addresses = rp.multicall.aggregate(
@@ -52,24 +55,41 @@ class MinipoolTask(commands.Cog):
         tracked_addresses = self.db.minipools.distinct("address")
         return [a for a in minipool_addresses if a not in tracked_addresses]
 
+    @timerun
     def get_public_keys(self, addresses):
+        # optimizing this doesn't seem to help much, so keep it simple for readability
         minipool_pubkeys = rp.multicall.aggregate(self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses)
         minipool_pubkeys = [f"0x{minipool_pubkey.results[0].hex()}" for minipool_pubkey in minipool_pubkeys.results]
         return minipool_pubkeys
 
+    @timerun
     def get_node_operator(self, addresses):
-        minipool_contracts = [rp.assemble_contract("rocketMinipool", w3.toChecksumAddress(a)) for a in addresses]
-        node_addresses = rp.multicall.aggregate(m.functions.getNodeAddress() for m in minipool_contracts)
+        base_contract = rp.assemble_contract("rocketMinipool", w3.toChecksumAddress(addresses[0]))
+        func = base_contract.functions.getNodeAddress()
+        minipool_contracts = []
+        for a in addresses:
+            tmp = copy.deepcopy(func)
+            tmp.address = w3.toChecksumAddress(a)
+            minipool_contracts.append(tmp)
+        node_addresses = rp.multicall.aggregate(minipool_contracts)
         node_addresses = [w3.toChecksumAddress(r.results[0]) for r in node_addresses.results]
         return node_addresses
 
+    @timerun
     def get_node_fee(self, addresses):
-        minipool_contracts = [rp.assemble_contract("rocketMinipool", w3.toChecksumAddress(a)) for a in addresses]
-        node_fees = rp.multicall.aggregate(m.functions.getNodeFee() for m in minipool_contracts)
+        base_contract = rp.assemble_contract("rocketMinipool", w3.toChecksumAddress(addresses[0]))
+        func = base_contract.functions.getNodeFee()
+        minipool_contracts = []
+        for a in addresses:
+            tmp = copy.deepcopy(func)
+            tmp.address = w3.toChecksumAddress(a)
+            minipool_contracts.append(tmp)
+        node_fees = rp.multicall.aggregate(minipool_contracts)
         node_fees = [to_float(r.results[0]) for r in node_fees.results]
         return node_fees
 
-    def get_validator_indexes(self, pubkeys):
+    @timerun
+    def get_validator_data(self, pubkeys):
         result = {}
         batch_size = 80
         offset = 0
@@ -90,8 +110,11 @@ class MinipoolTask(commands.Cog):
                 data = [data]
             for validator_data in data:
                 validator_id = int(validator_data["validatorindex"])
+                activation_epoch = int(validator_data["activationepoch"])
+                if 2**63-1 == activation_epoch:
+                    continue
                 pubkey = validator_data["pubkey"]
-                result[pubkey] = validator_id
+                result[pubkey] = {"validator_id": validator_id, "activation_epoch": activation_epoch}
             offset += batch_size
             time.sleep(2)
         return result
@@ -114,17 +137,18 @@ class MinipoolTask(commands.Cog):
         minipool_pubkeys = self.get_public_keys(minipool_addresses)
         log.debug("Gathering all Minipool node operators...")
         node_addresses = self.get_node_operator(minipool_addresses)
-        log.debug("Gather commission rates...")
+        log.debug("Gathering all Minipool commission rates...")
         node_fees = self.get_node_fee(minipool_addresses)
         log.debug("Gathering all Minipool validator indexes...")
-        validator_indexes = self.get_validator_indexes(minipool_pubkeys)
+        validator_data = self.  get_validator_data(minipool_pubkeys)
         data = [{
             "address"      : a,
             "pubkey"       : p,
             "node_operator": n,
             "node_fee"     : f,
-            "validator"    : validator_indexes[p]
-        } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_indexes]
+            "validator"    : validator_data[p]["validator_id"],
+            "activation_epoch": validator_data[p]["activation_epoch"]
+        } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_data]
         if data:
             log.debug(f"Inserting {len(data)} Minipools into the database...")
             self.db.minipools.insert_many(data)

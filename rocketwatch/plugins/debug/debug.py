@@ -1,6 +1,9 @@
+import functools
 import io
 import json
+import logging
 import random
+import time
 from pathlib import Path
 
 import humanize
@@ -19,9 +22,12 @@ from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
 from utils.slash_permissions import owner_only_slash
-# generate list of all file names with the .sol extension from the rocketpool submodule
 from utils.visibility import is_hidden
 
+log = logging.getLogger("debug")
+log.setLevel(cfg["log_level"])
+
+# generate list of all file names with the .sol extension from the rocketpool submodule
 contract_files = []
 for path in Path("contracts/rocketpool/contracts/contract").glob('**/*.sol'):
     # append to list but ensure that the first character is lowercase
@@ -41,6 +47,20 @@ async def match_function_name(ctx: AutocompleteContext):
     contract_name = ctx.options["contract"]
     contract = rp.get_contract_by_name(contract_name)
     return [function_name for function_name in contract.functions if ctx.value.lower() in function_name.lower()]
+
+
+def timerun(func):
+    """ Calculate the execution time of a method and return it back"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        duration = time.time() - start
+
+        log.debug(f"{func.__name__} took {duration} seconds")
+        return result
+    return wrapper
 
 
 class Debug(commands.Cog):

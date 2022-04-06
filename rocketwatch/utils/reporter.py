@@ -1,3 +1,4 @@
+import functools
 import io
 import logging
 import traceback
@@ -7,6 +8,7 @@ from discord import File
 from utils.cfg import cfg
 
 log = logging.getLogger("reporter")
+log.setLevel(cfg["log_level"])
 bot = None
 
 

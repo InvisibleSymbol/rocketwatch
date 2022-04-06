@@ -10,6 +10,7 @@ from discord.commands import slash_command
 from discord.ext import commands, tasks
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from plugins.debug.debug import timerun
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error
@@ -38,19 +39,10 @@ class Leaderboard(commands.Cog):
             return
         self.run_loop.start()
 
+    @timerun
     def get_balances(self, slot):
         log.debug(f"Getting balances for slot {slot}")
-        start = time.time()
-        data = bacon.get_validator_balances(slot)["data"]
-        log.debug(f"Got balances for slot {slot} in {time.time() - start}s")
-        return data
-
-    def get_general_data(self, slot):
-        log.debug(f"Getting general data for slot {slot}")
-        start = time.time()
-        data = bacon.get_validators(slot)["data"]
-        log.debug(f"Got general data for slot {slot} in {time.time() - start}s")
-        return data
+        return bacon.get_validator_balances(slot)["data"]
 
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
@@ -68,52 +60,57 @@ class Leaderboard(commands.Cog):
         current_epoch = current // 32
         epochs_per_day = (60 / 12) / 32 * 60 * 24
         # get balances now
-        current_balances = self.get_balances(current)
+        current_balances = self.get_balances(slot=current)
         # get balances a week ago
         last_week = current - int(60 / 12 * 60 * 24 * 7)
-        last_week_data = self.get_general_data(last_week)
+        last_week_balances = self.get_balances(last_week)
         # get all validators from db
-        validators = self.sync_db.minipools.distinct("validator")
+        validators = list(
+            self.sync_db.minipools.find(
+                {"activation_epoch": {"$lte": last_week / 32}},
+                {"validator": 1, "activation_epoch": 1}
+            )
+        )
+        activation_epochs = {
+            validator["validator"]: validator["activation_epoch"]
+            for validator in validators
+        }
+        validators = [x["validator"] for x in validators]
+        validator_data = {}
         # update balances of validators
         batch = []
-        cvb = {int(v["index"]): to_float(v["balance"], 9) for v in current_balances}
-        for v in validators:
-            if b := cvb.get(v):
-                if b == 16: continue
-                batch.append(
-                    pymongo.UpdateOne(
-                        {"validator": v},
-                        {"$set": {"balance": b}}
-                    )
+        cvb = {int(v["index"]): to_float(v["balance"], 9) for v in current_balances if int(v["index"]) in validators}
+        for v, b in cvb.items():
+            if b == 16:
+                continue
+            validator_data[v] = {"current_balance": b}
+            batch.append(
+                pymongo.UpdateOne(
+                    {"validator": v},
+                    {"$set": {"balance": b}}
                 )
+            )
         self.sync_db.minipools.bulk_write(batch)
         # filter
-        last_week_data = [v for v in last_week_data if int(v["index"]) in validators]
-        last_week_validators = {}
+        last_week_data = [v for v in last_week_balances if int(v["index"]) in validators]
         for v in last_week_data:
             index = int(v["index"])
             # split for performance reasons
             balance = to_float(v["balance"], 9)
-            days_active = (current_epoch - int(v["validator"]["activation_epoch"])) / epochs_per_day
+            days_active = (current_epoch - activation_epochs[index]) / epochs_per_day
             if balance <= 16 or days_active < 7:
                 continue
-            last_week_validators[index] = {
-                "balance"    : balance,
-                "days_active": days_active
-            }
-        last_week_indexes = list(last_week_validators.keys())
-        # now get their balances from the current slot
-        current_validators = {
-            int(v["index"]): to_float(v["balance"], 9) for v in current_balances if int(v["index"]) in last_week_indexes
-        }
+            validator_data[index]["last_week_balance"] = balance
+            validator_data[index]["days_active"] = days_active
+
         # generate new dictonary with validator index as key and current and last week balances as values
         balances = {
             i: {
-                "current"       : current_validators[i],
-                "last_week"     : last_week_validators[i]["balance"],
-                "daily_earnings": (current_validators[i] - 32) / last_week_validators[i]["days_active"]
-            } for i in last_week_indexes}
-
+                "current"       : vd["current_balance"],
+                "last_week"     : vd["last_week_balance"],
+                "daily_earnings": (vd["current_balance"] - 32) / vd["days_active"]
+            } for i, vd in validator_data.items()
+        }
         # calculate APR attribute
         for i in balances:
             # get percentage change between first and last datapoint
