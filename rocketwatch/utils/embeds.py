@@ -37,6 +37,10 @@ def etherscan_url(target, name=None, prefix=None):
         if not name:
             # not an odao member, try to get their ens
             name = ens.get_name(target)
+        if not name:
+            code = w3.eth.get_code(target)
+            if code.hex() == "0x3d60323d7353db332d01e0ba9c3529110899aa00c719c2438a330382573d601436036020363d600c37343d515af1905780fd5b":
+                name = "MEV Bot Contract"
     if not name:
         # fall back to shortened address
         name = s_hex(target)
