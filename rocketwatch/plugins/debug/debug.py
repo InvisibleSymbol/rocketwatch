@@ -15,7 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import etherscan_url
+from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
@@ -135,7 +135,7 @@ class Debug(commands.Cog):
         """retrieves the latest address for a contract"""
         await ctx.defer()
         try:
-            await ctx.respond(etherscan_url(rp.uncached_get_address_by_name(contract)))
+            await ctx.respond(el_explorer_url(rp.uncached_get_address_by_name(contract)))
         except Exception as err:
             await ctx.respond(f"Exception: ```{repr(err)}```")
             return

@@ -8,8 +8,8 @@ from pymongo import ReplaceOne
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.embeds import etherscan_url
-from utils.readable import beaconchain_url
+from utils.embeds import el_explorer_url
+from utils.readable import cl_explorer_url
 from utils.slash_permissions import guilds
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.visibility import is_hidden
@@ -113,7 +113,7 @@ class Lottery(commands.Cog):
         end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
         description += f"End: Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
         # validators (called minipools here)
-        description += f"Minipools: {', '.join(beaconchain_url(v['validator']) for v in validators)}\n"
+        description += f"Minipools: {', '.join(cl_explorer_url(v['validator']) for v in validators)}\n"
         # node operators
         # gather count per
         node_operators = {}
@@ -124,7 +124,7 @@ class Lottery(commands.Cog):
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
         description += "Node Operators: "
-        description += f", ".join([f"{count}x {etherscan_url(node_operator)}" for node_operator, count in node_operators])
+        description += f", ".join([f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
         return description
 
     @slash_command(guild_ids=guilds)

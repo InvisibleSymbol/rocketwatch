@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.embeds import etherscan_url
+from utils.embeds import el_explorer_url
 from utils.rocketpool import rp
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -38,7 +38,7 @@ class Queue(commands.Cog):
             if data[1]:
                 description += f"**{label}:** ({data[0]} Minipools)"
                 description += "\n- "
-                description += "\n- ".join([etherscan_url(m, f'`{m}`') for m in data[1]])
+                description += "\n- ".join([el_explorer_url(m, f'`{m}`') for m in data[1]])
                 if data[0] > 10:
                     description += "\n- ..."
                 description += "\n\n"

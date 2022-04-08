@@ -6,7 +6,7 @@ from discord.commands import slash_command
 from discord.ext import commands
 
 from utils.cfg import cfg
-from utils.embeds import Embed, ens, etherscan_url
+from utils.embeds import Embed, ens, el_explorer_url
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
@@ -67,7 +67,7 @@ class Random(commands.Cog):
             else:
                 # get the required holding from the dictionary
                 holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
-                e.add_field(name="Visualization", value=etherscan_url(address, prefix=creature), inline=False)
+                e.add_field(name="Visualization", value=el_explorer_url(address, prefix=creature), inline=False)
                 e.add_field(name="Required holding", value=f"{holding * len(creature)} ETH", inline=False)
         else:
             e.title = "Possible Sea Creatures"

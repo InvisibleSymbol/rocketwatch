@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed, etherscan_url
+from utils.embeds import Embed, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.slash_permissions import guilds
@@ -60,7 +60,7 @@ class DeFi(commands.Cog):
             inline=False,
         )
         token_name = rp.call("curvePool.symbol")
-        link = etherscan_url(rp.get_address_by_name("curvePool"), token_name)
+        link = el_explorer_url(rp.get_address_by_name("curvePool"), token_name)
         e.add_field(
             name="Contract Address",
             value=link,
@@ -91,7 +91,7 @@ class DeFi(commands.Cog):
             inline=False,
         )
         token_name = rp.call("yearnPool.symbol")
-        link = etherscan_url(rp.get_address_by_name("yearnPool"), token_name)
+        link = el_explorer_url(rp.get_address_by_name("yearnPool"), token_name)
         e.add_field(
             name="Contract Address",
             value=link,

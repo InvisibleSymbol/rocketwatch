@@ -9,7 +9,7 @@ from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
-from utils.readable import beaconchain_url
+from utils.readable import cl_explorer_url
 from utils.shared_w3 import bacon
 from utils.solidity import beacon_block_to_date
 
@@ -84,8 +84,8 @@ class QueuedSlashings(commands.Cog):
                     log.info(f"Skipping slash of unknown validator {slash['minipool']}")
                     continue
                 unique_id = f"{timestamp}:slash-{slash['minipool']}:slasher-{slash['slasher']}:slashing-type-{slash['slashing_type']}"
-                slash["minipool"] = beaconchain_url(slash["minipool"])
-                slash["slasher"] = beaconchain_url(slash["slasher"])
+                slash["minipool"] = cl_explorer_url(slash["minipool"])
+                slash["slasher"] = cl_explorer_url(slash["slasher"])
                 slash["node_operator"] = lookup["node_operator"]
                 slash["event_name"] = "minipool_slash_event"
                 args = prepare_args(aDict(slash))

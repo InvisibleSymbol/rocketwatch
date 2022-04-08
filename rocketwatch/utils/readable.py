@@ -40,15 +40,17 @@ def s_hex(string):
     return string[:10]
 
 
-def beaconchain_url(target, name=None):
+def cl_explorer_url(target, name=None):
     if not name and isinstance(target, str):
         name = s_hex(target)
     else:
         name = target
-    chain = cfg["rocketpool.chain"]
-    prefix = "prater." if chain == "goerli" else ""
-    return f"[{name}](https://{prefix}beaconcha.in/validator/{target})"
+    url = cfg["rocketpool.consensus_layer.explorer"]
+    return f"[{name}](https://{url}/validator/{target})"
 
 
 def advanced_tnx_url(tx_hash):
-    return f"[[A]](https://ethtx.info/mainnet/{tx_hash})"
+    chain = cfg["rocketpool.chain"]
+    if chain not in ["mainnet", "goerli"]:
+        return ""
+    return f"[[A]](https://ethtx.info/{chain}/{tx_hash})"

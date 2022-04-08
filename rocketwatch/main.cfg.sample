@@ -1,40 +1,70 @@
 log_level: `logging:DEBUG`,
 rocketpool: {
+  # mainnet: 0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46
+  # goerli: 0xd8Cd47263414aFEca62d6e2a3917d6600abDceB3
+  # kiln: 0x93c769b239c5dBb383683869FaE2667623055420
   manual_addresses: {
-    rocketStorage: "0x0000000000000000000000000000000000000000",
+    rocketStorage: "0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46",
     DAIETH_univ3:  "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8",
     AirSwap:       "0x4572f2554421Bd64Bef1c22c8a81840E8D496BeA",
     yearnPool:     "0x5c0A86A32c129538D62C106Eb8115a8b02358d57",
     curvePool:     "0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08",
-    wstETHToken:   "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"
+    wstETHToken:   "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
   }
   chain: "mainnet",
-  alchemy_secret: "insert_secret_here",
-  mainnet_alchemy_secret: "insert_secret_here"
-  etherscan_secret: "insert_secret_here"
-}
+  execution_layer: {
+    explorer: "explorer.kiln.themerge.dev",
+    endpoint: {
+      current: "https://eth-mainnet.alchemyapi.io/v2/secret",
+      mainnet: "https://eth-mainnet.alchemyapi.io/v2/secret"
+    }
+  },
+  consensus_layer: {
+    explorer: "etherscan.io",
+    endpoint: {
+      current: "https://secret:secret@eth2-beacon-mainnet.infura.io",
+      mainnet: "https://secret:secret@eth2-beacon-mainnet.infura.io"
+    }
+  }
+  etherscan_secret: "secret"
+},
 override_addresses: {
-  "0xF0138d2e4037957D7b37De312a16a88A7f83A32a": "Invis(Dev)"
+  "0xE624feD79e8f5353b13Fefa22c82385fdEdFF348": "yinandyangkratom",
+  "0xEADB3840596cabF312F2bC88A4Bb0b93A4E1FF5F": "0xEAD",
+  "0xF0138d2e4037957D7b37De312a16a88A7f83A32a": "🛠️Invis",
+  "0x75Cf8e1F8F4fbF4C7BB216E450BCff5F51Ab3E5A": "🛠️Invis",
+  "0x701F4dcEAD1049FA01F321d49F6dca525cF4A5A5": "MEEK",
+  "0x17Fa597cEc16Ab63A7ca00Fb351eb4B29Ffa6f46": "thomas",
+  "0x78072BA5f77d01B3f5B1098df73176933da02A7A": "markobarko",
+  "0x5e624FAEDc7AA381b574c3C2fF1731677Dd2ee1d": "jamescarnley",
+  "0xb8ed9ea221bf33d37360a76ddd52ba7b1e66aa5c": "Lovinall #1",
+  "0xca317a4eccbe0dd5832de2a7407e3c03f88b2cdd": "Lovinall #2",
+  "0x64627611655C8CdcaFaE7607589b4483a1578f4A": "Darcius",
+  "0x33043c521E9c3e80E0c05A2c25f2e894FefC0328": "jcprt",
+  "0xc942B5aA63A3410a13358a7a3aEdF33d9e9D3AC3": "langers",
+  "0x8630eE161EF00dE8E70F19Bf5fE5a06046898990": "Marceau.eth #2",
+  "0x01A2a10ed806d4e65Ad92c2c6b10bC4D5F37001e": "onethousand.eth",
+  "0x75C8F18e401113167A43bB21556cc132BF8C7ca9": "onethousand.eth",
 }
-wakatime.secret = ""
-core.look_back_distance = 8
-mongodb_uri = "mongodb://mongodb:27017"
+"wakatime.secret" = "secret"
 graph_endpoint = "https://gateway.thegraph.com/api/<apikey>/subgraphs/id/0xa508c16666c5b8981fa46eb32784fccc01942a71-3"
+mongodb_uri = "mongodb://mongodb:27017"
+core: {
+  look_back_distance: 8,
+}
 discord: {
-  secret: "insert_secret_here",
+  secret: "secret",
   owner: {
     user_id: -1,
     server_id: -1
   },
-  # guilds where the slash commands will show up
   guilds: [
     -1
-  ]
+  ],
   channels: {
     errors: -1,
     default: -1,
     odao: -1,
-    bootstrap: -1,
-    otc: -1,
+    otc: -1
   }
 }

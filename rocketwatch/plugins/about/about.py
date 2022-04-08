@@ -11,7 +11,7 @@ from discord.ext import commands
 from utils import readable
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.embeds import etherscan_url
+from utils.embeds import el_explorer_url
 from utils.reporter import report_error
 from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
@@ -53,7 +53,7 @@ class About(commands.Cog):
                           f"{humanize.intcomma(sum(guild.member_count for guild in g))} Members reached!",
                     inline=False)
 
-        address = etherscan_url(cfg["rocketpool.manual_addresses.rocketStorage"])
+        address = el_explorer_url(cfg["rocketpool.manual_addresses.rocketStorage"])
         e.add_field(name="Storage Contract", value=address)
 
         e.add_field(name="Chain", value=cfg["rocketpool.chain"].capitalize())

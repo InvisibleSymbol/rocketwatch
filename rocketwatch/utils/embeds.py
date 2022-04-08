@@ -9,7 +9,7 @@ from strings import _
 from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
-from utils.readable import beaconchain_url, advanced_tnx_url, s_hex
+from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
 from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_holdings, get_sea_creature_for_address
 from utils.shared_w3 import w3
@@ -28,7 +28,7 @@ class Embed(discord.Embed):
         self.set_footer(text=" · ".join(footer_parts))
 
 
-def etherscan_url(target, name="", prefix=""):
+def el_explorer_url(target, name="", prefix=""):
     if w3.isAddress(target):
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
@@ -80,10 +80,10 @@ def prepare_args(args):
 
             # handle validators
             if arg_key == "pubkey":
-                args[arg_key] = beaconchain_url(arg_value)
+                args[arg_key] = cl_explorer_url(arg_value)
             else:
-                args[arg_key] = etherscan_url(arg_value, prefix=prefix)
-                args[arg_key + "_clean"] = etherscan_url(arg_value)
+                args[arg_key] = el_explorer_url(arg_value, prefix=prefix)
+                args[arg_key + "_clean"] = el_explorer_url(arg_value)
     return args
 
 

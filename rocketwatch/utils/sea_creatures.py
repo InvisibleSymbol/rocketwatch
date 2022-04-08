@@ -56,13 +56,16 @@ def get_sea_creature_for_address(address):
     # get their eth balance
     eth_balance = solidity.to_float(w3.eth.getBalance(address))
     # get ERC-20 token balance for this address
-    tokens = w3.provider.make_request("alchemy_getTokenBalances",
+    resp = w3.provider.make_request("alchemy_getTokenBalances",
                                       [address,
                                        [
                                            rp.get_address_by_name("rocketTokenRPL"),
                                            rp.get_address_by_name("rocketTokenRPLFixedSupply"),
                                            rp.get_address_by_name("rocketTokenRETH")],
-                                       ])["result"]["tokenBalances"]
+                                       ])
+    tokens = []
+    if not "error" in resp:
+        tokens = resp["result"]["tokenBalances"]
     # add their tokens to their eth balance
     for token in tokens:
         contract_name = rp.get_name_by_address(token["contractAddress"])

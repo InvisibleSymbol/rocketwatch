@@ -9,7 +9,7 @@ from discord.ext import commands
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.embeds import etherscan_url
+from utils.embeds import el_explorer_url
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -188,7 +188,7 @@ class Rewards(commands.Cog):
         # top 5 claims
         top_claims = sorted(counts, key=lambda x: int(x["amount"]), reverse=True)[:5]
         top_claims_str = [
-            f"{i + 1}. {etherscan_url(w3.toChecksumAddress(claim['claimer']))}:"
+            f"{i + 1}. {el_explorer_url(w3.toChecksumAddress(claim['claimer']))}:"
             f" {solidity.to_float(claim['amount']):.2f} RPL"
             f" (worth {solidity.to_float(claim['ethAmount']):.2f} ETH)"
             for i, claim in enumerate(top_claims)
