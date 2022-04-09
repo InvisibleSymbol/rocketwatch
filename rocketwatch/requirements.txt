@@ -12,7 +12,7 @@ py-cord[speed]==2.0.0b5
 config==0.5.1
 pytz==2021.3
 matplotlib==3.5.1
-inflect==5.4.0
+inflect==5.5.2
 motor==2.5.1
 wordcloud==1.8.1
 web3-multicall==0.0.7
