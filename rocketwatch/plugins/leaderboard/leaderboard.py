@@ -14,7 +14,7 @@ from plugins.debug.debug import timerun
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error
-from utils.shared_w3 import bacon
+from utils.shared_w3 import mainnet_bacon
 from utils.slash_permissions import guilds
 from utils.solidity import to_float
 from utils.visibility import is_hidden
@@ -42,7 +42,7 @@ class Leaderboard(commands.Cog):
     @timerun
     def get_balances(self, slot):
         log.debug(f"Getting balances for slot {slot}")
-        return bacon.get_validator_balances(slot)["data"]
+        return mainnet_bacon.get_validator_balances(slot)["data"]
 
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
@@ -56,9 +56,7 @@ class Leaderboard(commands.Cog):
 
     def cache_embed(self):
         # get current slot
-        current = int(bacon.get_block("head")["data"]["message"]["slot"])
-        current_epoch = current // 32
-        epochs_per_day = (60 / 12) / 32 * 60 * 24
+        current = int(mainnet_bacon.get_block("head")["data"]["message"]["slot"])
         # get balances now
         current_balances = self.get_balances(slot=current)
         # get balances a week ago
