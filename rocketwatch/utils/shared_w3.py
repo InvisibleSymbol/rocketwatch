@@ -16,5 +16,7 @@ if cfg['rocketpool.chain'] != "mainnet":
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 bacon = Bacon(cfg["rocketpool.consensus_layer.endpoint.current"])
-bacon.get_block = lambda block: bacon._make_get_request(f"/eth/v2/beacon/blocks/{block}")
-bacon.debug = lambda: bacon._make_get_request(f"/eth/v2/debug/beacon/states/head")
+mainnet_bacon = Bacon(cfg["rocketpool.consensus_layer.endpoint.mainnet"])
+for b in [bacon, mainnet_bacon]:
+    b.get_block = lambda block: bacon._make_get_request(f"/eth/v2/beacon/blocks/{block}")
+    b.debug = lambda: bacon._make_get_request(f"/eth/v2/debug/beacon/states/head")
