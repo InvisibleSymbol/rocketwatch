@@ -57,6 +57,8 @@ class Leaderboard(commands.Cog):
     def cache_embed(self):
         # get current slot
         current = int(mainnet_bacon.get_block("head")["data"]["message"]["slot"])
+        current_epoch = current // 32
+        epochs_per_day = (60 / 12) / 32 * 60 * 24
         # get balances now
         current_balances = self.get_balances(slot=current)
         # get balances a week ago
