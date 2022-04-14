@@ -51,11 +51,21 @@ class DeFi(commands.Cog):
             value=f"`{total_locked:,.2f} ETH ({total_locked_usd:,.2f} DAI)`",
             inline=False,
         )
+        # rETH => wstETH premium
         expected_ratio = (reth_v / reth) / (wsteth_v / wsteth)
         actual_ratio = solidity.to_float(rp.call("curvePool.get_dy", 0, 1, w3.toWei(1, "ether")))
         premium = (actual_ratio / expected_ratio) - 1
         e.add_field(
             name="Current rETH => wstETH Premium",
+            value=f"`{premium:.2%}`",
+            inline=False,
+        )
+        # wstETH => rETH premium
+        expected_ratio = (wsteth_v / wsteth) / (reth_v / reth)
+        actual_ratio = solidity.to_float(rp.call("curvePool.get_dy", 1, 0, w3.toWei(1, "ether")))
+        premium = (actual_ratio / expected_ratio) - 1
+        e.add_field(
+            name="Current wstETH => rETH Premium",
             value=f"`{premium:.2%}`",
             inline=False,
         )
