@@ -8,9 +8,9 @@ bidict==0.22.0
 tinydb==4.7.0
 requests==2.27.1
 uptime==3.0.1
-py-cord[speed]==2.0.0b5
+py-cord[speed]==2.0.0b7
 config==0.5.1
-pytz==2021.3
+pytz==2022.1
 matplotlib==3.5.1
 inflect==5.5.2
 motor==2.5.1
