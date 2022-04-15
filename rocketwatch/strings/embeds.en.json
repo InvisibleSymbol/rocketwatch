@@ -154,5 +154,17 @@
     "otc_swap_event": {
         "title": ":currency_exchange: OTC Swap",
         "description": "%{seller_clean} exchanged %{sellAmount} %{sellToken} for %{buyAmount} %{buyToken} with %{buyer_clean}"
+    },
+    "odao_member_challenge_event": {
+        "title": ":rotating_light: oDAO Member Challenge Started",
+        "description": "%{nodeChallengedAddress_clean} has been challenged by %{nodeChallengerAddress_clean}!\nThey have to respond before %{challengeDeadline} or they will be kicked from the oDAO!"
+    },
+    "odao_member_challenge_accepted_event": {
+        "title": ":warning: oDAO Member Challenge Passed",
+        "description": "%{nodeChallengedAddress_clean} has been successfully challenged!\nTheir bond of %{rplBondAmount} RPL has been burned and they have been kicked out of the oDAO!"
+    },
+    "odao_member_challenge_rejected_event": {
+        "title": ":no_entry_sign: oDAO Member Challenge Rejected",
+        "description": "%{nodeChallengedAddress_clean} has responded to the challenge, making it invalid!"
     }
 }

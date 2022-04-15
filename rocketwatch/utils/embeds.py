@@ -65,6 +65,10 @@ def prepare_args(args):
         if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate"]) and isinstance(arg_value, int):
             args[arg_key] = arg_value / 10 ** 18
 
+        # handle timestamps
+        if "deadline" in arg_key.lower() and isinstance(arg_value, int):
+            args[arg_key] = f"<t:{arg_value}:f>(<t:{arg_value}:R>)"
+
         # handle percentages
         if "perc" in arg_key.lower():
             args[arg_key] = arg_value / 10 ** 16

@@ -228,7 +228,18 @@ class QueuedEvents(commands.Cog):
 
         if "node_register_event" in event_name:
             args.timezone = rp.call("rocketNodeManager.getNodeTimezoneLocation", args.node)
-
+        if "odao_member_challenge_event" in event_name:
+            args.challengeDeadline = args.time + rp.call("rocketDAONodeTrustedSettingsMembers.getChallengeWindow")
+        if "odao_member_challenge_decision_event" in event_name:
+            if args.success:
+                args.event_name = "odao_member_challenge_accepted_event"
+                # get their RPL bond that was burned by querying the previous block
+                args.rplBondAmount = solidity.to_float(rp.call("rocketDAONodeTrusted.getMemberRPLBondAmount",
+                                                               args.nodeChallengedAddress,
+                                                               block=args.blockNumber - 1))
+                args.sender = args.nodeChallengeDeciderAddress
+            else:
+                args.event_name = "odao_member_challenge_rejected_event"
         args = prepare_args(args)
         return assemble(args)
 

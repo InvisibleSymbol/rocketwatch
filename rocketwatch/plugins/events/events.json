@@ -51,6 +51,14 @@
                     "name": "odao_member_leave_event"
                 },
                 {
+                    "event_name": "ActionChallengeMade",
+                    "name": "odao_member_challenge_event"
+                },
+                {
+                    "event_name": "ActionChallengeDecided",
+                    "name": "odao_member_challenge_decision_event"
+                },
+                {
                     "event_name": "ActionKick",
                     "name": "odao_member_kick_event"
                 }
