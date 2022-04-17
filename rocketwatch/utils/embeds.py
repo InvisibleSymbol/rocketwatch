@@ -4,6 +4,7 @@ import math
 import discord
 import humanize
 from discord import Color
+from etherscan_labels import Addresses
 
 from strings import _
 from utils import solidity
@@ -34,6 +35,8 @@ def el_explorer_url(target, name="", prefix=""):
             name = cfg["override_addresses"][target]
         if not name:
             name = rp.call("rocketDAONodeTrusted.getMemberID", target)
+        if not name:
+            name = Addresses.get(target).name
         if not name:
             # not an odao member, try to get their ens
             name = ens.get_name(target)
