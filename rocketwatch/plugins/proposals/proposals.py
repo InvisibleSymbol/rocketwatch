@@ -45,7 +45,7 @@ COLORS = {
 class Proposals(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.rocketscan_proposals_url = "https://rocketscan.dev/api/mainnet/beacon/blocks/all"
+        self.rocketscan_proposals_url = "https://rocketscan.io/api/mainnet/beacon/blocks/all"
         self.last_chore_run = 0
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
