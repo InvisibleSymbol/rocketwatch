@@ -36,7 +36,10 @@ def el_explorer_url(target, name="", prefix=""):
         if not name:
             name = rp.call("rocketDAONodeTrusted.getMemberID", target)
         if not name:
-            name = Addresses.get(target).name
+            a = Addresses.get(target)
+            # don't apply name if its only label is one with the id "take-action", as these don't show up on the explorer
+            if not a.labels or len(a.labels) != 1 or a.labels[0].id != "take-action":
+                name = a.name
         if not name:
             # not an odao member, try to get their ens
             name = ens.get_name(target)
