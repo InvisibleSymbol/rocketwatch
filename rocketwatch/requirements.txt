@@ -18,4 +18,4 @@ wordcloud==1.8.1
 web3-multicall==0.0.7
 colorama==0.4.4
 seaborn==0.11.2
-git+https://github.com/InvisibleSymbol/etherscan-labels@bbc684cf094ff8aa48dd58994298279ccd3615a6#egg=etherscan_labels
+git+https://github.com/InvisibleSymbol/etherscan-labels@08c36a2a12fff9f3313332291fad09814a933e4a#egg=etherscan_labels
