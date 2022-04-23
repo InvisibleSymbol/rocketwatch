@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 
+import cronitor
 import motor.motor_asyncio
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
@@ -14,6 +16,9 @@ from utils.shared_w3 import w3
 
 log = logging.getLogger("core")
 log.setLevel(cfg["log_level"])
+
+cronitor.api_key = cfg["cronitor_secret"]
+monitor = cronitor.Monitor('gather-new-events')
 
 
 class Core(commands.Cog):
@@ -33,12 +38,16 @@ class Core(commands.Cog):
 
     @tasks.loop(seconds=30.0)
     async def run_loop(self):
+        p_id = time.time()
+        monitor.ping(state='run', series=p_id)
         # try to gather new events
         try:
             await self.gather_new_events()
+            monitor.ping(state='complete', series=p_id)
         except Exception as err:
             self.state = "ERROR"
             await report_error(err)
+            monitor.ping(state='fail', series=p_id)
         # update the state message
         try:
             await self.update_state_message()

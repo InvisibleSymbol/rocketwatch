@@ -3,6 +3,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+import cronitor
 import inflect
 import pymongo
 from discord import Option
@@ -22,6 +23,9 @@ from utils.visibility import is_hidden
 log = logging.getLogger("leaderboard")
 log.setLevel(cfg["log_level"])
 p = inflect.engine()
+
+cronitor.api_key = cfg["cronitor_secret"]
+monitor = cronitor.Monitor('generate-leaderboard')
 
 
 class Leaderboard(commands.Cog):
@@ -46,13 +50,17 @@ class Leaderboard(commands.Cog):
 
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
+        p_id = time.time()
+        monitor.ping(state='run', series=p_id)
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
         futures = [loop.run_in_executor(executor, self.cache_embed)]
         try:
             await asyncio.gather(*futures)
+            monitor.ping(state='complete', series=p_id)
         except Exception as err:
             await report_error(err)
+            monitor.ping(state='fail', series=p_id)
 
     def cache_embed(self):
         # get current slot

@@ -3,6 +3,7 @@ import logging
 import humanize
 from discord import Activity, ActivityType
 from discord.ext import commands, tasks
+import cronitor
 
 from utils.cfg import cfg
 from utils.reporter import report_error
@@ -10,6 +11,9 @@ from utils.rocketpool import rp
 
 log = logging.getLogger("rich_activity")
 log.setLevel(cfg["log_level"])
+
+cronitor.api_key = cfg["cronitor_secret"]
+monitor = cronitor.Monitor('update-activity')
 
 
 class RichActivity(commands.Cog):
@@ -27,6 +31,7 @@ class RichActivity(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def run_loop(self):
+        monitor.ping()
         try:
             log.debug("Updating Discord Activity...")
             count = humanize.intcomma(rp.call("rocketMinipoolManager.getStakingMinipoolCount"))

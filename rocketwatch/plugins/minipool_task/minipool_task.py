@@ -4,6 +4,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+import cronitor
 import pymongo
 import requests
 from discord.ext import commands, tasks
@@ -17,6 +18,9 @@ from utils.solidity import to_float
 
 log = logging.getLogger("minipool_task")
 log.setLevel(cfg["log_level"])
+
+cronitor.api_key = cfg["cronitor_secret"]
+monitor = cronitor.Monitor('gather-minipools')
 
 
 class MinipoolTask(commands.Cog):
@@ -37,13 +41,17 @@ class MinipoolTask(commands.Cog):
 
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
+        p_id = time.time()
+        monitor.ping(state='run', series=p_id)
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
         futures = [loop.run_in_executor(executor, self.task)]
         try:
             await asyncio.gather(*futures)
+            monitor.ping(state='complete', series=p_id)
         except Exception as err:
             await report_error(err)
+            monitor.ping(state='fail', series=p_id)
 
     @timerun
     def get_untracked_minipools(self):
