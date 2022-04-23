@@ -19,3 +19,4 @@ web3-multicall==0.0.7
 colorama==0.4.4
 seaborn==0.11.2
 git+https://github.com/InvisibleSymbol/etherscan-labels@7b0ac881e6d77c93184b8d0c33882953bc3d0b74#egg=etherscan_labels
+cronitor==4.4.4
