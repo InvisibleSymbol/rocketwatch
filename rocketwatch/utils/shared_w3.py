@@ -40,7 +40,7 @@ for fallback_endpoint in reversed(endpoints):
         @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
         @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
                                 recovery_timeout=15,
-                                fallback_function=tmp[-1]._make_get_request if tmp else None)
+                                fallback_function=tmp[-1].get_block if tmp else None)
         def get_block(self, *args):
             block_id = args[-1]
             if len(args) > 1:
@@ -50,7 +50,7 @@ for fallback_endpoint in reversed(endpoints):
         @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
         @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
                                 recovery_timeout=15,
-                                fallback_function=tmp[-1]._make_get_request if tmp else None)
+                                fallback_function=tmp[-1].get_validator_balances if tmp else None)
         def get_validator_balances(self, *args):
             state_id = args[-1]
             if len(args) > 1:
