@@ -37,18 +37,25 @@ for fallback_endpoint in reversed(endpoints):
         ) -> None:
             super().__init__(base_url, session)
 
-        def get_block(self, block_id: str) -> Dict[str, Any]:
+        @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
+        @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
+                                recovery_timeout=15,
+                                fallback_function=tmp[-1]._make_get_request if tmp else None)
+        def get_block(self, *args):
+            block_id = args[-1]
+            if len(args) > 1:
+                log.warning(f"falling back to {self.base_url} for block {block_id}")
             return self._make_get_request(f"/eth/v2/beacon/blocks/{block_id}")
 
         @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
         @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
                                 recovery_timeout=15,
                                 fallback_function=tmp[-1]._make_get_request if tmp else None)
-        def _make_get_request(self, *args):
-            endpoint = args[-1]
+        def get_validator_balances(self, *args):
+            state_id = args[-1]
             if len(args) > 1:
-                log.warning(f"falling back to {self.base_url} for request {endpoint}")
-            return super()._make_get_request(endpoint)
+                log.warning(f"falling back to {self.base_url} for validator balances {state_id}")
+            return self._make_get_request(f"/eth/v1/beacon/states/{state_id}/validator_balances")
 
 
     tmp.append(SuperBacon(fallback_endpoint))
