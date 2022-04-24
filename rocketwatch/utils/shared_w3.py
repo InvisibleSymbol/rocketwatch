@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Any, Dict
 
 import circuitbreaker
@@ -40,8 +41,8 @@ for fallback_endpoint in reversed(endpoints):
             return self._make_get_request(f"/eth/v2/beacon/blocks/{block_id}")
 
         @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
-        @circuitbreaker.circuit(failure_threshold=-1,
-                                recovery_timeout=180,
+        @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
+                                recovery_timeout=15,
                                 fallback_function=tmp[-1]._make_get_request if tmp else None)
         def _make_get_request(self, *args):
             endpoint = args[-1]
