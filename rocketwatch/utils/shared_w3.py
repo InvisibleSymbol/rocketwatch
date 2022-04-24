@@ -1,6 +1,5 @@
 import logging
 import math
-from typing import Any, Dict
 
 import circuitbreaker
 import requests
@@ -28,6 +27,7 @@ if cfg['rocketpool.chain'] != "mainnet":
 
 endpoints = cfg["rocketpool.consensus_layer.endpoints"]
 tmp = []
+exceptions = (HTTPError, ConnectionError, ConnectTimeout, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout)
 for fallback_endpoint in reversed(endpoints):
     class SuperBacon(Bacon):
         def __init__(
@@ -37,25 +37,39 @@ for fallback_endpoint in reversed(endpoints):
         ) -> None:
             super().__init__(base_url, session)
 
-        @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
-        @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
+        @retry(tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
+        @retry(tries=5 if tmp else 1, exceptions=ValueError, delay=0.5)
+        @circuitbreaker.circuit(failure_threshold=2 if tmp else math.inf,
                                 recovery_timeout=15,
-                                fallback_function=tmp[-1].get_block if tmp else None)
+                                expected_exception=exceptions,
+                                fallback_function=tmp[-1].get_block if tmp else None,
+                                name=f"get_block using {fallback_endpoint}")
         def get_block(self, *args):
             block_id = args[-1]
             if len(args) > 1:
                 log.warning(f"falling back to {self.base_url} for block {block_id}")
-            return self._make_get_request(f"/eth/v2/beacon/blocks/{block_id}")
+            endpoint = f"/eth/v2/beacon/blocks/{block_id}"
+            url = self.base_url + endpoint
+            response = self.session.get(url, timeout=(3.05, 20))
+            if response.status_code == 404 and response.json()["message"] == "Not found":
+                raise ValueError("Block does not exist")
+            response.raise_for_status()
+            return response.json()
 
-        @retry(tries=2 if tmp else 1, exceptions=(HTTPError, ConnectionError, ConnectTimeout))
-        @circuitbreaker.circuit(failure_threshold=-1 if tmp else math.inf,
-                                recovery_timeout=15,
-                                fallback_function=tmp[-1].get_validator_balances if tmp else None)
+        @retry(tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
+        @circuitbreaker.circuit(failure_threshold=2 if tmp else math.inf,
+                                recovery_timeout=90,
+                                fallback_function=tmp[-1].get_validator_balances if tmp else None,
+                                name=f"get_validator_balances using {fallback_endpoint}")
         def get_validator_balances(self, *args):
             state_id = args[-1]
             if len(args) > 1:
                 log.warning(f"falling back to {self.base_url} for validator balances {state_id}")
-            return self._make_get_request(f"/eth/v1/beacon/states/{state_id}/validator_balances")
+            endpoint = f"/eth/v1/beacon/states/{state_id}/validator_balances"
+            url = self.base_url + endpoint
+            response = self.session.get(url, timeout=(3.05, 20))
+            response.raise_for_status()
+            return response.json()
 
 
     tmp.append(SuperBacon(fallback_endpoint))

@@ -55,11 +55,11 @@ class QueuedSlashings(commands.Cog):
             timestamp = beacon_block_to_date(block_number)
             try:
                 block = bacon.get_block(block_number)["data"]["message"]
-            except HTTPError as e:
-                if e.response.status_code != 404:
-                    raise e
-                log.error(f"Beacon block {block_number} not found. Skipping.")
-                continue
+            except ValueError as e:
+                if e.args[0] == "Block does not exist":
+                    log.error(f"Beacon block {block_number} not found. Skipping.")
+                    continue
+                raise e
             slashings = []
             for slash in block["body"]["attester_slashings"]:
                 set_a = set(slash["attestation_2"]["attesting_indices"])

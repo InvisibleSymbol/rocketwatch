@@ -201,6 +201,15 @@ class Debug(commands.Cog):
         await self.db.minipools.delete_many({})
         await ctx.respond("Done", ephemeral=is_hidden(ctx))
 
+    @owner_only_slash()
+    async def show_circuits(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        circuits = circuitbreaker.CircuitBreakerMonitor.get_circuits()
+        msg = "```"
+        for circuit in circuits:
+            msg += f"\n{circuit.name}: {circuit.state} {circuit.open_remaining if circuit.opened else ''}"
+        await ctx.respond(f'{msg}```', ephemeral=is_hidden(ctx))
+
 
 def setup(bot):
     bot.add_cog(Debug(bot))
