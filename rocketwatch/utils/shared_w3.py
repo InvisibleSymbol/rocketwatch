@@ -38,7 +38,7 @@ for fallback_endpoint in reversed(endpoints):
             super().__init__(base_url, session)
 
         @retry(tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
-        @retry(tries=5 if tmp else 1, exceptions=ValueError, delay=0.5)
+        @retry(tries=5 if tmp else 1, exceptions=ValueError, delay=0.1)
         @circuitbreaker.circuit(failure_threshold=2 if tmp else math.inf,
                                 recovery_timeout=15,
                                 expected_exception=exceptions,
@@ -51,7 +51,7 @@ for fallback_endpoint in reversed(endpoints):
             endpoint = f"/eth/v2/beacon/blocks/{block_id}"
             url = self.base_url + endpoint
             response = self.session.get(url, timeout=(3.05, 20))
-            if response.status_code == 404 and response.json()["message"] == "Not found":
+            if response.status_code == 404 and all(q in response.json()["message"].lower() for q in ["not", "found"]):
                 raise ValueError("Block does not exist")
             response.raise_for_status()
             return response.json()
