@@ -11,7 +11,7 @@ from discord.commands import slash_command
 from discord.ext import commands, tasks
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from plugins.debug.debug import timerun
+from utils.time_debug import timerun
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error

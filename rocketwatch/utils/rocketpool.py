@@ -7,7 +7,7 @@ from cachetools import cached
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall
 
-from plugins.debug.debug import timerun
+from utils.time_debug import timerun
 from utils import solidity
 from utils.cfg import cfg
 from utils.readable import decode_abi

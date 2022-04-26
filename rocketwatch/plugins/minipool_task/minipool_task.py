@@ -9,7 +9,7 @@ import pymongo
 import requests
 from discord.ext import commands, tasks
 
-from plugins.debug.debug import timerun
+from utils.time_debug import timerun
 from utils.cfg import cfg
 from utils.reporter import report_error
 from utils.rocketpool import rp
