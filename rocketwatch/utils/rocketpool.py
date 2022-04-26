@@ -171,7 +171,7 @@ class RocketPool:
         return 1 / value_dai
 
     def get_minipool_count_per_status(self):
-        offset, limit = 0, 2500
+        offset, limit = 0, 10000
         minipool_count_per_status = [0, 0, 0, 0, 0]
         while True:
             log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
