@@ -170,6 +170,7 @@ class RocketPool:
         value_dai = data[0] ** 2 / 2 ** 192
         return 1 / value_dai
 
+    @timerun
     def get_minipool_count_per_status(self):
         offset, limit = 0, 10000
         minipool_count_per_status = [0, 0, 0, 0, 0]
