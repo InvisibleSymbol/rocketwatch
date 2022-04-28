@@ -36,7 +36,7 @@ class Core(commands.Cog):
         if not self.run_loop.is_running():
             self.run_loop.start()
 
-    @tasks.loop(seconds=30.0)
+    @tasks.loop(seconds=10.0)
     async def run_loop(self):
         p_id = time.time()
         monitor.ping(state='run', series=p_id)
@@ -47,7 +47,6 @@ class Core(commands.Cog):
         except Exception as err:
             self.state = "ERROR"
             await report_error(err)
-            monitor.ping(state='fail', series=p_id)
         # update the state message
         try:
             await self.update_state_message()
@@ -59,6 +58,7 @@ class Core(commands.Cog):
                 await self.process_event_queue()
             except Exception as err:
                 await report_error(err)
+        monitor.ping(state='fail' if self.state == "ERROR" else 'success', series=p_id)
 
     async def update_state_message(self):
         # get the state message from the db

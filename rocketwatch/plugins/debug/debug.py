@@ -49,20 +49,6 @@ async def match_function_name(ctx: AutocompleteContext):
     return [function_name for function_name in contract.functions if ctx.value.lower() in function_name.lower()]
 
 
-def timerun(func):
-    """ Calculate the execution time of a method and return it back"""
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        duration = time.time() - start
-
-        log.debug(f"{func.__name__} took {duration} seconds")
-        return result
-    return wrapper
-
-
 class Debug(commands.Cog):
     def __init__(self, bot):
         self.bot = bot

@@ -6,15 +6,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 import cronitor
 import pymongo
-import requests
 from discord.ext import commands, tasks
+from requests.exceptions import HTTPError
 
-from utils.time_debug import timerun
 from utils.cfg import cfg
 from utils.reporter import report_error
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
+from utils.shared_w3 import w3, bacon
 from utils.solidity import to_float
+from utils.time_debug import timerun
 
 log = logging.getLogger("minipool_task")
 log.setLevel(cfg["log_level"])
@@ -99,32 +99,22 @@ class MinipoolTask(commands.Cog):
     @timerun
     def get_validator_data(self, pubkeys):
         result = {}
-        batch_size = 80
-        offset = 0
-        while True:
-            batch = pubkeys[offset:offset + batch_size]
-            if not batch:
-                break
-            log.debug(f"requesting pubkeys {offset} to {min(offset + batch_size, len(pubkeys))}")
-            res = requests.get("https://beaconcha.in/api/v1/validator/" + ",".join(batch))
-            res = res.json()
-            if "data" not in res:
-                log.error(f"error getting validator indexes: {res}")
-                time.sleep(5)
+        for i, pubkey in enumerate(pubkeys):
+            if i % (len(pubkeys) // 10) == 0:
+                log.debug(f"getting validator data for {i}/{len(pubkeys)}")
+            try:
+                data = bacon.get_validator(validator_id=pubkey, state_id="finalized")
+            except HTTPError:
                 continue
-            data = res["data"]
-            # handle when we only get a single validator back
-            if not isinstance(data, list):
-                data = [data]
-            for validator_data in data:
-                validator_id = int(validator_data["validatorindex"])
-                activation_epoch = int(validator_data["activationepoch"])
-                if 2**63-1 == activation_epoch:
-                    continue
-                pubkey = validator_data["pubkey"]
-                result[pubkey] = {"validator_id": validator_id, "activation_epoch": activation_epoch}
-            offset += batch_size
-            time.sleep(2)
+            data = data["data"]
+            validator_id = int(data["index"])
+            activation_epoch = int(data["validator"]["activation_epoch"])
+            # The activation epoch is set to the possible maximum int if none has been determined yet.
+            # I don't check for an exact value because it turns out that nimbus uses uint64 while Teku uses int64.
+            # >=2**23 will be good enough for the next 100 years, after which neither this bot nor its creator will be alive.
+            if activation_epoch >= 2 ** 23:
+                continue
+            result[pubkey] = {"validator_id": validator_id, "activation_epoch": activation_epoch}
         return result
 
     def check_indexes(self):
@@ -148,13 +138,13 @@ class MinipoolTask(commands.Cog):
         log.debug("Gathering all Minipool commission rates...")
         node_fees = self.get_node_fee(minipool_addresses)
         log.debug("Gathering all Minipool validator indexes...")
-        validator_data = self.  get_validator_data(minipool_pubkeys)
+        validator_data = self.get_validator_data(minipool_pubkeys)
         data = [{
-            "address"      : a,
-            "pubkey"       : p,
-            "node_operator": n,
-            "node_fee"     : f,
-            "validator"    : validator_data[p]["validator_id"],
+            "address"         : a,
+            "pubkey"          : p,
+            "node_operator"   : n,
+            "node_fee"        : f,
+            "validator"       : validator_data[p]["validator_id"],
             "activation_epoch": validator_data[p]["activation_epoch"]
         } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_data]
         if data:
