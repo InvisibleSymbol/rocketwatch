@@ -57,8 +57,7 @@ class Core(commands.Cog):
                 await self.process_event_queue()
             except Exception as err:
                 await report_error(err)
-        a = monitor.ping(state='fail' if self.state == "ERROR" else 'success', series=p_id)
-        log.debug(f"pushed to cronitor {self.state}: {a}")
+        monitor.ping(state='fail' if self.state == "ERROR" else 'complete', series=p_id)
 
     async def update_state_message(self):
         # get the state message from the db
