@@ -43,7 +43,6 @@ class Core(commands.Cog):
         # try to gather new events
         try:
             await self.gather_new_events()
-            monitor.ping(state='complete', series=p_id)
         except Exception as err:
             self.state = "ERROR"
             await report_error(err)
