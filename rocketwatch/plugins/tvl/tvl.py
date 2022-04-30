@@ -1,6 +1,7 @@
 import logging
 
 import humanize
+from discord import Option
 from discord.commands import slash_command
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -22,8 +23,14 @@ class TVL(commands.Cog):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @slash_command(guild_ids=guilds)
-    async def tvl(self, ctx):
+    @slash_command()
+    async def tvl(self,
+                  ctx,
+                  show_all: Option(
+                      bool,
+                      "Also show entries with 0 value",
+                      default=False,
+                      required=False)):
         await ctx.defer(ephemeral=is_hidden(ctx))
         tvl = []
         description = []
@@ -50,7 +57,7 @@ class TVL(commands.Cog):
                 },
                 {
                     "$group": {
-                        "_id": "total",
+                        "_id"  : "total",
                         "total": {"$sum": "$balance"},
                         "count": {"$sum": 1},
                     }
@@ -98,7 +105,7 @@ class TVL(commands.Cog):
         # The latter means it can have either 16 ETH or 32 ETH locked in this state. The current implementation assumes 16 ETH.
         # TODO fix the above comment.
         tvl.append(minipool_count_per_status["dissolvedCount"] * 16)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Dissolved Minipools :")
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Dissolved Minipools")
 
         # Deposit Pool Balance: calls the contract and asks what its balance is, simple enough.
         # ETH in here has been swapped for rETH and is waiting to be matched with a minipool.
@@ -145,7 +152,7 @@ class TVL(commands.Cog):
         dai_total_tvl = total_tvl * eth_price
         description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl)} DAI)")
 
-        description = "```diff\n" + "\n".join(description) + "```"
+        description = "```diff\n" + "\n".join([d for d in description if " 0.00 " not in d or show_all]) + "```"
         # send embed with tvl
         e = Embed()
         e.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
