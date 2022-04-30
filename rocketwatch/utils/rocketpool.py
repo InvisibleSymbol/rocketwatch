@@ -183,7 +183,8 @@ class RocketPool:
             if sum(tmp) < limit:
                 break
             offset += limit
-        return minipool_count_per_status
+        return dict(zip(["initialisedCount", "prelaunchCount", "stakingCount", "withdrawableCount", "dissolvedCount"],
+                        minipool_count_per_status))
 
 
 rp = RocketPool()
