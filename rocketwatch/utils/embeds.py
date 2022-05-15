@@ -103,7 +103,11 @@ def assemble(args):
     if args.event_name == "service_interrupted":
         e.colour = Color.from_rgb(235, 86, 86)
 
-    if _(f"embeds.{args.event_name}.size") != "small":
+    do_small = all([
+        _(f"embeds.{args.event_name}.description_small"),
+        args.get("amount" if "ethAmount" not in args else "ethAmount") > 100])
+
+    if not do_small:
         e.title = _(f"embeds.{args.event_name}.title")
 
     # make numbers look nice
@@ -119,11 +123,12 @@ def assemble(args):
                 arg_value = int(arg_value)
             args[arg_key] = humanize.intcomma(arg_value)
 
-    e.description = _(f"embeds.{args.event_name}.description", **args)
-
-    if _(f"embeds.{args.event_name}.size") == "small":
+    if do_small:
+        e.description = _(f"embeds.{args.event_name}.description_small", **args)
         e.set_footer(text="")
         return e
+
+    e.description = _(f"embeds.{args.event_name}.description", **args)
 
     if "exchangeRate" in args:
         e.add_field(name="Exchange Rate",

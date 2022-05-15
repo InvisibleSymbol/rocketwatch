@@ -5,8 +5,8 @@
     },
     "reth_burn_event": {
         "title": ":fire: rETH Burn",
-        "description": ":fire: %{from} burned `%{amount}` rETH for %{ethAmount} ETH! %{transactionHash_small}",
-        "size": "small"
+        "description": "%{amount} ETH deposited to the Pool!",
+        "description_small": ":fire: %{from} burned %{amount} rETH for %{ethAmount} ETH! %{transactionHash_small}"
     },
     "rpl_claim_event": {
         "title": ":moneybag: Major RPL Rewards Claim",
@@ -25,8 +25,9 @@
         "description": "Minipool %{minipool} has been flagged as Withdrawable!"
     },
     "pool_deposit_event": {
-        "description": ":rocket: %{from} deposited `%{amount}` ETH into the Deposit Pool! %{transactionHash_small}",
-        "size": "small"
+        "title": ":rocket: Pool Deposit",
+        "description": "%{amount} ETH deposited to the Pool!",
+        "description_small": ":rocket: %{from} deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
     },
     "odao_proposal_add_event": {
         "title": ":bulb: Proposal Created",
