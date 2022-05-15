@@ -197,8 +197,10 @@ class Debug(commands.Cog):
         await ctx.respond(f'{msg}```', ephemeral=is_hidden(ctx))
 
     @owner_only_slash()
-    async def overwrite_events_block(self, block_number: int):
+    async def overwrite_events_block(self, ctx, block_number: int):
+        await ctx.defer(ephemeral=is_hidden(ctx))
         await self.db.last_checked_block.update_one({"_id": "events"}, {"$set": {"block": block_number}})
+        await ctx.respond("Done", ephemeral=is_hidden(ctx))
 
 def setup(bot):
     bot.add_cog(Debug(bot))
