@@ -196,6 +196,9 @@ class Debug(commands.Cog):
             msg += f"\n{circuit.name}: {circuit.state} {circuit.open_remaining if circuit.opened else ''}"
         await ctx.respond(f'{msg}```', ephemeral=is_hidden(ctx))
 
+    @owner_only_slash()
+    async def overwrite_events_block(self, block_number: int):
+        await self.db.last_checked_block.update_one({"_id": "events"}, {"$set": {"block": block_number}})
 
 def setup(bot):
     bot.add_cog(Debug(bot))
