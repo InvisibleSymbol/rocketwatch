@@ -63,9 +63,7 @@ def get_sea_creature_for_address(address):
                                            rp.get_address_by_name("rocketTokenRPLFixedSupply"),
                                            rp.get_address_by_name("rocketTokenRETH")],
                                        ])
-    tokens = []
-    if not "error" in resp:
-        tokens = resp["result"]["tokenBalances"]
+    tokens = resp["result"]["tokenBalances"] if "error" not in resp else []
     # add their tokens to their eth balance
     for token in tokens:
         contract_name = rp.get_name_by_address(token["contractAddress"])

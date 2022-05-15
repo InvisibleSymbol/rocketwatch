@@ -44,8 +44,7 @@ def el_explorer_url(target, name="", prefix=""):
             # not an odao member, try to get their ens
             name = ens.get_name(target)
 
-        code = w3.eth.get_code(target)
-        if code:
+        if code := w3.eth.get_code(target):
             prefix += "📄"
             if (
                 not name
@@ -93,7 +92,9 @@ def prepare_args(args):
                 args[arg_key] = cl_explorer_url(arg_value)
             else:
                 args[arg_key] = el_explorer_url(arg_value, prefix=prefix)
-                args[arg_key + "_clean"] = el_explorer_url(arg_value)
+                args[f'{arg_key}_clean'] = el_explorer_url(arg_value)
+                if len(arg_value) == 66:
+                    args[f'{arg_key}_small'] = el_explorer_url(arg_value, name="[tnx]")
     return args
 
 
@@ -101,7 +102,9 @@ def assemble(args):
     e = Embed()
     if args.event_name == "service_interrupted":
         e.colour = Color.from_rgb(235, 86, 86)
-    e.title = _(f"embeds.{args.event_name}.title")
+
+    if _(f"embeds.{args.event_name}.size") != "small":
+        e.title = _(f"embeds.{args.event_name}.title")
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
@@ -117,6 +120,10 @@ def assemble(args):
             args[arg_key] = humanize.intcomma(arg_value)
 
     e.description = _(f"embeds.{args.event_name}.description", **args)
+
+    if _(f"embeds.{args.event_name}.size") == "small":
+        e.set_footer(text="")
+        return e
 
     if "exchangeRate" in args:
         e.add_field(name="Exchange Rate",
@@ -181,8 +188,7 @@ def assemble(args):
                     value=content)
 
     # show sender address
-    senders = [value for key, value in args.items() if key.lower() in ["sender", "from"]]
-    if senders:
+    if senders := [value for key, value in args.items() if key.lower() in ["sender", "from"]]:
         sender = senders[0]
         e.add_field(name="Sender Address",
                     value=sender)

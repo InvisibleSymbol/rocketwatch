@@ -274,8 +274,7 @@ class QueuedEvents(commands.Cog):
                 log.debug(f"Checking Event {event}")
 
                 address = event.address
-                contract_name = rp.get_name_by_address(address)
-                if contract_name:
+                if rp.get_name_by_address(address):
                     # default event path
                     contract = rp.get_contract_by_address(address)
                     contract_event = self.topic_mapping[event.topics[0].hex()]
