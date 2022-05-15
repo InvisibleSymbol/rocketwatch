@@ -104,7 +104,7 @@ def assemble(args):
         e.colour = Color.from_rgb(235, 86, 86)
 
     do_small = all([
-        _(f"embeds.{args.event_name}.description_small"),
+        _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small",
         args.get("amount" if "ethAmount" not in args else "ethAmount") < 100])
 
     if not do_small:
