@@ -105,7 +105,7 @@ def assemble(args):
 
     do_small = all([
         _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small",
-        args.get("amount" if "ethAmount" not in args else "ethAmount") < 100])
+        args.get("amount" if "ethAmount" not in args else "ethAmount", 0) < 100])
 
     if not do_small:
         e.title = _(f"embeds.{args.event_name}.title")
