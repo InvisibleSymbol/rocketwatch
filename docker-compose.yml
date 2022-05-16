@@ -14,7 +14,7 @@ services:
         max-file: "10"
 
   mongodb:
-    image: mongo:4.4.14
+    image: mongo:5.0.8
     volumes:
       - ./mongodb:/data/db
     restart: unless-stopped
