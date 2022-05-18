@@ -30,8 +30,8 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
-   networks:
-     - ethereum
+    networks:
+      - ethereum
 
   watchtower:
     image: containrrr/watchtower
