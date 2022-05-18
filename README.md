@@ -15,7 +15,7 @@ A Discord bot that tracks Rocket Pool Events
 - Deduplication-Logic (prevents duplicated Messages caused by Chain-Reorgs).
 - Easy Extendability (Almost no hard-coded Events, most are loaded from a `.json` File)
 <!--
-## Instructions
+## Instructions:
 
 - Python 3.8 Recommended
 - `pip install -r requirements.txt`
