@@ -3,7 +3,7 @@ services:
   rocketwatch:
     image: invisiblesymbol/rocketwatch
     volumes:
-      - ./rocketwatch:/app
+      - ./rocketwatch/main.cfg:/app/main.cfg
     restart: unless-stopped
     depends_on:
       - mongodb
@@ -12,15 +12,34 @@ services:
       options:
         max-size: "100m"
         max-file: "10"
+    # required to access my node containers
+    networks:
+      - ethereum
+    labels:
+      com.centurylinklabs.watchtower.enable: true
 
   mongodb:
     image: mongo:5.0.8
     volumes:
       - ./mongodb:/data/db
     restart: unless-stopped
-
+    # bellow prevents unecessary data from being colleted
+    command: --setParameter diagnosticDataCollectionEnabled=false
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "10"
+   networks:
+     - ethereum
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30
+      --label-enable
+
+networks:
+  ethereum:
+    name: ethereum
