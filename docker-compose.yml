@@ -3,6 +3,7 @@ services:
   rocketwatch:
     image: invisiblesymbol/rocketwatch
     volumes:
+      - ./rocketwatch/contracts/rocketpool:/app/contracts/rocketpool
       - ./rocketwatch/main.cfg:/app/main.cfg
     restart: unless-stopped
     depends_on:
