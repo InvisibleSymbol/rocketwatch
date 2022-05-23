@@ -60,7 +60,8 @@ class QueuedMilestones(commands.Cog):
             if state:
                 previous_milestone = state["current_goal"]
             else:
-                log.debug(f"First time we have processed Milestones for milestone {milestone.id}. Adding it to the Database.")
+                log.debug(
+                    f"First time we have processed Milestones for milestone {milestone.id}. Adding it to the Database.")
                 self.collection.insert_one({"_id": milestone["id"], "current_goal": latest_goal})
                 previous_milestone = milestone.min
             if previous_milestone < latest_goal:
@@ -83,5 +84,5 @@ class QueuedMilestones(commands.Cog):
         return payload
 
 
-def setup(bot):
-    bot.add_cog(QueuedMilestones(bot))
+async def setup(bot):
+    await bot.add_cog(QueuedMilestones(bot))

@@ -1,9 +1,9 @@
 import logging
 
 import humanize
-from discord import Option
-from discord.commands import slash_command
+from discord.app_commands import describe
 from discord.ext import commands
+from discord.ext.commands import Context, hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
@@ -11,7 +11,6 @@ from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("tvl")
@@ -23,14 +22,11 @@ class TVL(commands.Cog):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @slash_command()
+    @hybrid_command()
+    @describe(show_all="Also show entries with 0 value")
     async def tvl(self,
-                  ctx,
-                  show_all: Option(
-                      bool,
-                      "Also show entries with 0 value",
-                      default=False,
-                      required=False)):
+                  ctx: Context,
+                  show_all: bool = False):
         await ctx.defer(ephemeral=is_hidden(ctx))
         tvl = []
         description = []
@@ -157,8 +153,8 @@ class TVL(commands.Cog):
         e = Embed()
         e.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
         e.description = description
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(TVL(bot))
+async def setup(bot):
+    await bot.add_cog(TVL(bot))

@@ -2,14 +2,14 @@ import logging
 from datetime import datetime
 
 import pytz
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
 from utils.shared_w3 import w3
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("random")
@@ -20,8 +20,8 @@ class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(guild_ids=guilds)
-    async def dev_time(self, ctx):
+    @hybrid_command()
+    async def dev_time(self, ctx: Context):
         """Timezones too confusing to you? Well worry no more, this command is here to help!"""
         e = Embed()
         time_format = "%A %H:%M:%S %Z"
@@ -45,10 +45,10 @@ class Random(commands.Cog):
         joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
         e.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
 
-        await ctx.respond(embed=e)
+        await ctx.send(embed=e)
 
-    @slash_command(guild_ids=guilds)
-    async def sea_creatures(self, ctx, address: str = None):
+    @hybrid_command()
+    async def sea_creatures(self, ctx: Context, address: str = None):
         """List all sea creatures with their required minimum holding"""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
@@ -59,7 +59,7 @@ class Random(commands.Cog):
                 address = w3.toChecksumAddress(address)
             except (ValueError, TypeError):
                 e.description = "Invalid address"
-                await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+                await ctx.send(embed=e)
                 return
             creature = get_sea_creature_for_address(address)
             if not creature:
@@ -73,10 +73,11 @@ class Random(commands.Cog):
             e.title = "Possible Sea Creatures"
             e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
             for holding_value, sea_creature in sea_creatures.items():
-                e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets", inline=False)
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+                e.add_field(name=f"{sea_creature}:", value=f"holds over {holding_value} ETH worth of assets",
+                            inline=False)
+        await ctx.send(embed=e)
         return
 
 
-def setup(bot):
-    bot.add_cog(Random(bot))
+async def setup(bot):
+    await bot.add_cog(Random(bot))

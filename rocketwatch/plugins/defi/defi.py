@@ -1,7 +1,8 @@
 import logging
 
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
@@ -9,7 +10,6 @@ from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("defi")
@@ -21,8 +21,11 @@ class DeFi(commands.Cog):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @slash_command(guild_ids=guilds)
-    async def curve(self, ctx):
+    @hybrid_command()
+    async def curve(self, ctx: Context):
+        """
+        Shoe stats of the curve pool
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Curve Pool"
@@ -75,10 +78,13 @@ class DeFi(commands.Cog):
             name="Contract Address",
             value=link,
         )
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
-    @slash_command(guild_ids=guilds)
-    async def yearn(self, ctx):
+    @hybrid_command()
+    async def yearn(self, ctx: Context):
+        """
+        Shoe stats of the yearn vault
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Yearn Pool"
@@ -106,8 +112,8 @@ class DeFi(commands.Cog):
             name="Contract Address",
             value=link,
         )
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(DeFi(bot))
+async def setup(bot):
+    await bot.add_cog(DeFi(bot))

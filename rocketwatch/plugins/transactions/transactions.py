@@ -12,14 +12,14 @@ from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
-log = logging.getLogger("bootstrap")
+log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
 
 DEPOSIT_EVENT = 2
 WITHDRAWABLE_EVENT = 3
 
 
-class QueuedBootstrap(commands.Cog):
+class QueuedTransactions(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.state = "INIT"
@@ -28,7 +28,7 @@ class QueuedBootstrap(commands.Cog):
 
         self.block_event = w3.eth.filter("latest")
 
-        with open("./plugins/bootstrap/functions.json") as f:
+        with open("./plugins/transactions/functions.json") as f:
             mapped_events = json.load(f)
 
         for contract_name, event_mapping in mapped_events.items():
@@ -46,7 +46,7 @@ class QueuedBootstrap(commands.Cog):
         args.transactionHash = event.hash.hex()
         args.blockNumber = event.blockNumber
 
-        if "dao_disable" in event_name and not event.confirmDisableBootstrapMode:
+        if "dao_disable" in event_name and not args.confirmDisableBootstrapMode:
             return None
 
         if "deposit" in event_name:
@@ -111,7 +111,7 @@ class QueuedBootstrap(commands.Cog):
         else:
             blocks = list(self.block_event.get_new_entries())
 
-        for block_hash in blocks:
+        for block_hash in [14826345]:
             log.debug(f"Checking Block: {block_hash}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
@@ -121,7 +121,8 @@ class QueuedBootstrap(commands.Cog):
             for tnx in block.transactions:
                 if "to" not in tnx:
                     # probably a contract creation transaction
-                    log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
+                    log.debug(
+                        f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
                     continue
                 if tnx.to in self.addresses:
                     contract_name = rp.get_name_by_address(tnx.to)
@@ -157,7 +158,7 @@ class QueuedBootstrap(commands.Cog):
 
                         if embed:
                             payload.append(Response(
-                                topic="bootstrap",
+                                topic="transactions",
                                 embed=embed,
                                 event_name=event_name,
                                 unique_id=f"{tnx.hash.hex()}:{event_name}",
@@ -171,5 +172,5 @@ class QueuedBootstrap(commands.Cog):
         return payload
 
 
-def setup(bot):
-    bot.add_cog(QueuedBootstrap(bot))
+async def setup(bot):
+    await bot.add_cog(QueuedTransactions(bot))

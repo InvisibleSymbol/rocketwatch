@@ -42,7 +42,8 @@ def get_block_by_timestamp(timestamp):
 
         error = (timestamp - t_expected) / av_block_time
         error_map[i_expected] = error
-        log.debug(f"Estimated Block {i_expected} with timestamp {t_expected} is off {timestamp - t_expected}s ({error:=.3f} Blocks)")
+        log.debug(
+            f"Estimated Block {i_expected} with timestamp {t_expected} is off {timestamp - t_expected}s ({error:=.3f} Blocks)")
 
         # if the block before this one has a positive error, and we currently have a negative error,
         # then we know we have overshot the target

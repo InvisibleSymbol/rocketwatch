@@ -1,14 +1,14 @@
 import logging
 
 import numpy as np
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.etherscan import get_recent_account_transactions
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("node_fee_distribution")
@@ -25,11 +25,11 @@ class NodeFeeDistribution(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        self.node_deposit_address = rp.get_address_by_name("rocketNodeDeposit")
-        self.rpl_staking_address = rp.get_address_by_name("rocketNodeStaking")
-
-    @slash_command(guild_ids=guilds)
-    async def node_fee_distribution(self, ctx):
+    @hybrid_command()
+    async def node_fee_distribution(self, ctx: Context):
+        """
+        Show the distribution of node expenses due to gas fees.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         e = Embed()
@@ -37,9 +37,9 @@ class NodeFeeDistribution(commands.Cog):
         e.description = ""
 
         deposit_txs = await get_recent_account_transactions(
-            self.node_deposit_address)
+            rp.get_address_by_name("rocketNodeDeposit"))
         rpl_staking_txs = await get_recent_account_transactions(
-            self.rpl_staking_address)
+            rp.get_address_by_name("rocketNodeStaking"))
         first = True
 
         for title, txs in [('Minipool Deposit', deposit_txs), ('RPL Staking', rpl_staking_txs)]:
@@ -65,8 +65,8 @@ class NodeFeeDistribution(commands.Cog):
             else:
                 e.description += f"No recent {title} transactions found.\n"
 
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(NodeFeeDistribution(bot))
+async def setup(bot):
+    await bot.add_cog(NodeFeeDistribution(bot))

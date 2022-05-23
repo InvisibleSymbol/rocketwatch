@@ -1,12 +1,12 @@
 import logging
 
 import aiohttp
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("releases")
@@ -18,8 +18,8 @@ class Releases(commands.Cog):
         self.bot = bot
         self.tag_url = "https://github.com/rocket-pool/smartnode-install/releases/tag/"
 
-    @slash_command(guild_ids=guilds)
-    async def latest_releases(self, ctx):
+    @hybrid_command()
+    async def latest_releases(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         async with aiohttp.ClientSession() as session:
@@ -35,8 +35,8 @@ class Releases(commands.Cog):
         e.add_field(name="Latest Mainnet Release", value=latest_mainnet_release, inline=False)
         e.add_field(name="Latest Prater Release", value=latest_prater_release, inline=False)
 
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(Releases(bot))
+async def setup(bot):
+    await bot.add_cog(Releases(bot))

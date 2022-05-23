@@ -66,7 +66,8 @@ class MinipoolTask(commands.Cog):
     @timerun
     def get_public_keys(self, addresses):
         # optimizing this doesn't seem to help much, so keep it simple for readability
-        minipool_pubkeys = rp.multicall.aggregate(self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses)
+        minipool_pubkeys = rp.multicall.aggregate(
+            self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses)
         minipool_pubkeys = [f"0x{minipool_pubkey.results[0].hex()}" for minipool_pubkey in minipool_pubkeys.results]
         return minipool_pubkeys
 
@@ -158,5 +159,5 @@ class MinipoolTask(commands.Cog):
         self.run_loop.cancel()
 
 
-def setup(bot):
-    bot.add_cog(MinipoolTask(bot))
+async def setup(bot):
+    await bot.add_cog(MinipoolTask(bot))

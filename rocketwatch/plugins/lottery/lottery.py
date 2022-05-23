@@ -1,8 +1,8 @@
 import logging
 
 import aiohttp
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReplaceOne
 
@@ -10,7 +10,6 @@ from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.readable import cl_explorer_url
-from utils.slash_permissions import guilds
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.visibility import is_hidden
 
@@ -49,8 +48,8 @@ class Lottery(commands.Cog):
         await col.bulk_write(payload)
         return
 
-    async def chore(self, ctx):
-        msg = await ctx.respond("loading latest sync committee...", ephemeral=is_hidden(ctx))
+    async def chore(self, ctx: Context):
+        msg = await ctx.send(content="loading latest sync committee...")
         await self.load_sync_committee("latest")
         await msg.edit(content="loading next sync committee...")
         await self.load_sync_committee("next")
@@ -124,11 +123,12 @@ class Lottery(commands.Cog):
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
         description += "Node Operators: "
-        description += f", ".join([f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
+        description += f", ".join(
+            [f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
         return description
 
-    @slash_command(guild_ids=guilds)
-    async def lottery(self, ctx):
+    @hybrid_command()
+    async def lottery(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await self.chore(ctx)
         await msg.edit(content="generating lottery embed...")
@@ -144,5 +144,5 @@ class Lottery(commands.Cog):
         await msg.edit(content="", embed=e)
 
 
-def setup(bot):
-    bot.add_cog(Lottery(bot))
+async def setup(bot):
+    await bot.add_cog(Lottery(bot))
