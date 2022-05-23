@@ -1,8 +1,7 @@
 import logging
 
 import pymongo
-from discord.ext import commands, tasks
-from requests import HTTPError
+from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils.cfg import cfg
@@ -47,8 +46,9 @@ class QueuedSlashings(commands.Cog):
         elif latest_db_block["block"] <= infura_finalized:
             blocks = list(range(latest_db_block["block"], infura_finalized))
         else:
-            log.warning("Infura is being stupid and returned a block that is smaller than a previously seen finalized block: "
-                        f"{infura_finalized=} < {latest_db_block['block']=}. Skipping this check.")
+            log.warning(
+                "Infura is being stupid and returned a block that is smaller than a previously seen finalized block: "
+                f"{infura_finalized=} < {latest_db_block['block']=}. Skipping this check.")
             return
         for block_number in blocks:
             log.debug(f"Checking Beacon block {block_number}")
@@ -83,7 +83,10 @@ class QueuedSlashings(commands.Cog):
                 if not lookup:
                     log.info(f"Skipping slash of unknown validator {slash['minipool']}")
                     continue
-                unique_id = f"{timestamp}:slash-{slash['minipool']}:slasher-{slash['slasher']}:slashing-type-{slash['slashing_type']}"
+                unique_id = f"{timestamp}" \
+                            f":slash-{slash['minipool']}" \
+                            f":slasher-{slash['slasher']}" \
+                            f":slashing-type-{slash['slashing_type']}"
                 slash["minipool"] = cl_explorer_url(slash["minipool"])
                 slash["slasher"] = cl_explorer_url(slash["slasher"])
                 slash["node_operator"] = lookup["node_operator"]
@@ -93,7 +96,7 @@ class QueuedSlashings(commands.Cog):
                 if embed:
                     closest_block = get_block_by_timestamp(timestamp)[0]
                     payload.append(Response(
-                        topic="bootstrap",
+                        topic="beacon_slashings",
                         embed=embed,
                         event_name=slash["event_name"],
                         unique_id=unique_id,
@@ -103,10 +106,12 @@ class QueuedSlashings(commands.Cog):
         log.debug("Finished Checking for new Slashes Commands")
         self.state = "OK"
 
-        self.db.last_checked_block.replace_one({"_id": "slashings"}, {"_id": "slashings", "block": infura_finalized}, upsert=True)
+        self.db.last_checked_block.update_one({"_id": "slashings"},
+                                              {"$set": {"block": infura_finalized}},
+                                              upsert=True)
 
         return payload
 
 
-def setup(bot):
-    bot.add_cog(QueuedSlashings(bot))
+async def setup(bot):
+    await bot.add_cog(QueuedSlashings(bot))

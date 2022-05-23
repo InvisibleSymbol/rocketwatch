@@ -4,14 +4,14 @@ from io import BytesIO
 import inflect
 import matplotlib.pyplot as plt
 import numpy as np
-from discord import File, Option
-from discord.commands import slash_command
+from discord import File
+from discord.app_commands import describe
 from discord.ext import commands
+from discord.ext.commands import Context, hybrid_command
 from matplotlib.ticker import FuncFormatter
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.slash_permissions import guilds
 from utils.thegraph import get_average_collateral_percentage_per_node
 from utils.visibility import is_hidden
 
@@ -22,37 +22,35 @@ p = inflect.engine()
 
 def get_percentiles(percentiles, counts):
     for p in percentiles:
-        yield (p, np.percentile(counts, p, interpolation='nearest'))
+        yield p, np.percentile(counts, p, interpolation='nearest')
+
+
+async def collateral_distribution_raw(ctx: Context, distribution):
+    e = Embed()
+    e.title = "Collateral Distribution"
+    description = "```\n"
+    for collateral, nodes in distribution:
+        description += f"{collateral:>5}%: " \
+                       f"{nodes:>4} {p.plural('node', nodes)}\n"
+    description += "```"
+    e.description = description
+    await ctx.send(embed=e)
 
 
 class Collateral(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def collateral_distribution_raw(self, ctx, distribution):
-        e = Embed()
-        e.title = "Collateral Distribution"
-        description = "```\n"
-        for collateral, nodes in distribution:
-            description += f"{collateral:>5}%: " \
-                           f"{nodes:>4} {p.plural('node', nodes)}\n"
-        description += "```"
-        e.description = description
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
-
-    @slash_command(guild_ids=guilds)
+    @hybrid_command()
+    @describe(raw="Show Raw Distribution Data",
+              cap_collateral="Cap Collateral to 100%")
     async def collateral_distribution(self,
-                                      ctx,
-                                      raw: Option(
-                                          bool,
-                                          "Show Raw Distribution Data",
-                                          default=False,
-                                          required=False),
-                                      cap_collateral: Option(
-                                          bool,
-                                          "Cap Collateral to 150%",
-                                          default=True,
-                                          required=False)):
+                                      ctx: Context,
+                                      raw: bool = False,
+                                      cap_collateral: bool = True):
+        """
+        Show the distribution of collateral across nodes.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
@@ -66,7 +64,7 @@ class Collateral(commands.Cog):
 
         # If the raw data were requested, print them and exit early
         if raw:
-            await self.collateral_distribution_raw(ctx, distribution[::-1])
+            await collateral_distribution_raw(ctx, distribution[::-1])
             return
 
         img = BytesIO()
@@ -116,9 +114,9 @@ class Collateral(commands.Cog):
         percentile_strings = [f"{x[0]}th percentile: {int(x[1])}% collateral" for x in
                               get_percentiles([50, 75, 90, 99], counts)]
         e.set_footer(text="\n".join(percentile_strings))
-        await ctx.respond(embed=e, file=f, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e, attachments=[f])
         img.close()
 
 
-def setup(bot):
-    bot.add_cog(Collateral(bot))
+async def setup(bot):
+    await bot.add_cog(Collateral(bot))

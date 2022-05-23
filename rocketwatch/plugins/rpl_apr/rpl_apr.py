@@ -4,14 +4,14 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
 from discord import File
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("rpl_apr")
@@ -22,8 +22,8 @@ class RplApr(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(guild_ids=guilds)
-    async def rpl_apr(self, ctx):
+    @hybrid_command()
+    async def rpl_apr(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
@@ -69,9 +69,9 @@ class RplApr(commands.Cog):
         e.title = "RPL APR Graph"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
-        await ctx.respond(embed=e, file=f, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e, attachments=[f])
         img.close()
 
 
-def setup(bot):
-    bot.add_cog(RplApr(bot))
+async def setup(bot):
+    await bot.add_cog(RplApr(bot))

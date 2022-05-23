@@ -53,7 +53,8 @@ class QueuedEvents(commands.Cog):
                     topic = contract.events[event["event_name"]].build_filter().topics[0]
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
-                    log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                    log.warning(
+                        f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
                     continue
 
                 self.internal_event_mapping[event["event_name"]] = event["name"]
@@ -79,7 +80,8 @@ class QueuedEvents(commands.Cog):
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
-                    log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                    log.warning(
+                        f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
                     continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
 
@@ -184,7 +186,7 @@ class QueuedEvents(commands.Cog):
             vote_graph.barh(votes, ["For", "Against"], max_width=20)
             args.vote_graph = vote_graph.get_string()
 
-        # create human readable decision for votes
+        # create human-readable decision for votes
         if "supported" in args:
             args.decision = "for" if args.supported else "against"
 
@@ -195,7 +197,8 @@ class QueuedEvents(commands.Cog):
 
         if "auction_bid_event" in event_name:
             eth = solidity.to_float(args.bidAmount)
-            price = solidity.to_float(rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
+            price = solidity.to_float(
+                rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
         if event_name in ["rpl_claim_event", "rpl_stake_event"]:
@@ -312,9 +315,10 @@ class QueuedEvents(commands.Cog):
         log.debug("Finished Checking for new Events")
         # store last checked block in db if its bigger than the one we have stored
         self.state = "OK"
-        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block}, upsert=True)
+        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block},
+                                               upsert=True)
         return messages
 
 
-def setup(bot):
-    bot.add_cog(QueuedEvents(bot))
+async def setup(bot):
+    await bot.add_cog(QueuedEvents(bot))

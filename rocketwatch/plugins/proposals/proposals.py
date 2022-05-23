@@ -7,8 +7,9 @@ import matplotlib as mpl
 import numpy as np
 from PIL import Image
 from discord import File
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReplaceOne
@@ -17,7 +18,6 @@ from wordcloud import WordCloud
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -98,16 +98,15 @@ class Proposals(commands.Cog):
         await self.db.proposals.bulk_write(payload)
         log.info("finished gathering all proposals")
 
-    async def chore(self, ctx):
-        msg = await ctx.respond("doing chores...", ephemeral=is_hidden(ctx))
+    async def chore(self, ctx: Context):
+        await ctx.send(content="doing chores...")
         # only run if self.last_chore_run timestamp is older than 1 hour
         if (time.time() - self.last_chore_run) > 3600:
             self.last_chore_run = time.time()
-            await msg.edit(content="gathering proposals...")
+            await ctx.send(content="gathering proposals...")
             await self.gather_all_proposals()
         else:
             log.debug("skipping chore")
-        return msg
 
     async def gather_attribute(self, attribute):
         distribution = await self.db.minipools.aggregate([
@@ -209,11 +208,14 @@ class Proposals(commands.Cog):
         ]).to_list(length=None)
         return distribution
 
-    @slash_command(guild_ids=guilds)
-    async def version_chart(self, ctx):
+    @hybrid_command()
+    async def version_chart(self, ctx: Context):
+        """
+        Show a historical chart of used Smart Node versions
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await msg.edit(content="generating version chart...")
+        await self.chore(ctx)
+        await ctx.send(content="generating version chart...")
 
         e = Embed(title="Version Chart")
 
@@ -312,11 +314,11 @@ class Proposals(commands.Cog):
         e.set_image(url="attachment://chart.png")
 
         # send data
-        await msg.edit(content="", embed=e, file=File(img, filename="chart.png"))
+        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
         img.close()
 
-    async def proposal_vs_node_operators_embed(self, attribute, name, msg):
-        await msg.edit(content=f"generating {name} distribution graph...")
+    async def proposal_vs_node_operators_embed(self, attribute, name, ctx: Context):
+        await ctx.send(content=f"generating {name} distribution graph...")
 
         e = Embed(title=f"{name} Distribution")
 
@@ -387,26 +389,35 @@ class Proposals(commands.Cog):
         e.set_image(url="attachment://chart.png")
 
         # send data
-        await msg.edit(content="", embed=e, file=File(img, filename="chart.png"))
+        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
         img.close()
 
-    @slash_command(guild_ids=guilds)
-    async def client_distribution(self, ctx):
+    @hybrid_command()
+    async def client_distribution(self, ctx: Context):
+        """
+        Generate a distribution graph of clients.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await self.proposal_vs_node_operators_embed("client", "Client", msg)
+        await self.chore(ctx)
+        await self.proposal_vs_node_operators_embed("client", "Client", ctx)
 
-    @slash_command(guild_ids=guilds)
-    async def user_distribution(self, ctx):
+    @hybrid_command()
+    async def user_distribution(self, ctx: Context):
+        """
+        Generate a distribution graph of users.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await self.proposal_vs_node_operators_embed("type", "User", msg)
+        await self.chore(ctx)
+        await self.proposal_vs_node_operators_embed("type", "User", ctx)
 
-    @slash_command(guild_ids=guilds)
-    async def comments(self, ctx):
+    @hybrid_command()
+    async def comments(self, ctx: Context):
+        """
+        Generate a world cloud of comments.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await msg.edit(content="generating comments word cloud...")
+        await self.chore(ctx)
+        await ctx.send(content="generating comments word cloud...")
 
         # load image
         mask = np.array(Image.open("./plugins/proposals/assets/logo-words.png"))
@@ -440,9 +451,9 @@ class Proposals(commands.Cog):
         plt.close()
         e = Embed(title="Rocket Pool Proposal Comments")
         e.set_image(url="attachment://image.png")
-        await msg.edit(content="", embed=e, file=File(img, filename="image.png"))
+        await ctx.send(content="", embed=e, attachments=[File(img, filename="image.png")])
         img.close()
 
 
-def setup(bot):
-    bot.add_cog(Proposals(bot))
+async def setup(bot):
+    await bot.add_cog(Proposals(bot))

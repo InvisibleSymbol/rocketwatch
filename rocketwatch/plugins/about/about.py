@@ -1,19 +1,20 @@
 import os
 import time
+from urllib.parse import urlencode
 
 import humanize
 import psutil
 import requests
 import uptime
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils import readable
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.reporter import report_error
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 psutil.getloadavg()
@@ -25,8 +26,8 @@ class About(commands.Cog):
         self.bot = bot
         self.process = psutil.Process(os.getpid())
 
-    @slash_command(guild_ids=guilds)
-    async def about(self, ctx):
+    @hybrid_command()
+    async def about(self, ctx: Context):
         """Bot and Server Information"""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
@@ -87,22 +88,19 @@ class About(commands.Cog):
         except Exception as err:
             await report_error(err)
 
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
-    @slash_command(guild_ids=guilds)
-    async def donate(self, ctx):
+    @hybrid_command()
+    async def donate(self, ctx: Context):
         """Donate to the Bot Developer"""
         e = Embed()
         e.title = "Donate to the Developer"
         e.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
                         "Donations will help me keep doing what I love (and pay the server bills haha)\n\n" \
-                        "I accept Donations on all Ethereum related Chains! (Mainnet, Polygon, Rollups, etc.)\n\n" \
-                        "**Message me about your Donation for a free POAP!\***\n\n" \
-                        "_*as long as supplies last, donate 1 dollar or more to qualify c:_"
+                        "I accept Donations on all Ethereum related Chains! (Mainnet, Polygon, Rollups, etc.)"
         e.add_field(name="Donation Address",
                     value="[`0xinvis.eth`](https://etherscan.io/address/0xf0138d2e4037957d7b37de312a16a88a7f83a32a)")
 
-        """
         # add address qrcode
         query_string = urlencode({
             "chs" : "128x128",
@@ -112,15 +110,10 @@ class About(commands.Cog):
             "chld": "L|0"
         })
         e.set_image(url="https://chart.googleapis.com/chart?" + query_string)
-        """
-        # POAP Event
-        e.set_image(url="https://i.imgur.com/hNOX3Bj.png")
 
         e.set_footer(text="Thank you for your support! <3")
-        await ctx.respond(
-            embed=e,
-            ephemeral=True)
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(About(bot))
+async def setup(bot):
+    await bot.add_cog(About(bot))

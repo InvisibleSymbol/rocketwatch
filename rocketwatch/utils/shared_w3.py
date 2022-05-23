@@ -27,7 +27,8 @@ if cfg['rocketpool.chain'] != "mainnet":
 
 endpoints = cfg["rocketpool.consensus_layer.endpoints"]
 tmp = []
-exceptions = (HTTPError, ConnectionError, ConnectTimeout, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout)
+exceptions = (
+    HTTPError, ConnectionError, ConnectTimeout, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout)
 for fallback_endpoint in reversed(endpoints):
     class SuperBacon(Bacon):
         def __init__(

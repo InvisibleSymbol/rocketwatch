@@ -1,14 +1,14 @@
 import logging
 
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.readable import uptime
-from utils.slash_permissions import guilds
-from utils.thegraph import get_average_commission, get_reth_ratio_past_week
+from utils.thegraph import get_reth_ratio_past_week
 from utils.visibility import is_hidden
 
 log = logging.getLogger("reth_apr")
@@ -20,8 +20,11 @@ class RETHAPR(commands.Cog):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @slash_command(guild_ids=guilds)
-    async def current_reth_apr(self, ctx):
+    @hybrid_command()
+    async def current_reth_apr(self, ctx: Context):
+        """
+        Show the current RETH APR
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
@@ -58,9 +61,10 @@ class RETHAPR(commands.Cog):
         e.add_field(name="Next Estimated Update:", value=f"<t:{next_update}:R>")
 
         # show average time between updates in footer
-        e.set_footer(text=f"Average time between updates: {uptime(average_duration)}. {len(datapoints)} datapoints used.")
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        e.set_footer(
+            text=f"Average time between updates: {uptime(average_duration)}. {len(datapoints)} datapoints used.")
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(RETHAPR(bot))
+async def setup(bot):
+    await bot.add_cog(RETHAPR(bot))

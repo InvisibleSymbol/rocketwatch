@@ -1,13 +1,13 @@
 import logging
 
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("queue")
@@ -18,8 +18,8 @@ class Queue(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(guild_ids=guilds)
-    async def queue(self, ctx):
+    @hybrid_command()
+    async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue"""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
@@ -55,8 +55,8 @@ class Queue(commands.Cog):
         else:
             e.description = description
 
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(Queue(bot))
+async def setup(bot):
+    await bot.add_cog(Queue(bot))

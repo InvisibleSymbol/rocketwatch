@@ -4,14 +4,15 @@ from datetime import datetime, timedelta
 
 import motor.motor_asyncio
 from cachetools import TTLCache
-from discord import NotFound, slash_command
+from discord import NotFound
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils import reporter
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("metrics")
@@ -26,8 +27,10 @@ class Metrics(commands.Cog):
         self.db = self.mongo.rocketwatch
         self.collection = self.db.command_metrics
 
-    @slash_command(guild_ids=guilds)
-    async def metrics(self, ctx):
+        self.bot.tree.on_error = self.on_command_error
+
+    @hybrid_command()
+    async def metrics(self, ctx: Context):
         """
         Show various metrics about the bot.
         """
@@ -83,13 +86,13 @@ class Metrics(commands.Cog):
             for channel in top_channels:
                 desc += f" - {channel['_id']['name']}: {channel['count']}\n"
             e.description = desc + "```"
-            await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+            await ctx.send(embed=e)
         except Exception as e:
             log.error(f"Failed to get command metrics: {e}")
             await report_error(e)
 
     @commands.Cog.listener()
-    async def on_application_command(self, ctx):
+    async def on_command(self, ctx):
         log.info(f"/{ctx.command.name} triggered by {ctx.author} in #{ctx.channel.name} ({ctx.guild})")
         try:
             await self.collection.insert_one({
@@ -116,15 +119,16 @@ class Metrics(commands.Cog):
             await report_error(e)
 
     @commands.Cog.listener()
-    async def on_application_command_completion(self, ctx):
-        log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
+    async def on_command_completion(self, ctx):
+        log.info(
+            f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
         if not is_hidden(ctx) and ctx.author not in self.notice_ttl_cache:
             self.notice_ttl_cache[ctx.author] = True
             e = Embed()
             e.title = 'Did you know?'
             e.description = "Calling this command (or any!) in other channels will make them only appear for you! " \
                             "Give it a try next time!"
-            await ctx.respond(embed=e, ephemeral=True)
+            await ctx.reply(embed=e, ephemeral=True)
 
         try:
             # get the timestamp of when the command was called from the db
@@ -141,8 +145,20 @@ class Metrics(commands.Cog):
             await report_error(e)
 
     @commands.Cog.listener()
-    async def on_application_command_error(self, ctx, excep):
+    async def on_command_error(self, ctx, excep):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
+
+        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
+        try:
+            # try to inform the user. this might fail if it took too long to respond
+            await ctx.send(content=msg)
+        except NotFound:
+            # so fall back to a normal channel message if that happens
+            try:
+                await ctx.channel.send(msg)
+            except Exception as e:
+                log.error(f"Failed to inform user of command error: {e}")
+                await report_error(e)
 
         try:
             # get the timestamp of when the command was called from the db
@@ -160,18 +176,11 @@ class Metrics(commands.Cog):
             await report_error(e)
 
         await reporter.report_error(excep, ctx=ctx)
-        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
-        try:
-            # try to inform the user. this might fail if it took too long to respond
-            return await ctx.respond(msg, ephemeral=is_hidden(ctx))
-        except NotFound:
-            # so fall back to a normal channel message if that happens
-            return await ctx.channel.send(msg)
 
     @commands.Cog.listener()
     async def on_ready(self, ):
         log.info(f'Logged in as {self.bot.user.name} ({self.bot.user.id})')
 
 
-def setup(bot):
-    bot.add_cog(Metrics(bot))
+async def setup(bot):
+    await bot.add_cog(Metrics(bot))

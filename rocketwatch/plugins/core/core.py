@@ -11,6 +11,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble
+from utils.get_or_fetch import get_or_fetch_channel
 from utils.reporter import report_error
 from utils.shared_w3 import w3
 
@@ -64,7 +65,7 @@ class Core(commands.Cog):
         state_message = await self.db.state_messages.find_one({"_id": "state"})
         if self.state == "OK" and not state_message:
             return
-        channel = await self.bot.fetch_channel(self.channels["default"])
+        channel = await get_or_fetch_channel(self.bot, self.channels["default"])
         if self.state == "OK" and state_message:
             # delete state message if state changed to OK
             msg = await channel.fetch_message(state_message["message"])
@@ -130,9 +131,11 @@ class Core(commands.Cog):
             return
 
         for channel in channels:
-            events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort([("score", 1)]).to_list(None)
+            events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort(
+                [("score", 1)]).to_list(None)
             log.debug(f"{len(events)} Events found for channel {channel}.")
-            target_channel = await self.bot.fetch_channel(channel)
+
+            target_channel = await get_or_fetch_channel(self.bot, channel)
             for event in events:
                 await target_channel.send(embed=Response.get_embed(event))
                 # mark event as processed
@@ -145,5 +148,5 @@ class Core(commands.Cog):
         self.run_loop.cancel()
 
 
-def setup(bot):
-    bot.add_cog(Core(bot))
+async def setup(bot):
+    await bot.add_cog(Core(bot))

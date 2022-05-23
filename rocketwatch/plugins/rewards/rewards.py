@@ -3,8 +3,9 @@ import logging
 from statistics import median
 
 import humanize
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils import solidity
 from utils.cfg import cfg
@@ -13,7 +14,6 @@ from utils.embeds import el_explorer_url
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.slash_permissions import guilds
 from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao, get_claims_current_period
 from utils.visibility import is_hidden
 
@@ -25,8 +25,11 @@ class Rewards(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(guild_ids=guilds)
-    async def rewards(self, ctx):
+    @hybrid_command()
+    async def rewards(self, ctx: Context):
+        """
+        Show the rewards for the current period
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Reward Period Stats"
@@ -104,7 +107,8 @@ class Rewards(commands.Cog):
                     impossible_amount_formatted = humanize.intcomma(impossible_amount, 2)
                     impossible_percentage = impossible_amount / waiting_for_claims
                     distribution += f"\t│├Not Claimable: {impossible_amount_formatted:>8} RPL ({impossible_percentage:.0%})\n"
-                if waiting_for_claims and impossible_amount and (possible_amount := waiting_for_claims - impossible_amount):
+                if waiting_for_claims and impossible_amount and (
+                        possible_amount := waiting_for_claims - impossible_amount):
                     possible_amount_formatted = humanize.intcomma(possible_amount, 2)
                     possible_percentage = possible_amount / waiting_for_claims
                     distribution += f"\t│├Claimable: {possible_amount_formatted:>12} RPL ({possible_percentage:.0%})\n"
@@ -133,7 +137,8 @@ class Rewards(commands.Cog):
         e.add_field(name="Distribution", value=text, inline=False)
 
         # show how much a node operator can claim with 10% (1.6 ETH) collateral and 150% (24 ETH) collateral
-        node_operator_rewards = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimNode"))
+        node_operator_rewards = solidity.to_float(
+            rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimNode"))
         total_rpl_staked = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
         reward_per_staked_rpl = node_operator_rewards / total_rpl_staked
 
@@ -164,7 +169,8 @@ class Rewards(commands.Cog):
 
         # show Rewards per oDAO Member
         total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
-        odao_members_rewards = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimTrustedNode"))
+        odao_members_rewards = solidity.to_float(
+            rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimTrustedNode"))
         rewards_per_odao_member = odao_members_rewards / total_odao_members
         rewards_per_odao_member_eth = humanize.intcomma(rewards_per_odao_member * rpl_ratio, 2)
         rewards_per_odao_member_dai = humanize.intcomma(rewards_per_odao_member * rpl_price, 2)
@@ -177,10 +183,10 @@ class Rewards(commands.Cog):
                           f"```",
                     inline=False)
         # send embed
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
-    @slash_command(guild_ids=guilds)
-    async def median_claim(self, ctx):
+    @hybrid_command()
+    async def median_claim(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Median Claim for this Period"
@@ -202,8 +208,8 @@ class Rewards(commands.Cog):
         median_claim_eth = humanize.intcomma(median(eth_amounts), 2)
         e.add_field(name="Median Claim:", value=f"{median_claim} RPL (worth {median_claim_eth} ETH)", inline=False)
 
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(Rewards(bot))
+async def setup(bot):
+    await bot.add_cog(Rewards(bot))

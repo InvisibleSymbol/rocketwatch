@@ -7,12 +7,11 @@ from discord import Color
 from etherscan_labels import Addresses
 
 from strings import _
-from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
 from utils.rocketpool import rp
-from utils.sea_creatures import get_sea_creature_for_holdings, get_sea_creature_for_address
+from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
 
 ens = CachedEns()
@@ -47,9 +46,9 @@ def el_explorer_url(target, name="", prefix=""):
         if code := w3.eth.get_code(target):
             prefix += "📄"
             if (
-                not name
-                and code.hex()
-                == "0x3d60323d7353db332d01e0ba9c3529110899aa00c719c2438a330382573d601436036020363d600c37343d515af1905780fd5b"
+                    not name
+                    and code.hex()
+                    == "0x3d60323d7353db332d01e0ba9c3529110899aa00c719c2438a330382573d601436036020363d600c37343d515af1905780fd5b"
             ):
                 name = "MEV Bot Contract"
     if not name:
@@ -112,7 +111,8 @@ def assemble(args):
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "total_supply", "perc", "tnx_fee", "rate"]):
+        if any(keyword in arg_key.lower() for keyword in
+               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
@@ -133,7 +133,8 @@ def assemble(args):
     if "exchangeRate" in args:
         e.add_field(name="Exchange Rate",
                     value=f"`{args.exchangeRate} RPL/{args.otherToken}`" +
-                          (f" (`{args.discountAmount}%` Discount, oDAO: `{args.marketExchangeRate} RPL/ETH`)" if "discountAmount" in args else ""),
+                          (
+                              f" (`{args.discountAmount}%` Discount, oDAO: `{args.marketExchangeRate} RPL/ETH`)" if "discountAmount" in args else ""),
                     inline=False)
 
     # show public key if we have one

@@ -1,14 +1,14 @@
 import logging
 
 import humanize
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("effective_rpl")
@@ -19,8 +19,11 @@ class EffectiveRPL(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(guild_ids=guilds)
-    async def effective_rpl_staked(self, ctx):
+    @hybrid_command()
+    async def effective_rpl_staked(self, ctx: Context):
+        """
+        Show the effective RPL staked by users
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         # get total RPL staked
@@ -37,8 +40,8 @@ class EffectiveRPL(commands.Cog):
         # calculate total staked as a percentage of total supply
         percentage_of_total_staked = total_rpl_staked / total_rpl_supply
         e.add_field(name="Percentage of RPL Supply Staked:", value=f"{percentage_of_total_staked:.2%}", inline=False)
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(EffectiveRPL(bot))
+async def setup(bot):
+    await bot.add_cog(EffectiveRPL(bot))

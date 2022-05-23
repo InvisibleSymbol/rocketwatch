@@ -6,18 +6,17 @@ from concurrent.futures import ThreadPoolExecutor
 import cronitor
 import inflect
 import pymongo
-from discord import Option
-from discord.commands import slash_command
 from discord.ext import commands, tasks
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from utils.time_debug import timerun
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error
 from utils.shared_w3 import bacon
-from utils.slash_permissions import guilds
 from utils.solidity import to_float
+from utils.time_debug import timerun
 from utils.visibility import is_hidden
 
 log = logging.getLogger("leaderboard")
@@ -186,26 +185,27 @@ class Leaderboard(commands.Cog):
 
         log.debug(f"Cached embeds for slot {current}")
 
-    @slash_command(guild_ids=guilds)
+    @hybrid_command()
     async def leaderboard(self,
-                          ctx,
-                          all_time: Option(
-                              bool,
-                              default=False,
-                              required=False)):
+                          ctx: Context,
+                          all_time: bool = False):
+        """
+        Generate leaderboard for minipool performance
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         # get embed from db
         target = "leaderboard_7days" if not all_time else "leaderboard_daily_earnings"
         embed_dict = await self.db.leaderboard.find_one({"_id": target})
         if embed_dict is None:
-            await ctx.respond("Leaderboard is not cached yet. Please wait a minute and try again.")
+            await ctx.send(
+                content="Leaderboard is not cached yet. Please wait a minute and try again.")
             return
 
         # generate embed from dict
         e = Embed.from_dict(embed_dict["embed"])
-        await ctx.respond(embed=e, ephemeral=is_hidden(ctx))
+        await ctx.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(Leaderboard(bot))
+async def setup(bot):
+    await bot.add_cog(Leaderboard(bot))

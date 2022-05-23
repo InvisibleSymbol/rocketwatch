@@ -1,9 +1,9 @@
 import logging
 
+import cronitor
 import humanize
 from discord import Activity, ActivityType
 from discord.ext import commands, tasks
-import cronitor
 
 from utils.cfg import cfg
 from utils.reporter import report_error
@@ -43,5 +43,5 @@ class RichActivity(commands.Cog):
         self.run_loop.cancel()
 
 
-def setup(bot):
-    bot.add_cog(RichActivity(bot))
+async def setup(bot):
+    await bot.add_cog(RichActivity(bot))

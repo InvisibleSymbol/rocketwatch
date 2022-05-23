@@ -1,4 +1,3 @@
-import functools
 import io
 import logging
 import traceback
@@ -6,6 +5,7 @@ import traceback
 from discord import File
 
 from utils.cfg import cfg
+from utils.get_or_fetch import get_or_fetch_channel
 
 log = logging.getLogger("reporter")
 log.setLevel(cfg["log_level"])
@@ -24,7 +24,7 @@ async def report_error(excep, *args, ctx=None):
         desc += "```\n"
     if ctx:
         desc += f"```{ctx.command.name=}\n" \
-                f"{ctx.command.options=}\n" \
+                f"{ctx.command.params=}\n" \
                 f"{ctx.channel=}\n" \
                 f"{ctx.author=}```"
 
@@ -35,6 +35,6 @@ async def report_error(excep, *args, ctx=None):
     log.error(details)
     if not bot:
         log.warning("cant send error as bot variable not initialized")
-    channel = await bot.fetch_channel(cfg["discord.channels.errors"])
+    channel = await get_or_fetch_channel(bot, cfg["discord.channels.errors"])
     with io.StringIO(details) as f:
         await channel.send(desc, file=File(fp=f, filename="exception.txt"))

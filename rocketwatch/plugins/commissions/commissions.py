@@ -4,14 +4,14 @@ from io import BytesIO
 import numpy as np
 import seaborn as sns
 from discord import File
-from discord.commands import slash_command
 from discord.ext import commands
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.slash_permissions import guilds
 from utils.visibility import is_hidden
 
 log = logging.getLogger("commissions")
@@ -24,8 +24,11 @@ class Commissions(commands.Cog):
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
-    @slash_command(guild_ids=guilds)
-    async def commission_history(self, ctx):
+    @hybrid_command()
+    async def commission_history(self, ctx: Context):
+        """
+        Show the history of commissions.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         e = Embed(title='Commission History')
@@ -71,9 +74,9 @@ class Commissions(commands.Cog):
         e.add_field(name="Bar Width", value=f"{step_size} minipools")
 
         # send data
-        await ctx.respond(content="", embed=e, file=File(img, filename="chart.png"))
+        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
         img.close()
 
 
-def setup(bot):
-    bot.add_cog(Commissions(bot))
+async def setup(bot):
+    await bot.add_cog(Commissions(bot))
