@@ -39,7 +39,7 @@ class RocketWatch(Bot):
 if __name__ == '__main__':
     intents = Intents.none()
     intents.guilds = True
-    bot = RocketWatch(intents=intents, command_prefix=commands.when_mentioned_or(str(uuid.uuid4())))
+    bot = RocketWatch(intents=intents, command_prefix=str(uuid.uuid4()))
     reporter.bot = bot
     log.info('Starting bot')
     bot.run(cfg["discord.secret"])
