@@ -109,7 +109,7 @@ class About(commands.Cog):
             "choe": "UTF-8",
             "chld": "L|0"
         })
-        e.set_image(url="https://chart.googleapis.com/chart?" + query_string)
+        e.set_image(url=f"https://chart.googleapis.com/chart?{query_string}")
 
         e.set_footer(text="Thank you for your support! <3")
         await ctx.send(embed=e)
