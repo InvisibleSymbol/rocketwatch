@@ -8,7 +8,7 @@ bidict==0.22.0
 tinydb==4.7.0
 requests==2.27.1
 uptime==3.0.1
-git+https://github.com/Rapptz/discord.py@77baa06a99b00b50d24398714bce40fcda1fa0c2#egg=discord.py
+git+https://github.com/Rapptz/discord.py@7857a845989e421d591c7d231b756433342d00a8#egg=discord.py
 config==0.5.1
 pytz==2022.1
 matplotlib==3.5.2
