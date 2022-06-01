@@ -111,7 +111,7 @@ class QueuedTransactions(commands.Cog):
         else:
             blocks = list(self.block_event.get_new_entries())
 
-        for block_hash in [14826345]:
+        for block_hash in blocks:
             log.debug(f"Checking Block: {block_hash}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
