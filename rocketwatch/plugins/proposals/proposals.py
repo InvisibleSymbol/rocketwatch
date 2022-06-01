@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from io import BytesIO
 
@@ -18,16 +19,27 @@ from wordcloud import WordCloud
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
+from utils.time_debug import timerun
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
 log.setLevel(cfg["log_level"])
 
 LOOKUP = {
-    "N": "Nimbus",
-    "P": "Prysm",
-    "L": "Lighthouse",
-    "T": "Teku"
+    "consensus": {
+        "N": "Nimbus",
+        "P": "Prysm",
+        "L": "Lighthouse",
+        "T": "Teku"
+    },
+    "execution": {
+        "I": "Infura",
+        "P": "Pocket",
+        "G": "Geth",
+        "B": "Besu",
+        "N": "Nethermind",
+        "X": "External"
+    }
 }
 
 COLORS = {
@@ -35,11 +47,67 @@ COLORS = {
     "Prysm"           : "#40bfbf",
     "Lighthouse"      : "#9933cc",
     "Teku"            : "#3357cc",
+
+    "Infura"          : "#ff2f00",
+    "Pocket"          : "#e216e9",
+    "Geth"            : "#808080",
+    "Besu"            : "#55aa7a",
+    "Nethermind"      : "#2688d9",
+    "External"        : "#000000",
+
     "Smart Node"      : "#cc6e33",
     "Allnodes"        : "#4533cc",
     "No proposals yet": "#E0E0E0",
-    "Unknown"         : "#999999",
+    "Unknown"         : "#AAAAAA",
 }
+
+PROPOSAL_TEMPLATE = {
+    "type"            : "Unknown",
+    "consensus_client": "Unknown",
+    "execution_client": "Unknown",
+}
+
+# noinspection RegExpUnnecessaryNonCapturingGroup
+SMARTNODE_REGEX = re.compile(r"^RP(?:(?:-)([A-Z])([A-Z])?)? (?:v)?(\d+\.\d+\.\d+(?:-\w+)?)(?:(?: \()(.+)(?:\)))?$")
+
+
+def parse_propsal(entry):
+    graffiti = bytes.fromhex(entry["validator"]["graffiti"][2:]).decode("utf-8").rstrip('\x00')
+    data = {
+        "slot"     : int(entry["number"]),
+        "validator": int(entry["validator"]["index"]),
+        "graffiti" : graffiti,
+    }
+    if m := SMARTNODE_REGEX.findall(graffiti):
+        groups = m[0]
+        # smart node proposal
+        data["type"] = "Smart Node"
+        data["version"] = groups[2]
+        if groups[1]:
+            data["consensus_client"] = LOOKUP["consensus"].get(groups[1], "Unknown")
+            data["execution_client"] = LOOKUP["execution"].get(groups[0], "Unknown")
+        elif groups[0]:
+            data["consensus_client"] = LOOKUP["consensus"].get(groups[0], "Unknown")
+        if groups[3]:
+            data["comment"] = groups[3]
+    elif "⚡️Allnodes" in graffiti:
+        # Allnodes proposal
+        data["type"] = "Allnodes"
+        data["consensus_client"] = "Teku"
+        data["execution_client"] = "Infura"
+    else:
+        # normal proposal
+        # try to detect the client from the graffiti
+        graffiti = graffiti.lower()
+        for client in LOOKUP["consensus"].values():
+            if client.lower() in graffiti:
+                data["consensus_client"] = client
+                break
+        for client in LOOKUP["execution"].values():
+            if client.lower() in graffiti:
+                data["execution_client"] = client
+                break
+    return data
 
 
 class Proposals(commands.Cog):
@@ -53,61 +121,30 @@ class Proposals(commands.Cog):
 
     async def gather_all_proposals(self):
         log.info("getting all proposals using the rocketscan.dev API")
-        payload = []
         async with aiohttp.ClientSession() as session:
             async with session.get(self.rocketscan_proposals_url) as resp:
                 if resp.status != 200:
                     log.error("failed to get proposals using the rocketscan.dev API")
                     return
-
                 proposals = await resp.json()
-                log.info("got all proposals using the rocketscan.dev API")
-                for entry in proposals:
-                    validator = int(entry["validator"]["index"])
-                    slot = int(entry["number"])
-                    graffiti = bytes.fromhex(entry["validator"]["graffiti"][2:]).decode("utf-8").rstrip('\x00')
-                    base_data = {
-                        "slot"     : slot,
-                        "validator": validator,
-                        "graffiti" : graffiti,
-                        "type"     : "Unknown",
-                        "client"   : "Unknown",
-                    }
-                    extra_data = {}
-                    if graffiti.startswith(("RP-", "RP v")):
-                        parts = graffiti.split(" ")
-                        # smart node proposal
-                        extra_data["type"] = "Smart Node"
-                        if "RP-" in parts[0]:
-                            extra_data["client"] = LOOKUP.get(parts[0].split("-")[1], "Unknown")
-                        extra_data["version"] = parts[1]
-                        if len(parts) >= 3:
-                            extra_data["comment"] = " ".join(parts[2:]).lstrip("(").rstrip(")")
-                    elif "⚡️Allnodes" in graffiti:
-                        # Allnodes proposal
-                        extra_data["type"] = "Allnodes"
-                        extra_data["client"] = "Teku"
-                    else:
-                        # normal proposal
-                        # try to detect the client from the graffiti
-                        for client in LOOKUP.values():
-                            if client.lower() in graffiti.lower():
-                                extra_data["client"] = client
-                                break
-                    payload.append(ReplaceOne({"slot": slot}, base_data | extra_data, upsert=True))
-        await self.db.proposals.bulk_write(payload)
+        log.info("got all proposals using the rocketscan.dev API")
+        await self.db.proposals.bulk_write([ReplaceOne({"slot": int(entry["number"])},
+                                                       PROPOSAL_TEMPLATE | parse_propsal(entry),
+                                                       upsert=True) for entry in proposals])
         log.info("finished gathering all proposals")
 
     async def chore(self, ctx: Context):
-        await ctx.send(content="doing chores...")
+        msg = await ctx.send(content="doing chores...")
         # only run if self.last_chore_run timestamp is older than 1 hour
         if (time.time() - self.last_chore_run) > 3600:
             self.last_chore_run = time.time()
-            await ctx.send(content="gathering proposals...")
+            await msg.edit(content="gathering proposals...")
             await self.gather_all_proposals()
         else:
             log.debug("skipping chore")
+        return msg
 
+    @timerun
     async def gather_attribute(self, attribute):
         distribution = await self.db.minipools.aggregate([
             {
@@ -214,8 +251,8 @@ class Proposals(commands.Cog):
         Show a historical chart of used Smart Node versions
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        await self.chore(ctx)
-        await ctx.send(content="generating version chart...")
+        msg = await self.chore(ctx)
+        await msg.edit(content="generating version chart...")
 
         e = Embed(title="Version Chart")
 
@@ -293,7 +330,7 @@ class Proposals(commands.Cog):
         recent_versions = recent_versions[:len(matplotlib_colors)]
         recent_colors = [matplotlib_colors[i] for i in range(len(recent_versions))]
         # generate color mapping
-        colors = ["gray"] * len(versions)
+        colors = ["white"] * len(versions)
         for i, version in enumerate(versions):
             if version in recent_versions:
                 colors[i] = recent_colors[recent_versions.index(version)]
@@ -314,18 +351,12 @@ class Proposals(commands.Cog):
         e.set_image(url="attachment://chart.png")
 
         # send data
-        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
+        await msg.edit(content="", embed=e, attachments=[File(img, filename="chart.png")])
         img.close()
 
-    async def proposal_vs_node_operators_embed(self, attribute, name, ctx: Context):
-        await ctx.send(content=f"generating {name} distribution graph...")
-
-        e = Embed(title=f"{name} Distribution")
-
+    async def plot_axes_with_data(self, attr: str, ax1, ax2, name):
         # group by client and get count
-        start = time.time()
-        data = await self.gather_attribute(attribute)
-        log.debug(f"gather_attribute took {time.time() - start} seconds")
+        data = await self.gather_attribute(attr)
 
         minipools = [(x['_id'], x["validator_count"]) for x in data]
         minipools = sorted(minipools, key=lambda x: x[1])
@@ -343,54 +374,60 @@ class Proposals(commands.Cog):
 
         # sort data
         node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
-
-        # create 2 subplots
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
-        fig.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
-        plt.rcParams.update({'font.size': 15})
-
-        def my_autopct(pct):
-            return ('%.1f%%' % pct) if pct > 3 else ''
-
         ax1.pie(
             [x[1] for x in minipools],
-            colors=[COLORS[x[0]] for x in minipools],
-            autopct=my_autopct,
-            startangle=90
+            colors=[COLORS.get(x[0], "red") for x in minipools],
+            autopct=lambda pct: ('%.1f%%' % pct) if pct > 5 else '',
+            startangle=90,
+            textprops={'fontsize': '12'},
         )
         # legend
-        total_minipols = sum([x[1] for x in minipools])
+        total_minipols = sum(x[1] for x in minipools)
+        # legend in the top left corner of the plot
         ax1.legend(
             [f"{x[1]} {x[0]} ({x[1] / total_minipols:.2%})" for x in minipools],
-            loc="upper left",
+            fontsize=11,
+            loc='lower left',
         )
-        ax1.set_title(f"{name} Distribution based on Minipools")
+        ax1.set_title(f"{name} Distribution based on Minipools", fontsize=16)
 
         ax2.pie(
             [x[1] for x in node_operators],
-            colors=[COLORS[x[0]] for x in node_operators],
-            autopct=my_autopct,
-            startangle=90
+            colors=[COLORS.get(x[0], "#fb5b9d") for x in node_operators],
+            autopct=lambda pct: ('%.1f%%' % pct) if pct > 5 else '',
+            startangle=90,
+            textprops={'fontsize': '12'},
         )
         # legend
-        total_node_operators = sum([x[1] for x in node_operators])
+        total_node_operators = sum(x[1] for x in node_operators)
         ax2.legend(
             [f"{x[1]} {x[0]} ({x[1] / total_node_operators:.2%})" for x in node_operators],
-            loc="upper left"
+            loc="lower right",
+            fontsize=11
         )
-        ax2.set_title(f"{name} Distribution based on Node Operators")
+        ax2.set_title(f"{name} Distribution based on Node Operators", fontsize=16)
+
+    async def proposal_vs_node_operators_embed(self, attribute, name, msg):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
+        # iterate axes in pairs
+        await msg.edit(content=f"generating {attribute} distribution graph...")
+        await self.plot_axes_with_data(attribute, ax1, ax2, name)
+
+        e = Embed(title=f"{name} Distribution")
+
+        fig.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
 
         # respond with image
         img = BytesIO()
         plt.savefig(img, format="png")
         img.seek(0)
         plt.close()
-        plt.rcParams.update({'font.size': 10})
-        e.set_image(url="attachment://chart.png")
+        e.set_image(url=f"attachment://{attribute}.png")
 
         # send data
-        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
+        f = File(img, filename=f"{attribute}.png")
         img.close()
+        return e, f
 
     @hybrid_command()
     async def client_distribution(self, ctx: Context):
@@ -398,8 +435,13 @@ class Proposals(commands.Cog):
         Generate a distribution graph of clients.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        await self.chore(ctx)
-        await self.proposal_vs_node_operators_embed("client", "Client", ctx)
+        msg = await self.chore(ctx)
+        embeds, files = [], []
+        for attr, name in [["consensus_client", "Consensus Client"], ["execution_client", "Execution Client"]]:
+            e, f = await self.proposal_vs_node_operators_embed(attr, name, msg)
+            embeds.append(e)
+            files.append(f)
+        await msg.edit(content="", embeds=embeds, attachments=files)
 
     @hybrid_command()
     async def user_distribution(self, ctx: Context):
@@ -407,8 +449,9 @@ class Proposals(commands.Cog):
         Generate a distribution graph of users.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        await self.chore(ctx)
-        await self.proposal_vs_node_operators_embed("type", "User", ctx)
+        msg = await self.chore(ctx)
+        e, f = await self.proposal_vs_node_operators_embed("type", "User", msg)
+        await msg.edit(content="", embed=e, attachments=[f])
 
     @hybrid_command()
     async def comments(self, ctx: Context):
