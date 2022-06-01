@@ -56,7 +56,7 @@ class MinipoolDistribution(commands.Cog):
         # where the first item is the number of minipools and the second item is the
         # number of nodes, eg [ (0, 3), (1, 2), (2, 1) ]
         bins = np.bincount(counts)
-        distribution = [(i, bins[i]) for i in range(0, len(bins)) if bins[i] > 0]
+        distribution = [(i, bins[i]) for i in range(len(bins)) if bins[i] > 0]
 
         # If the raw data were requested, print them and exit early
         if raw:
@@ -70,7 +70,7 @@ class MinipoolDistribution(commands.Cog):
         bars = {x: x * y for x, y in distribution}
         # Remove the 0,0 value, since it doesn't provide any insight
         del bars[0]
-        x_keys = [str(x) for x in bars.keys()]
+        x_keys = [str(x) for x in bars]
         rects = ax.bar(x_keys, bars.values(), color=str(e.color))
         ax.bar_label(rects)
         ax.set_ylabel("Total Minipools")

@@ -49,7 +49,7 @@ class NodeFeeDistribution(commands.Cog):
                 first = False
 
             if len(txs) > 0:
-                since = min([int(x["timeStamp"]) for x in txs.values()])
+                since = min(int(x["timeStamp"]) for x in txs.values())
                 gas = [int(x["gasPrice"]) // int(1E9) for x in txs.values()]
                 totals = [int(x["gasUsed"]) * int(x["gasPrice"]) /
                           1E18 for x in txs.values()]

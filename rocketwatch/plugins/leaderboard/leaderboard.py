@@ -195,7 +195,7 @@ class Leaderboard(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         # get embed from db
-        target = "leaderboard_7days" if not all_time else "leaderboard_daily_earnings"
+        target = "leaderboard_daily_earnings" if all_time else "leaderboard_7days"
         embed_dict = await self.db.leaderboard.find_one({"_id": target})
         if embed_dict is None:
             await ctx.send(

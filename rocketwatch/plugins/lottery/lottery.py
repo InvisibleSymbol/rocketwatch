@@ -37,7 +37,7 @@ class Lottery(commands.Cog):
                                                   "sync_period": data["period"],
                                                   }, upsert=True)
         validators = data["validators"]
-        col = self.db["sync_committee_" + period]
+        col = self.db[f"sync_committee_{period}"]
         payload = [
             ReplaceOne(
                 {"index": i}, {"index": i, "validator": validator}, upsert=True
@@ -123,8 +123,13 @@ class Lottery(commands.Cog):
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
         description += "Node Operators: "
-        description += f", ".join(
-            [f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
+        description += ", ".join(
+            [
+                f"{count}x {el_explorer_url(node_operator)}"
+                for node_operator, count in node_operators
+            ]
+        )
+
         return description
 
     @hybrid_command()
@@ -133,8 +138,7 @@ class Lottery(commands.Cog):
         msg = await self.chore(ctx)
         await msg.edit(content="generating lottery embed...")
         e = Embed(title="Sync Committee Lottery")
-        description = ""
-        description += "**Current sync committee:**\n"
+        description = "" + "**Current sync committee:**\n"
         description += await self.generate_sync_committee_description("latest")
         description += "\n\n"
         description += "**Next sync committee:**\n"

@@ -115,7 +115,7 @@ class QueuedEvents(commands.Cog):
             pubkey = rp.get_pubkey_using_transaction(receipt)
 
         if pubkey:
-            event.args.pubkey = "0x" + pubkey
+            event.args.pubkey = f"0x{pubkey}"
 
         # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]

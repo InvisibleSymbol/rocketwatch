@@ -28,19 +28,14 @@ class TVL(commands.Cog):
                   ctx: Context,
                   show_all: bool = False):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        tvl = []
-        description = []
         eth_price = rp.get_dai_eth_price()
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
         minipool_count_per_status = rp.get_minipool_count_per_status()
         log.debug(minipool_count_per_status)
 
-        # Staking minipools: stakingCount of minipool_count_per_status * 32 ETH.
-        # This is all minipools that have deposited both parts of 16 ETH to the Beacon Chain.
-        tvl.append(minipool_count_per_status["stakingCount"] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Staking Minipools")
-
+        tvl = [minipool_count_per_status["stakingCount"] * 32]
+        description = [f"+ {tvl[-1]:12.2f} ETH: Staking Minipools"]
         # Beacon Chain Rewards: Subtract the sum of ETH on the beacon chain by their base balance (32 ETH).
         # We can't use stakingCount of minipool_count_per_status because the beacon chain has a delayed view due to
         # the eth1 follow distance. So we use the total number of minipools in the database instead.

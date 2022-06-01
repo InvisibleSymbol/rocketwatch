@@ -85,7 +85,7 @@ class Metrics(commands.Cog):
             desc += "\nTop 5 Channels based on commands handled:\n"
             for channel in top_channels:
                 desc += f" - {channel['_id']['name']}: {channel['count']}\n"
-            e.description = desc + "```"
+            e.description = f"{desc}```"
             await ctx.send(embed=e)
         except Exception as e:
             log.error(f"Failed to get command metrics: {e}")

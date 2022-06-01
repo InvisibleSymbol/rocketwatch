@@ -42,10 +42,14 @@ def get_sea_creature_for_holdings(holdings):
     highest_possible_holdings = max(sea_creatures.keys())
     if holdings >= 2 * highest_possible_holdings:
         return sea_creatures[highest_possible_holdings] * int(holdings / highest_possible_holdings)
-    for holding_value, sea_creature in sea_creatures.items():
-        if holdings >= holding_value:
-            return sea_creature
-    return ''
+    return next(
+        (
+            sea_creature
+            for holding_value, sea_creature in sea_creatures.items()
+            if holdings >= holding_value
+        ),
+        '',
+    )
 
 
 def get_sea_creature_for_address(address):
