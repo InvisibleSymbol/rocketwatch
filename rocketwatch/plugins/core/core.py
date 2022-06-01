@@ -33,6 +33,7 @@ class Core(commands.Cog):
         self.db = self.mongo.rocketwatch
         # block filter
         self.block_event = w3.eth.filter("latest")
+        self.previous_run = time.time()
 
         if not self.run_loop.is_running():
             self.run_loop.start()
@@ -40,6 +41,10 @@ class Core(commands.Cog):
     @tasks.loop(seconds=10.0)
     async def run_loop(self):
         p_id = time.time()
+        if p_id - self.previous_run < 10:
+            log.debug("skipping core update loop")
+            return
+        self.previous_run = p_id
         monitor.ping(state='run', series=p_id)
         # try to gather new events
         try:
