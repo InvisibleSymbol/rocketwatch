@@ -193,7 +193,7 @@ class Debug(Cog):
         try:
             with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
                 await ctx.send(
-                    attachments=[File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json")])
+                    files=[File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json")])
         except Exception as err:
             await ctx.send(content=f"```Exception: {repr(err)}```")
 

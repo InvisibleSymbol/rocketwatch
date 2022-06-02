@@ -74,7 +74,7 @@ class Commissions(commands.Cog):
         e.add_field(name="Bar Width", value=f"{step_size} minipools")
 
         # send data
-        await ctx.send(content="", embed=e, attachments=[File(img, filename="chart.png")])
+        await ctx.send(content="", embed=e, files=[File(img, filename="chart.png")])
         img.close()
 
 

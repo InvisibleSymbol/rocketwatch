@@ -114,7 +114,7 @@ class Collateral(commands.Cog):
         percentile_strings = [f"{x[0]}th percentile: {int(x[1])}% collateral" for x in
                               get_percentiles([50, 75, 90, 99], counts)]
         e.set_footer(text="\n".join(percentile_strings))
-        await ctx.send(embed=e, attachments=[f])
+        await ctx.send(embed=e, files=[f])
         img.close()
 
 

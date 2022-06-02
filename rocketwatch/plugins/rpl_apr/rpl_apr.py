@@ -69,7 +69,7 @@ class RplApr(commands.Cog):
         e.title = "RPL APR Graph"
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
-        await ctx.send(embed=e, attachments=[f])
+        await ctx.send(embed=e, files=[f])
         img.close()
 
 

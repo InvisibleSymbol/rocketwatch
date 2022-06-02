@@ -104,7 +104,7 @@ class MinipoolDistribution(commands.Cog):
         percentile_strings.append(f"Max: {distribution[-1][0]} minipools per node")
         percentile_strings.append(f"Total: {p.no('minipool', sum(counts))}")
         e.set_footer(text="\n".join(percentile_strings))
-        await ctx.send(embed=e, attachments=[f])
+        await ctx.send(embed=e, files=[f])
         img.close()
 
 
