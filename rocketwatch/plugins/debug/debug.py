@@ -123,11 +123,10 @@ class Debug(Cog):
         """
         await ctx.defer(ephemeral=True)
         transaction_receipt = w3.eth.getTransaction(tnx_hash)
-        revert_reason = rp.get_revert_reason(transaction_receipt)
-        if revert_reason:
+        if revert_reason := rp.get_revert_reason(transaction_receipt):
             await ctx.send(content=f"```Revert reason: {revert_reason}```")
         else:
-            await ctx.send(content=f"```No revert reason Available```")
+            await ctx.send(content="```No revert reason Available```")
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -138,7 +137,7 @@ class Debug(Cog):
         """
         await ctx.defer(ephemeral=True)
         if not confirm:
-            await ctx.followup.edit_message("Not running. Set `confirm` to `true` to run.")
+            await ctx.send("Not running. Set `confirm` to `true` to run.")
             return
         await self.db.minipools.delete_many({})
         await ctx.send(content="Done")
@@ -167,7 +166,7 @@ class Debug(Cog):
             if fg_name.endswith("_EX"):
                 continue
             payload += f"\n{fg}Hello World"
-        payload += Style.RESET_ALL + "```"
+        payload += f"{Style.RESET_ALL}```"
         await ctx.reply(content=payload)
 
     @hybrid_command()
