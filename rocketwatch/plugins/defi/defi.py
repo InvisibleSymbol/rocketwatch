@@ -24,7 +24,7 @@ class DeFi(commands.Cog):
     @hybrid_command()
     async def curve(self, ctx: Context):
         """
-        Shoe stats of the curve pool
+        Show stats of the curve pool
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
@@ -83,7 +83,7 @@ class DeFi(commands.Cog):
     @hybrid_command()
     async def yearn(self, ctx: Context):
         """
-        Shoe stats of the yearn vault
+        Show stats of the yearn vault
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()

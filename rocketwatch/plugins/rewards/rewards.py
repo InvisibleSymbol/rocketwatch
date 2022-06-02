@@ -28,7 +28,7 @@ class Rewards(commands.Cog):
     @hybrid_command()
     async def rewards(self, ctx: Context):
         """
-        Show the rewards for the current period
+        Show the rewards for the current period.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
@@ -187,6 +187,9 @@ class Rewards(commands.Cog):
 
     @hybrid_command()
     async def median_claim(self, ctx: Context):
+        """
+        Show the median claim amount for the current period.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Median Claim for this Period"

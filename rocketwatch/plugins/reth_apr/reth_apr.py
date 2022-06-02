@@ -23,7 +23,7 @@ class RETHAPR(commands.Cog):
     @hybrid_command()
     async def current_reth_apr(self, ctx: Context):
         """
-        Show the current RETH APR
+        Show the current rETH APR.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()

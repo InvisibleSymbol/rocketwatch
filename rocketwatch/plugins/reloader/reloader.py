@@ -16,7 +16,7 @@ class Reloader(commands.Cog):
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
     async def load(self, ctx: Context, module: str):
-        """Loads a module."""
+        """Load a module."""
         await ctx.defer()
         try:
             self.bot.load_extension(f"plugins.{module}.{module}")
@@ -30,7 +30,7 @@ class Reloader(commands.Cog):
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
     async def unload(self, ctx: Context, module: str):
-        """Unloads a module."""
+        """Unload a module."""
         await ctx.defer()
         try:
             await self.bot.unload_extension(f"plugins.{module}.{module}")
@@ -42,7 +42,7 @@ class Reloader(commands.Cog):
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
     async def reload(self, ctx: Context, module: str):
-        """Reloads a module."""
+        """Reload a module."""
         await ctx.defer()
         try:
             await self.bot.reload_extension(f"plugins.{module}.{module}")

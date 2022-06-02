@@ -27,6 +27,9 @@ class TVL(commands.Cog):
     async def tvl(self,
                   ctx: Context,
                   show_all: bool = False):
+        """
+        Show the total value locked in the Protocol.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         tvl = []
         description = []

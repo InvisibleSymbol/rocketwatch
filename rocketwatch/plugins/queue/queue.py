@@ -20,7 +20,7 @@ class Queue(commands.Cog):
 
     @hybrid_command()
     async def queue(self, ctx: Context):
-        """Show the next 10 minipools in the queue"""
+        """Show the next 10 minipools in the queue."""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Minipool queue"
@@ -31,7 +31,7 @@ class Queue(commands.Cog):
         matchings = [
             ["half", "Normal Minipool Queue"],
             ["full", "Full Minipool Refund Queue"],
-            ["empty", "Unbonded Minipool FillingQueue"]
+            ["empty", "Unbonded Minipool Filling Queue"]
         ]
         for category, label in matchings:
             data = minipools[category]

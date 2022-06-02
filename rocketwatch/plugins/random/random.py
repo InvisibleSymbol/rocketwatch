@@ -49,7 +49,7 @@ class Random(commands.Cog):
 
     @hybrid_command()
     async def sea_creatures(self, ctx: Context, address: str = None):
-        """List all sea creatures with their required minimum holding"""
+        """List all sea creatures with their required minimum holding."""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         if address is not None:

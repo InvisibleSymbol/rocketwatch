@@ -24,6 +24,9 @@ class RplApr(commands.Cog):
 
     @hybrid_command()
     async def rpl_apr(self, ctx: Context):
+        """
+        Show the RPL APR.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 

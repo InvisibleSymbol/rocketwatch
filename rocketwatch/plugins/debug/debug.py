@@ -79,7 +79,7 @@ class Debug(Cog):
     @is_owner()
     async def raise_exception(self, ctx: Context):
         """
-        Raises an exception for testing purposes.
+        Raise an exception for testing purposes.
         """
         with open(str(random.random()), "rb"):
             raise Exception("this should never happen wtf is your filesystem")
@@ -134,7 +134,7 @@ class Debug(Cog):
     @is_owner()
     async def purge_minipools(self, ctx: Context, confirm: bool = False):
         """
-        Purges minipool collection, so it can be resynced from scratch in the next update.
+        Purge minipool collection, so it can be resynced from scratch in the next update.
         """
         await ctx.defer(ephemeral=True)
         if not confirm:
@@ -147,6 +147,9 @@ class Debug(Cog):
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
     async def overwrite_events_block(self, ctx: Context, block_number: int):
+        """
+        Overwrite the events block number in the latest_checked_block collection.
+        """
         await ctx.defer(ephemeral=True)
         await self.db.last_checked_block.update_one({"_id": "events"}, {"$set": {"block": block_number}})
         await ctx.send(content="Done")
@@ -188,7 +191,7 @@ class Debug(Cog):
 
     @hybrid_command()
     async def get_abi_of_contract(self, ctx: Context, contract: str):
-        """retrieves the latest ABI for a contract"""
+        """retrieve the latest ABI for a contract"""
         await ctx.defer()
         try:
             with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
@@ -199,7 +202,7 @@ class Debug(Cog):
 
     @hybrid_command()
     async def get_address_of_contract(self, ctx: Context, contract: str):
-        """retrieves the latest address for a contract"""
+        """retrieve the latest address for a contract"""
         await ctx.defer()
         try:
             await ctx.send(content=el_explorer_url(rp.uncached_get_address_by_name(contract)))

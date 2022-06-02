@@ -129,6 +129,9 @@ class Lottery(commands.Cog):
 
     @hybrid_command()
     async def lottery(self, ctx: Context):
+        """
+        Get the status of the current and next sync committee.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await self.chore(ctx)
         await msg.edit(content="generating lottery embed...")

@@ -20,6 +20,9 @@ class Releases(commands.Cog):
 
     @hybrid_command()
     async def latest_releases(self, ctx: Context):
+        """
+        Get the latest releases of Smart Node for both Mainnet and Prater.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         async with aiohttp.ClientSession() as session:
