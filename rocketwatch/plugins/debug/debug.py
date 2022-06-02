@@ -153,6 +153,19 @@ class Debug(Cog):
         await self.db.last_checked_block.update_one({"_id": "events"}, {"$set": {"block": block_number}})
         await ctx.send(content="Done")
 
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def full_sync_commands(self, ctx: Context):
+        """
+        Full sync of the commands tree.
+        """
+        await ctx.defer(ephemeral=True)
+        await self.bot.tree.sync()
+        for guild in [cfg["discord.owner.server_id"], *cfg["discord.guilds"]]:
+            await self.bot.tree.sync(guild=Object(id=guild))
+        await ctx.send(content="Done")
+
     # --------- PUBLIC COMMANDS --------- #
 
     @hybrid_command()

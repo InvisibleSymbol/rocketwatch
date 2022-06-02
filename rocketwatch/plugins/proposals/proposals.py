@@ -50,10 +50,10 @@ COLORS = {
 
     "Infura"          : "#ff2f00",
     "Pocket"          : "#e216e9",
-    "Geth"            : "#808080",
+    "Geth"            : "#40bfbf",
     "Besu"            : "#55aa7a",
     "Nethermind"      : "#2688d9",
-    "External"        : "#000000",
+    "External"        : "#808080",
 
     "Smart Node"      : "#cc6e33",
     "Allnodes"        : "#4533cc",
@@ -118,35 +118,13 @@ class Proposals(commands.Cog):
         self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.created_view = False
 
-    async def gather_all_proposals(self):
-        log.info("getting all proposals using the rocketscan.dev API")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.rocketscan_proposals_url) as resp:
-                if resp.status != 200:
-                    log.error("failed to get proposals using the rocketscan.dev API")
-                    return
-                proposals = await resp.json()
-        log.info("got all proposals using the rocketscan.dev API")
-        await self.db.proposals.bulk_write([ReplaceOne({"slot": int(entry["number"])},
-                                                       PROPOSAL_TEMPLATE | parse_propsal(entry),
-                                                       upsert=True) for entry in proposals])
-        log.info("finished gathering all proposals")
-
-    async def chore(self, ctx: Context):
-        msg = await ctx.send(content="doing chores...")
-        # only run if self.last_chore_run timestamp is older than 1 hour
-        if (time.time() - self.last_chore_run) > 3600:
-            self.last_chore_run = time.time()
-            await msg.edit(content="gathering proposals...")
-            await self.gather_all_proposals()
-        else:
-            log.debug("skipping chore")
-        return msg
-
-    @timerun
-    async def gather_attribute(self, attribute):
-        distribution = await self.db.minipools.aggregate([
+    async def create_minipool_proposal_view(self):
+        if self.created_view:
+            return
+        log.info("creating minipool proposal view")
+        pipeline = [
             {
                 '$match': {
                     'node_operator': {
@@ -163,12 +141,6 @@ class Proposals(commands.Cog):
                         {
                             '$sort': {
                                 'slot': -1
-                            }
-                        }, {
-                            '$match': {
-                                attribute: {
-                                    '$exists': 1
-                                }
                             }
                         }
                     ]
@@ -210,26 +182,66 @@ class Proposals(commands.Cog):
                     'from'        : 'proposals',
                     'localField'  : 'slot',
                     'foreignField': 'slot',
-                    'as'          : 'proposal'
+                    'as'          : 'proposals'
                 }
             }, {
                 '$project': {
                     'node_operator'  : 1,
-                    'proposal'       : {
+                    'latest_proposal': {
                         '$arrayElemAt': [
-                            '$proposal', 0
+                            '$proposals', 0
                         ]
                     },
                     'validator_count': 1
                 }
-            }, {
+            }
+        ]
+        await self.db.minipool_proposals.drop()
+        await self.db.create_collection(
+            "minipool_proposals",
+            viewOn="minipools",
+            pipeline=pipeline
+        )
+        self.created_view = True
+
+    async def gather_all_proposals(self):
+        log.info("getting all proposals using the rocketscan.dev API")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.rocketscan_proposals_url) as resp:
+                if resp.status != 200:
+                    log.error("failed to get proposals using the rocketscan.dev API")
+                    return
+                proposals = await resp.json()
+        log.info("got all proposals using the rocketscan.dev API")
+        await self.db.proposals.bulk_write([ReplaceOne({"slot": int(entry["number"])},
+                                                       PROPOSAL_TEMPLATE | parse_propsal(entry),
+                                                       upsert=True) for entry in proposals])
+        log.info("finished gathering all proposals")
+
+    async def chore(self, ctx: Context):
+        # only run if self.last_chore_run timestamp is older than 1 hour
+        msg = await ctx.send(content="doing chores...")
+        if (time.time() - self.last_chore_run) > 3600:
+            self.last_chore_run = time.time()
+            await msg.edit(content="gathering proposals...")
+            await self.gather_all_proposals()
+            await self.create_minipool_proposal_view()
+        else:
+            log.debug("skipping chore")
+        return msg
+
+    @timerun
+    async def gather_attribute(self, attribute, remove_allnodes=False):
+        distribution = await self.db.minipool_proposals.aggregate([
+            {
                 '$project': {
-                    'attribute'      : f'$proposal.{attribute}',
+                    'attribute'      : f'$latest_proposal.{attribute}',
+                    'type'           : '$latest_proposal.type',
                     'validator_count': 1
                 }
             }, {
                 '$group': {
-                    '_id'            : '$attribute',
+                    '_id'            : ['$attribute', '$type'],
                     'count'          : {
                         '$sum': 1
                     },
@@ -243,7 +255,26 @@ class Proposals(commands.Cog):
                 }
             }
         ]).to_list(length=None)
-        return distribution
+        if remove_allnodes:
+            d = {'remove_from_total': {'count': 0, 'validator_count': 0}}
+            for entry in distribution:
+                if entry['_id'][1] == 'Allnodes':
+                    d['remove_from_total']['count'] += entry['count']
+                    d['remove_from_total']['validator_count'] += entry['validator_count']
+                else:
+                    d[entry['_id'][0]] = entry
+            return d
+        else:
+            distribution = [entry | {'_id': entry['_id'][0]} for entry in distribution]
+            # merge entries that have the same _id by summing their attributes
+            d = {}
+            for entry in distribution:
+                if entry["_id"] in d:
+                    d[entry["_id"]]["count"] += entry["count"]
+                    d[entry["_id"]]["validator_count"] += entry["validator_count"]
+                else:
+                    d[entry["_id"]] = entry
+        return d
 
     @hybrid_command()
     async def version_chart(self, ctx: Context):
@@ -330,7 +361,7 @@ class Proposals(commands.Cog):
         recent_versions = recent_versions[:len(matplotlib_colors)]
         recent_colors = [matplotlib_colors[i] for i in range(len(recent_versions))]
         # generate color mapping
-        colors = ["white"] * len(versions)
+        colors = ["darkgray"] * len(versions)
         for i, version in enumerate(versions):
             if version in recent_versions:
                 colors[i] = recent_colors[recent_versions.index(version)]
@@ -354,26 +385,30 @@ class Proposals(commands.Cog):
         await msg.edit(content="", embed=e, attachments=[File(img, filename="chart.png")])
         img.close()
 
-    async def plot_axes_with_data(self, attr: str, ax1, ax2, name):
+    async def plot_axes_with_data(self, attr: str, ax1, ax2, name, remove_allnodes=False):
         # group by client and get count
-        data = await self.gather_attribute(attr)
+        data = await self.gather_attribute(attr, remove_allnodes)
 
-        minipools = [(x['_id'], x["validator_count"]) for x in data]
+        minipools = [(x, y["validator_count"]) for x, y in data.items() if x != "remove_from_total"]
         minipools = sorted(minipools, key=lambda x: x[1])
 
         # get total minipool count from rocketpool
         unobserved_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - sum(d[1] for d in minipools)
+        if "remove_from_total" in data:
+            unobserved_minipools -= data["remove_from_total"]["validator_count"]
         minipools.insert(0, ("No proposals yet", unobserved_minipools))
 
         # get node operators
-        node_operators = [(x['_id'], x["count"]) for x in data]
+        node_operators = [(x, y["count"]) for x, y in data.items() if x != "remove_from_total"]
         node_operators = sorted(node_operators, key=lambda x: x[1])
 
         # get total node operator count from rp
         unobserved_node_operators = rp.call("rocketNodeManager.getNodeCount") - sum(d[1] for d in node_operators)
+        if "remove_from_total" in data:
+            unobserved_node_operators -= data["remove_from_total"]["count"]
+        node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
 
         # sort data
-        node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
         ax1.pie(
             [x[1] for x in minipools],
             colors=[COLORS.get(x[0], "red") for x in minipools],
@@ -389,7 +424,7 @@ class Proposals(commands.Cog):
             fontsize=11,
             loc='lower left',
         )
-        ax1.set_title(f"{name} Distribution based on Minipools", fontsize=16)
+        ax1.set_title("Minipools", fontsize=22)
 
         ax2.pie(
             [x[1] for x in node_operators],
@@ -405,17 +440,20 @@ class Proposals(commands.Cog):
             loc="lower right",
             fontsize=11
         )
-        ax2.set_title(f"{name} Distribution based on Node Operators", fontsize=16)
+        ax2.set_title("Node Operators", fontsize=22)
 
-    async def proposal_vs_node_operators_embed(self, attribute, name, msg):
+    async def proposal_vs_node_operators_embed(self, attribute, name, msg, remove_allnodes=False):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
         # iterate axes in pairs
+        title = f"Rocket Pool {name} Distribution {'without Allnodes' if remove_allnodes else ''}"
         await msg.edit(content=f"generating {attribute} distribution graph...")
-        await self.plot_axes_with_data(attribute, ax1, ax2, name)
+        await self.plot_axes_with_data(attribute, ax1, ax2, name, remove_allnodes)
 
-        e = Embed(title=f"{name} Distribution")
+        e = Embed(title=title)
 
         fig.subplots_adjust(left=0, right=1, top=0.9, bottom=0, wspace=0)
+        # set title
+        fig.suptitle(title, fontsize=24)
 
         # respond with image
         img = BytesIO()
@@ -430,7 +468,7 @@ class Proposals(commands.Cog):
         return e, f
 
     @hybrid_command()
-    async def client_distribution(self, ctx: Context):
+    async def client_distribution(self, ctx: Context, remove_allnodes=False):
         """
         Generate a distribution graph of clients.
         """
@@ -438,7 +476,7 @@ class Proposals(commands.Cog):
         msg = await self.chore(ctx)
         embeds, files = [], []
         for attr, name in [["consensus_client", "Consensus Client"], ["execution_client", "Execution Client"]]:
-            e, f = await self.proposal_vs_node_operators_embed(attr, name, msg)
+            e, f = await self.proposal_vs_node_operators_embed(attr, name, msg, remove_allnodes)
             embeds.append(e)
             files.append(f)
         await msg.edit(content="", embeds=embeds, attachments=files)
@@ -451,7 +489,7 @@ class Proposals(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await self.chore(ctx)
         e, f = await self.proposal_vs_node_operators_embed("type", "User", msg)
-        await msg.edit(content="", embed=e, attachments=[f])
+        await msg.edit(content="", embed=e, files=[f])
 
     @hybrid_command()
     async def comments(self, ctx: Context):
@@ -459,8 +497,8 @@ class Proposals(commands.Cog):
         Generate a world cloud of comments.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        await self.chore(ctx)
-        await ctx.send(content="generating comments word cloud...")
+        msg = await self.chore(ctx)
+        await msg.edit(content="generating comments word cloud...")
 
         # load image
         mask = np.array(Image.open("./plugins/proposals/assets/logo-words.png"))
@@ -468,7 +506,8 @@ class Proposals(commands.Cog):
         # load font
         font_path = "./plugins/proposals/assets/noto.ttf"
 
-        wc = WordCloud(max_words=2000,
+        wc = WordCloud(max_words=2**16,
+                       scale=2,
                        mask=mask,
                        max_font_size=100,
                        background_color="white",
@@ -494,8 +533,61 @@ class Proposals(commands.Cog):
         plt.close()
         e = Embed(title="Rocket Pool Proposal Comments")
         e.set_image(url="attachment://image.png")
-        await ctx.send(content="", embed=e, attachments=[File(img, filename="image.png")])
+        await msg.edit(content="", embed=e, attachments=[File(img, filename="image.png")])
         img.close()
+
+    @hybrid_command()
+    async def client_combo_ranking(self, ctx: Context, remove_allnodes=False, group_by_node_operators=False):
+        """
+        Generate a ranking of most used execution and consensus clients.
+        """
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        msg = await self.chore(ctx)
+        await msg.edit(content="generating client combo ranking...")
+
+        # aggregate [consensus, execution] pair counts
+        client_pairs = await self.db.minipool_proposals.aggregate([
+            {
+                "$match": {
+                    "latest_proposal.consensus_client": {"$ne": "Unknown"},
+                    "latest_proposal.execution_client": {"$ne": "Unknown"},
+                    "latest_proposal.type": {"$ne": "Allnodes"} if remove_allnodes else {"$ne": "deadbeef"}
+                }
+            }, {
+                "$group": {
+                    "_id"  : {
+                        "consensus": "$latest_proposal.consensus_client",
+                        "execution": "$latest_proposal.execution_client"
+                    },
+                    "count": {
+                        "$sum": 1 if group_by_node_operators else "$validator_count"
+                    }
+                }
+            },
+            {
+                "$sort": {
+                    "count": -1
+                }
+            }
+        ]).to_list(None)
+
+        e = Embed(title=f"Client Combo Ranking{' without Allnodes' if remove_allnodes else ''}")
+
+        # generate max width of both columns
+        max_widths = [
+            max(len(x['_id']['consensus']) for x in client_pairs),
+            max(len(x['_id']['execution']) for x in client_pairs),
+            max(len(str(x['count'])) for x in client_pairs)
+        ]
+
+        desc = "".join(
+            f"#{i + 1:<2}\t{pair['_id']['consensus'].rjust(max_widths[0])} & "
+            f"{pair['_id']['execution'].ljust(max_widths[1])}\t"
+            f"{str(pair['count']).rjust(max_widths[2])}\n"
+            for i, pair in enumerate(client_pairs)
+        )
+        e.description = f"Currently showing {'node operator' if group_by_node_operators else 'validator' } counts\n```{desc}```"
+        await msg.edit(content="", embed=e)
 
 
 async def setup(bot):
