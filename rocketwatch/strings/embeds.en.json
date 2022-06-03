@@ -75,7 +75,7 @@
     },
     "milestone_staking_minipools": {
         "title": ":tada: Milestone Reached",
-        "description": "%{result_value} Minipools are currently staking on the Beacon Chain!"
+        "description": "%{result_value} Minipools have been created!"
     },
     "milestone_registered_nodes": {
         "title": ":tada: Milestone Reached",
