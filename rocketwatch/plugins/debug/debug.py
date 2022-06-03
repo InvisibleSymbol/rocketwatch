@@ -166,6 +166,18 @@ class Debug(Cog):
             await self.bot.tree.sync(guild=Object(id=guild))
         await ctx.send(content="Done")
 
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def talk(self, ctx: Context, channel: str, message: str):
+        """
+        Send a message to a channel.
+        """
+        await ctx.defer(ephemeral=True)
+        channel = await get_or_fetch_channel(self.bot, channel)
+        await channel.send(message)
+        await ctx.send(content="Done", ephemeral=True)
+
     # --------- PUBLIC COMMANDS --------- #
 
     @hybrid_command()
