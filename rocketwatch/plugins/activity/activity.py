@@ -34,7 +34,7 @@ class RichActivity(commands.Cog):
         monitor.ping()
         try:
             log.debug("Updating Discord Activity...")
-            count = humanize.intcomma(rp.call("rocketMinipoolManager.getStakingMinipoolCount"))
+            count = humanize.intcomma(rp.call("rocketMinipoolManager.getMinipoolCount"))
             await self.bot.change_presence(activity=Activity(type=ActivityType.watching, name=f"{count} Minipools!"))
         except Exception as err:
             await report_error(err)
