@@ -489,7 +489,7 @@ class Proposals(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
         msg = await self.chore(ctx)
         e, f = await self.proposal_vs_node_operators_embed("type", "User", msg)
-        await msg.edit(content="", embed=e, files=[f])
+        await msg.edit(content="", embed=e, attachments=[f])
 
     @hybrid_command()
     async def comments(self, ctx: Context):
