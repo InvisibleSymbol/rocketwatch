@@ -421,8 +421,9 @@ class Proposals(commands.Cog):
         # legend in the top left corner of the plot
         ax1.legend(
             [f"{x[1]} {x[0]} ({x[1] / total_minipols:.2%})" for x in minipools],
-            fontsize=11,
-            loc='lower left',
+            loc="lower left",
+            bbox_to_anchor=(0, -0.1),
+            fontsize=11
         )
         ax1.set_title("Minipools", fontsize=22)
 
@@ -437,7 +438,8 @@ class Proposals(commands.Cog):
         total_node_operators = sum(x[1] for x in node_operators)
         ax2.legend(
             [f"{x[1]} {x[0]} ({x[1] / total_node_operators:.2%})" for x in node_operators],
-            loc="lower right",
+            loc="lower left",
+            bbox_to_anchor=(0, -0.1),
             fontsize=11
         )
         ax2.set_title("Node Operators", fontsize=22)
