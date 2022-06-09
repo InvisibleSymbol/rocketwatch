@@ -6,7 +6,7 @@ termplotlib==0.3.9
 cachetools==5.2.0
 bidict==0.22.0
 tinydb==4.7.0
-requests==2.27.1
+requests==2.28.0
 uptime==3.0.1
 git+https://github.com/Rapptz/discord.py@7857a845989e421d591c7d231b756433342d00a8#egg=discord.py
 config==0.5.1
