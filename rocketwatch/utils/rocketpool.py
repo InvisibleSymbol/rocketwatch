@@ -43,6 +43,7 @@ class RocketPool:
         if not w3.toInt(hexstr=address):
             raise Exception(f"No address found for {name} Contract")
         self.addresses[name] = address
+        log.debug(f"Retrieved address for {name} Contract: {address}")
         return address
 
     def get_revert_reason(self, tnx):
