@@ -10,7 +10,7 @@ from web3_multicall import Multicall
 from utils import solidity
 from utils.cfg import cfg
 from utils.readable import decode_abi
-from utils.shared_w3 import w3
+from utils.shared_w3 import w3, mainnet_w3
 from utils.time_debug import timerun
 
 log = logging.getLogger("rocketpool")
@@ -80,7 +80,7 @@ class RocketPool:
         return decode_abi(compressed_string)
 
     @cached(cache={})
-    def assemble_contract(self, name, address=None):
+    def assemble_contract(self, name, address=None, mainnet=False):
         abi = None
 
         if os.path.exists(f"./contracts/{name}.abi"):
@@ -88,6 +88,8 @@ class RocketPool:
                 abi = f.read()
         if not abi:
             abi = self.get_abi_by_name(name)
+        if mainnet:
+            return mainnet_w3.eth.contract(address=address, abi=abi)
         return w3.eth.contract(address=address, abi=abi)
 
     def get_name_by_address(self, address):
@@ -114,19 +116,19 @@ class RocketPool:
         return contract.functions[function](*args).estimateGas({"gas": 2 ** 32},
                                                                block_identifier=block)
 
-    def get_function(self, path, *args, address=None):
+    def get_function(self, path, *args, address=None, mainnet=False):
         parts = path.split(".")
         if len(parts) != 2:
             raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
         name, function = parts
         if not address:
             address = self.get_address_by_name(name)
-        contract = self.assemble_contract(name, address)
+        contract = self.assemble_contract(name, address, mainnet)
         return contract.functions[function](*args)
 
-    def call(self, path, *args, block="latest", address=None):
+    def call(self, path, *args, block="latest", address=None, mainnet=False):
         log.debug(f"Calling {path} (block={block})")
-        return self.get_function(path, *args, address=address).call(block_identifier=block)
+        return self.get_function(path, *args, address=address, mainnet=mainnet).call(block_identifier=block)
 
     def get_pubkey_using_transaction(self, receipt):
         # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
@@ -170,7 +172,7 @@ class RocketPool:
         }
 
     def get_dai_eth_price(self):
-        data = self.call("DAIETH_univ3.slot0")
+        data = self.call("DAIETH_univ3.slot0", mainnet=True)
         value_dai = data[0] ** 2 / 2 ** 192
         return 1 / value_dai
 
