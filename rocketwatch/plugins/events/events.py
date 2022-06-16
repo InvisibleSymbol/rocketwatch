@@ -45,7 +45,11 @@ class QueuedEvents(commands.Cog):
         addresses = []
         aggregated_topics = []
         for group in events_config["direct"]:
-            contract = rp.get_contract_by_name(group["contract_name"])
+            try:
+                contract = rp.get_contract_by_name(group["contract_name"])
+            except Exception as err:
+                log.error(f"Failed to get contract {group['contract_name']}: {err}")
+                continue
             addresses.append(contract.address)
 
             for event in group["events"]:
