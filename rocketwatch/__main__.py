@@ -23,7 +23,7 @@ class RocketWatch(Bot):
         log.info('Loading Plugins')
         for path in Path("plugins").glob('**/*.py'):
             plugin_name = path.parts[1]
-            if path.stem != plugin_name:
+            if path.stem != plugin_name or cfg["modules.overwrite"] and plugin_name not in cfg["modules.overwrite"]:
                 log.warning(f"Skipping plugin {plugin_name}")
                 continue
             extension_name = f"plugins.{plugin_name}.{plugin_name}"
