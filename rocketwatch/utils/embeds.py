@@ -125,6 +125,8 @@ def assemble(args):
 
     if do_small:
         e.description = _(f"embeds.{args.event_name}.description_small", **args)
+        if cfg["rocketpool.chain"] != "mainnet":
+            e.description += f" ({cfg['rocketpool.chain'].capitalize()})"
         e.set_footer(text="")
         return e
 
