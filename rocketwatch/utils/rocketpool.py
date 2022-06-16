@@ -21,7 +21,11 @@ class RocketPool:
     addresses = bidict()
 
     def __init__(self):
-        self.multicall = Multicall(w3.eth)
+        try:
+            self.multicall = Multicall(w3.eth)
+        except Exception as err:
+            log.error(f"Failed to initialize Multicall: {err}")
+            self.multicall = None
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
 

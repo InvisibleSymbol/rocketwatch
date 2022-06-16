@@ -56,17 +56,20 @@ def get_sea_creature_for_address(address):
     # get their eth balance
     eth_balance = solidity.to_float(w3.eth.getBalance(address))
     # get ERC-20 token balance for this address
-    resp = rp.multicall.aggregate(
-        rp.get_contract_by_name(name).functions.balanceOf(address) for name in
-        ["rocketTokenRPL", "rocketTokenRPLFixedSupply", "rocketTokenRETH"]
-    )
-    # add their tokens to their eth balance
-    for token in resp.results:
-        contract_name = rp.get_name_by_address(token.contract_address)
-        if "RPL" in contract_name:
-            eth_balance += solidity.to_float(token.results[0]) * price_cache["rpl_price"]
-        if "RETH" in contract_name:
-            eth_balance += solidity.to_float(token.results[0]) * price_cache["reth_price"]
+    try:
+        resp = rp.multicall.aggregate(
+            rp.get_contract_by_name(name).functions.balanceOf(address) for name in
+            ["rocketTokenRPL", "rocketTokenRPLFixedSupply", "rocketTokenRETH"]
+        )
+        # add their tokens to their eth balance
+        for token in resp.results:
+            contract_name = rp.get_name_by_address(token.contract_address)
+            if "RPL" in contract_name:
+                eth_balance += solidity.to_float(token.results[0]) * price_cache["rpl_price"]
+            if "RETH" in contract_name:
+                eth_balance += solidity.to_float(token.results[0]) * price_cache["reth_price"]
+    except:
+        pass
     # get minipool count
     minipools = rp.call("rocketMinipoolManager.getNodeMinipoolCount", address)
     eth_balance += minipools * 16
