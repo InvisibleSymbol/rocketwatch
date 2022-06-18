@@ -10,50 +10,46 @@ from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.readable import cl_explorer_url
+from utils.shared_w3 import bacon
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
+from utils.time_debug import timerun, timerun_async
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
 log.setLevel(cfg["log_level"])
 
 
-class Lottery(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.endpoint = "https://beaconcha.in/api/v1/sync_committee"
-        self.validator_url = "https://beaconcha.in/api/v1/validator/"
+class LotteryBase:
+    def __init__(self):
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
+    @timerun_async
     async def load_sync_committee(self, period):
-        async with aiohttp.ClientSession() as session:
-            res = await session.get("/".join([self.endpoint, period]))
-            res = await res.json()
+        assert period in ["latest", "next"]
+        h = bacon.get_block("head")
+        sync_period = int(h['data']['message']['slot']) // 32 // 256
+        if period == "next":
+            sync_period += 1
+        res = bacon._make_get_request(f"/eth/v1/beacon/states/finalized/sync_committees?epoch={sync_period * 256}")
         data = res["data"]
         self.db.sync_committee_stats.replace_one({"period": period},
                                                  {"period"     : period,
-                                                  "start_epoch": data["start_epoch"],
-                                                  "end_epoch"  : data["end_epoch"],
-                                                  "sync_period": data["period"],
+                                                  "start_epoch": sync_period * 256,
+                                                  "end_epoch"  : (sync_period + 1) * 256,
+                                                  "sync_period": sync_period*256,
                                                   }, upsert=True)
         validators = data["validators"]
-        col = self.db["sync_committee_" + period]
+        col = self.db[f"sync_committee_{period}"]
         payload = [
             ReplaceOne(
-                {"index": i}, {"index": i, "validator": validator}, upsert=True
+                {"index": i}, {"index": i, "validator": int(validator)}, upsert=True
             )
             for i, validator in enumerate(validators)
         ]
 
         await col.bulk_write(payload)
         return
-
-    async def chore(self, ctx: Context):
-        msg = await ctx.send(content="loading latest sync committee...")
-        await self.load_sync_committee("latest")
-        await msg.edit(content="loading next sync committee...")
-        await self.load_sync_committee("next")
-        return msg
 
     async def get_validators_for_sync_committee_period(self, period):
         data = await self.db.minipools.aggregate([
@@ -102,17 +98,18 @@ class Lottery(commands.Cog):
         return data
 
     async def generate_sync_committee_description(self, period):
+        await self.load_sync_committee(period)
         validators = await self.get_validators_for_sync_committee_period(period)
         # get stats about the current period
         stats = await self.db.sync_committee_stats.find_one({"period": period})
         perc = len(validators) / 512
-        description = f"Rocket Pool Participation: {len(validators)}/512 ({perc:.2%})\n"
+        description = f"_Rocket Pool Participation:_ {len(validators)}/512 ({perc:.2%})\n"
         start_timestamp = BEACON_START_DATE + (stats['start_epoch'] * BEACON_EPOCH_LENGTH)
-        description += f"Start: Epoch {stats['start_epoch']} <t:{start_timestamp}> (<t:{start_timestamp}:R>)\n"
+        description += f"_Start:_ Epoch {stats['start_epoch']} <t:{start_timestamp}> (<t:{start_timestamp}:R>)\n"
         end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
-        description += f"End: Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
+        description += f"_End:_ Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
         # validators (called minipools here)
-        description += f"Minipools: {', '.join(cl_explorer_url(v['validator']) for v in validators)}\n"
+        description += f"_Minipools:_ {', '.join(cl_explorer_url(v['validator']) for v in validators)}\n"
         # node operators
         # gather count per
         node_operators = {}
@@ -122,10 +119,17 @@ class Lottery(commands.Cog):
             node_operators[v['node_operator']] += 1
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
-        description += "Node Operators: "
-        description += f", ".join(
-            [f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
+        description += "_Node Operators:_ "
+        description += ", ".join([f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
         return description
+
+
+lottery = LotteryBase()
+
+
+class Lottery(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
     @hybrid_command()
     async def lottery(self, ctx: Context):
@@ -133,18 +137,15 @@ class Lottery(commands.Cog):
         Get the status of the current and next sync committee.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        msg = await self.chore(ctx)
-        await msg.edit(content="generating lottery embed...")
         e = Embed(title="Sync Committee Lottery")
-        description = ""
-        description += "**Current sync committee:**\n"
-        description += await self.generate_sync_committee_description("latest")
+        description = "**Current sync committee:**\n"
+        description += await lottery.generate_sync_committee_description("latest")
         description += "\n\n"
         description += "**Next sync committee:**\n"
-        description += await self.generate_sync_committee_description("next")
+        description += await lottery.generate_sync_committee_description("next")
         e.description = description
 
-        await msg.edit(content="", embed=e)
+        await ctx.send(embed=e)
 
 
 async def setup(bot):

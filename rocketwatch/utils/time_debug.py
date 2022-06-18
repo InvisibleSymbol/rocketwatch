@@ -21,3 +21,18 @@ def timerun(func):
         return result
 
     return wrapper
+
+
+def timerun_async(func):
+    """ Calculate the execution time of an async method and return it back"""
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        start = time.time()
+        result = await func(*args, **kwargs)
+        duration = time.time() - start
+
+        log.debug(f"{func.__name__} took {duration} seconds")
+        return result
+
+    return wrapper

@@ -115,7 +115,6 @@ class Proposals(commands.Cog):
         self.bot = bot
         self.rocketscan_proposals_url = "https://rocketscan.io/api/mainnet/beacon/blocks/all"
         self.last_chore_run = 0
-        self.validator_url = "https://beaconcha.in/api/v1/validator/"
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.created_view = False
@@ -230,7 +229,7 @@ class Proposals(commands.Cog):
             log.debug("skipping chore")
         return msg
 
-    @timerun
+    @timerun_async
     async def gather_attribute(self, attribute, remove_allnodes=False):
         distribution = await self.db.minipool_proposals.aggregate([
             {

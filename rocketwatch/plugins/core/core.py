@@ -2,15 +2,17 @@ import asyncio
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 import cronitor
 import motor.motor_asyncio
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
+from plugins.lottery.lottery import lottery
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble
+from utils.embeds import assemble, Embed
 from utils.get_or_fetch import get_or_fetch_channel
 from utils.reporter import report_error
 from utils.shared_w3 import w3
@@ -34,14 +36,19 @@ class Core(commands.Cog):
         # block filter
         self.block_event = w3.eth.filter("latest")
         self.previous_run = time.time()
+        # gather all currently cogs with the Queued prefix
+        self.submodules = None
+        self.speed_limit = 5
 
         if not self.run_loop.is_running():
             self.run_loop.start()
 
     @tasks.loop(seconds=10.0)
     async def run_loop(self):
+        if not self.submodules:
+            self.submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
         p_id = time.time()
-        if p_id - self.previous_run < 10:
+        if p_id - self.previous_run < self.speed_limit:
             log.debug("skipping core update loop")
             return
         self.previous_run = p_id
@@ -52,52 +59,92 @@ class Core(commands.Cog):
         except Exception as err:
             self.state = "ERROR"
             await report_error(err)
-        # update the state message
-        try:
-            await self.update_state_message()
-        except Exception as err:
-            await report_error(err)
         # process the messages as long as we are in a non-error state
         if self.state != "ERROR":
             try:
                 await self.process_event_queue()
             except Exception as err:
                 await report_error(err)
+        # update the state message
+        try:
+            await self.update_state_message()
+        except Exception as err:
+            await report_error(err)
+        self.speed_limit = 5 if self.state == "OK" else 30
         monitor.ping(state='fail' if self.state == "ERROR" else 'complete', series=p_id)
 
     async def update_state_message(self):
         # get the state message from the db
         state_message = await self.db.state_messages.find_one({"_id": "state"})
-        if self.state == "OK" and not state_message:
-            return
         channel = await get_or_fetch_channel(self.bot, self.channels["default"])
-        if self.state == "OK" and state_message:
-            # delete state message if state changed to OK
-            msg = await channel.fetch_message(state_message["message"])
-            await msg.delete()
-            await self.db.state_messages.delete_one({"_id": "state"})
-        elif self.state == "ERROR" and not state_message:
+        # return if we are currently displaying an error message, and it's still active
+        if self.state == "ERROR":
             # send state message if state changed to ERROR
             embed = assemble(aDict({
                 "event_name": "service_interrupted"
             }))
-            msg = await channel.send(embed=embed)
-            await self.db.state_messages.insert_one({"_id": "state", "message": msg.id})
+            if state_message and state_message["state"] != "ERROR":
+                msg = await channel.fetch_message(state_message["message_id"])
+                await msg.edit(embed=embed)
+                await self.db.state_messages.update_one({"_id": "state"},
+                                                        {"$set": {"sent_at": time.time(), "state": self.state}})
+            elif not state_message:
+                msg = await channel.send(embed=embed)
+                await self.db.state_messages.insert_one({
+                    "_id"       : "state",
+                    "message_id": msg.id,
+                    "state"     : self.state,
+                    "sent_at"   : time.time()
+                })
+            return
+        elif self.state == "OK":
+            if not cfg["core.status_message.fields"]:
+                if state_message:
+                    msg = await channel.fetch_message(state_message["message_id"])
+                    await msg.delete()
+                    await self.db.state_messages.delete_one({"_id": "state"})
+                return
+            # if the state message is less than 1 minute old, do nothing
+            if state_message and time.time() - state_message["sent_at"] < 60 and state_message["state"] != "OK":
+                return
+
+            e = Embed(title=":rocket: Rocket Watch")
+            e.description = "**Current Sync Committee:**\n"
+
+            e.description += await lottery.generate_sync_committee_description("latest")
+            e.timestamp = datetime.now()
+            e.set_footer(
+                text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "
+                     f"using {len(self.submodules)} submodules "
+                     f"and {len(self.bot.cogs)} plugins"
+            )
+            for field in cfg["core.status_message.fields"]:
+                e.add_field(name=field["name"], value=field["value"])
+            if state_message:
+                msg = await channel.fetch_message(state_message["message_id"])
+                await msg.edit(embed=e)
+                await self.db.state_messages.update_one({"_id": "state"},
+                                                        {"$set": {"sent_at": time.time(), "state": self.state}})
+            else:
+                msg = await channel.send(embed=e)
+                await self.db.state_messages.insert_one({
+                    "_id"       : "state",
+                    "message_id": msg.id,
+                    "state"     : self.state,
+                    "sent_at"   : time.time()
+                })
 
     async def gather_new_events(self):
         log.info("Gathering messages from submodules")
         self.state = "OK"
 
-        # gather all currently cogs with the Queued prefix
-        submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
-
-        log.debug(f"Running {len(submodules)} submodules...")
+        log.debug(f"Running {len(self.submodules)} submodules...")
 
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
 
         try:
-            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run_loop) for submodule in submodules]
+            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run_loop) for submodule in self.submodules]
         except Exception as err:
             log.error("Failed to prepare submodules.")
             raise err
@@ -139,8 +186,15 @@ class Core(commands.Cog):
             events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort(
                 [("score", 1)]).to_list(None)
             log.debug(f"{len(events)} Events found for channel {channel}.")
-
             target_channel = await get_or_fetch_channel(self.bot, channel)
+
+            if channel == self.channels["default"]:
+                # get the current state message
+                state_message = await self.db.state_messages.find_one({"_id": "state"})
+                if state_message:
+                    msg = await target_channel.fetch_message(state_message["message_id"])
+                    await msg.delete()
+                    await self.db.state_messages.delete_one({"_id": "state"})
             for event in events:
                 await target_channel.send(embed=Response.get_embed(event))
                 # mark event as processed

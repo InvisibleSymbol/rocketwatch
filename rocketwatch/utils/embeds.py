@@ -22,7 +22,7 @@ class Embed(discord.Embed):
         super().__init__(*args, **kwargs)
         self.colour = Color.from_rgb(235, 142, 85)
         footer_parts = ["Developed by 0xinvis.eth",
-                        "/donate for POAP"]
+                        "/donate"]
         if cfg["rocketpool.chain"] != "mainnet":
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
         self.set_footer(text=" · ".join(footer_parts))
