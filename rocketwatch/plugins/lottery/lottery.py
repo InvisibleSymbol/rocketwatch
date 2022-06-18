@@ -23,10 +23,23 @@ class LotteryBase:
     def __init__(self):
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.did_check = False
+
+    async def _check_indexes(self):
+        if self.did_check:
+            return
+        log.debug("Checking indexes")
+        for period in ["latest", "next"]:
+            col = self.db[f"sync_committee_{period}"]
+            await col.create_index("validator", unique=True)
+            await col.create_index("index", unique=True)
+        self.did_check = True
+        log.debug("Indexes checked")
 
     @timerun_async
     async def load_sync_committee(self, period):
         assert period in ["latest", "next"]
+        await self._check_indexes()
         h = bacon.get_block("head")
         sync_period = int(h['data']['message']['slot']) // 32 // 256
         if period == "next":
@@ -37,7 +50,7 @@ class LotteryBase:
                                                  {"period"     : period,
                                                   "start_epoch": sync_period * 256,
                                                   "end_epoch"  : (sync_period + 1) * 256,
-                                                  "sync_period": sync_period*256,
+                                                  "sync_period": sync_period * 256,
                                                   }, upsert=True)
         validators = data["validators"]
         col = self.db[f"sync_committee_{period}"]
@@ -52,46 +65,38 @@ class LotteryBase:
         return
 
     async def get_validators_for_sync_committee_period(self, period):
-        data = await self.db.minipools.aggregate([
-            # filter out validators that have no node operator
-            {
-                '$match': {
-                    'node_operator': {
-                        '$ne': None
-                    }
-                }
-            },
-            # get the sync committee entry per node operator
+        data = await self.db[f"sync_committee_{period}"].aggregate([
             {
                 '$lookup': {
-                    'from'        : f'sync_committee_{period}',
+                    'from'        : 'minipools',
                     'localField'  : 'validator',
                     'foreignField': 'validator',
-                    'as'          : 'entry',
-                    'pipeline'    : [
-                        {
-                            '$sort': {
-                                'slot': -1
-                            }
-                        }
-                    ]
+                    'as'          : 'entry'
                 }
-            },
-            # remove validators that are not in the sync committee
-            {
+            }, {
                 '$match': {
                     'entry': {
                         '$ne': []
                     }
                 }
-            },
-            {
+            }, {
+                '$replaceRoot': {
+                    'newRoot': {
+                        '$first': '$entry'
+                    }
+                }
+            }, {
                 '$project': {
                     '_id'          : 0,
                     'validator'    : 1,
                     'pubkey'       : 1,
                     'node_operator': 1
-
+                }
+            }, {
+                '$match': {
+                    'node_operator': {
+                        '$ne': None
+                    }
                 }
             }]).to_list(length=None)
 

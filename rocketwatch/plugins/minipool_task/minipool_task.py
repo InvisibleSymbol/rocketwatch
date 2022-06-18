@@ -121,7 +121,8 @@ class MinipoolTask(commands.Cog):
     def check_indexes(self):
         log.debug("checking indexes")
         self.db.proposals.create_index("validator")
-        self.db.proposals.create_index("slot")
+        self.db.minipools.create_index("validator", unique=True)
+        self.db.proposals.create_index("slot", unique=True)
         log.debug("indexes checked")
 
     def task(self):
