@@ -105,7 +105,7 @@ class Core(commands.Cog):
                     await self.db.state_messages.delete_one({"_id": "state"})
                 return
             # if the state message is less than 1 minute old, do nothing
-            if state_message and time.time() - state_message["sent_at"] < 60 and state_message["state"] != "OK":
+            if state_message and time.time() - state_message["sent_at"] < 60 and state_message["state"] == "OK":
                 return
 
             e = Embed(title=":rocket: Rocket Watch")
