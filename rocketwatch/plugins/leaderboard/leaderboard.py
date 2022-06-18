@@ -140,11 +140,11 @@ class Leaderboard(commands.Cog):
 
         # add top 10 validators
         desc = "```\n"
-        for i, (validator, data) in enumerate(sorted_validators[:10]):
+        for i, (validator, data) in enumerate(sorted_validators[:5]):
             desc += f"\n{f'#{i + 1}':>5}: {validator} - {data['current']:.2f}ETH (APR: {data['apr']:>5.2f}%)"
         desc += f"\n{'...':>5}"
-        for i, (validator, data) in enumerate(sorted_validators[-10:]):
-            i = len(sorted_validators) - 10 + i
+        for i, (validator, data) in enumerate(sorted_validators[-30:]):
+            i = len(sorted_validators) - 30 + i
             desc += f"\n{f'#{i}':>5}: {validator} - {data['current']:.2f}ETH (APR: {data['apr']:>5.2f}%)"
         desc += "\n```"
         e.description = desc
@@ -168,11 +168,11 @@ class Leaderboard(commands.Cog):
 
         # add top 10 validators
         desc = "```\n"
-        for i, (validator, data) in enumerate(sorted_validators[:10]):
+        for i, (validator, data) in enumerate(sorted_validators[:5]):
             desc += f"\n{f'#{i + 1}':>5}: {validator} - {data['current']:.2f}ETH ({data['daily_earnings']:.5f} ETH/day)"
         desc += f"\n{'...':>5}"
-        for i, (validator, data) in enumerate(sorted_validators[-10:]):
-            i = len(sorted_validators) - 10 + i
+        for i, (validator, data) in enumerate(sorted_validators[-30:]):
+            i = len(sorted_validators) - 30 + i
             desc += f"\n{f'#{i}':>5}: {validator} - {data['current']:.2f}ETH ({data['daily_earnings']:.5f} ETH/day)"
         desc += "\n```"
         e.description = desc
