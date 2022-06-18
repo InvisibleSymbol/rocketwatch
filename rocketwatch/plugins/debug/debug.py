@@ -139,7 +139,7 @@ class Debug(Cog):
         if not confirm:
             await ctx.send("Not running. Set `confirm` to `true` to run.")
             return
-        await self.db.minipools.delete_many({})
+        await self.db.minipools.drop()
         await ctx.send(content="Done")
 
     @hybrid_command()
