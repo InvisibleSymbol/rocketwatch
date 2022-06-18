@@ -19,7 +19,7 @@ from wordcloud import WordCloud
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.time_debug import timerun
+from utils.time_debug import timerun, timerun_async
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
