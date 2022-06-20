@@ -1,10 +1,9 @@
 import logging
 
-import aiohttp
 from discord.ext import commands
 from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import ReplaceOne
+from pymongo import InsertOne
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -12,7 +11,7 @@ from utils.embeds import el_explorer_url
 from utils.readable import cl_explorer_url
 from utils.shared_w3 import bacon
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
-from utils.time_debug import timerun, timerun_async
+from utils.time_debug import timerun_async
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -22,7 +21,8 @@ log.setLevel(cfg["log_level"])
 class LotteryBase:
     def __init__(self):
         # connect to local mongodb
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.client = AsyncIOMotorClient(cfg["mongodb_uri"])
+        self.db = self.client.get_database("rocketwatch")
         self.did_check = False
 
     async def _check_indexes(self):
@@ -54,15 +54,18 @@ class LotteryBase:
                                                   }, upsert=True)
         validators = data["validators"]
         col = self.db[f"sync_committee_{period}"]
+        # get unique validators from collection
+        validators_in_db = await col.distinct("validator")
+        if set(validators) == set(validators_in_db):
+            return
         payload = [
-            ReplaceOne(
-                {"index": i}, {"index": i, "validator": int(validator)}, upsert=True
-            )
+            InsertOne({"index": i, "validator": int(validator)})
             for i, validator in enumerate(validators)
         ]
-
-        await col.bulk_write(payload)
-        return
+        async with await self.client.start_session() as s:
+            async with s.start_transaction():
+                await col.delete_many({})
+                await col.bulk_write(payload)
 
     async def get_validators_for_sync_committee_period(self, period):
         data = await self.db[f"sync_committee_{period}"].aggregate([
@@ -125,7 +128,8 @@ class LotteryBase:
         # sort by count
         node_operators = sorted(node_operators.items(), key=lambda x: x[1], reverse=True)
         description += "_Node Operators:_ "
-        description += ", ".join([f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in node_operators])
+        description += ", ".join([f"{count}x {el_explorer_url(node_operator)}" for node_operator, count in
+                                  node_operators])
         return description
 
 
