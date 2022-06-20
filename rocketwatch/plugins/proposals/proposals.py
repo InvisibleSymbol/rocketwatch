@@ -396,6 +396,8 @@ class Proposals(commands.Cog):
         if "remove_from_total" in data:
             unobserved_minipools -= data["remove_from_total"]["validator_count"]
         minipools.insert(0, ("No proposals yet", unobserved_minipools))
+        # move "Unknown" to be before "No proposals yet"
+        minipools.insert(1, minipools.pop([i for i, (x, y) in enumerate(minipools) if x == "Unknown"][0]))
 
         # get node operators
         node_operators = [(x, y["count"]) for x, y in data.items() if x != "remove_from_total"]
@@ -406,6 +408,8 @@ class Proposals(commands.Cog):
         if "remove_from_total" in data:
             unobserved_node_operators -= data["remove_from_total"]["count"]
         node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
+        # move "Unknown" to be before "No proposals yet"
+        node_operators.insert(1, node_operators.pop([i for i, (x, y) in enumerate(node_operators) if x == "Unknown"][0]))
 
         # sort data
         ax1.pie(
