@@ -48,8 +48,8 @@ def el_explorer_url(target, name="", prefix=""):
             prefix += "📄"
             if (
                     not name
-                    and code.hex()
-                    == "0x3d60323d7353db332d01e0ba9c3529110899aa00c719c2438a330382573d601436036020363d600c37343d515af1905780fd5b"
+                    and w3.keccak(text=target).hex()
+                    in cfg["mev.hashes"]
             ):
                 name = "MEV Bot Contract"
             if not name:
