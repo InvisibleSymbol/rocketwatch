@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import math
 
@@ -51,6 +52,16 @@ def el_explorer_url(target, name="", prefix=""):
                     == "0x3d60323d7353db332d01e0ba9c3529110899aa00c719c2438a330382573d601436036020363d600c37343d515af1905780fd5b"
             ):
                 name = "MEV Bot Contract"
+            if not name:
+                with contextlib.suppress(Exception):
+                    c = w3.eth.contract(address=target, abi=[{"inputs"         : [],
+                                                              "name"           : "name",
+                                                              "outputs"        : [{"internalType": "string",
+                                                                                   "name"        : "",
+                                                                                   "type"        : "string"}],
+                                                              "stateMutability": "view",
+                                                              "type"           : "function"}])
+                    name = c.functions.name().call()
     if not name:
         # fall back to shortened address
         name = s_hex(target)
