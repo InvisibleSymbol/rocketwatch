@@ -13,7 +13,7 @@ from discord.app_commands import Choice, guilds, describe
 from discord.ext.commands import is_owner, Cog, Bot, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from rocketwatch.utils.containers import Response
+from utils.containers import Response
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import el_explorer_url
