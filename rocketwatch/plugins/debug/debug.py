@@ -13,6 +13,7 @@ from discord.app_commands import Choice, guilds, describe
 from discord.ext.commands import is_owner, Cog, Bot, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch.utils.containers import Response
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import el_explorer_url
@@ -173,6 +174,27 @@ class Debug(Cog):
         await self.bot.tree.sync()
         for guild in [cfg["discord.owner.server_id"], *cfg["discord.guilds"]]:
             await self.bot.tree.sync(guild=Object(id=guild))
+        await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def fix_fuckup_1(self, ctx: Context,
+                           message_id: str):
+        """
+        Fix fuckup #1: incorrect format specifier in slashing message.
+        """
+        await ctx.defer(ephemeral=True)
+        event_id = "1656176303:slash-391311:slasher-347354:slashing-type-Attestation"
+        event = await self.db.event_queue.find_one({"_id": event_id, "processed": True})
+        if not event:
+            await ctx.send(content="Event not found.")
+            return
+        e = Response.get_embed(event)
+        e.description = e.description.replace("%{minipool_clean}", "[391311](https://beaconcha.in/validator/391311)")
+        channel = await get_or_fetch_channel(self.bot, event["channel_id"])
+        msg = await channel.fetch_message(message_id)
+        await msg.edit(embed=e)
         await ctx.send(content="Done")
 
     @hybrid_command()
