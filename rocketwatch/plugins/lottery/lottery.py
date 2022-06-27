@@ -117,6 +117,8 @@ class LotteryBase:
         end_timestamp = BEACON_START_DATE + (stats['end_epoch'] * BEACON_EPOCH_LENGTH)
         description += f"_End:_ Epoch {stats['end_epoch']} <t:{end_timestamp}> (<t:{end_timestamp}:R>)\n"
         # validators (called minipools here)
+        # sort validators
+        validators.sort(key=lambda x: x['validator'])
         description += f"_Minipools:_ {', '.join(cl_explorer_url(v['validator']) for v in validators)}\n"
         # node operators
         # gather count per
