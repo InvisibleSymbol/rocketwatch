@@ -168,5 +168,13 @@
     "odao_member_challenge_rejected_event": {
         "title": ":no_entry_sign: oDAO Member Challenge Rejected",
         "description": "%{nodeChallengedAddress_clean} has responded to the challenge, making it invalid!"
+    },
+    "deposit_pool_queue_clear_full": {
+        "title": ":tada: Deposit Pool Queue Clear",
+        "description": "%{node} cleared %{count} Minipools from the Deposit Pool Queue!"
+    },
+    "deposit_pool_queue_clear_partial": {
+        "title": ":tada: Partial Deposit Pool Queue Clear",
+        "description": "%{node} cleared %{count} Minipools from the Deposit Pool Queue!"
     }
 }
