@@ -1,5 +1,6 @@
 import json
 import logging
+import warnings
 
 import web3.exceptions
 from discord.ext import commands
@@ -32,6 +33,10 @@ class QueuedTransactions(commands.Cog):
             mapped_events = json.load(f)
 
         for contract_name, event_mapping in mapped_events.items():
+            address = rp.get_address_by_name(contract_name)
+            if address is None:
+                log.error(f"Could not find address for contract {contract_name}, skipping")
+                continue
             self.addresses.append(rp.get_address_by_name(contract_name))
             self.internal_function_mapping[contract_name] = event_mapping
 
@@ -53,6 +58,13 @@ class QueuedTransactions(commands.Cog):
             receipt = w3.eth.get_transaction_receipt(args.transactionHash)
             args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
             args.node = receipt["from"]
+            if "queue" in event_name:
+                event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
+                # get the amount of dequeues that happend in this transaction using the event logs
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    processed_logs = event.processReceipt(receipt)
+                args.count = len(processed_logs)
 
         if "SettingBool" in args.function_name:
             args.value = bool(args.value)
@@ -133,7 +145,7 @@ class QueuedTransactions(commands.Cog):
                         log.info(f"Skipping Successful Node Deposit {tnx.hash.hex()}")
                         continue
                     if contract_name != "rocketNodeDeposit" and not receipt.status:
-                        log.info(f"Skipping Reverted Bootstrap Call {tnx.hash.hex()}")
+                        log.info(f"Skipping Reverted Transaction {tnx.hash.hex()}")
                         continue
 
                     contract = rp.get_contract_by_address(tnx.to)

@@ -17,5 +17,10 @@
     },
     "rocketNodeDeposit": {
         "deposit": "minipool_failed_deposit"
+    },
+    "rocketDepositPoolQueue": {
+        "clearHalfQueue": "deposit_pool_queue_clear_partial",
+        "clearQueue": "deposit_pool_queue_clear_full",
+        "clearQueueUpTo": "deposit_pool_queue_clear_partial"
     }
 }

@@ -88,8 +88,8 @@ class RocketPool:
     def assemble_contract(self, name, address=None, mainnet=False):
         abi = None
 
-        if os.path.exists(f"./contracts/{name}.abi"):
-            with open(f"./contracts/{name}.abi", "r") as f:
+        if os.path.exists(f"./contracts/{name}.abi.json"):
+            with open(f"./contracts/{name}.abi.json", "r") as f:
                 abi = f.read()
         if not abi:
             abi = self.get_abi_by_name(name)
