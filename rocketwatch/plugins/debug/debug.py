@@ -12,6 +12,7 @@ from discord import File, Object
 from discord.app_commands import Choice, guilds, describe
 from discord.ext.commands import is_owner, Cog, Bot, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
+from web3.datastructures import MutableAttributeDict as aDict
 
 from utils.containers import Response
 from utils import solidity
@@ -196,6 +197,37 @@ class Debug(Cog):
         msg = await channel.fetch_message(message_id)
         await msg.edit(embed=e)
         await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def fix_fuckup_2(self, ctx: Context,
+                            message_id: str,
+                            transaction_id: str):
+        """
+        Fix fuckup #2: missing translations for queue clear events.
+        """
+        await ctx.defer(ephemeral=True)
+        cog = self.bot.get_cog("QueuedTransactions")
+        tnx = w3.eth.get_transaction(transaction_id)
+        contract = rp.get_contract_by_address(tnx.to)
+        decoded = contract.decode_function_input(tnx.input)
+        function = decoded[0].function_identifier
+
+        event = aDict(tnx)
+        event.args = {}
+        for arg, value in decoded[1].items():
+            event.args[arg.lstrip("_")] = value
+        block = w3.eth.getBlock(tnx.blockNumber)
+        event.args["timestamp"] = block.timestamp
+        event.args["function_name"] = function
+        event_name = "deposit_pool_queue_clear_partial"
+        embed = cog.create_embed(event_name, event)
+        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
+        msg = await channel.fetch_message(message_id)
+        await msg.edit(embed=embed)
+        await ctx.send(content="Done")
+
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
