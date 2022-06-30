@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import re
 import time
@@ -6,6 +7,7 @@ from io import BytesIO
 import aiohttp
 import matplotlib as mpl
 import numpy as np
+from mpl_toolkits.axes_grid.inset_locator import inset_axes
 from PIL import Image
 from discord import File
 from discord.ext import commands
@@ -19,6 +21,7 @@ from wordcloud import WordCloud
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
+from utils.solidity import beacon_block_to_date
 from utils.time_debug import timerun, timerun_async
 from utils.visibility import is_hidden
 
@@ -339,18 +342,19 @@ class Proposals(commands.Cog):
             while proposal_buffer[0]["slot"] < slot - (60 / 12 * 60 * 24 * 5):
                 to_remove = proposal_buffer.pop(0)
                 tmp_data[to_remove["version"]] -= 1
-            data[slot] = tmp_data.copy()
+            date = datetime.fromtimestamp(beacon_block_to_date(slot))
+            data[date] = tmp_data.copy()
 
         # normalize data
-        for slot, value in data.items():
-            total = sum(data[slot].values())
-            for version in data[slot]:
+        for date, value in data.items():
+            total = sum(data[date].values())
+            for version in data[date]:
                 value[version] /= total
 
         # use plt.stackplot to stack the data
         x = list(data.keys())
         y = {v: [] for v in versions}
-        for slot, value_ in data.items():
+        for date, value_ in data.items():
             for version in versions:
                 y[version].append(value_.get(version, 0))
 
@@ -365,12 +369,22 @@ class Proposals(commands.Cog):
             if version in recent_versions:
                 colors[i] = recent_colors[recent_versions.index(version)]
 
-        labels = [v if v in recent_versions else "_nolegend_" for v in versions]
+        last_slot_data = data[max(x)]
+        last_slot_data = {v: last_slot_data[v] for v in recent_versions}
+        labels = [f"{v} ({last_slot_data[v]:.2%})" if v in recent_versions else "_nolegend_" for v in versions]
+        # add percentage to labels
+        ax = plt.subplot(111, frameon=False)
         plt.stackplot(x, *y.values(), labels=labels, colors=colors)
-        plt.title("Version Chart")
-        plt.xlabel("slot")
-        plt.ylabel("Percentage")
-        plt.legend(loc="upper left")
+        # hide y axis
+        plt.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
+        ax.legend(loc="upper left")
+        # this is an inset axes over the main axes
+        inset_axes_2 = inset_axes(ax,
+                                  width="25%",
+                                  height="25%",
+                                  loc="lower left")
+        inset_axes_2.pie(last_slot_data.values(), colors=recent_colors, startangle=90)
+
         plt.tight_layout()
 
         # respond with image
@@ -511,7 +525,7 @@ class Proposals(commands.Cog):
         # load font
         font_path = "./plugins/proposals/assets/noto.ttf"
 
-        wc = WordCloud(max_words=2**16,
+        wc = WordCloud(max_words=2 ** 16,
                        scale=2,
                        mask=mask,
                        max_font_size=100,
@@ -556,7 +570,7 @@ class Proposals(commands.Cog):
                 "$match": {
                     "latest_proposal.consensus_client": {"$ne": "Unknown"},
                     "latest_proposal.execution_client": {"$ne": "Unknown"},
-                    "latest_proposal.type": {"$ne": "Allnodes"} if remove_allnodes else {"$ne": "deadbeef"}
+                    "latest_proposal.type"            : {"$ne": "Allnodes"} if remove_allnodes else {"$ne": "deadbeef"}
                 }
             }, {
                 "$group": {
@@ -591,7 +605,7 @@ class Proposals(commands.Cog):
             f"{str(pair['count']).rjust(max_widths[2])}\n"
             for i, pair in enumerate(client_pairs)
         )
-        e.description = f"Currently showing {'node operator' if group_by_node_operators else 'validator' } counts\n```{desc}```"
+        e.description = f"Currently showing {'node operator' if group_by_node_operators else 'validator'} counts\n```{desc}```"
         await msg.edit(content="", embed=e)
 
 
