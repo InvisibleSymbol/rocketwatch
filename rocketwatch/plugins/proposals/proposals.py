@@ -1,4 +1,5 @@
-from datetime import datetime
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
 import logging
 import re
 import time
@@ -7,7 +8,6 @@ from io import BytesIO
 import aiohttp
 import matplotlib as mpl
 import numpy as np
-from mpl_toolkits.axes_grid.inset_locator import inset_axes
 from PIL import Image
 from discord import File
 from discord.ext import commands
@@ -378,13 +378,13 @@ class Proposals(commands.Cog):
         # hide y axis
         plt.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
         ax.legend(loc="upper left")
-        # this is an inset axes over the main axes
-        inset_axes_2 = inset_axes(ax,
-                                  width="25%",
-                                  height="25%",
-                                  loc="lower left")
-        inset_axes_2.pie(last_slot_data.values(), colors=recent_colors, startangle=90)
-
+        # add a thin line at current time from y=0 to y=1 with a width of 0.5
+        plt.plot([max(x), max(x)], [0, 1], color="black", linewidth=0.5)
+        # calculate future point to make latest data more visible
+        diff = x[-1] - x[0]
+        future_point = x[-1] + (diff * 0.05)
+        last_y_values = [[yy[-1]] * 2 for yy in y.values()]
+        plt.stackplot([x[-1], future_point], *last_y_values, colors=colors)
         plt.tight_layout()
 
         # respond with image
