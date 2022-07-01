@@ -379,7 +379,7 @@ class Proposals(commands.Cog):
         plt.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
         ax.legend(loc="upper left")
         # add a thin line at current time from y=0 to y=1 with a width of 0.5
-        plt.plot([max(x), max(x)], [0, 1], color="black", linewidth=0.5)
+        plt.plot([max(x), max(x)], [0, 1], color="white")
         # calculate future point to make latest data more visible
         diff = x[-1] - x[0]
         future_point = x[-1] + (diff * 0.05)
