@@ -33,7 +33,7 @@ def el_explorer_url(target, name="", prefix=""):
     if w3.isAddress(target):
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
-        if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberId", target)):
+        if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
             prefix += "🔮"
             name = member_id
         if not name:
