@@ -33,8 +33,9 @@ def el_explorer_url(target, name="", prefix=""):
     if w3.isAddress(target):
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
-        if not name:
-            name = rp.call("rocketDAONodeTrusted.getMemberID", target)
+        if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberId", target)):
+            prefix += "🔮"
+            name = member_id
         if not name:
             a = Addresses.get(target)
             # don't apply name if its only label is one with the id "take-action", as these don't show up on the explorer
