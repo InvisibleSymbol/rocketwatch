@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import random
+import time
 from pathlib import Path
 
 import humanize
@@ -17,7 +18,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 from utils.containers import Response
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import el_explorer_url
+from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.get_or_fetch import get_or_fetch_channel
 from utils.readable import prettify_json_string
@@ -228,7 +229,6 @@ class Debug(Cog):
         await msg.edit(embed=embed)
         await ctx.send(content="Done")
 
-
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
@@ -239,6 +239,20 @@ class Debug(Cog):
         await ctx.defer(ephemeral=True)
         channel = await get_or_fetch_channel(self.bot, channel)
         await channel.send(message)
+        await ctx.send(content="Done", ephemeral=True)
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def announce(self, ctx: Context, channel: str, message: str):
+        """
+        Send a message to a channel.
+        """
+        await ctx.defer(ephemeral=True)
+        channel = await get_or_fetch_channel(self.bot, channel)
+        e = Embed(title="Announcement", description=message)
+        e.add_field(name="Timestamp", value=f"<t:{int(time.time())}:R> (<t:{int(time.time())}:f>)")
+        await channel.send(embed=e)
         await ctx.send(content="Done", ephemeral=True)
 
     # --------- PUBLIC COMMANDS --------- #
