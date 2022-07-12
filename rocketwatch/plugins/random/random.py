@@ -34,7 +34,7 @@ class Random(commands.Cog):
         uint_day = int(percentage_of_day * 65535)
         # generate binary string
         binary_day = f"{uint_day:016b}"
-        e.add_field(name="Coorddinated Universal Time",
+        e.add_field(name="Coordinated Universal Time",
                     value=f"{dev_time.strftime(time_format)}\n"
                           f"`{binary_day} (0x{uint_day:04x})`",
                     inline=False)
@@ -44,6 +44,9 @@ class Random(commands.Cog):
 
         joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
         e.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
+
+        nick_time = datetime.now(tz=pytz.timezone("Pacific/Auckland"))
+        e.add_field(name="Maverick's Time", value=nick_time.strftime(time_format), inline=False)
 
         await ctx.send(embed=e)
 
