@@ -529,6 +529,7 @@ class Proposals(commands.Cog):
                        scale=2,
                        mask=mask,
                        max_font_size=100,
+                       min_font_size=1,
                        background_color="white",
                        relative_scaling=0,
                        font_path=font_path,
@@ -538,7 +539,7 @@ class Proposals(commands.Cog):
         comments = await self.db.proposals.aggregate([
             {"$match": {"comment": {"$exists": 1}}},
             {"$group": {"_id": "$comment", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}}
+            {"$sort": {"count": -1, "slot": -1}}
         ]).to_list(None)
         comment_words = {x['_id']: x["count"] for x in comments}
 
