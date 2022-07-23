@@ -279,7 +279,7 @@ class Debug(Cog):
         """
         Randomly generated Asian Restaurant Names.
         """
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer()
         a = requests.get("https://www.dotomator.com/api/random_name.json?type=asian").json()["name"]
         await ctx.reply(a)
 
