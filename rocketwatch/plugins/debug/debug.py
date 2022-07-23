@@ -1,5 +1,6 @@
 import asyncio
 import io
+import requests
 import json
 import logging
 import random
@@ -270,6 +271,17 @@ class Debug(Cog):
             payload += f"\n{fg}Hello World"
         payload += f"{Style.RESET_ALL}```"
         await ctx.reply(content=payload)
+
+    # --------- PUBLIC COMMANDS --------- #
+
+    @hybrid_command()
+    async def asian_restaurant_name(self, ctx: Context):
+        """
+        Randomly generated Asian Restaurant Names.
+        """
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        a = requests.get("https://www.dotomator.com/api/random_name.json?type=asian").json()["name"]
+        await ctx.reply(a)
 
     @hybrid_command()
     async def get_block_by_timestamp(self, ctx: Context, timestamp: int):
