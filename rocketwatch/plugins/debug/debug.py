@@ -279,7 +279,8 @@ class Debug(Cog):
         """
         Randomly generated Asian Restaurant Names.
         """
-        await ctx.defer()
+        hidden = ctx.channel.name not in ["random", "rocket-watch", "trading"]
+        await ctx.defer(ephemeral=hidden)
         a = requests.get("https://www.dotomator.com/api/random_name.json?type=asian").json()["name"]
         await ctx.reply(a)
 
