@@ -21,21 +21,31 @@ class Forum(commands.Cog):
         self.domain = "https://dao.rocketpool.net"
 
     @hybrid_command()
-    @choices(period=[
-        Choice(name="all time", value="all"),
-        Choice(name="yearly", value="yearly"),
-        Choice(name="quarterly", value="quarterly"),
-        Choice(name="monthly", value="monthly"),
-        Choice(name="weekly", value="weekly"),
-        Choice(name="daily", value="daily")
-    ])
-    async def top_forum_posts(self, ctx: Context, period: Choice[str] = "monthly"):
+    @choices(
+        period=[
+            Choice(name="all time", value="all"),
+            Choice(name="yearly", value="yearly"),
+            Choice(name="quarterly", value="quarterly"),
+            Choice(name="monthly", value="monthly"),
+            Choice(name="weekly", value="weekly"),
+            Choice(name="daily", value="daily")
+        ],
+        user_order_by=[
+            Choice(name="likes", value="likes_received"),
+            Choice(name="replies sent", value="post_count"),
+            Choice(name="posts created", value="topic_count"),
+        ]
+    )
+    async def top_forum_posts(self, ctx: Context, period: Choice[str] = "monthly",
+                              user_order_by: Choice[str] = "likes_received"):
         """
         Get the top posts from the forum.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         if isinstance(period, Choice):
             period = period.value
+        if isinstance(user_order_by, Choice):
+            user_order_by = user_order_by.value
 
         # retrieve the top posts from the forum for the specified period
         async with aiohttp.ClientSession() as session:
@@ -49,14 +59,20 @@ class Forum(commands.Cog):
         tmp_desc = "\n".join(
             f"{i + 1}. [{topic['fancy_title']}]({self.domain}/t/{topic['slug']})\n"
             f"Last Reply: <t:{int(datetime.fromisoformat(topic['last_posted_at'].replace('Z', '+00:00')).timestamp())}:R>\n"
-            f"`{topic['like_count']}` 🤍\t `{topic['views']}` 👀\t `{topic['posts_count']}` 💬\n"
+            f"`{topic['like_count']:>4}` 🤍\t `{topic['views']:>4}` 👀\t `{topic['posts_count']:>4}` 💬\n"
             for i, topic in enumerate(res["topic_list"]["topics"][:5]))
         e.add_field(name=f"Top {min(5, len(res['topic_list']['topics']))} Posts", value=tmp_desc, inline=False)
+
+        async with aiohttp.ClientSession() as session:
+            res = await session.get(f"{self.domain}/directory_items.json?period={period}&order={user_order_by}")
+            res = await res.json()
         # top 5 users
-        tmp_desc = "".join(f"{i + 1}. [{user['name'] or user['username']}]"
-                           f"({self.domain}/u/{user['username']})\n"
-                           for i, user in enumerate(res["users"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['users']))} Users", value=tmp_desc, inline=False)
+        tmp_desc = "".join(
+            f"{i + 1}. [{meta['user']['name'] or meta['user']['username']}]"
+            f"({self.domain}/u/{meta['user']['username']})\n"
+            f"`{meta['likes_received']:>4}` 🤍\t `{meta['post_count']:>4}` 💬\t `{meta['topic_count']:>4}` 📝\n"
+            for i, meta in enumerate(res["directory_items"][:5]))
+        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users", value=tmp_desc, inline=False)
         await ctx.send(embed=e)
 
 
