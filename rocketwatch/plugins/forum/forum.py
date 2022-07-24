@@ -72,7 +72,8 @@ class Forum(commands.Cog):
             f"({self.domain}/u/{meta['user']['username']})\n"
             f"`{meta['likes_received']:>4}` 🤍\t `{meta['post_count']:>4}` 💬\t `{meta['topic_count']:>4}` 📝\n"
             for i, meta in enumerate(res["directory_items"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users", value=tmp_desc, inline=False)
+        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users by {user_order_by.replace('_', ' ')}", value=tmp_desc, inline=False)
+
         await ctx.send(embed=e)
 
 
