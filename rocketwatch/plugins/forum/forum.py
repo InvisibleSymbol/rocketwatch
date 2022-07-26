@@ -59,9 +59,11 @@ class Forum(commands.Cog):
         tmp_desc = "\n".join(
             f"{i + 1}. [{topic['fancy_title']}]({self.domain}/t/{topic['slug']})\n"
             f"Last Reply: <t:{int(datetime.fromisoformat(topic['last_posted_at'].replace('Z', '+00:00')).timestamp())}:R>\n"
-            f"`{topic['like_count']:>4}` 🤍\t `{topic['views']:>4}` 👀\t `{topic['posts_count']:>4}` 💬\n"
+            f"`{topic['like_count']:>4}` 🤍\t "
+            f"`{topic['posts_count'] - 1:>4}` 💬\t"
+            f"`{topic['views']:>4}` 👀\n "
             for i, topic in enumerate(res["topic_list"]["topics"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['topic_list']['topics']))} Posts", value=tmp_desc, inline=False)
+        e.add_field(name=f"Top {min(5, len(res['topic_list']['topics']))} Topics", value=tmp_desc or "No topics found.", inline=False)
 
         async with aiohttp.ClientSession() as session:
             res = await session.get(f"{self.domain}/directory_items.json?period={period}&order={user_order_by}")
@@ -70,9 +72,11 @@ class Forum(commands.Cog):
         tmp_desc = "".join(
             f"{i + 1}. [{meta['user']['name'] or meta['user']['username']}]"
             f"({self.domain}/u/{meta['user']['username']})\n"
-            f"`{meta['likes_received']:>4}` 🤍\t `{meta['post_count']:>4}` 💬\t `{meta['topic_count']:>4}` 📝\n"
+            f"`{meta['likes_received']:>4}` 🤍\t "
+            f"`{meta['post_count'] - meta['topic_count']:>4}` 💬\t "
+            f"`{meta['topic_count']:>4}` 📝\n"
             for i, meta in enumerate(res["directory_items"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users by {user_order_by.replace('_', ' ')}", value=tmp_desc, inline=False)
+        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users by {user_order_by.replace('_', ' ')}", value=tmp_desc or "No users found.", inline=False)
 
         await ctx.send(embed=e)
 
