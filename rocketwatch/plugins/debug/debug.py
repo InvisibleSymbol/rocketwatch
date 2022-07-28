@@ -384,9 +384,9 @@ class Debug(Cog):
             gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues // 2)
             e.add_field(name="Half Clear", value=f"`clearQueueUpTo({max_possible_dequeues // 2})`: `{gas:,}` Gas")
 
-        # full queue clear
-        gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues)
-        e.add_field(name="Full Clear", value=f"`clearQueueUpTo({max_possible_dequeues})`: `{gas:,}` Gas")
+            # full queue clear
+            gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues)
+            e.add_field(name="Full Clear", value=f"`clearQueueUpTo({max_possible_dequeues})`: `{gas:,}` Gas")
 
         # link to contract
         e.add_field(name="Contract",
