@@ -367,23 +367,22 @@ class Debug(Cog):
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed(title="Gas Prices for de-queueing Minipools using the Deposit Pool")
-        url = cfg["rocketpool.execution_layer.explorer"]
-        url = f"https://{url}/address/{rp.get_address_by_name('rocketDepositPoolQueue')}#writeContract"
-        e.set_author(name="Contract by peteris",url=url)
+        e.set_author(name="🔗 Forum: Clear Minipool Queue Contract - by Peteris",
+                     url="https://dao.rocketpool.net/t/clear-minipool-queue-contract/670")
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         if not queue_length:
             e.description = "Queue is empty"
         max_possible_dequeues = min(int(solidity.to_float(rp.call("rocketDepositPool.getBalance")) / 16),
                                     queue_length)
-        if not max_possible_dequeues:
-            if not e.description:
-                e.description = "Not enough funds in deposit pool to dequeue any Minipools"
-            await ctx.send(embed=e)
-            return
-        e.add_field(name="Maximal possible dequeues", value=f"{max_possible_dequeues} Minipools", inline=False)
-        # half queue clear
-        gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues // 2)
-        e.add_field(name="Half Clear", value=f"`clearQueueUpTo({max_possible_dequeues // 2})`: `{gas:,}` Gas")
+        if not max_possible_dequeues and not e.description:
+            e.description = "Not enough funds in deposit pool to dequeue any Minipools"
+
+        if max_possible_dequeues:
+            e.add_field(name="Maximal possible dequeues", value=f"{max_possible_dequeues} Minipools", inline=False)
+
+            # half queue clear
+            gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues // 2)
+            e.add_field(name="Half Clear", value=f"`clearQueueUpTo({max_possible_dequeues // 2})`: `{gas:,}` Gas")
 
         # full queue clear
         gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues)
