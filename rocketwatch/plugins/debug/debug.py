@@ -16,9 +16,9 @@ from discord.ext.commands import is_owner, Cog, Bot, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 from web3.datastructures import MutableAttributeDict as aDict
 
-from utils.containers import Response
 from utils import solidity
 from utils.cfg import cfg
+from utils.containers import Response
 from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.get_or_fetch import get_or_fetch_channel
@@ -74,6 +74,7 @@ class Debug(Cog):
             for function in rp.get_contract_by_name(contract).functions:
                 self.function_list.append(f"{contract}.{function}")
             await asyncio.sleep(0.1)
+        self.contract_files.extend(list(cfg["rocketpool.manual_addresses"].keys()))
         log.info("Done!")
 
     # --------- PRIVATE OWNER COMMANDS --------- #
@@ -319,7 +320,10 @@ class Debug(Cog):
         """retrieve the latest address for a contract"""
         await ctx.defer()
         try:
-            await ctx.send(content=el_explorer_url(rp.uncached_get_address_by_name(contract)))
+            address = cfg["rocketpool.manual_addresses"].get(contract)
+            if not address:
+                address = rp.uncached_get_address_by_name(contract)
+            await ctx.send(content=el_explorer_url(address))
         except Exception as err:
             await ctx.send(content=f"Exception: ```{repr(err)}```")
 
