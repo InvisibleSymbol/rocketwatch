@@ -93,6 +93,7 @@ class About(commands.Cog):
     @hybrid_command()
     async def donate(self, ctx: Context):
         """Donate to the Bot Developer"""
+        await ctx.defer(ephemeral=True)
         e = Embed()
         e.title = "Donate to the Developer"
         e.description = "I hope my bot has been useful to you, it has been a fun experience building it!\n" \
