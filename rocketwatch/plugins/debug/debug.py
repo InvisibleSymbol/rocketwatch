@@ -360,6 +360,37 @@ class Debug(Cog):
         await ctx.send(
             content=f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): {v}`")
 
+    @hybrid_command()
+    async def clear_queue(self, ctx: Context):
+        """
+        Show gas price for clearing the queue using the rocketDepositPoolQueue contract
+        """
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed(title="Gas Prices for de-queueing Minipools using the Deposit Pool")
+        url = cfg["rocketpool.execution_layer.explorer"]
+        url = f"https://{url}/address/{rp.get_address_by_name('rocketDepositPoolQueue')}#writeContract"
+        e.set_author(name="Contract: RocketDepositPoolQueue by peteris",url=url)
+        queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
+        if not queue_length:
+            e.description = "Queue is empty"
+        max_possible_dequeues = min(int(solidity.to_float(rp.call("rocketDepositPool.getBalance")) / 16),
+                                    queue_length)
+        e.add_field(name="Maximal possible dequeues", value=f"{max_possible_dequeues} Minipools", inline=False)
+        # half queue clear
+        gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues // 2)
+        e.add_field(name="Half Clear", value=f"`clearQueueUpTo({max_possible_dequeues // 2})`: `{gas:,}` Gas")
+
+        # full queue clear
+        gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues)
+        e.add_field(name="Full Clear", value=f"`clearQueueUpTo({max_possible_dequeues})`: `{gas:,}` Gas")
+
+        # link to contract
+        e.add_field(name="Contract",
+                    value=el_explorer_url(rp.get_address_by_name('rocketDepositPoolQueue'), "RocketDepositPoolQueue"),
+                    inline=False)
+
+        await ctx.send(embed=e)
+
     # --------- OTHERS --------- #
 
     @get_address_of_contract.autocomplete("contract")
