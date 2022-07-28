@@ -375,6 +375,8 @@ class Debug(Cog):
             e.description = "Queue is empty"
         max_possible_dequeues = min(int(solidity.to_float(rp.call("rocketDepositPool.getBalance")) / 16),
                                     queue_length)
+        if max_possible_dequeues == 0:
+            e.description = "Not enough funds to dequeue"
         e.add_field(name="Maximal possible dequeues", value=f"{max_possible_dequeues} Minipools", inline=False)
         # half queue clear
         gas = rp.estimate_gas_for_call("rocketDepositPoolQueue.clearQueueUpTo", max_possible_dequeues // 2)
