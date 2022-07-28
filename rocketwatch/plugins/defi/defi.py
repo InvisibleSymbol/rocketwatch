@@ -1,5 +1,6 @@
 import logging
 
+import aiohttp
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -10,7 +11,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden, is_hidden_weak
 
 log = logging.getLogger("defi")
 log.setLevel(cfg["log_level"])
@@ -19,14 +20,13 @@ log.setLevel(cfg["log_level"])
 class DeFi(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def curve(self, ctx: Context):
         """
         Show stats of the curve pool
         """
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.title = "Curve Pool"
         reth_r, wsteth_r = rp.call("curvePool.get_balances")
@@ -85,7 +85,7 @@ class DeFi(commands.Cog):
         """
         Show stats of the yearn vault
         """
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.title = "Yearn Pool"
         deposit_limit = solidity.to_float(rp.call("yearnPool.depositLimit"))
@@ -112,6 +112,36 @@ class DeFi(commands.Cog):
             name="Contract Address",
             value=link,
         )
+        await ctx.send(embed=e)
+
+    @hybrid_command()
+    async def liquidity(self, ctx: Context):
+        """
+        Show the RPL liquidity on uniswap v3
+        """
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        url = "https://rocketscan.io/api/mainnet/uniswap"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                data = await resp.json()
+        total_rpl_liquidity = 0
+        for d in data:
+            # if both tokens are RPL, skip
+            if "RPL" in d["token0"]["symbol"] and "RPL" in d["token1"]["symbol"]:
+                continue
+            for t in ["token0", "token1"]:
+                if "RPL" not in d[t]["symbol"]:
+                    continue
+                total_rpl_liquidity += solidity.to_float(d[t]["liquidity"])
+
+        e = Embed()
+        e.title = "Uniswap v3 Liquidity"
+        e.set_author(name="🔗 Data from rocketscan.io", url="https://rocketscan.io/rpl/uniswap")
+        e.add_field(
+            name="RPL Liquidity",
+            value=f"`{total_rpl_liquidity:,.2f} RPL`",
+        )
+        e.set_footer(text="Doesn't 100% match what rocketscan.io shows dunno why will fix later")
         await ctx.send(embed=e)
 
 

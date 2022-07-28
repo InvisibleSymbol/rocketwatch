@@ -25,7 +25,7 @@ from utils.get_or_fetch import get_or_fetch_channel
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden, is_hidden_weak
 
 log = logging.getLogger("debug")
 log.setLevel(cfg["log_level"])
@@ -280,8 +280,7 @@ class Debug(Cog):
         """
         Randomly generated Asian Restaurant Names.
         """
-        hidden = ctx.channel.name not in ["random", "rocket-watch", "trading"]
-        await ctx.defer(ephemeral=hidden)
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         a = requests.get("https://www.dotomator.com/api/random_name.json?type=asian").json()["name"]
         await ctx.reply(a)
 
