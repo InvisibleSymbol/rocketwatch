@@ -120,7 +120,7 @@ class DeFi(commands.Cog):
         Show the RPL liquidity on uniswap v3
         """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        url = "https://rocketscan.io/api/mainnet/uniswap"
+        url = "https://rocketscan.io/api/mainnet/uniswap/rpl"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 data = await resp.json()
@@ -141,7 +141,6 @@ class DeFi(commands.Cog):
             name="RPL Liquidity",
             value=f"`{total_rpl_liquidity:,.2f} RPL`",
         )
-        e.set_footer(text="Doesn't 100% match what rocketscan.io shows dunno why will fix later")
         await ctx.send(embed=e)
 
 
