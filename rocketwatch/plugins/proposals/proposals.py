@@ -412,6 +412,10 @@ class Proposals(commands.Cog):
         minipools.insert(0, ("No proposals yet", unobserved_minipools))
         # move "Unknown" to be before "No proposals yet"
         minipools.insert(1, minipools.pop([i for i, (x, y) in enumerate(minipools) if x == "Unknown"][0]))
+        # move "External (if it exists) to be before "Unknown"
+        # minipools is a list of tuples (name, count)
+        if "External" in [x for x, y in minipools]:
+            minipools.insert(2, minipools.pop([i for i, (x, y) in enumerate(minipools) if x == "External"][0]))
 
         # get node operators
         node_operators = [(x, y["count"]) for x, y in data.items() if x != "remove_from_total"]
@@ -424,6 +428,10 @@ class Proposals(commands.Cog):
         node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
         # move "Unknown" to be before "No proposals yet"
         node_operators.insert(1, node_operators.pop([i for i, (x, y) in enumerate(node_operators) if x == "Unknown"][0]))
+        # move "External (if it exists) to be before "Unknown"
+        # node_operators is a list of tuples (name, count)
+        if "External" in [x for x, y in node_operators]:
+            node_operators.insert(2, node_operators.pop([i for i, (x, y) in enumerate(node_operators) if x == "External"][0]))
 
         # sort data
         ax1.pie(
