@@ -128,7 +128,7 @@ def assemble(args):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
-                decimal = 5 - math.floor(math.log10(arg_value))
+                decimal = 5 - math.floor(math.log10(abs(arg_value)))
                 decimal = max(0, min(5, decimal))
                 arg_value = round(arg_value, decimal)
             if arg_value == int(arg_value):
