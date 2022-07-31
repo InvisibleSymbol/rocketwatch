@@ -206,6 +206,32 @@ class Leaderboard(commands.Cog):
         e = Embed.from_dict(embed_dict["embed"])
         await ctx.send(embed=e)
 
+    @hybrid_command()
+    async def minipool_balance_stats(self, ctx: Context):
+        """
+        Get average, median, min and max minipool balance
+        """
+        await ctx.defer(ephemeral=is_hidden(ctx))
+
+        # get minipool balances
+        balances = await self.db.minipools.find(
+            {"balance": {"$gt": 0}},
+            {"balance": 1, "_id": 0}
+        ).to_list(None)
+
+        # get average, median, min and max
+        average = sum(b["balance"] for b in balances) / len(balances)
+        median = sorted([b["balance"] for b in balances])[len(balances) // 2]
+        min_balance = min(b["balance"] for b in balances)
+        max_balance = max(b["balance"] for b in balances)
+
+        # generate embed
+        e = Embed(
+            title="Minipool Balance Stats",
+            description=f"Average: {average:.2f} ETH\nMedian: {median:.2f} ETH\nMin: {min_balance:.2f} ETH\nMax: {max_balance:.2f} ETH"
+        )
+        await ctx.send(embed=e)
+
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
