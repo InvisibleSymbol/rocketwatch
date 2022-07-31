@@ -159,7 +159,7 @@ class QueuedEvents(commands.Cog):
             else:
                 args.exchangeRate = args.sellAmount / args.buyAmount
                 args.otherToken = args.sellToken
-            if "eth" in args.otherToken.lower():
+            if args.otherToken.lower() == "wETH":
                 # get exchange rate from rp
                 args.marketExchangeRate = rp.call("rocketNetworkPrices.getRPLPrice")
                 # calculate the discount received compared to the market price
