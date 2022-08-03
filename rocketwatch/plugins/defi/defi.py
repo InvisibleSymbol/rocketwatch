@@ -1,6 +1,7 @@
 import logging
 
 import aiohttp
+from discord import AllowedMentions
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -143,7 +144,7 @@ class DeFi(commands.Cog):
             name="RPL Liquidity",
             value=f"`{total_rpl_liquidity:,.2f} RPL`",
         )
-        await ctx.send(embed=e, allowed_mentions=True)
+        await ctx.send(embed=e, allowed_mentions=AllowedMentions(everyone=False, users=True))
 
 
 async def setup(bot):
