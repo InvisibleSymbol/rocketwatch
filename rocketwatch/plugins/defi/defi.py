@@ -137,11 +137,13 @@ class DeFi(commands.Cog):
         e = Embed()
         e.title = "Uniswap v3 Liquidity"
         e.set_author(name="🔗 Data from rocketscan.io", url="https://rocketscan.io/rpl/uniswap")
+        if not total_rpl_liquidity:
+            e.description = "<@806275470140244019> broke rocketscan.io's API. Please try again later."
         e.add_field(
             name="RPL Liquidity",
             value=f"`{total_rpl_liquidity:,.2f} RPL`",
         )
-        await ctx.send(embed=e)
+        await ctx.send(embed=e, allowed_mentions=True)
 
 
 async def setup(bot):
