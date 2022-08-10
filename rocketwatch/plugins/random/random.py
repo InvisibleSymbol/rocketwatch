@@ -89,9 +89,9 @@ class Random(commands.Cog):
         e = Embed()
         e.title = "Görli Merge"
         # detect if the channel is random
-        is_random = ctx.channel.name.startswith("random")
+        is_trading = ctx.channel.name.startswith("trading")
         try:
-            if not is_random:
+            if not is_trading:
                 e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
