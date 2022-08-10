@@ -87,12 +87,13 @@ class Random(commands.Cog):
         """Show current merge TTD."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
+        e.set_author(name="🔗 Data from bordel.wtf", url="https://bordel.wtf")
+        text = ""
+        around = None
         e.title = "Görli Merge"
         # detect if the channel is random
         is_trading = ctx.channel.name.startswith("trading")
         try:
-            if not is_trading:
-                e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
@@ -100,12 +101,7 @@ class Random(commands.Cog):
                     f = "%a %b %d %H:%M:%S %Y"
                     around = int(datetime.strptime(around, f).timestamp())
 
-                    start_estimate = text.split("between ")[1].split(" and")[0]
-                    start_estimate = int(datetime.strptime(start_estimate, f).timestamp())
-
-                    end_estimate = text.split("and ")[1].split(" UTC")[0]
-                    end_estimate = int(datetime.strptime(end_estimate, f).timestamp())
-                    e.description = f"Estimated to happen at around <t:{around}:F> (<t:{around}:R>)\nbetween <t:{start_estimate}:t> & <t:{end_estimate}:t>"
+                    e.description = f"Estimated to happen at around <t:{around}:F> (<t:{around}:R>)"
 
                     # get the latest td using w3
                     td = goerli_w3.eth.get_block("latest").totalDifficulty
@@ -114,9 +110,14 @@ class Random(commands.Cog):
                     ttd = text.split("Difficulty of ")[1].split(" is expected")[0]
                     ttd = int(ttd)
                     e.add_field(name="Target Difficulty", value=f"{ttd:,}")
-        except Exception as e:
-            log.error(e)
-            e.description = "Merge prob already happened"
+            if not is_trading:
+                e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
+        except Exception as er:
+            log.error(er)
+            if "Updating data" in text:
+                e.description = "bordel.wtf is updating updating data its data..."
+            else:
+                e.description = "Dunno. maybe the merge already happened?"
         await ctx.send(embed=e)
         return
 
