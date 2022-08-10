@@ -88,8 +88,11 @@ class Random(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.title = "Görli Merge"
+        # detect if the channel is random
+        is_random = ctx.channel.name.startswith("random")
         try:
-            e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
+            if not is_random:
+                e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
