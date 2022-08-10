@@ -105,7 +105,7 @@ class Random(commands.Cog):
 
                     end_estimate = text.split("and ")[1].split(" UTC")[0]
                     end_estimate = int(datetime.strptime(end_estimate, f).timestamp())
-                    e.description = f"Estimate about <t:{around}:F> (<t:{around}:R>)\nbetween <t:{start_estimate}:t> & <t:{end_estimate}:t>"
+                    e.description = f"Estimated to happen at around <t:{around}:F> (<t:{around}:R>)\nbetween <t:{start_estimate}:t> & <t:{end_estimate}:t>"
 
                     # get the latest td using w3
                     td = goerli_w3.eth.get_block("latest").totalDifficulty
