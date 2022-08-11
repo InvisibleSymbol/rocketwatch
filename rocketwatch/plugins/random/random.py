@@ -130,7 +130,7 @@ class Random(commands.Cog):
         except Exception as er:
             log.error(er)
             if "Updating data" in text:
-                embeds[0].description = "bordel.wtf is updating updating data its data..."
+                embeds[0].description = "bordel.wtf is updating its data..."
             else:
                 embeds[0].description = "Dunno. maybe the merge already happened?"
         await ctx.send(embeds=embeds)
