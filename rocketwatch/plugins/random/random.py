@@ -82,43 +82,58 @@ class Random(commands.Cog):
         await ctx.send(embed=e)
         return
 
-    @hybrid_command()
+    @hybrid_command(aliases=["brodel-wtf"])
     async def merge_ttd(self, ctx: Context):
         """Show current merge TTD."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        e = Embed()
-        e.set_author(name="🔗 Data from bordel.wtf", url="https://bordel.wtf")
+        embeds = [Embed()]
+
+        embeds[0].set_author(name="🔗 Data from bordel.wtf", url="https://bordel.wtf")
         text = ""
-        around = None
-        e.title = "Görli Merge"
+        embeds[0].url = "https://bordel.wtf/"
+        embeds[0].title = "Mainnet Merge"
         # detect if the channel is random
         is_trading = ctx.channel.name.startswith("trading")
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
-                    around = text.split("around ")[1].split(" UTC")[0]
                     f = "%a %b %d %H:%M:%S %Y"
-                    around = int(datetime.strptime(around, f).timestamp())
+                    target_time = text.split(" at ")[1].split(" UTC")[0]
+                    target_time = int(datetime.strptime(target_time, f).timestamp())
+                    estimate_time = text.split("expected around ")[1].split(" UTC")[0]
+                    estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
 
-                    e.description = f"Estimated to happen at around <t:{around}:F> (<t:{around}:R>)"
+                    current_hashrate = text.split("Current hashrate: ")[1].split("</p>")[0]
+                    target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
+
+                    embeds[0].description = f"For the merge to happen on <t:{target_time}>, " \
+                                            f"a hashrate of `{target_hashrate}` is required.\n" \
+                                            f"With the current hashrate of `{current_hashrate}`, " \
+                                            f"the merge will happen around <t:{estimate_time}>," \
+                                            f" or <t:{estimate_time}:R>."
 
                     # get the latest td using w3
-                    td = goerli_w3.eth.get_block("latest").totalDifficulty
-                    e.add_field(name="Current Difficulty", value=f"{td:,}")
+                    td = w3.eth.get_block("latest").totalDifficulty / 1e16
+                    embeds[0].add_field(name="Current Difficulty", value=f"`{td:,.0f} PH`")
 
                     ttd = text.split("Difficulty of ")[1].split(" is expected")[0]
-                    ttd = int(ttd)
-                    e.add_field(name="Target Difficulty", value=f"{ttd:,}")
+                    ttd = int(ttd) / 1e16
+                    embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} PH`")
             if not is_trading:
-                e.set_image(url=f"https://bordel.wtf/chart.png#cache_burst={int(datetime.now().timestamp())}")
+                for image in ["chart.png", "hashrate.png", "ttd_hash.png"]:
+                    embeds.append(Embed(url="https://bordel.wtf/"))
+                    embeds[-1].set_image(url=f"https://bordel.wtf/{image}#cache_burst={int(datetime.now().timestamp())}")
+                embeds.append(Embed(url="https://bordel.wtf/"))
+                embeds[-1].set_image(url="https://pbs.twimg.com/media/FVdIXF7WQAMkSm7?format=jpg&name=orig")
+
         except Exception as er:
             log.error(er)
             if "Updating data" in text:
-                e.description = "bordel.wtf is updating updating data its data..."
+                embeds[0].description = "bordel.wtf is updating updating data its data..."
             else:
-                e.description = "Dunno. maybe the merge already happened?"
-        await ctx.send(embed=e)
+                embeds[0].description = "Dunno. maybe the merge already happened?"
+        await ctx.send(embeds=embeds)
         return
 
 
