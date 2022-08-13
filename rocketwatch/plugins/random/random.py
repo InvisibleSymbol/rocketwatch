@@ -127,7 +127,7 @@ class Random(commands.Cog):
                     embeds.append(Embed(url="https://bordel.wtf/"))
                     embeds[-1].set_image(url=f"https://bordel.wtf/{image}#cache_burst={int(datetime.now().timestamp())}")
                 embeds.append(Embed(url="https://bordel.wtf/"))
-                embeds[-1].set_image(url="https://pbs.twimg.com/media/FVdIXF7WQAMkSm7?format=jpg&name=orig")
+                embeds[-1].set_image(url="https://i.redd.it/wghxf2s5eki61.jpg")
 
         except Exception as er:
             log.error(er)
