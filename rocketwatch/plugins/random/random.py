@@ -107,12 +107,6 @@ class Random(commands.Cog):
                     current_hashrate = text.split("Current hashrate: ")[1].split("</p>")[0]
                     target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
 
-                    embeds[0].description = f"For the merge to happen on <t:{target_time}>, " \
-                                            f"a hashrate of `{target_hashrate}` is required.\n" \
-                                            f"With the current hashrate of `{current_hashrate}`, " \
-                                            f"the merge will happen around <t:{estimate_time}>," \
-                                            f" or <t:{estimate_time}:R>."
-
                     # get the latest td using w3
                     td = w3.eth.get_block("latest").totalDifficulty / 1e16
                     embeds[0].add_field(name="Current Difficulty", value=f"`{td:,.0f} PH`")
@@ -120,6 +114,14 @@ class Random(commands.Cog):
                     ttd = text.split("Difficulty of ")[1].split(" is expected")[0]
                     ttd = int(ttd) / 1e16
                     embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} PH`")
+
+                    embeds[0].description = f"For the merge to happen with the configured TTD of {ttd:,.0f} PH " \
+                                            f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
+                                            f"is required.\n" \
+                                            f"With the current hashrate of `{current_hashrate}`, " \
+                                            f"the merge will happen around <t:{estimate_time}>," \
+                                            f" or <t:{estimate_time}:R>."
+
             if not is_trading:
                 for image in ["chart.png", "hashrate.png", "ttd_hash.png"]:
                     embeds.append(Embed(url="https://bordel.wtf/"))
