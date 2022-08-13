@@ -115,7 +115,7 @@ class Random(commands.Cog):
                     ttd = int(ttd) / 1e16
                     embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} PH`")
 
-                    embeds[0].description = f"For the merge to happen with the configured TTD of {ttd:,.0f} PH " \
+                    embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} PH` " \
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
                                             f"is required.\n" \
                                             f"With the current hashrate of `{current_hashrate}`, " \
