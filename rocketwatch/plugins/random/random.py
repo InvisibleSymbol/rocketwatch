@@ -119,8 +119,8 @@ class Random(commands.Cog):
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
                                             f"is required.\n" \
                                             f"With the current hashrate of `{current_hashrate}`, " \
-                                            f"the merge will happen around <t:{estimate_time}>," \
-                                            f" or <t:{estimate_time}:R>."
+                                            f"the merge will happen around **<t:{estimate_time}>**," \
+                                            f" or **<t:{estimate_time}:R>**."
 
             if not is_trading:
                 for image in ["chart.png", "hashrate.png", "ttd_hash.png"]:
