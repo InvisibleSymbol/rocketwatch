@@ -133,7 +133,6 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
             # create an index for address, an index for delivery_id, and an unique index for the combination of address and delivery_id
             await self.db.poap_deliveries.create_index("address", background=True)
             await self.db.poap_deliveries.create_index("last_delivery_id", background=True)
-            await self.db.poap_deliveries.create_index([("address", 1), ("last_delivery_id", 1)], unique=True, background=True)
         except Exception as e:
             log.exception(e)
 
