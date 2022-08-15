@@ -128,9 +128,19 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
             return
         self.run_loop.start()
 
+    async def check_db_indexes(self):
+        try:
+            # create an index for address, an index for delivery_id, and an unique index for the combination of address and delivery_id
+            await self.db.poap_deliveries.create_index("address", background=True)
+            await self.db.poap_deliveries.create_index("last_delivery_id", background=True)
+            await self.db.poap_deliveries.create_index([("address", 1), ("last_delivery_id", 1)], unique=True, background=True)
+        except Exception as e:
+            log.exception(e)
+
     @tasks.loop(seconds=60 * 5)
     async def run_loop(self):
         try:
+            await self.check_db_indexes()
             await self.sync_possible_deliveries_to_db()
             await self.process_next_user()
         except Exception as e:
