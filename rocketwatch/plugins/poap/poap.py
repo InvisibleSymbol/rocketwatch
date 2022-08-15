@@ -5,28 +5,21 @@ import logging
 import time
 import urllib
 from datetime import datetime
+from datetime import timezone
 from urllib.parse import urlencode
 
 import aiohttp
-import async_timeout
 import discord
-import humanize
-from datetime import timezone
 from discord import app_commands, Interaction, ButtonStyle
-from discord.app_commands import describe, Group
-from discord.ext import commands, tasks
-from discord.ext.commands import Context, hybrid_command
 from discord import ui
-from eth_account.messages import encode_structured_data, encode_defunct
+from discord.ext import commands, tasks
+from eth_account.messages import encode_defunct
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 
-from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.visibility import is_hidden
 
 log = logging.getLogger("poap")
 log.setLevel(cfg["log_level"])
@@ -120,8 +113,8 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.cached_commands = None
         self.session_headers = {
-            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-            "accept"    : "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+            "user-agent"  : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
+            "accept"      : "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
             "refferer"    : "https://poap.delivery/",
             "content-type": "application/json",
         }
@@ -266,8 +259,8 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
             # update the last_delivery_id. append delivery_id to claimed if res is 2
             await self.db.poap_users.update_one(
                 {"user_id": user["user_id"]},
-                {"$set": {"last_delivery_id": delivery["delivery_id"]},
-                    "$push": {"claimed": delivery["delivery_id"]}} if res == 2 else {}
+                {"$set" : {"last_delivery_id": delivery["delivery_id"]},
+                 "$push": {"claimed": delivery["delivery_id"]}} if res == 2 else {}
             )
             await asyncio.sleep(5)
 
@@ -276,7 +269,7 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
         async with aiohttp.ClientSession(
                 headers=self.session_headers) as session:
             body = {
-                "id": delivery_id,
+                "id"     : delivery_id,
                 "address": address,
             }
             # encode the body as json

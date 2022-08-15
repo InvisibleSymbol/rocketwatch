@@ -93,6 +93,8 @@ class Metrics(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
+        if "author" not in ctx:
+            return
         log.info(f"/{ctx.command.name} triggered by {ctx.author} in #{ctx.channel.name} ({ctx.guild})")
         try:
             await self.collection.insert_one({
@@ -120,6 +122,8 @@ class Metrics(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
+        if "author" not in ctx:
+            return
         log.info(
             f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) completed successfully")
         if not is_hidden(ctx) and ctx.author not in self.notice_ttl_cache:
@@ -146,6 +150,8 @@ class Metrics(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, excep):
+        if "author" not in ctx:
+            return
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
 
         msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
