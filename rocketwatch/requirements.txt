@@ -10,7 +10,7 @@ requests==2.28.1
 uptime==3.0.1
 git+https://github.com/Rapptz/discord.py@584c22f642cfb63b921467a901c8a47c721923b3#egg=discord.py
 config==0.5.1
-pytz==2022.1
+pytz==2022.2.1
 matplotlib==3.5.3
 inflect==5.6.2
 motor==3.0.0
