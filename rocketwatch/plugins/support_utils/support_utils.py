@@ -130,7 +130,7 @@ class SupportUtils(GroupCog, name="support"):
         author = message.author
         initiator = interaction.user
         try:
-            a = await message.create_thread(name=f"Automated Support Thread ({author})",
+            a = await message.create_thread(name=f"{author} - Automated Support Thread",
                                             reason=f"Automated Support Thread ({author}): triggered by {initiator}",
                                             auto_archive_duration=60)
 
