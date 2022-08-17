@@ -37,6 +37,8 @@ class AdminModal(ui.Modal,
     def __init__(self, old_title, old_description, db):
         super().__init__()
         self.db = db
+        self.old_title = old_title
+        self.old_description = old_description
         self.title_field = ui.TextInput(
             label="Title",
             placeholder="Enter a title",
@@ -51,16 +53,12 @@ class AdminModal(ui.Modal,
         self.add_item(self.description_field)
 
     async def on_submit(self, interaction: Interaction) -> None:
-        # export data from modal
-        data = interaction.data["components"]
-        title = data[0]["components"][0]["value"]
-        description = data[1]["components"][0]["value"]
         # get the data from the db
         boiler = await self.db.support_bot.find_one({'_id': 'boiler'})
         # verify that no changes were made while we were editing
-        if self.title_field.value != boiler['title'] or self.description_field.value != boiler['description']:
+        if boiler["title"] != self.old_title or boiler["description"] != self.old_description:
             # dump the description into a memory file
-            with io.StringIO(description) as f:
+            with io.StringIO(self.description_field.value) as f:
                 await interaction.response.edit_message(
                     embed=Embed(
                         description="Someone made changes while you were editing. Please try again.\n"
@@ -68,7 +66,9 @@ class AdminModal(ui.Modal,
                 a = await interaction.original_response()
                 await a.add_files(File(fp=f, filename="pending_description_dump.txt"))
             return
-        await self.db.support_bot.update_one({"_id": "boiler"}, {"$set": {"title": title, "description": description}})
+        await self.db.support_bot.update_one(
+            {"_id": "boiler"},
+            {"$set": {"title": self.title_field.value, "description": self.description_field.value}})
         embeds = [Embed(), await generate_boiler_embed(self.db)]
         embeds[0].title = "Support Admin UI"
         embeds[0].description = "The following is a preview of what will be posted in new threads.\n" \
