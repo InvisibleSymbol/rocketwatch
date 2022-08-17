@@ -105,7 +105,7 @@ class SupportUtils(GroupCog, name="support"):
     @app_commands.command()
     @app_commands.guilds(cfg["rocketpool.support.server_id"])
     async def admin_ui(self, interaction: Interaction):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles] and interaction.user.id != cfg["discord.owner.user_id"]:
             await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
