@@ -83,6 +83,7 @@ class SupportUtils(GroupCog, name="support"):
         self.ctx_menu = app_commands.ContextMenu(
             name='New Support Thread',
             callback=self.my_cool_context_menu,
+            guild_ids=[cfg["rocketpool.support.server_id"]]
         )
         self.bot.tree.add_command(self.ctx_menu)
 
