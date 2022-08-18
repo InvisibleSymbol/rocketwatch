@@ -1,5 +1,6 @@
 import io
 import logging
+from datetime import datetime, timezone
 
 from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File
 from discord.ext.commands import Cog, GroupCog
@@ -66,6 +67,23 @@ class AdminModal(ui.Modal,
                 a = await interaction.original_response()
                 await a.add_files(File(fp=f, filename="pending_description_dump.txt"))
             return
+        try:
+            await self.db.support_bot_dumps.insert_one(
+                {
+                    "ts"    : datetime.now(timezone.utc),
+                    "prev"  : boiler,
+                    "new"   : {
+                        "title"      : self.title_field.value,
+                        "description": self.description_field.value
+                    },
+                    "author": {
+                        "id"  : interaction.user.id,
+                        "name": interaction.user.name
+                    }
+                })
+        except Exception as e:
+            log.error(e)
+
         await self.db.support_bot.update_one(
             {"_id": "boiler"},
             {"$set": {"title": self.title_field.value, "description": self.description_field.value}})
