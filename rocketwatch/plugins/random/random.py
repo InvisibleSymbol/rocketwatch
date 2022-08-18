@@ -104,7 +104,7 @@ class Random(commands.Cog):
                     estimate_time = text.split("expected around ")[1].split(" UTC")[0]
                     estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
 
-                    current_hashrate = text.split("Current hashrate: ")[1].split("</p>")[0]
+                    current_hashrate = text.split("Current daily hashrate: ")[1].split("</p>")[0]
                     target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
 
                     # get the latest td using w3
