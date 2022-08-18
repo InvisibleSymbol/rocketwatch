@@ -91,7 +91,7 @@ class Random(commands.Cog):
         embeds[0].set_author(name="🔗 Data from bordel.wtf", url="https://bordel.wtf")
         text = ""
         embeds[0].url = "https://bordel.wtf/"
-        embeds[0].title = "Mainnet Merge (not 100% fix yet)"
+        embeds[0].title = "Mainnet Merge (yes, for real this time)"
         # detect if the channel is random
         is_trading = ctx.channel.name.startswith("trading")
         try:
