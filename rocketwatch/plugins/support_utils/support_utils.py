@@ -149,14 +149,16 @@ class SupportUtils(GroupCog, name="support"):
         initiator = interaction.user
         try:
             target = message
+            args = {}
             if message.channel.id != cfg["rocketpool.support.channel_id"]:
                 # create a new thread in the support channel
                 target = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
+                args = {"type": ChannelType.public_thread}
 
             a = await target.create_thread(name=f"{author} - Automated Support Thread",
                                            reason=f"Automated Support Thread ({author}): triggered by {initiator}",
                                            auto_archive_duration=60,
-                                           type=ChannelType.public_thread if isinstance(target, TextChannel) else None)
+                                           **args)
             suffix = ""
             if isinstance(target, TextChannel):
                 suffix = f"\nOriginal Message: {message.jump_url}"
