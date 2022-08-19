@@ -166,6 +166,9 @@ class SupportUtils(GroupCog, name="support"):
                 content=f"Original Message Author: {author.mention}\nSupport Thread Initiator: {initiator.mention}{suffix}",
                 embed=await generate_boiler_embed(self.db),
                 allowed_mentions=AllowedMentions(users=True))
+            # send reply to original message with a link to the new thread
+            await message.reply(f"{author.mention}, an automated support thread has been created for you,"
+                                f" please move to {a.mention} for further assistance.", mention_author=True)
             await interaction.edit_original_response(
                 embed=Embed(
                     title="Support Thread Successfully Created",
