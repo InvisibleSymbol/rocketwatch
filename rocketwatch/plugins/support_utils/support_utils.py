@@ -2,12 +2,14 @@ import io
 import logging
 from datetime import datetime, timezone
 
-from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File
+from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File, TextChannel, \
+    ChannelType
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.embeds import Embed
+from utils.get_or_fetch import get_or_fetch_channel
 
 log = logging.getLogger("support-threads")
 log.setLevel(cfg["log_level"])
@@ -123,7 +125,8 @@ class SupportUtils(GroupCog, name="support"):
     @app_commands.command()
     @app_commands.guilds(cfg["rocketpool.support.server_id"])
     async def admin_ui(self, interaction: Interaction):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles] and interaction.user.id != cfg["discord.owner.user_id"]:
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles] and interaction.user.id != cfg[
+            "discord.owner.user_id"]:
             await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
@@ -141,26 +144,30 @@ class SupportUtils(GroupCog, name="support"):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
-        if interaction.channel.id != cfg["rocketpool.support.channel_id"]:
-            await interaction.response.send_message(
-                embed=Embed(title="Error", description="This command can only be used in the support channel."), ephemeral=True)
-            return
         await interaction.response.defer(ephemeral=True)
         author = message.author
         initiator = interaction.user
         try:
-            a = await message.create_thread(name=f"{author} - Automated Support Thread",
-                                            reason=f"Automated Support Thread ({author}): triggered by {initiator}",
-                                            auto_archive_duration=60)
+            target = message
+            if message.channel.id != cfg["rocketpool.support.channel_id"]:
+                # create a new thread in the support channel
+                target = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
 
+            a = await target.create_thread(name=f"{author} - Automated Support Thread",
+                                           reason=f"Automated Support Thread ({author}): triggered by {initiator}",
+                                           auto_archive_duration=60,
+                                           type=ChannelType.public_thread if isinstance(target, TextChannel) else None)
+            suffix = ""
+            if isinstance(target, TextChannel):
+                suffix = f"\nOriginal Message: {message.jump_url}"
             await a.send(
-                content=f"{author.mention}, {initiator.mention}",
+                content=f"Original Message Author: {author.mention}\nSupport Thread Initiator: {initiator.mention}{suffix}",
                 embed=await generate_boiler_embed(self.db),
                 allowed_mentions=AllowedMentions(users=True))
             await interaction.edit_original_response(
                 embed=Embed(
                     title="Support Thread Successfully Created",
-                ),
+                    description=f"[Thread Link]({a.jump_url})")
             )
         except Exception as e:
             await interaction.edit_original_response(
