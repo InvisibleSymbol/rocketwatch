@@ -94,7 +94,7 @@ class AdminModal(ui.Modal,
             {"_id": self.template_name},
             {"$set": {"title": self.title_field.value, "description": self.description_field.value}})
         embeds = [Embed(), await generate_template_embed(self.db, self.template_name)]
-        embeds[0].title = "Support Admin UI"
+        embeds[0].title = f"View & Edit {self.template_name} template"
         embeds[0].description = f"The following is a preview of the {self.template_name} template.\n" \
                                 f"You can edit this template by clicking the 'Edit' button."
         await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
@@ -194,7 +194,7 @@ class SupportUtils(GroupCog, name="support"):
         await self.db.support_bot.insert_one(
             {"_id": name, "title": "Insert Title here", "description": "Insert Description here"})
         embeds = [Embed(), await generate_template_embed(self.db, name)]
-        embeds[0].title = "Support Admin UI"
+        embeds[0].title = f"View & Edit {name} template"
         embeds[0].description = f"The following is a preview of the {name} template.\n" \
                                 f"You can edit this template by clicking the 'Edit' button."
         await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db, name))
@@ -217,8 +217,12 @@ class SupportUtils(GroupCog, name="support"):
                 ),
             )
             return
+        embeds = [Embed(), await generate_template_embed(self.db, name)]
+        embeds[0].title = f"View & Edit {name} template"
+        embeds[0].description = f"The following is a preview of the {name} template.\n" \
+                                f"You can edit this template by clicking the 'Edit' button."
         # respond with the edit view
-        await interaction.edit_original_response(view=AdminView(self.db, name))
+        await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db, name))
 
     @subgroup.command()
     async def remove(self, interaction: Interaction, name: str):
