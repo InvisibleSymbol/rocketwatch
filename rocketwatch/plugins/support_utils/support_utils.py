@@ -113,8 +113,8 @@ class SupportUtils(GroupCog, name="support"):
         await self.db.support_bot.update_one(
             {'_id': 'boiler'},
             {'$setOnInsert': {
-                'title'      : 'Automated Support Message',
-                'description': 'This is an automated support message.'
+                'title'      : 'Support Message',
+                'description': 'This is an support message.'
             }},
             upsert=True
         )
@@ -155,8 +155,8 @@ class SupportUtils(GroupCog, name="support"):
                 target = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
                 args = {"type": ChannelType.public_thread}
 
-            a = await target.create_thread(name=f"{author} - Automated Support Thread",
-                                           reason=f"Automated Support Thread ({author}): triggered by {initiator}",
+            a = await target.create_thread(name=f"{author} - Support Thread",
+                                           reason=f"Support Thread ({author}): triggered by {initiator}",
                                            auto_archive_duration=60,
                                            **args)
             suffix = ""
@@ -167,7 +167,7 @@ class SupportUtils(GroupCog, name="support"):
                 embed=await generate_boiler_embed(self.db),
                 allowed_mentions=AllowedMentions(users=True))
             # send reply to original message with a link to the new thread
-            await message.reply(f"{author.mention}, an automated support thread has been created for you,"
+            await message.reply(f"{author.mention}, an support thread has been created for you,"
                                 f" please move to {a.mention} for further assistance.", mention_author=True)
             await interaction.edit_original_response(
                 embed=Embed(
