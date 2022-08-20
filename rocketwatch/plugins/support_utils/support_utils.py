@@ -257,10 +257,6 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def use(self, interaction: Interaction, name: str, mention: User | None):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
-            await interaction.response.send_message(
-                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
-            return
         # check if the template exists in the db
         template = await self.db.support_bot.find_one({"_id": name})
         if not template:
