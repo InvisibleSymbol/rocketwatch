@@ -100,9 +100,8 @@ class AdminModal(ui.Modal,
         await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
 
 
-@app_commands.guilds(cfg["rocketpool.support.server_id"])
 class SupportUtils(GroupCog, name="support"):
-    subgroup = Group(name='template', description='various templates used by active support members')
+    subgroup = Group(name='template', description='various templates used by active support members', guild_ids=[cfg["rocketpool.support.server_id"]])
 
     def __init__(self, bot):
         self.bot = bot
