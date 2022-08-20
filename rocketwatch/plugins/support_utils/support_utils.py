@@ -292,7 +292,15 @@ class SupportUtils(GroupCog, name="support"):
             Choice(
                 name=c["_id"],
                 value=c["_id"]
-            ) for c in await self.db.support_bot.find({"_id": {"$regex": current}}).to_list(None)]
+            ) for c in await self.db.support_bot.find(
+                {
+                    "_id": {
+                        "$regex": current,
+                        "$ne": "boiler" if interaction.command.name != "edit" else None
+                    }
+                }
+            ).to_list(None)
+        ]
 
 
 async def setup(self):
