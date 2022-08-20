@@ -3,7 +3,8 @@ import logging
 from datetime import datetime, timezone
 
 from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File, TextChannel, \
-    ChannelType
+    ChannelType, User
+from discord.app_commands import Group, Choice
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -15,33 +16,35 @@ log = logging.getLogger("support-threads")
 log.setLevel(cfg["log_level"])
 
 
-async def generate_boiler_embed(db):
+async def generate_template_embed(db, template_name: str):
     # get the boiler message from the database
-    boiler = await db.support_bot.find_one({'_id': 'boiler'})
+    template = await db.support_bot.find_one({'_id': template_name})
     # generate the embed
-    return Embed(title=boiler['title'], description=boiler['description'])
+    return Embed(title=template['title'], description=template['description'])
 
 
 # Define a simple View that gives us a counter button
 class AdminView(ui.View):
-    def __init__(self, db: AsyncIOMotorClient):
+    def __init__(self, db: AsyncIOMotorClient, template_name: str):
         super().__init__()
         self.db = db
+        self.template_name = template_name
 
     @ui.button(label='Edit', style=ButtonStyle.blurple)
     async def edit(self, interaction: Interaction, button: ui.Button):
-        boiler = await self.db.support_bot.find_one({'_id': 'boiler'})
+        boiler = await self.db.support_bot.find_one({'_id': self.template_name})
         # Make sure to update the message with our update
-        await interaction.response.send_modal(AdminModal(boiler["title"], boiler["description"], self.db))
+        await interaction.response.send_modal(AdminModal(boiler["title"], boiler["description"], self.db, self.template_name))
 
 
 class AdminModal(ui.Modal,
-                 title="Change Boiler Message"):
-    def __init__(self, old_title, old_description, db):
+                 title="Change Template Message"):
+    def __init__(self, old_title, old_description, db, template_name):
         super().__init__()
         self.db = db
         self.old_title = old_title
         self.old_description = old_description
+        self.template_name = template_name
         self.title_field = ui.TextInput(
             label="Title",
             placeholder="Enter a title",
@@ -57,9 +60,9 @@ class AdminModal(ui.Modal,
 
     async def on_submit(self, interaction: Interaction) -> None:
         # get the data from the db
-        boiler = await self.db.support_bot.find_one({'_id': 'boiler'})
+        template = await self.db.support_bot.find_one({'_id': self.template_name})
         # verify that no changes were made while we were editing
-        if boiler["title"] != self.old_title or boiler["description"] != self.old_description:
+        if template["title"] != self.old_title or template["description"] != self.old_description:
             # dump the description into a memory file
             with io.StringIO(self.description_field.value) as f:
                 await interaction.response.edit_message(
@@ -72,13 +75,14 @@ class AdminModal(ui.Modal,
         try:
             await self.db.support_bot_dumps.insert_one(
                 {
-                    "ts"    : datetime.now(timezone.utc),
-                    "prev"  : boiler,
-                    "new"   : {
+                    "ts"      : datetime.now(timezone.utc),
+                    "template": self.template_name,
+                    "prev"    : template,
+                    "new"     : {
                         "title"      : self.title_field.value,
                         "description": self.description_field.value
                     },
-                    "author": {
+                    "author"  : {
                         "id"  : interaction.user.id,
                         "name": interaction.user.name
                     }
@@ -87,16 +91,19 @@ class AdminModal(ui.Modal,
             log.error(e)
 
         await self.db.support_bot.update_one(
-            {"_id": "boiler"},
+            {"_id": self.template_name},
             {"$set": {"title": self.title_field.value, "description": self.description_field.value}})
-        embeds = [Embed(), await generate_boiler_embed(self.db)]
+        embeds = [Embed(), await generate_template_embed(self.db, self.template_name)]
         embeds[0].title = "Support Admin UI"
-        embeds[0].description = "The following is a preview of what will be posted in new threads.\n" \
-                                "Edit it using the 'Edit' Button."
-        await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db))
+        embeds[0].description = f"The following is a preview of the {self.template_name} template.\n" \
+                                f"You can edit this template by clicking the 'Edit' button."
+        await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
 
 
+@app_commands.guilds(cfg["rocketpool.support.server_id"])
 class SupportUtils(GroupCog, name="support"):
+    subgroup = Group(name='template', description='various templates used by active support members')
+
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
@@ -121,21 +128,6 @@ class SupportUtils(GroupCog, name="support"):
 
     async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
-
-    @app_commands.command()
-    @app_commands.guilds(cfg["rocketpool.support.server_id"])
-    async def admin_ui(self, interaction: Interaction):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles] and interaction.user.id != cfg[
-            "discord.owner.user_id"]:
-            await interaction.response.send_message("You do not have permission to use this command.", ephemeral=True)
-            return
-        await interaction.response.defer(ephemeral=True)
-        # send 2 embeds, one indicating what the command does, and one showing the current boiler message
-        embeds = [Embed(), await generate_boiler_embed(self.db)]
-        embeds[0].title = "Support Admin UI"
-        embeds[0].description = "The following is a preview of what will be posted in new threads.\n" \
-                                "Edit it using the 'Edit' Button."
-        await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db))
 
     # You can add checks too
     @app_commands.guilds(cfg["rocketpool.support.server_id"])
@@ -164,7 +156,7 @@ class SupportUtils(GroupCog, name="support"):
                 suffix = f"\nOriginal Message: {message.jump_url}"
             await a.send(
                 content=f"Original Message Author: {author.mention}\nSupport Thread Initiator: {initiator.mention}{suffix}",
-                embed=await generate_boiler_embed(self.db),
+                embed=await generate_template_embed(self.db, "boiler"),
                 allowed_mentions=AllowedMentions(users=True))
             # send reply to original message with a link to the new thread
             await message.reply(f"{author.mention}, an support thread has been created for you,"
@@ -183,6 +175,121 @@ class SupportUtils(GroupCog, name="support"):
             )
             raise e
 
+    @subgroup.command()
+    async def add(self, interaction: Interaction, name: str):
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+            await interaction.response.send_message(
+                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        # check if the template already exists in the db
+        if await self.db.support_bot.find_one({"_id": name}):
+            await interaction.edit_original_response(
+                embed=Embed(
+                    title="Error",
+                    description=f"A template with the name '{name}' already exists."
+                ),
+            )
+            return
+        # create the template in the db
+        await self.db.support_bot.insert_one(
+            {"_id": name, "title": "Insert Title here", "description": "Insert Description here"})
+        embeds = [Embed(), await generate_template_embed(self.db, name)]
+        embeds[0].title = "Support Admin UI"
+        embeds[0].description = f"The following is a preview of the {name} template.\n" \
+                                f"You can edit this template by clicking the 'Edit' button."
+        await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db, name))
 
-async def setup(bot):
-    await bot.add_cog(SupportUtils(bot))
+    @subgroup.command()
+    async def edit(self, interaction: Interaction, name: str):
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+            await interaction.response.send_message(
+                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        # check if the template exists in the db
+        template = await self.db.support_bot.find_one({"_id": name})
+
+        if not template:
+            await interaction.edit_original_response(
+                embed=Embed(
+                    title="Error",
+                    description=f"A template with the name '{name}' does not exist."
+                ),
+            )
+            return
+        # respond with the edit view
+        await interaction.edit_original_response(view=AdminView(self.db, name))
+
+    @subgroup.command()
+    async def remove(self, interaction: Interaction, name: str):
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+            await interaction.response.send_message(
+                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
+            return
+        if name == "boiler":
+            await interaction.edit_original_response(
+                embed=Embed(
+                    title="Error",
+                    description=f"The template '{name}' cannot be removed."
+                ),
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        # check if the template exists in the db
+        template = await self.db.support_bot.find_one({"_id": name})
+        if not template:
+            await interaction.edit_original_response(
+                embed=Embed(
+                    title="Error",
+                    description=f"A template with the name '{name}' does not exist."
+                ),
+            )
+            return
+        # remove the template from the db
+        await self.db.support_bot.delete_one({"_id": name})
+        await interaction.edit_original_response(
+            embed=Embed(
+                title="Success",
+                description=f"Template '{name}' removed."
+            ),
+        )
+
+    @subgroup.command()
+    async def use(self, interaction: Interaction, name: str, mention: User | None):
+        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+            await interaction.response.send_message(
+                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
+            return
+        # check if the template exists in the db
+        template = await self.db.support_bot.find_one({"_id": name})
+        if not template:
+            await interaction.response.send_message(
+                embed=Embed(
+                    title="Error",
+                    description=f"A template with the name '{name}' does not exist."
+                ),
+                ephemeral=True
+            )
+            return
+        # respond with the template embed
+        await interaction.response.send_message(
+            content=mention.mention if mention else "",
+            embed=Embed(
+                title=template["title"],
+                description=template["description"]
+            ))
+
+    @edit.autocomplete("name")
+    @remove.autocomplete("name")
+    @use.autocomplete("name")
+    async def match_template(self, interaction: Interaction, current: str):
+        return [
+            Choice(
+                name=c["_id"],
+                value=c["_id"]
+            ) for c in await self.db.support_bot.find({"_id": {"$regex": current}}).to_list(None)]
+
+
+async def setup(self):
+    await self.add_cog(SupportUtils(self))
