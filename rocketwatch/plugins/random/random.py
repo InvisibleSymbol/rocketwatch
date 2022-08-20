@@ -10,7 +10,7 @@ from discord.ext.commands import hybrid_command
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
-from utils.shared_w3 import w3, goerli_w3
+from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak
 
 log = logging.getLogger("random")
@@ -115,11 +115,12 @@ class Random(commands.Cog):
                     ttd = int(ttd) / 1e16
                     embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} PH`")
 
+                    embeds[0].add_field(name="Current daily hashrate", value=f"`{current_hashrate}`")
+
                     embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} PH` " \
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
                                             f"is required.\n" \
-                                            f"With the current hashrate of `{current_hashrate}`, " \
-                                            f"the merge will happen around **<t:{estimate_time}>**," \
+                                            f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
                                             f" or **<t:{estimate_time}:R>**."
 
             if not is_trading:
