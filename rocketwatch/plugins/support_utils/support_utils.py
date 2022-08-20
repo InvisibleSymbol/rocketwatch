@@ -267,6 +267,15 @@ class SupportUtils(GroupCog, name="support"):
                 ephemeral=True
             )
             return
+        if name == "boiler":
+            await interaction.response.send_message(
+                embed=Embed(
+                    title="Error",
+                    description=f"The template '{name}' cannot be used."
+                ),
+                ephemeral=True
+            )
+            return
         # respond with the template embed
         await interaction.response.send_message(
             content=mention.mention if mention else "",
