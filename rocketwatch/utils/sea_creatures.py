@@ -39,11 +39,35 @@ def get_sea_creature_for_holdings(holdings):
     :param holdings: The holdings to get the sea creature for.
     :return: The sea creature for the given holdings.
     """
-    # if the holdings are more than 2 times the highest sea creature, return the highest sea creature with a multiplier next to it
-    highest_possible_holdings = max(sea_creatures.keys())
-    if holdings >= 2 * highest_possible_holdings:
-        return sea_creatures[highest_possible_holdings] * int(holdings / highest_possible_holdings)
-    return next((sea_creature for holding_value, sea_creature in sea_creatures.items() if holdings >= holding_value), '')
+    def creature_for_value(amount):
+        return next(((k, v) for k, v in sea_creatures.items() if amount >= k), (0, ''))
+
+    def creatures_for_value(amount):
+        highest_possible_holdings = max(sea_creatures.keys())
+        lowest_possible_holdings = min(sea_creatures.keys())
+        if amount < lowest_possible_holdings:
+            return
+        # if the holdings are more than 2 times the highest sea creature, return the highest sea creature with a multiplier next to it
+        if amount >= 2 * highest_possible_holdings:
+            yield sea_creatures[highest_possible_holdings] * int(amount / highest_possible_holdings)
+            amount %= highest_possible_holdings
+        else:
+            # otherwise yield just 1 creature
+            value, creature = creature_for_value(amount)
+            yield creature
+            amount -= value
+        # If there is no remainder, exit now
+        if amount < lowest_possible_holdings:
+            return
+        yield '.'
+        # yield 3 decimal places
+        for i in range(0,3):
+            value, creature = creature_for_value(amount)
+            yield creature
+            amount -= value
+        return
+
+    return ''.join(creatures_for_value(holdings))
 
 
 def get_holding_for_address(address):
