@@ -100,11 +100,17 @@ class Random(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
-                    f = "%a %b %d %H:%M:%S %Y"
+                    f = "%a %b %d %H:%M %Y"
                     target_time = text.split(" at ")[1].split(" UTC")[0]
                     target_time = int(datetime.strptime(target_time, f).timestamp())
                     estimate_time = text.split("expected around ")[1].split(" UTC")[0]
                     estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
+                    between = []
+                    if "between" in text:
+                        between.append(text.split("between ")[1].split(" UTC")[0])
+                        between[0] = int(datetime.strptime(between[0], f).timestamp())
+                        between.append(text.split("and ")[1].split(" UTC")[0])
+                        between[1] = int(datetime.strptime(between[1], f).timestamp())
 
                     current_hashrate = text.split("Current daily hashrate: ")[1].split("</p>")[0]
                     target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
@@ -123,7 +129,11 @@ class Random(commands.Cog):
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
                                             f"is required.\n" \
                                             f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
-                                            f" or **<t:{estimate_time}:R>**."
+                                            f" or **<t:{estimate_time}:R>** "
+                    if between:
+                        embeds[0].description += f"(between <t:{between[0]}> and <t:{between[1]}>)."
+                    else:
+                        embeds[0].description += "."
 
             if not is_trading:
                 for image in ["chart.png", "hashrate.png", "ttd_hash.png"]:
@@ -137,7 +147,7 @@ class Random(commands.Cog):
             if "Updating data" in text:
                 embeds[0].description = "bordel.wtf is updating its data..."
             else:
-                embeds[0].description = "Dunno. maybe the merge already happened?"
+                embeds[0].description = "something broke? ping invis about this response"
         await ctx.send(embeds=embeds)
         return
 
