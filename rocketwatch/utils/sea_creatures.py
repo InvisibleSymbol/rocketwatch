@@ -61,7 +61,7 @@ def get_sea_creature_for_holdings(holdings):
             return
         yield '.'
         # yield 3 decimal places
-        for i in range(0,3):
+        for i in range(3):
             value, creature = creature_for_value(amount)
             yield creature
             amount -= value
