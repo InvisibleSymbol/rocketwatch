@@ -138,7 +138,7 @@ class Random(commands.Cog):
             if not is_trading:
                 for image in ["chart.png", "hashrate.png", "ttd_hash.png"]:
                     embeds.append(Embed(url="https://bordel.wtf/"))
-                    embeds[-1].set_image(url=f"https://bordel.wtf/{image}#cache_burst={int(datetime.now().timestamp())}")
+                    embeds[-1].set_image(url=f"https://bordel.wtf/{image}?cache_burst={int(datetime.now().timestamp())}")
                 embeds.append(Embed(url="https://bordel.wtf/"))
                 embeds[-1].set_image(url="https://i.redd.it/wghxf2s5eki61.jpg")
 
