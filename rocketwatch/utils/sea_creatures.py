@@ -1,3 +1,4 @@
+import contextlib
 from utils import solidity
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -42,21 +43,19 @@ def get_sea_creature_for_holdings(holdings):
     highest_possible_holdings = max(sea_creatures.keys())
     if holdings >= 2 * highest_possible_holdings:
         return sea_creatures[highest_possible_holdings] * int(holdings / highest_possible_holdings)
-    for holding_value, sea_creature in sea_creatures.items():
-        if holdings >= holding_value:
-            return sea_creature
-    return ''
+    return next((sea_creature for holding_value, sea_creature in sea_creatures.items() if holdings >= holding_value), '')
 
 
-def get_sea_creature_for_address(address):
-    if price_cache["block"] == w3.eth.blockNumber:
+def get_holding_for_address(address):
+    if price_cache["block"] != (b := w3.eth.blockNumber):
         price_cache["rpl_price"] = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         price_cache["reth_price"] = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
+        price_cache["block"] = b
 
     # get their eth balance
     eth_balance = solidity.to_float(w3.eth.getBalance(address))
     # get ERC-20 token balance for this address
-    try:
+    with contextlib.suppress(Exception):
         resp = rp.multicall.aggregate(
             rp.get_contract_by_name(name).functions.balanceOf(address) for name in
             ["rocketTokenRPL", "rocketTokenRPLFixedSupply", "rocketTokenRETH"]
@@ -68,13 +67,15 @@ def get_sea_creature_for_address(address):
                 eth_balance += solidity.to_float(token.results[0]) * price_cache["rpl_price"]
             if "RETH" in contract_name:
                 eth_balance += solidity.to_float(token.results[0]) * price_cache["reth_price"]
-    except:
-        pass
     # get minipool count
     minipools = rp.call("rocketMinipoolManager.getNodeMinipoolCount", address)
     eth_balance += minipools * 16
     # add their staked RPL
     staked_rpl = solidity.to_int(rp.call("rocketNodeStaking.getNodeRPLStake", address))
     eth_balance += staked_rpl * price_cache["rpl_price"]
+    return eth_balance
+
+
+def get_sea_creature_for_address(address):
     # return the sea creature for the given holdings
-    return get_sea_creature_for_holdings(eth_balance)
+    return get_sea_creature_for_holdings(get_holding_for_address(address))

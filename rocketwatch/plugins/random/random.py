@@ -9,7 +9,7 @@ from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
-from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
+from utils.sea_creatures import sea_creatures, get_sea_creature_for_address, get_holding_for_address
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak
 
@@ -70,9 +70,11 @@ class Random(commands.Cog):
                 e.description = f"No sea creature for {address}"
             else:
                 # get the required holding from the dictionary
-                holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
+                required_holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
                 e.add_field(name="Visualization", value=el_explorer_url(address, prefix=creature), inline=False)
-                e.add_field(name="Required holding", value=f"{holding * len(creature)} ETH", inline=False)
+                e.add_field(name="Required holding for emoji", value=f"{required_holding * len(creature)} ETH", inline=False)
+                holding = get_holding_for_address(address)
+                e.add_field(name="Actual Holding", value=f"{holding:.0f} ETH", inline=False)
         else:
             e.title = "Possible Sea Creatures"
             e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
