@@ -100,8 +100,16 @@ class AdminModal(ui.Modal,
         await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
 
 
+def has_perms(interaction: Interaction):
+    return any([
+        cfg["rocketpool.support.role_id"] in [r.id for r in interaction.user.roles],
+        cfg["discord.owner.user_id"] == interaction.user.id
+    ])
+
+
 class SupportUtils(GroupCog, name="support"):
-    subgroup = Group(name='template', description='various templates used by active support members', guild_ids=[cfg["rocketpool.support.server_id"]])
+    subgroup = Group(name='template', description='various templates used by active support members',
+                     guild_ids=[cfg["rocketpool.support.server_id"]])
 
     def __init__(self, bot):
         self.bot = bot
@@ -131,7 +139,7 @@ class SupportUtils(GroupCog, name="support"):
     # You can add checks too
     @app_commands.guilds(cfg["rocketpool.support.server_id"])
     async def my_cool_context_menu(self, interaction: Interaction, message: Message):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -176,7 +184,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def add(self, interaction: Interaction, name: str):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -201,7 +209,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def edit(self, interaction: Interaction, name: str):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -226,7 +234,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def remove(self, interaction: Interaction, name: str):
-        if cfg["rocketpool.support.role_id"] not in [r.id for r in interaction.user.roles]:
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -300,7 +308,7 @@ class SupportUtils(GroupCog, name="support"):
                 {
                     "_id": {
                         "$regex": current,
-                        "$ne": "boiler" if interaction.command.name != "edit" else None
+                        "$ne"   : "boiler" if interaction.command.name != "edit" else None
                     }
                 }
             ).to_list(None)
