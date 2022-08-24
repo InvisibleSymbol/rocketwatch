@@ -30,7 +30,8 @@ def get_average_commission():
     if "errors" in response.json():
         raise Exception(response.json()["errors"])
     data = response.json()["data"]
-    raw_value = int(data["rocketPoolProtocols"][0]["lastNetworkNodeBalanceCheckPoint"]["averageFeeForActiveMinipools"])
+    raw_value = int(data["rocketPoolProtocols"][0]
+                    ["lastNetworkNodeBalanceCheckPoint"]["averageFeeForActiveMinipools"])
     return solidity.to_float(raw_value)
 
 
@@ -56,11 +57,13 @@ def get_minipool_counts_per_node():
     # if there is no node with 1000 minipools, but we have 1000 nodes, we do another request with an increased node offset, but a minimum minipool offset of 0
     # if there are less than 1000 nodes, we process them and then stop
     while True:
-        log.debug(f"Requesting nodes with offset {node_offset} and minipools with offset {minipool_offset}")
+        log.debug(
+            f"Requesting nodes with offset {node_offset} and minipools with offset {minipool_offset}")
         # do the request
         response = requests.post(
             cfg["graph_endpoint"],
-            json={'query': query.format(count=count, offset=node_offset, mp_offset=minipool_offset)}
+            json={'query': query.format(
+                count=count, offset=node_offset, mp_offset=minipool_offset)}
         )
         # parse the response
         if "errors" in response.json():
@@ -112,7 +115,7 @@ def get_reth_ratio_past_week():
     data = response.json()["data"]["networkStakerBalanceCheckpoints"]
     data = [{
         "value": solidity.to_float(int(entry["rETHExchangeRate"])),
-        "time" : int(entry["blockTime"])
+        "time": int(entry["blockTime"])
     } for entry in data]
     return data
 
@@ -154,22 +157,27 @@ def get_unclaimed_rpl_reward_nodes():
     # get the data
     data = response.json()["data"]
     # get the eligible nodes for this interval
-    eligible_nodes = {node["id"]: node["effectiveRPLStaked"] for node in data["nodes"]}
+    eligible_nodes = {node["id"]: node["effectiveRPLStaked"]
+                      for node in data["nodes"]}
 
     # remove nodes that have already claimed rewards
     for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
         if claim["claimer"] in eligible_nodes:
             eligible_nodes.pop(claim["claimer"])
 
-    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableNodeRewards"])
-    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalNodeRewardsClaimed"])
-    total_rpl_staked = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
+    total_rewards = solidity.to_float(
+        data["rplrewardIntervals"][0]["claimableNodeRewards"])
+    claimed_rewards = solidity.to_float(
+        data["rplrewardIntervals"][0]["totalNodeRewardsClaimed"])
+    total_rpl_staked = solidity.to_float(
+        rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
 
     # get theoretical rewards per staked RPL
     reward_per_staked_rpl = total_rewards / total_rpl_staked
 
     # get list of eligible claims and sort by largest first
-    eligible_effective = sorted([solidity.to_float(v) for v in eligible_nodes.values()], reverse=True)
+    eligible_effective = sorted([solidity.to_float(v)
+                                for v in eligible_nodes.values()], reverse=True)
 
     # calculate Rewards required for eligible nodes
     rewards_required = reward_per_staked_rpl * sum(eligible_effective)
@@ -234,8 +242,10 @@ def get_unclaimed_rpl_reward_odao():
             eligible_nodes.remove(claim["claimer"])
 
     # get total rewards
-    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableODAORewards"])
-    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalODAORewardsClaimed"])
+    total_rewards = solidity.to_float(
+        data["rplrewardIntervals"][0]["claimableODAORewards"])
+    claimed_rewards = solidity.to_float(
+        data["rplrewardIntervals"][0]["totalODAORewardsClaimed"])
     total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
 
     # get theoretical rewards per member
@@ -314,7 +324,8 @@ def get_average_collateral_percentage_per_node(cap_collateral):
     # get the data
     data = response.json()["data"]
 
-    rpl_eth_price = solidity.to_float(data["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
+    rpl_eth_price = solidity.to_float(
+        data["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
 
     result = {}
     for node in data["nodes"]:
@@ -325,7 +336,8 @@ def get_average_collateral_percentage_per_node(cap_collateral):
         collateral_percentage = effective_staked / minipool_worth
         if collateral_percentage < 0.1:
             collateral_percentage = 0
-        collateral_percentage = round(round(collateral_percentage * 20) / 20 * 100, 0)
+        collateral_percentage = round(
+            round(collateral_percentage * 20) / 20 * 100, 0)
         if cap_collateral:
             collateral_percentage = min(collateral_percentage, 150)
         if collateral_percentage not in result:
@@ -335,7 +347,9 @@ def get_average_collateral_percentage_per_node(cap_collateral):
     return result
 
 # use cols to pass columns you want to request as a list of strings
-def scan_nodes(cols, count = 1000):
+
+
+def scan_nodes(cols, count=1000):
     node_query = """
 {{
     nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
@@ -352,7 +366,8 @@ def scan_nodes(cols, count = 1000):
 
         response = requests.post(
             cfg["graph_endpoint"],
-            json={'query': node_query.format(count = count, offset = page*count, cols = " ".join(cols))}
+            json={'query': node_query.format(
+                count=count, offset=page*count, cols=" ".join(cols))}
         )
 
         data.extend(response.json()["data"]["nodes"])
@@ -362,12 +377,13 @@ def scan_nodes(cols, count = 1000):
             raise Exception(response.json()["errors"])
 
         # check if final page
-        if len(response.json()["data"]["nodes"])<1000:
+        if len(response.json()["data"]["nodes"]) < 1000:
             break
 
         page = page + 1
 
     return data
+
 
 def get_RPL_ETH_price():
 
@@ -390,8 +406,8 @@ def get_RPL_ETH_price():
     if "errors" in price_response.json():
         raise Exception(price_response.json()["errors"])
 
-    #retrieve price from data
-    rpl_eth_price = solidity.to_float(price_response.json()["data"]["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
+    # retrieve price from data
+    rpl_eth_price = solidity.to_float(price_response.json(
+    )["data"]["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
 
     return rpl_eth_price
-
