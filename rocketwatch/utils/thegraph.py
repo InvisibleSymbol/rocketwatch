@@ -392,7 +392,8 @@ def get_RPL_ETH_price():
     if "errors" in price_response.json():
         raise Exception(price_response.json()["errors"])
 
-    # retrieve price from data
-    rpl_eth_price = solidity.to_float(price_response.json()["data"]["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
-
-    return rpl_eth_price
+    return solidity.to_float(
+        price_response.json()["data"]["networkNodeBalanceCheckpoints"][0][
+            "rplPriceInETH"
+        ]
+    )
