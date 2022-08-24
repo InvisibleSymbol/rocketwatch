@@ -33,11 +33,13 @@ class QueuedTransactions(commands.Cog):
             mapped_events = json.load(f)
 
         for contract_name, event_mapping in mapped_events.items():
-            address = rp.get_address_by_name(contract_name)
-            if address is None:
-                log.error(f"Could not find address for contract {contract_name}, skipping")
+            try:
+                address = rp.get_address_by_name(contract_name)
+            except Exception as e:
+                log.exception(e)
+                log.error(f"Could not find address for contract {contract_name}")
                 continue
-            self.addresses.append(rp.get_address_by_name(contract_name))
+            self.addresses.append(address)
             self.internal_function_mapping[contract_name] = event_mapping
 
     def create_embed(self, event_name, event):
