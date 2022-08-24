@@ -333,3 +333,65 @@ def get_average_collateral_percentage_per_node(cap_collateral):
         result[collateral_percentage].append(rpl_stake)
 
     return result
+
+# use cols to pass columns you want to request as a list of strings
+def scan_nodes(cols, count = 1000):
+    node_query = """
+{{
+    nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
+        {cols}
+    }}
+}}
+    """
+
+    # node request pagination
+    page = 0
+    data = []
+
+    while True:
+
+        response = requests.post(
+            cfg["graph_endpoint"],
+            json={'query': node_query.format(count = count, offset = page*count, cols = " ".join(cols))}
+        )
+
+        data.extend(response.json()["data"]["nodes"])
+
+        # parse the response
+        if "errors" in response.json():
+            raise Exception(response.json()["errors"])
+
+        # check if final page
+        if len(response.json()["data"]["nodes"])<1000:
+            break
+
+        page = page + 1
+
+    return data
+
+def get_RPL_ETH_price():
+
+    price_query = """
+{
+    networkNodeBalanceCheckpoints(first: 1, orderBy: block, orderDirection: desc) {
+        rplPriceInETH
+        block
+    }
+}
+    """
+
+    # do the request
+    price_response = requests.post(
+        cfg["graph_endpoint"],
+        json={'query': price_query}
+    )
+
+    # parse the response
+    if "errors" in price_response.json():
+        raise Exception(price_response.json()["errors"])
+
+    #retrieve price from data
+    rpl_eth_price = solidity.to_float(price_response.json()["data"]["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
+
+    return rpl_eth_price
+
