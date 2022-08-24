@@ -350,7 +350,6 @@ def scan_nodes(cols, count=1000):
     data = []
 
     while True:
-
         response = requests.post(
             cfg["graph_endpoint"],
             json={'query': node_query.format(count=count, offset=(page * count), cols=" ".join(cols))}
@@ -369,30 +368,3 @@ def scan_nodes(cols, count=1000):
         page = page + 1
 
     return data
-
-
-def get_RPL_ETH_price():
-
-    price_query = """
-{
-    networkNodeBalanceCheckpoints(first: 1, orderBy: block, orderDirection: desc) {
-        rplPriceInETH
-        block
-    }
-}
-    """
-
-    # do the request
-    price_response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': price_query}
-    )
-
-    # parse the response
-    if "errors" in price_response.json():
-        raise Exception(price_response.json()["errors"])
-
-    # retrieve price from data
-    rpl_eth_price = solidity.to_float(price_response.json()["data"]["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
-
-    return rpl_eth_price

@@ -3,17 +3,14 @@ from io import BytesIO
 
 import inflect
 import matplotlib.pyplot as plt
-import numpy as np
 from discord import File
-from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
-from matplotlib.ticker import FuncFormatter
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.thegraph import get_RPL_ETH_price
+from utils.rocketpool import rp
 from utils.thegraph import scan_nodes
 from utils.visibility import is_hidden
 
@@ -38,7 +35,7 @@ class Liquidity(commands.Cog):
 
         # get data from thegraph
         data = scan_nodes(["rplStaked", "stakingMinipools"])
-        rpl_eth_price = get_RPL_ETH_price()
+        rpl_eth_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
         # calculate withdrawable RPL at various RPL ETH prices
         # i/10 is the ratio of the price checked to the actual RPL ETH price
