@@ -2,6 +2,7 @@ import io
 import logging
 from datetime import datetime, timezone
 
+from bson import CodecOptions
 from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File, TextChannel, \
     ChannelType, User
 from discord.app_commands import Group, Choice
@@ -20,7 +21,8 @@ async def generate_template_embed(db, template_name: str):
     # get the boiler message from the database
     template = await db.support_bot.find_one({'_id': template_name})
     # get the last log entry from the db
-    last_edit = await db.support_bot_dumps.find_one(
+    dumps_col = db.support_bot_dumps.with_options(codec_options=CodecOptions(tz_aware=True))
+    last_edit = await dumps_col.find_one(
         {"template": template_name},
         sort=[("ts", -1)]
     )
