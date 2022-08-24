@@ -19,8 +19,15 @@ log.setLevel(cfg["log_level"])
 async def generate_template_embed(db, template_name: str):
     # get the boiler message from the database
     template = await db.support_bot.find_one({'_id': template_name})
-    # generate the embed
-    return Embed(title=template['title'], description=template['description'])
+    # get the last log entry from the db
+    last_edit = await db.support_bot_dumps.find_one(
+        {"template": template_name},
+        sort=[("ts", -1)]
+    )
+
+    e = Embed(title=template['title'], description=template['description'])
+    e.description += f"\n\n*Last Edited by {last_edit['author']['name']} <t:{last_edit['ts'].timestamp():.0f}:R>*"
+    return e
 
 
 # Define a simple View that gives us a counter button
@@ -128,7 +135,7 @@ class SupportUtils(GroupCog, name="support"):
             {'_id': 'boiler'},
             {'$setOnInsert': {
                 'title'      : 'Support Message',
-                'description': 'This is an support message.'
+                'description': 'This is a support message.'
             }},
             upsert=True
         )
@@ -166,7 +173,7 @@ class SupportUtils(GroupCog, name="support"):
                 embed=await generate_template_embed(self.db, "boiler"),
                 allowed_mentions=AllowedMentions(users=True))
             # send reply to original message with a link to the new thread
-            await message.reply(f"{author.mention}, an support thread has been created for you,"
+            await message.reply(f"{author.mention}, a support thread has been created for you,"
                                 f" please move to {a.mention} for further assistance.", mention_author=True)
             await interaction.edit_original_response(
                 embed=Embed(
@@ -291,10 +298,7 @@ class SupportUtils(GroupCog, name="support"):
         # respond with the template embed
         await interaction.response.send_message(
             content=mention.mention if mention else "",
-            embed=Embed(
-                title=template["title"],
-                description=template["description"]
-            ))
+            embed=await generate_template_embed(self.db, name))
 
     @edit.autocomplete("name")
     @remove.autocomplete("name")
