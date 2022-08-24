@@ -28,7 +28,7 @@ async def generate_template_embed(db, template_name: str):
     )
 
     e = Embed(title=template['title'], description=template['description'])
-    e.description += f"\n\n*Last Edited by {last_edit['author']['name']} <t:{last_edit['ts'].timestamp():.0f}:R>*"
+    e.description += f"\n\n*Last Edited by <@{last_edit['author']['id']}> <t:{last_edit['ts'].timestamp():.0f}:R>*"
     return e
 
 
