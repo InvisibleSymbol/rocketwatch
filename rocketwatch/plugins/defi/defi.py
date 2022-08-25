@@ -61,7 +61,7 @@ class DeFi(commands.Cog):
             name="Current rETH => wstETH Exchange (Assuming true-lsd value)",
             value=f"`1 ETH worth of rETH will get you "
                   f"{solidity.to_float(rp.call('wstETHToken.getStETHByWstETH',eth_to_wsteth)):,.4f} ETH "
-                  f"worth of wstETH ({solidity.to_float(eth_to_wsteth):.4f}` wstETH)",
+                  f"worth of wstETH`",
             inline=False,
         )
         # wstETH => rETH premium
@@ -70,7 +70,7 @@ class DeFi(commands.Cog):
             name="Current wstETH => rETH Exchange (Assuming true-lsd value)",
             value=f"`1 ETH worth of wstETH will get you "
                   f"{solidity.to_float(rp.call('rocketTokenRETH.getEthValue',eth_to_reth)):,.4f} ETH"
-                  f" worth of rETH ({solidity.to_float(eth_to_reth):.4f} rETH)`",
+                  f" worth of rETH`",
             inline=False,
         )
         token_name = rp.call("curvePool.symbol")
