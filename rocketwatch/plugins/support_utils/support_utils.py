@@ -116,7 +116,8 @@ def has_perms(interaction: Interaction, template_name):
         return False
     return any([
         cfg["rocketpool.support.role_id"] in [r.id for r in interaction.user.roles],
-        cfg["discord.owner.user_id"] == interaction.user.id
+        cfg["discord.owner.user_id"] == interaction.user.id,
+        interaction.user.guild_permissions.moderate_members and interaction.guild == cfg["rocketpool.support.server_id"]
     ])
 
 
