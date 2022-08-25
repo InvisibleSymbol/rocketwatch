@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
 from plugins.lottery.lottery import lottery
+from plugins.support_utils.support_utils import generate_template_embed
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, Embed
@@ -107,11 +108,13 @@ class Core(commands.Cog):
             # if the state message is less than 1 minute old, do nothing
             if state_message and time.time() - state_message["sent_at"] < 60 and state_message["state"] == "OK":
                 return
+            if tmp := await generate_template_embed(self.db, "announcement"):
+                e = tmp
+            else:
+                e = Embed(title=":rocket: Rocket Watch")
+                e.description = "**Current Sync Committee:**\n"
 
-            e = Embed(title=":rocket: Rocket Watch")
-            e.description = "**Current Sync Committee:**\n"
-
-            e.description += await lottery.generate_sync_committee_description("latest")
+                e.description += await lottery.generate_sync_committee_description("latest")
             e.timestamp = datetime.now()
             e.set_footer(
                 text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "

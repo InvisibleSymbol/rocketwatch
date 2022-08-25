@@ -20,6 +20,7 @@ log.setLevel(cfg["log_level"])
 async def generate_template_embed(db, template_name: str):
     # get the boiler message from the database
     template = await db.support_bot.find_one({'_id': template_name})
+    if not template: return None
     # get the last log entry from the db
     dumps_col = db.support_bot_dumps.with_options(codec_options=CodecOptions(tz_aware=True))
     last_edit = await dumps_col.find_one(
@@ -28,7 +29,8 @@ async def generate_template_embed(db, template_name: str):
     )
 
     e = Embed(title=template['title'], description=template['description'])
-    e.description += f"\n\n*Last Edited by <@{last_edit['author']['id']}> <t:{last_edit['ts'].timestamp():.0f}:R>*"
+    if last_edit and template_name != "announcement":
+        e.description += f"\n\n*Last Edited by <@{last_edit['author']['id']}> <t:{last_edit['ts'].timestamp():.0f}:R>*"
     return e
 
 
@@ -109,7 +111,9 @@ class AdminModal(ui.Modal,
         await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
 
 
-def has_perms(interaction: Interaction):
+def has_perms(interaction: Interaction, template_name):
+    if template_name == "announcement" and cfg["discord.owner.user_id"] != interaction.user.id:
+        return False
     return any([
         cfg["rocketpool.support.role_id"] in [r.id for r in interaction.user.roles],
         cfg["discord.owner.user_id"] == interaction.user.id
@@ -148,7 +152,7 @@ class SupportUtils(GroupCog, name="support"):
     # You can add checks too
     @app_commands.guilds(cfg["rocketpool.support.server_id"])
     async def my_cool_context_menu(self, interaction: Interaction, message: Message):
-        if not has_perms(interaction):
+        if not has_perms(interaction, ""):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -193,7 +197,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def add(self, interaction: Interaction, name: str):
-        if not has_perms(interaction):
+        if not has_perms(interaction, name):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -218,7 +222,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def edit(self, interaction: Interaction, name: str):
-        if not has_perms(interaction):
+        if not has_perms(interaction, name):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -243,7 +247,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def remove(self, interaction: Interaction, name: str):
-        if not has_perms(interaction):
+        if not has_perms(interaction, name):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
