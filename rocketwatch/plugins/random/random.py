@@ -117,15 +117,15 @@ class Random(commands.Cog):
 
                     # get the latest td using w3
                     td = w3.eth.get_block("latest").totalDifficulty / 1e16
-                    embeds[0].add_field(name="Current Difficulty", value=f"`{td:,.0f} PH`")
+                    embeds[0].add_field(name="Current Difficulty", value=f"`{td:,.0f} Peta`")
 
                     ttd = text.split("Difficulty of ")[1].split(" is expected")[0]
                     ttd = int(ttd) / 1e16
-                    embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} PH`")
+                    embeds[0].add_field(name="Target Difficulty", value=f"`{ttd:,.0f} Peta`")
 
                     embeds[0].add_field(name="Current daily hashrate", value=f"`{current_hashrate}`")
 
-                    embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} PH` " \
+                    embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} Peta` " \
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
                                             f"is required.\n" \
                                             f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
