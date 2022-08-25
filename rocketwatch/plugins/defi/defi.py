@@ -56,21 +56,21 @@ class DeFi(commands.Cog):
             inline=False,
         )
         # rETH => wstETH premium
-        expected_ratio = (reth_v / reth) / (wsteth_v / wsteth)
-        actual_ratio = solidity.to_float(rp.call("curvePool.get_dy", 0, 1, w3.toWei(1, "ether")))
-        premium = (actual_ratio / expected_ratio) - 1
+        eth_to_wsteth = rp.call("curvePool.get_dy", 0, 1, rp.call("rocketTokenRETH.getRethValue", w3.toWei(1, "ether")))
         e.add_field(
-            name="Current rETH => wstETH Premium",
-            value=f"`{premium:.2%}`",
+            name="Current rETH => wstETH Exchange (Assuming true-lsd value)",
+            value=f"`1 ETH worth of rETH will get you "
+                  f"{solidity.to_float(rp.call('wstETHToken.getStETHByWstETH',eth_to_wsteth)):,.4f} ETH "
+                  f"worth of wstETH ({solidity.to_float(eth_to_wsteth):.4f}` wstETH)",
             inline=False,
         )
         # wstETH => rETH premium
-        expected_ratio = (wsteth_v / wsteth) / (reth_v / reth)
-        actual_ratio = solidity.to_float(rp.call("curvePool.get_dy", 1, 0, w3.toWei(1, "ether")))
-        premium = (actual_ratio / expected_ratio) - 1
+        eth_to_reth = rp.call("curvePool.get_dy", 1, 0, rp.call("wstETHToken.getWstETHByStETH", w3.toWei(1, "ether")))
         e.add_field(
-            name="Current wstETH => rETH Premium",
-            value=f"`{premium:.2%}`",
+            name="Current wstETH => rETH Exchange (Assuming true-lsd value)",
+            value=f"`1 ETH worth of wstETH will get you "
+                  f"{solidity.to_float(rp.call('rocketTokenRETH.getEthValue',eth_to_reth)):,.4f} ETH"
+                  f" worth of rETH ({solidity.to_float(eth_to_reth):.4f} rETH)`",
             inline=False,
         )
         token_name = rp.call("curvePool.symbol")
