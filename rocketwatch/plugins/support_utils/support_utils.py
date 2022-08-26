@@ -121,6 +121,64 @@ def has_perms(interaction: Interaction, template_name):
     ])
 
 
+async def _use(db, interaction: Interaction, name: str, mention: User | None):
+    # check if the template exists in the db
+    template = await db.support_bot.find_one({"_id": name})
+    if not template:
+        await interaction.response.send_message(
+            embed=Embed(
+                title="Error",
+                description=f"A template with the name '{name}' does not exist."
+            ),
+            ephemeral=True
+        )
+        return
+    if name == "boiler":
+        await interaction.response.send_message(
+            embed=Embed(
+                title="Error",
+                description=f"The template '{name}' cannot be used."
+            ),
+            ephemeral=True
+        )
+        return
+    # respond with the template embed
+    await interaction.response.send_message(
+        content=mention.mention if mention else "",
+        embed=await generate_template_embed(db, name))
+
+
+class SupportGlobal(Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+
+    @app_commands.command(name="use")
+    async def _use_1(self, interaction: Interaction, name: str, mention: User | None):
+        await _use(self.db, interaction, name, mention)
+
+    @app_commands.command(name="template")
+    async def _use_2(self, interaction: Interaction, name: str, mention: User | None):
+        await _use(self.db, interaction, name, mention)
+
+    @_use_1.autocomplete("name")
+    @_use_2.autocomplete("name")
+    async def match_template(self, interaction: Interaction, current: str):
+        return [
+            Choice(
+                name=c["_id"],
+                value=c["_id"]
+            ) for c in await self.db.support_bot.find(
+                {
+                    "_id": {
+                        "$regex": current,
+                        "$ne"   : "boiler" if interaction.command.name != "edit" else None
+                    }
+                }
+            ).to_list(None)
+        ]
+
+
 class SupportUtils(GroupCog, name="support"):
     subgroup = Group(name='template', description='various templates used by active support members',
                      guild_ids=[cfg["rocketpool.support.server_id"]])
@@ -282,30 +340,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def use(self, interaction: Interaction, name: str, mention: User | None):
-        # check if the template exists in the db
-        template = await self.db.support_bot.find_one({"_id": name})
-        if not template:
-            await interaction.response.send_message(
-                embed=Embed(
-                    title="Error",
-                    description=f"A template with the name '{name}' does not exist."
-                ),
-                ephemeral=True
-            )
-            return
-        if name == "boiler":
-            await interaction.response.send_message(
-                embed=Embed(
-                    title="Error",
-                    description=f"The template '{name}' cannot be used."
-                ),
-                ephemeral=True
-            )
-            return
-        # respond with the template embed
-        await interaction.response.send_message(
-            content=mention.mention if mention else "",
-            embed=await generate_template_embed(self.db, name))
+        await _use(self.db, interaction, name, mention)
 
     @edit.autocomplete("name")
     @remove.autocomplete("name")
@@ -328,3 +363,4 @@ class SupportUtils(GroupCog, name="support"):
 
 async def setup(self):
     await self.add_cog(SupportUtils(self))
+    await self.add_cog(SupportGlobal(self))
