@@ -9,6 +9,8 @@ from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
+from utils import rocketpool, solidity
+from utils.rocketpool import rp
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address, get_holding_for_address
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak
@@ -83,6 +85,55 @@ class Random(commands.Cog):
                             inline=False)
         await ctx.send(embed=e)
         return
+
+    async def _smoothie(self, ctx: Context):
+        """Show smoothing pool information."""
+        try:
+            rp.get_address_by_name("rocketSmoothingPool")
+        except Exception as err:
+            log.exception(err)
+            await ctx.send("redstone not deployed yet", ephemeral=True)
+            return
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+
+        e = Embed(title="Smoothing Pool")
+        smoothie_eth = solidity.to_float(w3.eth.get_balance(rp.get_address_by_name("rocketSmoothingPool")))
+        # nodes
+        nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+        node_manager = rp.get_contract_by_name("rocketNodeManager")
+        node_is_smoothie = rp.multicall.aggregate(
+            node_manager.functions.getSmoothingPoolRegistrationState(a) for a in nodes)
+        node_is_smoothie = [r.results[0] for r in node_is_smoothie.results]
+        minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
+        node_minipool_count = rp.multicall.aggregate(
+            minipool_manager.functions.getNodeMinipoolCount(a) for a in nodes
+        )
+        node_minipool_count = [r.results[0] for r in node_minipool_count.results]
+        # node counts
+        total_node_count = len(nodes)
+        smoothie_node_count = sum(node_is_smoothie)
+        # minipool counts
+        total_minipool_count = sum(node_minipool_count)
+        smoothie_minipool_count = sum(mc for smoothie, mc in zip(node_is_smoothie, node_minipool_count) if smoothie)
+        e.description = f"`{smoothie_node_count}/{total_node_count}` Nodes (`{smoothie_node_count / total_node_count:.0%}`)" \
+                        f" have joined the Smoothing Pool.\n" \
+                        f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
+                        f"(`{smoothie_minipool_count / total_minipool_count:.0%}`).\n" \
+                        f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH\n\n" \
+                        f"{min(smoothie_node_count, 5)} largest Nodes:\n"
+        e.description += "\n".join(f"- `{mc:>4}` Minipools - Node {el_explorer_url(n)}" for mc, n in sorted(
+            zip(node_minipool_count, nodes),
+            key=lambda x: x[0],
+            reverse=True)[:min(smoothie_node_count, 5)])
+        await ctx.send(embed=e)
+
+    @hybrid_command()
+    async def smoothie(self, ctx: Context):
+        await self._smoothie(ctx)
+
+    @hybrid_command()
+    async def smoothing_pool(self, ctx: Context):
+        await self._smoothie(ctx)
 
     @hybrid_command(aliases=["brodel-wtf"])
     async def merge_ttd(self, ctx: Context):

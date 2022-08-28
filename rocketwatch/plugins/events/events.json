@@ -1,6 +1,15 @@
 {
     "direct": [
         {
+            "contract_name": "rocketMerkleDistributorMainnet",
+            "events": [
+                {
+                    "event_name": "RewardsClaimed",
+                    "name": "node_merkle_rewards_claimed"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketTokenRETH",
             "events": [
                 {
@@ -15,6 +24,15 @@
                 {
                     "event_name": "DepositReceived",
                     "name": "pool_deposit_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "rocketNetworkPenalties",
+            "events": [
+                {
+                    "event_name": "PenaltyUpdated",
+                    "name": "minipool_penalty_updated"
                 }
             ]
         },
@@ -97,6 +115,10 @@
                 {
                     "event_name": "RPLTokensClaimed",
                     "name": "rpl_claim_event"
+                },
+                {
+                    "event_name": "RewardSnapshot",
+                    "name": "odao_rewards_snapshot_event"
                 }
             ]
         },
@@ -123,6 +145,10 @@
                 {
                     "event_name": "RPLStaked",
                     "name": "rpl_stake_event"
+                },
+                {
+                    "event_name": "RPLWithdrawn",
+                    "name": "rpl_withdraw_event"
                 }
             ]
         },
@@ -132,6 +158,15 @@
                 {
                     "event_name": "Swap",
                     "name": "otc_swap_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "rocketMinipoolPenalty",
+            "events": [
+                {
+                    "event_name": "MaxPenaltyRateUpdated",
+                    "name": "odao_minipool_penalty_updated"
                 }
             ]
         }
@@ -156,6 +191,19 @@
                 {
                     "event_name": "RPLSlashed",
                     "name": "node_rpl_slash_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "rocketDAONodeTrustedUpgrade",
+            "events": [
+                {
+                    "event_name": "ContractUpgraded",
+                    "name": "contract_upgraded"
+                },
+                {
+                    "event_name": "ContractAdded",
+                    "name": "contract_added"
                 }
             ]
         }

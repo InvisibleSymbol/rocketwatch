@@ -3,7 +3,7 @@ import os
 import warnings
 
 from bidict import bidict
-from cachetools import cached
+from cachetools import cached, FIFOCache
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall
 
@@ -18,9 +18,21 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketPool:
-    addresses = bidict()
+    ADDRESS_CACHE = FIFOCache(maxsize=2048)
+    ABI_CACHE = FIFOCache(maxsize=2048)
+    CONTRACT_CACHE = FIFOCache(maxsize=2048)
 
     def __init__(self):
+        self.addresses = bidict()
+        self.multicall = None
+        self.flush()
+
+    def flush(self):
+        log.warning("FLUSHING RP CACHE")
+        self.CONTRACT_CACHE.clear()
+        self.ABI_CACHE.clear()
+        self.ADDRESS_CACHE.clear()
+        self.addresses = bidict()
         try:
             self.multicall = Multicall(w3.eth)
         except Exception as err:
@@ -29,7 +41,7 @@ class RocketPool:
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
 
-    @cached(cache={})
+    @cached(cache=ADDRESS_CACHE)
     def get_address_by_name(self, name):
         # manual overwrite at init
         if name in self.addresses:
@@ -72,7 +84,7 @@ class RocketPool:
         else:
             return None
 
-    @cached(cache={})
+    @cached(cache=ABI_CACHE)
     def get_abi_by_name(self, name):
         return self.uncached_get_abi_by_name(name)
 
@@ -84,7 +96,7 @@ class RocketPool:
             raise Exception(f"No abi found for {name} Contract")
         return decode_abi(compressed_string)
 
-    @cached(cache={})
+    @cached(cache=CONTRACT_CACHE)
     def assemble_contract(self, name, address=None, mainnet=False):
         abi = None
 

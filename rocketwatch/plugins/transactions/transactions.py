@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import warnings
 
 import web3.exceptions
@@ -108,12 +109,12 @@ class QueuedTransactions(commands.Cog):
 
     def run_loop(self):
         if self.state == "RUNNING":
-            log.error("Boostrap plugin was interrupted while running. Re-initializing...")
+            log.error("Transaction plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
         return self.check_for_new_transactions()
 
     def check_for_new_transactions(self):
-        log.info("Checking for new Bootstrap Commands")
+        log.info("Checking for new Transaction Commands")
         payload = []
 
         do_full_check = self.state == "INIT"
@@ -156,21 +157,17 @@ class QueuedTransactions(commands.Cog):
                     log.debug(decoded)
 
                     function = decoded[0].function_identifier
-                    event_name = self.internal_function_mapping[contract_name].get(function, None)
-
-                    if event_name:
+                    if event_name := self.internal_function_mapping[contract_name].get(function, None):
                         event = aDict(tnx)
-                        event.args = {}
-                        for arg, value in decoded[1].items():
-                            event.args[arg.lstrip("_")] = value
+                        event.args = {arg.lstrip("_"): value for arg, value in decoded[1].items()}
                         event.args["timestamp"] = block.timestamp
                         event.args["function_name"] = function
                         if not receipt.status:
                             event.args["reason"] = rp.get_revert_reason(tnx)
 
-                        embed = self.create_embed(event_name, event)
-
-                        if embed:
+                        if embed := self.create_embed(event_name, event):
+                            if event_name == "redstone_upgrade_triggered":
+                                embed.set_image(url="https://cdn.dribbble.com/users/187497/screenshots/2284528/media/123903807d334c15aa105b44f2bd9252.gif")
                             payload.append(Response(
                                 topic="transactions",
                                 embed=embed,

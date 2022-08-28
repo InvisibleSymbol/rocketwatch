@@ -22,5 +22,8 @@
         "clearHalfQueue": "deposit_pool_queue_clear_partial",
         "clearQueue": "deposit_pool_queue_clear_full",
         "clearQueueUpTo": "deposit_pool_queue_clear_partial"
+    },
+    "rocketUpgradeOneDotOne": {
+        "execute": "redstone_upgrade_triggered"
     }
 }

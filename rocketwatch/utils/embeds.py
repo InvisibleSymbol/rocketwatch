@@ -88,6 +88,8 @@ def prepare_args(args):
         # handle percentages
         if "perc" in arg_key.lower():
             args[arg_key] = arg_value / 10 ** 16
+        if arg_key.lower() in ["rate", "penalty"]:
+            args[f"{arg_key}_perc"] = arg_value / 10 ** 16
 
         # handle hex strings
         if str(arg_value).startswith("0x"):
@@ -201,6 +203,10 @@ def assemble(args):
                     value=f"{args.inflation}%",
                     inline=False)
 
+    if "submission" in args and "merkleTreeCID" in args.submission:
+        e.add_field(name="IPFS Merkle Tree",
+                    value=f"[gateway.ipfs.io](https://gateway.ipfs.io/ipfs/{args.submission.merkleTreeCID})")
+
     # show transaction hash if possible
     if "transactionHash" in args:
         content = f"{args.transactionHash}{advanced_tnx_url(args.transactionHash_raw)}"
@@ -224,7 +230,10 @@ def assemble(args):
                     inline=False)
 
     # show timestamp
-    times = [value for key, value in args.items() if "time" in key.lower()]
+    if "time" in args.keys():
+        times = [args["time"]]
+    else:
+        times = [value for key, value in args.items() if "time" in key.lower()]
     time = times[0] if times else int(datetime.datetime.now().timestamp())
     e.add_field(name="Timestamp",
                 value=f"<t:{time}:R> (<t:{time}:f>)",

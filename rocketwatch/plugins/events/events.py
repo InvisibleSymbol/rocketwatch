@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 
 import pymongo
 import termplotlib as tpl
@@ -13,6 +14,7 @@ from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.solidity import SUBMISSION_KEYS
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
@@ -22,7 +24,10 @@ WITHDRAWABLE_EVENT = 3
 
 
 class QueuedEvents(commands.Cog):
+    update_block = 0
+
     def __init__(self, bot):
+        rp.flush()
         self.bot = bot
         self.state = "INIT"
         self.events = []
@@ -66,12 +71,13 @@ class QueuedEvents(commands.Cog):
                 if topic not in aggregated_topics:
                     aggregated_topics.append(topic)
 
-        self.events.append(w3.eth.filter({
-            "address"  : addresses,
-            "topics"   : [aggregated_topics],
-            "fromBlock": self.start_block,
-            "toBlock"  : "latest"
-        }))
+        if addresses:
+            self.events.append(w3.eth.filter({
+                "address"  : addresses,
+                "topics"   : [aggregated_topics],
+                "fromBlock": self.start_block,
+                "toBlock"  : "latest"
+            }))
 
         # Generate Filters for global Events
         for group in events_config["global"]:
@@ -136,6 +142,8 @@ class QueuedEvents(commands.Cog):
     def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
+        if "submission" in args:
+            args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
 
         if "otc_swap" in event_name:
             # signer = seller
@@ -205,16 +213,23 @@ class QueuedEvents(commands.Cog):
                 rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
-        if event_name in ["rpl_claim_event", "rpl_stake_event"]:
+        if event_name in ["rpl_claim_event", "rpl_stake_event", "rpl_withdraw_event"]:
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
             args.amount = solidity.to_float(args.amount)
             args.ethAmount = args.amount * rpl_ratio
+        if event_name in ["node_merkle_rewards_claimed"]:
+            rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+            args.amountRPL = sum(solidity.to_float(r) for r in args.amountRPL)
+            args.amountETH = sum(solidity.to_float(e) for e in args.amountETH)
+            args.ethAmount = args.amountRPL * rpl_ratio
 
         # reject if the amount is not major
         if any(["rpl_claim_event" in event_name and args.ethAmount < 5,
-                "rpl_stake_event" in event_name and args.amount < 1000]):
-            log.debug(f"Skipping {event_name} because the amount ({args.ethAmount}) is too small to be interesting")
+                "rpl_stake_event" in event_name and args.amount < 1000,
+                #"node_merkle_rewards_claimed" in event_name and args.ethAmount < 5 and args.amountETH < 5,
+                "rpl_withdraw_event" in event_name and args.ethAmount < 16]):
+            log.debug(f"Skipping {event_name} because the event ({args.ethAmount}) is too small to be interesting")
             return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
@@ -247,6 +262,18 @@ class QueuedEvents(commands.Cog):
                 args.sender = args.nodeChallengeDeciderAddress
             else:
                 args.event_name = "odao_member_challenge_rejected_event"
+        if "node_smoothing_pool_state_changed" in event_name:
+            # geet minipool count
+            args.minipoolCount = rp.call("rocketMinipoolManager.getNodeMinipoolCount", args.node)
+            if args.state:
+                args.event_name = "node_smoothing_pool_joined"
+            else:
+                args.event_name = "node_smoothing_pool_left"
+        if "node_merkle_rewards_claimed" in event_name:
+            if args.amountETH > 0:
+                args.event_name = "node_merkle_rewards_claimed_both"
+            else:
+                args.event_name = "node_merkle_rewards_claimed_rpl"
         args = prepare_args(args)
         return assemble(args)
 
@@ -264,6 +291,7 @@ class QueuedEvents(commands.Cog):
         if do_full_check:
             log.info("Doing full check")
         self.state = "RUNNING"
+        should_reinit = False
 
         for events in self.events:
             if do_full_check:
@@ -293,8 +321,14 @@ class QueuedEvents(commands.Cog):
 
                     embed = self.create_embed(event_name, event)
                 elif event.get("event", None) in self.internal_event_mapping:
-                    # deposit/exit event path
-                    embed, event_name = self.handle_global_event(event)
+                    if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
+                        if event.blockNumber > self.update_block:
+                            log.info("detected update, setting reinit flag")
+                            should_reinit = True
+                            self.update_block = event.blockNumber
+                    else:
+                        # deposit/exit event path
+                        embed, event_name = self.handle_global_event(event)
 
                 if embed:
                     # lazy way of making it sort events within a single block correctly
@@ -322,6 +356,9 @@ class QueuedEvents(commands.Cog):
         self.state = "OK"
         self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block},
                                                upsert=True)
+        if should_reinit:
+            log.info("detected update, triggering reinit")
+            self.state = "RUNNING"
         return messages
 
 

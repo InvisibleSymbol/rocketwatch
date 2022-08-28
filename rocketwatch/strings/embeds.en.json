@@ -12,9 +12,21 @@
         "title": ":moneybag: Major RPL Rewards Claim",
         "description": "%{claimingAddress} claimed %{amount} RPL (worth %{ethAmount} ETH)!"
     },
+    "node_merkle_rewards_claimed_rpl": {
+        "title": ":moneybag: Major RPL Rewards Claim",
+        "description": "%{claimer} claimed %{amountRPL} RPL (worth %{ethAmount} ETH)!"
+    },
+    "node_merkle_rewards_claimed_both": {
+        "title": ":moneybag: Major Reward Claim",
+        "description": "%{claimer} claimed %{amountRPL} RPL (worth %{ethAmount} ETH) and %{amountETH} ETH!"
+    },
     "rpl_stake_event": {
         "title": ":moneybag: RPL Stake",
         "description": "%{from} staked %{amount} RPL (worth %{ethAmount} ETH)!"
+    },
+    "rpl_withdraw_event": {
+        "title": ":leaves: RPL Withdrawal",
+        "description": "%{to} withdrew %{amount} RPL (worth %{ethAmount} ETH)!"
     },
     "minipool_deposit_event": {
         "title": ":rocket: Minipool Final Deposit ",
@@ -28,6 +40,10 @@
         "title": ":rocket: Pool Deposit",
         "description": "%{amount} ETH deposited into the Deposit Pool!",
         "description_small": ":rocket: %{from} deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
+    },
+    "odao_rewards_snapshot_event": {
+        "title": ":camera_with_flash: Reward Snapshot Published",
+        "description": "Snapshot #%{rewardIndex} has been published by the oDAO!\nIt spans from <t:%{intervalStartTime}> till <t:%{intervalEndTime}>"
     },
     "odao_proposal_add_event": {
         "title": ":bulb: Proposal Created",
@@ -129,6 +145,18 @@
         "title": ":rotating_light: Node Operator Slashed",
         "description": "Node Operator %{node} has been slashed for %{amount} RPL (%{ethValue} ETH)!"
     },
+    "minipool_penalty_updated": {
+        "title": ":rotating_light: Minipool Penalty Updated",
+        "description": "Minipool %{minipoolAddress} has had its Penalty increased to %{penalty_perc}%!"
+    },
+    "node_smoothing_pool_joined": {
+        "title": ":cup_with_straw: Node Operator Joined Smoothing Pool",
+        "description": "Node Operator %{node} joined the Smoothing Pool with their %{minipoolCount} Minipools!"
+    },
+    "node_smoothing_pool_left": {
+        "title": ":cup_with_straw: Node Operator Left Smoothing Pool",
+        "description": "Node Operator %{node} has left the Smoothing Pool with their %{} Minipools!"
+    },
     "auction_lot_create_event": {
         "title": ":scales: Lot Created",
         "description": "%{by} created Lot #%{lotIndex}, which will auction off %{rplAmount} RPL!"
@@ -176,5 +204,13 @@
     "deposit_pool_queue_clear_partial": {
         "title": ":tada: Partial Deposit Pool Queue Clear",
         "description": "%{node} cleared %{count} Minipools from the Deposit Pool Queue!"
+    },
+    "odao_minipool_penalty_updated": {
+        "title": ":rotating_light: Minipool Penalty",
+        "description": "The Maximum Minipool Penalty Rate has been raised to %{rate_perc}%!"
+    },
+    "redstone_upgrade_triggered": {
+        "title": ":tada: Redstone Upgrade Complete!",
+        "description": ""
     }
 }
