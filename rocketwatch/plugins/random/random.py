@@ -95,7 +95,7 @@ class Random(commands.Cog):
         embeds[0].url = "https://bordel.wtf/"
         embeds[0].title = "Mainnet Merge (yes, for real this time)"
         # detect if the channel is random
-        is_trading = ctx.channel.name.startswith("trading")
+        is_trading = "trading" in ctx.channel.name
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://bordel.wtf/") as resp:
