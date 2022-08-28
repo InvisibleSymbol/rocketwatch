@@ -53,12 +53,12 @@ class Debug(Cog):
         db_entry = await self.db.state.find_one({"_id": "plugins_hash"})
         if db_entry and plugins_hash == db_entry.get("hash"):
             log.info("Plugins have not changed!")
-            return
-        log.info("Plugins have changed! Updating Commands...")
-        await self.bot.tree.sync()
-        await self.bot.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-        await self.db.state.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
-        log.info("Commands updated!")
+        else:
+            log.info("Plugins have changed! Updating Commands...")
+            await self.bot.tree.sync()
+            await self.bot.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
+            await self.db.state.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
+            log.info("Commands updated!")
         log.info("Indexing Rocket Pool contracts...")
         # generate list of all file names with the .sol extension from the rocketpool submodule
         for path in Path("contracts/rocketpool/contracts/contract").glob('**/*.sol'):
