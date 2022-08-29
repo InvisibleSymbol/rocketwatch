@@ -122,7 +122,7 @@ class Random(commands.Cog):
                         f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH\n\n" \
                         f"{min(smoothie_node_count, 5)} largest Nodes:\n"
         e.description += "\n".join(f"- `{mc:>4}` Minipools - Node {el_explorer_url(n)}" for mc, n in sorted(
-            (a[:2] for a in zip(node_minipool_count, nodes, node_is_smoothie) if a[3]),
+            [[mc, n] for mc, n, s in zip(node_minipool_count, nodes, node_is_smoothie) if s],
             key=lambda x: x[0],
             reverse=True)[:min(smoothie_node_count, 5)])
         await ctx.send(embed=e)
