@@ -88,6 +88,10 @@
                 {
                     "event_name": "NodeRegistered",
                     "name": "node_register_event"
+                },
+                {
+                    "event_name": "NodeSmoothingPoolStateChanged",
+                    "name": "node_smoothing_pool_state_changed"
                 }
             ]
         },
