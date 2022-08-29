@@ -371,11 +371,11 @@ class Debug(Cog):
         g = humanize.intcomma(g)
         text = f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): "
         if len(text + str(v)) > 2000:
-            text += "too long, attached as file"
+            text += "too long, attached as file`"
             with io.StringIO(str(v)) as f:
                 await ctx.send(text, file=File(fp=f, filename="exception.txt"))
         else:
-            text += str(v)
+            text += str(v) + "`"
             await ctx.send(content=text)
 
     @hybrid_command()
