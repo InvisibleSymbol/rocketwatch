@@ -369,9 +369,14 @@ class Debug(Cog):
         if isinstance(v, int) and abs(v) >= 10 ** 12:
             v = solidity.to_float(v)
         g = humanize.intcomma(g)
-
-        await ctx.send(
-            content=f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): {v}`")
+        text = f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): "
+        if len(text + str(v)) > 2000:
+            text += "too long, attached as file"
+            with io.StringIO(str(v)) as f:
+                await ctx.send(text, file=File(fp=f, filename="exception.txt"))
+        else:
+            text += str(v)
+            await ctx.send(content=text)
 
     @hybrid_command()
     async def clear_queue(self, ctx: Context):
