@@ -209,8 +209,8 @@ class Random(commands.Cog):
 
     @hybrid_command(aliases=["brodel-wtf"])
     async def create_poap_smoothie_dump(self, ctx: Context):
-        """Show current merge TTD."""
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        """Doesn't show current merge TTD."""
+        await ctx.defer(ephemeral=is_hidden(ctx))
         r = rp.get_contract_by_name("rocketNodeManager")
         f = io.StringIO()
         writer = csv.writer(f)
@@ -225,6 +225,7 @@ class Random(commands.Cog):
         withdrawal_addresses = dict(zip(nodes, tmp))
 
         finished_24h = False
+        addresses = []
 
         # write the header
         writer.writerow(["nodeAddress", "withdrawalAddress", "timestamp", "transactionHash"])
@@ -233,18 +234,22 @@ class Random(commands.Cog):
             events = r.events["NodeSmoothingPoolStateChanged"].createFilter(fromBlock=i,
                                                                             toBlock=i + 1000,
                                                                             argument_filters={"state": True})
+            log.debug(f"{i}-{i+1000}")
             for event in events.get_all_entries():
                 b = w3.eth.get_block(event.blockNumber)
                 t = datetime.utcfromtimestamp(b.timestamp)
                 n = event.args.node
-                log.debug(t)
                 if not first:
                     first = t
                 last = t
                 if last - first > timedelta(hours=24):
                     finished_24h = True
                     break
-                writer.writerow([n, withdrawal_addresses[n], t.isoformat(), event.transactionHash.hex()])
+                if n not in addresses:
+                    writer.writerow([n, withdrawal_addresses[n], t.isoformat(), event.transactionHash.hex()])
+                    addresses.append(n)
+                else:
+                    log.warning(f"double node {n}")
                 await asyncio.sleep(0.01)
             if finished_24h:
                 break
