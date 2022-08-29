@@ -1,15 +1,20 @@
+import asyncio
+import csv
+import io
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import aiohttp
 import pytz
+from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
-from utils import rocketpool, solidity
+from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address, get_holding_for_address
 from utils.shared_w3 import w3
@@ -135,7 +140,7 @@ class Random(commands.Cog):
     async def smoothing_pool(self, ctx: Context):
         await self._smoothie(ctx)
 
-    @hybrid_command(aliases=["brodel-wtf"])
+    @hybrid_command()
     async def merge_ttd(self, ctx: Context):
         """Show current merge TTD."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
@@ -201,6 +206,55 @@ class Random(commands.Cog):
                 embeds[0].description = "something broke? ping invis about this response"
         await ctx.send(embeds=embeds)
         return
+
+    @hybrid_command(aliases=["brodel-wtf"])
+    async def create_poap_smoothie_dump(self, ctx: Context):
+        """Show current merge TTD."""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        r = rp.get_contract_by_name("rocketNodeManager")
+        f = io.StringIO()
+        writer = csv.writer(f)
+        first = None
+        last = None
+        nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+
+        storage = rp.get_contract_by_name("rocketStorage")
+        tmp = rp.multicall.aggregate(
+            storage.functions.getNodeWithdrawalAddress(a) for a in nodes)
+        tmp = [r.results[0] for r in tmp.results]
+        withdrawal_addresses = dict(zip(nodes, tmp))
+
+        finished_24h = False
+
+        # write the header
+        writer.writerow(["nodeAddress", "withdrawalAddress", "timestamp", "transactionHash"])
+
+        for i in range(15430840, w3.eth.get_block("latest").number, 1000):
+            events = r.events["NodeSmoothingPoolStateChanged"].createFilter(fromBlock=i,
+                                                                            toBlock=i + 1000,
+                                                                            argument_filters={"state": True})
+            for event in events.get_all_entries():
+                b = w3.eth.get_block(event.blockNumber)
+                t = datetime.utcfromtimestamp(b.timestamp)
+                n = event.args.node
+                log.debug(t)
+                writer.writerow([n, withdrawal_addresses[n], t.isoformat(), event.transactionHash.hex()])
+                if not first:
+                    first = t
+                last = t
+                if last - first > timedelta(hours=24):
+                    finished_24h = True
+                    break
+                await asyncio.sleep(0.01)
+            if finished_24h:
+                break
+
+        f.seek(0)
+        if finished_24h:
+            txt = "successfully gathered the first 24h of events"
+        else:
+            txt = f"warning, only gathered {uptime((last-first).total_seconds())}"
+        await ctx.send(txt, file=File(fp=f, filename="poap_smoothie.csv"))
 
 
 async def setup(bot):

@@ -375,7 +375,7 @@ class Debug(Cog):
             with io.StringIO(str(v)) as f:
                 await ctx.send(text, file=File(fp=f, filename="exception.txt"))
         else:
-            text += str(v) + "`"
+            text += f"{str(v)}`"
             await ctx.send(content=text)
 
     @hybrid_command()
