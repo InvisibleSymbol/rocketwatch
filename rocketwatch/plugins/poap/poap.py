@@ -54,8 +54,7 @@ class PoapSignatureModal(ui.Modal, title='Enable POAP Automatic Claim'):
     def __init__(self, interaction: Interaction, db: AsyncIOMotorClient):
         super().__init__()
         self.orig_interaction = interaction
-        self.text_field = ui.TextInput(label='Signature URL', placeholder='https://signer.is/#/verify/...', min_length=740,
-                                       max_length=750)
+        self.text_field = ui.TextInput(label='Signature URL', placeholder='https://signer.is/#/verify/...', min_length=600)
         self.add_item(self.text_field)
         self.db = db
 
