@@ -238,13 +238,13 @@ class Random(commands.Cog):
                 t = datetime.utcfromtimestamp(b.timestamp)
                 n = event.args.node
                 log.debug(t)
-                writer.writerow([n, withdrawal_addresses[n], t.isoformat(), event.transactionHash.hex()])
                 if not first:
                     first = t
                 last = t
                 if last - first > timedelta(hours=24):
                     finished_24h = True
                     break
+                writer.writerow([n, withdrawal_addresses[n], t.isoformat(), event.transactionHash.hex()])
                 await asyncio.sleep(0.01)
             if finished_24h:
                 break
