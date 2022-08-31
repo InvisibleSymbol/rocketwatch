@@ -288,10 +288,11 @@ class Proposals(commands.Cog):
         await msg.edit(content="generating version chart...")
 
         e = Embed(title="Version Chart")
+        e.description = "Versions with proposal during the last 2 days are highlighted"
 
         # get proposals
         proposals = await self.db.proposals.find({"version": {"$exists": 1}}).sort("slot", 1).to_list(None)
-        look_back = int(60 / 12 * 60 * 24 * 5)  # last 5 days
+        look_back = int(60 / 12 * 60 * 24 * 2)  # last 5 days
         max_slot = proposals[-1]["slot"]
         # get version used after max_slot - look_back
         # and have at least 10 occurrences
@@ -309,16 +310,7 @@ class Proposals(commands.Cog):
 
             }, {
                 '$group': {
-                    '_id'  : '$version',
-                    'count': {
-                        '$sum': 5
-                    }
-                }
-            }, {
-                '$match': {
-                    'count': {
-                        '$gte': 10
-                    }
+                    '_id'  : '$version'
                 }
             }, {
                 '$sort': {
