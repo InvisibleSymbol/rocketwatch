@@ -33,7 +33,7 @@ def el_explorer_url(target, name="", prefix=""):
     url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
         # rocketscan url stuff
-        if rp.call("rocketMinipoolsManager.getMinipoolExists", target):
+        if rp.call("rocketMinipoolManager.getMinipoolExists", target):
             url = f"https://rocketscan.io/minipool/{target}"
         if rp.call("rocketNodeManager.getNodeExists", target):
             url = f"https://rocketscan.io/node{target}"
