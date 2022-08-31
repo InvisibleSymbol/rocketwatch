@@ -30,9 +30,17 @@ class Embed(discord.Embed):
 
 
 def el_explorer_url(target, name="", prefix=""):
+    url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
+        # rocketscan url stuff
+        if rp.call("rocketMinipoolsManager.getMinipoolExists", target):
+            url = f"https://rocketscan.io/minipool/{target}"
+        if rp.call("rocketNodeManager.getNodeExists", target):
+            url = f"https://rocketscan.io/node{target}"
+
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
+
         if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
             prefix += "🔮"
             name = member_id
@@ -68,8 +76,7 @@ def el_explorer_url(target, name="", prefix=""):
         name = s_hex(target)
     if prefix:
         name = prefix + name
-    url = cfg["rocketpool.execution_layer.explorer"]
-    return f"[{name}](https://{url}/search?q={target})"
+    return f"[{name}]({url})"
 
 
 def prepare_args(args):
