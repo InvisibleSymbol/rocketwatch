@@ -36,7 +36,7 @@ def el_explorer_url(target, name="", prefix=""):
         if rp.call("rocketMinipoolManager.getMinipoolExists", target):
             url = f"https://rocketscan.io/minipool/{target}"
         if rp.call("rocketNodeManager.getNodeExists", target):
-            url = f"https://rocketscan.io/node{target}"
+            url = f"https://rocketscan.io/node/{target}"
 
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
