@@ -31,6 +31,8 @@ class Rewards(commands.Cog):
         Show the rewards for the current period.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.send("broken till invis upgrades it to support redstone")
+        return  
         e = Embed()
         e.title = "Reward Period Stats"
         # get rpl price in dai
