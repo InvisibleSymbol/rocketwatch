@@ -71,7 +71,7 @@ PROPOSAL_TEMPLATE = {
 }
 
 # noinspection RegExpUnnecessaryNonCapturingGroup
-SMARTNODE_REGEX = re.compile(r"^RP(?:(?:-)([A-Z])([A-Z])?)? (?:v)?(\d+\.\d+\.\d+(?:-\w+)?)(?:(?: \()(.+)(?:\)))?$")
+SMARTNODE_REGEX = re.compile(r"^RP(?:(?:-)([A-Z])([A-Z])?)? (?:v)?(\d+\.\d+\.\d+(?:-\w+)?)(?:(?:(?: \()|(?: gw:))(.+)(?:(?:\))|))?$")
 
 
 def parse_propsal(entry):
