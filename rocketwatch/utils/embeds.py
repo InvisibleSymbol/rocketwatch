@@ -34,9 +34,15 @@ def el_explorer_url(target, name="", prefix=""):
     if w3.isAddress(target):
         # rocketscan url stuff
         if rp.call("rocketMinipoolManager.getMinipoolExists", target):
-            url = f"https://rocketscan.io/minipool/{target}"
+            if cfg["rocketpool.chain"] == "goerli":
+                url = f"https://prater.rocketscan.io/minipool/{target}"
+            else:
+                url = f"https://rocketscan.io/minipool/{target}"
         if rp.call("rocketNodeManager.getNodeExists", target):
-            url = f"https://rocketscan.io/node/{target}"
+            if cfg["rocketpool.chain"] == "goerli":
+                url = f"https://prater.rocketscan.io/node/{target}"
+            else:
+                url = f"https://rocketscan.io/node/{target}"
 
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
