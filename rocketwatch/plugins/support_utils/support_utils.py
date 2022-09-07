@@ -115,7 +115,7 @@ def has_perms(interaction: Interaction, template_name):
     if template_name == "announcement" and cfg["discord.owner.user_id"] != interaction.user.id:
         return False
     return any([
-        cfg["rocketpool.support.role_id"] in [r.id for r in interaction.user.roles],
+        any(r.id in cfg["rocketpool.support.role_ids"] for r in interaction.user.roles),
         cfg["discord.owner.user_id"] == interaction.user.id,
         interaction.user.guild_permissions.ban_members and interaction.guild.id == cfg["rocketpool.support.server_id"]
     ])
