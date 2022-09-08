@@ -11,7 +11,9 @@ from discord.ext.commands import hybrid_command
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
+from utils.get_nearest_block import get_block_by_timestamp
 from utils.rocketpool import rp
+from utils.shared_w3 import w3
 from utils.visibility import is_hidden
 
 log = logging.getLogger("rpl_apr")
@@ -33,8 +35,20 @@ class RplApr(commands.Cog):
         reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
         total_rpl_staked = solidity.to_float(
             rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
-        node_operator_rewards = solidity.to_float(
-            rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimNode"))
+
+        # track down the rewards for node operators from the last reward period
+        contract = rp.get_contract_by_name("rocketVault")
+        m = get_block_by_timestamp(rp.call("rocketRewardsPool.getClaimIntervalTimeStart"))[0]
+        events = contract.events["TokenDeposited"].getLogs(argument_filters={
+            "by": w3.soliditySha3(
+                ["string", "address"],
+                ["rocketMerkleDistributorMainnet", rp.get_address_by_name("rocketTokenRPL")])
+        }, fromBlock=m - 1000, toBlock=m + 1000)
+        perc_nodes = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", "rocketClaimNode"))
+        perc_odao = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", "rocketClaimTrustedNode"))
+        node_operator_rewards = solidity.to_float(events[0].args.amount) * (perc_nodes / (perc_nodes + perc_odao))
+        if not e:
+            raise Exception("no rpl deposit event found")
 
         xmin = total_rpl_staked * 0.66
         xmax = total_rpl_staked * 1.33
