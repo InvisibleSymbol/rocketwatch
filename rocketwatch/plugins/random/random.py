@@ -157,7 +157,7 @@ class Random(commands.Cog):
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
                     f = "%a %b %d %H:%M %Y"
-                    target_time = text.split(" at ")[1].split(" UTC")[0]
+                    target_time = text.split("00 at ")[1].split(" UTC")[0]
                     target_time = int(datetime.strptime(target_time, f).timestamp())
                     estimate_time = text.split("expected around ")[1].split(" UTC")[0]
                     estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
@@ -234,7 +234,7 @@ class Random(commands.Cog):
             events = r.events["NodeSmoothingPoolStateChanged"].createFilter(fromBlock=i,
                                                                             toBlock=i + 1000,
                                                                             argument_filters={"state": True})
-            log.debug(f"{i}-{i+1000}")
+            log.debug(f"{i}-{i + 1000}")
             for event in events.get_all_entries():
                 b = w3.eth.get_block(event.blockNumber)
                 t = datetime.utcfromtimestamp(b.timestamp)
@@ -258,9 +258,9 @@ class Random(commands.Cog):
         if finished_24h:
             txt = "successfully gathered the first 24h of events"
         else:
-            txt = f"warning, only gathered {uptime((last-first).total_seconds())}"
+            txt = f"warning, only gathered {uptime((last - first).total_seconds())}"
         await ctx.send(txt, file=File(fp=f, filename="poap_smoothie.csv"))
 
 
-async def setup(bot):
-    await bot.add_cog(Random(bot))
+async def setup(self):
+    await self.add_cog(Random(self))
