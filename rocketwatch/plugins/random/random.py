@@ -141,6 +141,17 @@ class Random(commands.Cog):
         await self._smoothie(ctx)
 
     @hybrid_command()
+    async def cow(self, ctx:Context, tnx:str):
+        # https://etherscan.io/tx/0x47d96c6310f08b473f2c9948d6fbeef1084f0b393c2263d2fc8d5dc624f97fe3
+        if "etherscan.io/tx/" not in tnx:
+            await ctx.send("nop", ephemeral=True)
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        e = Embed()
+        url = tnx.replace("etherscan.io", "explorer.cow.fi")
+        e.description = f"[cow explorer]({url})"
+        await ctx.send(embed=e)
+
+    @hybrid_command()
     async def merge_ttd(self, ctx: Context):
         """Show current merge TTD."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
