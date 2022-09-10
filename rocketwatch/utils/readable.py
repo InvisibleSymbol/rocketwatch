@@ -15,7 +15,7 @@ def decode_abi(compressed_string):
     return inflated.decode("ascii")
 
 
-def uptime(time):
+def uptime(time, highres= False):
     parts = []
 
     days, time = time // units.days, time % units.days
@@ -33,7 +33,7 @@ def uptime(time):
     if time or not parts:
         parts.append('%.2f seconds' % time)
 
-    return " ".join(parts[:2])
+    return " ".join(parts[:2] if not highres else parts)
 
 
 def s_hex(string):
