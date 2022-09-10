@@ -199,7 +199,9 @@ class Random(commands.Cog):
 
                     embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} Peta` " \
                                             f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
-                                            f"is required.\n" \
+                                            f"is required.\n\n" \
+                                            f"Countdown: " \
+                                            f"**{uptime((datetime.fromtimestamp(estimate_time) - datetime.now()).total_seconds(), True)}**\n\n" \
                                             f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
                                             f" or **<t:{estimate_time}:R>** "
                     if between:
