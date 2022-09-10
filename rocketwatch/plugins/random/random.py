@@ -169,17 +169,22 @@ class Random(commands.Cog):
                     text = await resp.text()
                     f = "%a %b %d %H:%M %Y"
                     target_time = text.split("00 at ")[1].split(" UTC")[0]
-                    target_time = int(datetime.strptime(target_time, f).timestamp())
-                    estimate_time = text.split("expected around ")[1].split(" UTC")[0]
+                    d = datetime.strptime(target_time, "%a %b %d %H:%M")
+                    d = d.replace(year=2022)
+                    target_time = int(d.timestamp())
+                    estimate_time = text.split("expected around<b> ")[1].split(" UTC")[0]
                     estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
                     between = []
                     if "between" in text:
-                        between.append(text.split("between ")[1].split(" UTC")[0])
-                        between[0] = int(datetime.strptime(between[0], f).timestamp())
-                        between.append(text.split("and ")[1].split(" UTC")[0])
-                        between[1] = int(datetime.strptime(between[1], f).timestamp())
-
-                    current_hashrate = text.split("Current daily hashrate: ")[1].split("</p>")[0]
+                        d = text.split("between ")[1].split(" UTC")[0]
+                        d = datetime.strptime(d, "%a %b %d %H:%M")
+                        d = d.replace(year=2022)
+                        between.append(int(d.timestamp()))
+                        d = text.split("and ")[1].split(" UTC")[0]
+                        d = datetime.strptime(d, "%a %b %d %H:%M")
+                        d = d.replace(year=2022)
+                        between.append(int(d.timestamp()))
+                    current_hashrate = text.split("current daily hashrate <b>")[1].split("</b>")[0]
                     target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
 
                     # get the latest td using w3
