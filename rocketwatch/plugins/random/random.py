@@ -2,7 +2,7 @@ import asyncio
 import csv
 import io
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 import pytz
@@ -169,19 +169,19 @@ class Random(commands.Cog):
                     text = await resp.text()
                     f = "%a %b %d %H:%M %Y"
                     target_time = text.split("00 at ")[1].split(" UTC")[0]
-                    d = datetime.strptime(target_time, "%a %b %d %H:%M")
+                    d = datetime.strptime(target_time, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                     d = d.replace(year=2022)
                     target_time = int(d.timestamp())
                     estimate_time = text.split("expected around<b> ")[1].split(" UTC")[0]
-                    estimate_time = int(datetime.strptime(estimate_time, f).timestamp())
+                    estimate_time = int(datetime.strptime(estimate_time, f).replace(tzinfo=timezone.utc).timestamp())
                     between = []
                     if "between" in text:
                         d = text.split("between ")[1].split(" UTC")[0]
-                        d = datetime.strptime(d, "%a %b %d %H:%M")
+                        d = datetime.strptime(d, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                         d = d.replace(year=2022)
                         between.append(int(d.timestamp()))
                         d = text.split("and ")[1].split(" UTC")[0]
-                        d = datetime.strptime(d, "%a %b %d %H:%M")
+                        d = datetime.strptime(d, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                         d = d.replace(year=2022)
                         between.append(int(d.timestamp()))
                     current_hashrate = text.split("current daily hashrate <b>")[1].split("</b>")[0]
