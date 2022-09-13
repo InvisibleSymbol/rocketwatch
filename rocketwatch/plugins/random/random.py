@@ -180,7 +180,7 @@ class Random(commands.Cog):
                         d = datetime.strptime(d, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                         d = d.replace(year=2022)
                         between.append(int(d.timestamp()))
-                        d = text.split("and ")[1].split(" UTC")[0]
+                        d = text.split("UTC and ")[1].split(" UTC")[0]
                         d = datetime.strptime(d, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                         d = d.replace(year=2022)
                         between.append(int(d.timestamp()))
