@@ -72,16 +72,15 @@ class Random(commands.Cog):
                 e.description = "Invalid address"
                 await ctx.send(embed=e)
                 return
-            creature = get_sea_creature_for_address(address)
-            if not creature:
-                e.description = f"No sea creature for {address}"
-            else:
+            if creature := get_sea_creature_for_address(address):
                 # get the required holding from the dictionary
                 required_holding = [h for h, c in sea_creatures.items() if c == creature[0]][0]
                 e.add_field(name="Visualization", value=el_explorer_url(address, prefix=creature), inline=False)
                 e.add_field(name="Required holding for emoji", value=f"{required_holding * len(creature)} ETH", inline=False)
                 holding = get_holding_for_address(address)
                 e.add_field(name="Actual Holding", value=f"{holding:.0f} ETH", inline=False)
+            else:
+                e.description = f"No sea creature for {address}"
         else:
             e.title = "Possible Sea Creatures"
             e.description = "RPL (both old and new), rETH and ETH are consider as assets for the sea creature determination!"
@@ -121,11 +120,11 @@ class Random(commands.Cog):
         total_minipool_count = sum(node_minipool_count)
         smoothie_minipool_count = sum(mc for smoothie, mc in zip(node_is_smoothie, node_minipool_count) if smoothie)
         e.description = f"`{smoothie_node_count}/{total_node_count}` Nodes (`{smoothie_node_count / total_node_count:.2%}`)" \
-                        f" have joined the Smoothing Pool.\n" \
-                        f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
-                        f"(`{smoothie_minipool_count / total_minipool_count:.0%}`).\n" \
-                        f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH\n\n" \
-                        f"{min(smoothie_node_count, 5)} largest Nodes:\n"
+                            f" have joined the Smoothing Pool.\n" \
+                            f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
+                            f"(`{smoothie_minipool_count / total_minipool_count:.0%}`).\n" \
+                            f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH\n\n" \
+                            f"{min(smoothie_node_count, 5)} largest Nodes:\n"
         e.description += "\n".join(f"- `{mc:>4}` Minipools - Node {el_explorer_url(n)}" for mc, n in sorted(
             [[mc, n] for mc, n, s in zip(node_minipool_count, nodes, node_is_smoothie) if s],
             key=lambda x: x[0],
@@ -192,9 +191,9 @@ class Random(commands.Cog):
                     embeds[0].add_field(name="Current daily hashrate", value=f"`{current_hashrate}`")
 
                     embeds[0].description = f"Countdown: " \
-                                            f"**{uptime((datetime.utcfromtimestamp(estimate_time) - datetime.utcnow()).total_seconds(), True)}**\n\n" \
-                                            f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
-                                            f" or **<t:{estimate_time}:R>** "
+                                                f"**{uptime((datetime.utcfromtimestamp(estimate_time) - datetime.utcnow()).total_seconds(), True)}**\n\n" \
+                                                f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
+                                                f" or **<t:{estimate_time}:R>** "
                     if between:
                         embeds[0].description += f"(between <t:{between[0]}> and <t:{between[1]}>)."
                     else:
