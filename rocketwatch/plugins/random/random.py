@@ -168,10 +168,6 @@ class Random(commands.Cog):
                 async with session.get("https://bordel.wtf/") as resp:
                     text = await resp.text()
                     f = "%a %b %d %H:%M %Y"
-                    target_time = text.split("00 at ")[1].split(" UTC")[0]
-                    d = datetime.strptime(target_time, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
-                    d = d.replace(year=2022)
-                    target_time = int(d.timestamp())
                     estimate_time = text.split("expected around<b> ")[1].split(" UTC")[0]
                     estimate_time = int(datetime.strptime(estimate_time, f).replace(tzinfo=timezone.utc).timestamp())
                     between = []
@@ -184,9 +180,7 @@ class Random(commands.Cog):
                         d = datetime.strptime(d, "%a %b %d %H:%M").replace(tzinfo=timezone.utc)
                         d = d.replace(year=2022)
                         between.append(int(d.timestamp()))
-                    current_hashrate = text.split("current daily hashrate <b>")[1].split("</b>")[0]
-                    target_hashrate = text.split("UTC, around ")[1].split(" in the network")[0]
-
+                    current_hashrate = text.split("current hashrate <b>")[1].split("</b>")[0]
                     # get the latest td using w3
                     td = w3.eth.get_block("latest").totalDifficulty / 1e16
                     embeds[0].add_field(name="Current Difficulty", value=f"`{td:,.0f} Peta`")
@@ -197,10 +191,7 @@ class Random(commands.Cog):
 
                     embeds[0].add_field(name="Current daily hashrate", value=f"`{current_hashrate}`")
 
-                    embeds[0].description = f"For the merge to happen with the configured TTD of `{ttd:,.0f} Peta` " \
-                                            f"on <t:{target_time}>, a hashrate of `{target_hashrate}` " \
-                                            f"is required.\n\n" \
-                                            f"Countdown: " \
+                    embeds[0].description = f"Countdown: " \
                                             f"**{uptime((datetime.utcfromtimestamp(estimate_time) - datetime.utcnow()).total_seconds(), True)}**\n\n" \
                                             f"Currently, the merge is estimated to happen around **<t:{estimate_time}>**," \
                                             f" or **<t:{estimate_time}:R>** "
@@ -217,6 +208,7 @@ class Random(commands.Cog):
                 embeds[-1].set_image(url="https://i.redd.it/wghxf2s5eki61.jpg")
 
         except Exception as er:
+            log.exception(er)
             log.error(er)
             if "Updating data" in text:
                 embeds[0].description = "bordel.wtf is updating its data..."
