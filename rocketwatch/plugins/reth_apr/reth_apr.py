@@ -32,21 +32,9 @@ class RETHAPR(commands.Cog):
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
+        e.title = "Current rETH APR"
 
         datapoints = get_reth_ratio_past_month()
-        # datapoints = datapoints[-3:]
-
-        # get total duration between first and last datapoint
-        week_duration = datapoints[-1]["time"] - datapoints[0]["time"]
-
-        # get change between first and last datapoint
-        period_change_week = datapoints[-1]["value"] - datapoints[-8]["value"]
-        yearly_change_week = (period_change_week / week_duration) * 365 * 24 * 60 * 60
-        percentage_change_yearly_using_week = ((datapoints[-1]["value"] + yearly_change_week) / datapoints[-1]["value"]) - 1
-
-        e.add_field(name="Observed rETH APR (7 day average):",
-                    value=f"{percentage_change_yearly_using_week:.2%} (Commissions Fees accounted for)",
-                    inline=False)
 
         # we loop through pairs of datapoints[n-1], datapoints[n] to get the average APR for each day
         # we use this to generate x and y values for a line graph
@@ -78,6 +66,9 @@ class RETHAPR(commands.Cog):
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
 
+        e.add_field(name="Observed rETH APR (7 day average):",
+                    value=f"{y_7d[-1]:.2%} (Commissions Fees accounted for)",
+                    inline=False)
         fig = plt.figure()
         # format the daily average line as a line with dots
         plt.plot(x, y, color=str(e.color), linestyle="-", marker=".", label="Daily Average")
