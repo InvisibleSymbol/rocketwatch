@@ -29,6 +29,7 @@ class RETHAPR(commands.Cog):
         e = Embed()
 
         datapoints = get_reth_ratio_past_week()
+        datapoints = datapoints[-2:]
 
         # get total duration between first and last datapoint
         total_duration = datapoints[-1]["time"] - datapoints[0]["time"]
