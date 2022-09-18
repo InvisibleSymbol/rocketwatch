@@ -103,7 +103,7 @@ class QueuedEvents(commands.Cog):
                     rp.get_address_by_name("rocketNodeDeposit") == receipt.to]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
-            return None
+            return None, None
 
         # first need to make the container mutable
         event = aDict(event)
