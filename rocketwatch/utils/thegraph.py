@@ -89,7 +89,7 @@ def get_minipool_counts_per_node():
     return sorted([mp_count for _, mp_count in all_nodes.items()])
 
 
-def get_reth_ratio_past_week():
+def get_reth_ratio_past_month():
     query = """
 {{
     networkStakerBalanceCheckpoints(orderBy: blockTime, orderDirection: asc, where: {{blockTime_gte: "{timestamp}"}}) {{
@@ -99,7 +99,7 @@ def get_reth_ratio_past_week():
 }}
     """
     # get timestamp 7 days ago
-    timestamp = datetime.datetime.now() - datetime.timedelta(days=7)
+    timestamp = datetime.datetime.now() - datetime.timedelta(days=30)
     # do the request
     response = requests.post(
         cfg["graph_endpoint"],
