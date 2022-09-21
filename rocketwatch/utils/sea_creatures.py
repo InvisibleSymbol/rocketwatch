@@ -18,12 +18,12 @@ sea_creatures = {
     32 * 30 : '🦈',
     # 32 * 20: dolphin emoji
     32 * 20 : '🐬',
-    # 32 * 10: otter emoji
-    32 * 10 : '🦦',
-    # 32 * 5: octopus emoji
-    32 * 5  : '🐙',
-    # 32 * 2: fish emoji
-    32 * 2  : '🐟',
+    # 32 * 10: octopus emoji
+    32 * 10 : '🐙',
+    # 32 * 5: fish emoji
+    32 * 5  : '🐟',
+    # 32 * 2: crab emoji
+    32 * 2  : '🦀',
     # 32 * 1: fried shrimp emoji
     32 * 1  : '🍤',
     # 5: snail emoji
