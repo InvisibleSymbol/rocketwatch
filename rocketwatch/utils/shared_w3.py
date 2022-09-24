@@ -26,6 +26,10 @@ if cfg['rocketpool.chain'] != "mainnet":
 
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
+historical_w3 = None
+if "historical" in cfg['rocketpool.execution_layer.endpoint'].keys():
+    historical_w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.historical']))
+
 endpoints = cfg["rocketpool.consensus_layer.endpoints"]
 tmp = []
 exceptions = (
