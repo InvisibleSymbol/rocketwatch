@@ -166,11 +166,13 @@ def assemble(args):
                               f" (`{args.discountAmount}%` Discount, oDAO: `{args.marketExchangeRate} RPL/ETH`)" if "discountAmount" in args else ""),
                     inline=False)
 
+    """
     # show public key if we have one
     if "pubkey" in args:
         e.add_field(name="Validator",
                     value=args.pubkey,
                     inline=False)
+    """
 
     if "timezone" in args:
         e.add_field(name="Timezone",
@@ -185,11 +187,13 @@ def assemble(args):
         e.add_field(name="Reason",
                     value=f"`{args.slashing_type} Violation`")
 
+    """
     if "commission" in args:
         e.add_field(name="Commission Rate",
                     value=f"{args.commission:.2%}",
                     inline=False)
-
+    """
+    
     if "settingContractName" in args:
         e.add_field(name="Contract",
                     value=f"`{args.settingContractName}`",
