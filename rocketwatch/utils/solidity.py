@@ -22,6 +22,9 @@ def to_int(n, decimals=18):
 def beacon_block_to_date(block_num):
     return BEACON_START_DATE + (block_num * 12)
 
+def date_to_beacon_block(date):
+    return (date - BEACON_START_DATE) // 12
+
 
 SUBMISSION_KEYS = (
     "rewardIndex", "executionBlock", "consensusBlock", "merkleRoot", "merkleTreeCID", "intervalsPassed", "treasuryRPL",

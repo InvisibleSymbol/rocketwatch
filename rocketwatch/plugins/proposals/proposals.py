@@ -21,7 +21,7 @@ from wordcloud import WordCloud
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.solidity import beacon_block_to_date
+from utils.solidity import beacon_block_to_date, date_to_beacon_block
 from utils.time_debug import timerun, timerun_async
 from utils.visibility import is_hidden
 
@@ -291,7 +291,12 @@ class Proposals(commands.Cog):
         e.description = "Versions with proposal during the last 2 days are highlighted"
 
         # get proposals
-        proposals = await self.db.proposals.find({"version": {"$exists": 1}}).sort("slot", 1).to_list(None)
+        # limit to 6 months
+        proposals = await self.db.proposals.find(
+            {
+                "version": {"$exists": 1},
+                "slot": {"$gt": date_to_beacon_block((datetime.now() - timedelta(days=180)).timestamp())}
+            }).sort("slot", 1).to_list(None)
         look_back = int(60 / 12 * 60 * 24 * 2)  # last 5 days
         max_slot = proposals[-1]["slot"]
         # get version used after max_slot - look_back
@@ -307,7 +312,6 @@ class Proposals(commands.Cog):
                         '$exists': 1
                     }
                 }
-
             }, {
                 '$group': {
                     '_id'  : '$version'
