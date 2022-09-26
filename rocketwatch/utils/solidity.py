@@ -25,6 +25,9 @@ def beacon_block_to_date(block_num):
 def date_to_beacon_block(date):
     return (date - BEACON_START_DATE) // 12
 
+def slot_to_beacon_day_epoch_slot(slot):
+    return slot // 225, slot // 32 % 225, slot % 32
+
 
 SUBMISSION_KEYS = (
     "rewardIndex", "executionBlock", "consensusBlock", "merkleRoot", "merkleTreeCID", "intervalsPassed", "treasuryRPL",

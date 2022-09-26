@@ -17,7 +17,7 @@ from utils.embeds import Embed, ens, el_explorer_url
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.sea_creatures import sea_creatures, get_sea_creature_for_address, get_holding_for_address
-from utils.shared_w3 import w3
+from utils.shared_w3 import w3, bacon
 from utils.visibility import is_hidden, is_hidden_weak
 
 log = logging.getLogger("random")
@@ -55,6 +55,9 @@ class Random(commands.Cog):
 
         nick_time = datetime.now(tz=pytz.timezone("Pacific/Auckland"))
         e.add_field(name="Maverick's Time", value=nick_time.strftime(time_format), inline=False)
+
+        b = slot_to_beacon_day_epoch_slot(int(bacon.get_block("head")["data"]["message"]["slot"]))
+        e.add_field(name="Beacon Time", value=f"Day {b[0]}, {b[1]}:{b[2]}", inline=False)
 
         await ctx.send(embed=e)
 
