@@ -44,8 +44,9 @@ class Random(commands.Cog):
         binary_day = f"{uint_day:016b}"
         e.add_field(name="Coordinated Universal Time",
                     value=f"{dev_time.strftime(time_format)}\n"
-                          f"`{binary_day} (0x{uint_day:04x})`",
-                    inline=False)
+                          f"`{binary_day} (0x{uint_day:04x})`")
+        b = solidity.slot_to_beacon_day_epoch_slot(int(bacon.get_block("head")["data"]["message"]["slot"]))
+        e.add_field(name="Beacon Time", value=f"Day {b[0]}, {b[1]}:{b[2]}")
 
         dev_time = datetime.now(tz=pytz.timezone("Australia/Lindeman"))
         e.add_field(name="Time for most of the Dev Team", value=dev_time.strftime(time_format), inline=False)
@@ -55,9 +56,6 @@ class Random(commands.Cog):
 
         nick_time = datetime.now(tz=pytz.timezone("Pacific/Auckland"))
         e.add_field(name="Maverick's Time", value=nick_time.strftime(time_format), inline=False)
-
-        b = solidity.slot_to_beacon_day_epoch_slot(int(bacon.get_block("head")["data"]["message"]["slot"]))
-        e.add_field(name="Beacon Time", value=f"Day {b[0]}, {b[1]}:{b[2]}", inline=False)
 
         await ctx.send(embed=e)
 
