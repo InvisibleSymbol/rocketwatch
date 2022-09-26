@@ -154,12 +154,16 @@ class QueuedEvents(commands.Cog):
                 return None
             args.seller = w3.toChecksumAddress(f"0x{event.topics[2][-40:]}")
             args.buyer = w3.toChecksumAddress(f"0x{event.topics[3][-40:]}")
-            # token amounts
-            args.sellAmount = args.signerAmount
-            args.buyAmount = args.senderAmount
             # token names
-            args.sellToken = rp.assemble_contract(name="ERC20", address=args.signerToken).functions.symbol().call()
-            args.buyToken = rp.assemble_contract(name="ERC20", address=args.senderToken).functions.symbol().call()
+            s = rp.assemble_contract(name="ERC20", address=args.signerToken)
+            args.sellToken = s.functions.symbol().call()
+            sell_decimals = s.functions.decimals().call()
+            b = rp.assemble_contract(name="ERC20", address=args.senderToken)
+            args.buyToken = b.functions.symbol().call()
+            buy_decimals = b.functions.decimals().call()
+            # token amounts
+            args.sellAmount = solidity.to_float(args.signerAmount, sell_decimals)
+            args.buyAmount = solidity.to_float(args.senderAmount, buy_decimals)
             # RPL/- exchange rate
             if args.signerToken == rpl:
                 args.exchangeRate = args.buyAmount / args.sellAmount
