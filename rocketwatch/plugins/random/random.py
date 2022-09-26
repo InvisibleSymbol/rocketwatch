@@ -56,7 +56,7 @@ class Random(commands.Cog):
         nick_time = datetime.now(tz=pytz.timezone("Pacific/Auckland"))
         e.add_field(name="Maverick's Time", value=nick_time.strftime(time_format), inline=False)
 
-        b = slot_to_beacon_day_epoch_slot(int(bacon.get_block("head")["data"]["message"]["slot"]))
+        b = solidity.slot_to_beacon_day_epoch_slot(int(bacon.get_block("head")["data"]["message"]["slot"]))
         e.add_field(name="Beacon Time", value=f"Day {b[0]}, {b[1]}:{b[2]}", inline=False)
 
         await ctx.send(embed=e)
