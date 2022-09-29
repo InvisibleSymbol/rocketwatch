@@ -155,7 +155,7 @@
     },
     "node_smoothing_pool_left": {
         "title": ":cup_with_straw: Node Operator Left Smoothing Pool",
-        "description": "Node Operator %{node} has left the Smoothing Pool with their %{} Minipools!"
+        "description": "Node Operator %{node} has left the Smoothing Pool with their %{minipoolCount} Minipools!"
     },
     "auction_lot_create_event": {
         "title": ":scales: Lot Created",
