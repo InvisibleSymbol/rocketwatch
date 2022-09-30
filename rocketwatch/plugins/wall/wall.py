@@ -30,7 +30,7 @@ class Wall(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         wall_address = "0xD779bB0F68F54f7521aA5b35dD88352771843764"
         rpl = rp.get_address_by_name("rocketTokenRPL").lower()
-        url = "https://limit-orders.1inch.io/v2.0/1/limit-order/address/{wall_address}"
+        url = f"https://limit-orders.1inch.io/v2.0/1/limit-order/address/{wall_address}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 data = await resp.json()
