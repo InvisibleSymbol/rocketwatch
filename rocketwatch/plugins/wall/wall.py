@@ -3,16 +3,16 @@ import logging
 import humanize
 import aiohttp
 
-from discord import AllowedMentions
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed, el_explorer_url
+from utils.embeds import Embed
 from utils.rocketpool import rp
 from utils.visibility import is_hidden_weak
+from utils.readable import s_hex
 
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
@@ -48,6 +48,13 @@ class Wall(commands.Cog):
                 maker_rate_min = rate
             if rate > maker_rate_max:
                 maker_rate_max = rate
+
+        e = Embed()
+        if total_volume_left == 0:
+            e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+            await ctx.send(embed=e)
+            return
+
         rpl_balance = 0
         with contextlib.suppress(Exception):
             resp = rp.multicall.aggregate(
@@ -59,7 +66,6 @@ class Wall(commands.Cog):
                 if "RPL" in contract_name:
                     rpl_balance += solidity.to_float(token.results[0])
 
-        e = Embed()
         e.title = "1inch Sell Wall"
         e.set_author(name="🔗 Data from 1inch.io", url="https://1inch.io/")
         percent = 100 * total_volume_left / total_volume_rpl
@@ -71,7 +77,7 @@ class Wall(commands.Cog):
         )
         e.add_field(name="Status", value=f"{percent:,.2f}% left", inline=False)
         e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
-        e.add_field(name="Wallet Address", value=f"{el_explorer_url(wall_address)} [:rocket:](https://rocketscan.io/address/{wall_address})")
+        e.add_field(name="Wallet Address", value=f"[{s_hex(wall_address)}](https://rocketscan.io/address/{wall_address})")
         await ctx.send(embed=e)
 
 
