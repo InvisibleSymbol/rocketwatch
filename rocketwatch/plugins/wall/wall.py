@@ -72,9 +72,7 @@ class Wall(commands.Cog):
         e.add_field(name="Status", value=f"{percent:,.2f}% left", inline=False)
         e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
         e.add_field(name="Wallet Address", value=el_explorer_url(wall_address))
-        await ctx.send(
-            embed=e, allowed_mentions=AllowedMentions(everyone=False, users=True)
-        )
+        await ctx.send(embed=e)
 
 
 async def setup(bot):
