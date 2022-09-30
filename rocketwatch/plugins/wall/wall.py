@@ -64,7 +64,7 @@ class Wall(commands.Cog):
         e.set_author(name="🔗 Data from 1inch.io", url="https://1inch.io/")
         percent = 100 * total_volume_left / total_volume_rpl
         e.add_field(
-            name="Volume", value=f"{humanize.intcomma(total_volume_left, 0)} RPL"
+            name="Liquidity", value=f"{humanize.intcomma(total_volume_left, 0)} RPL"
         )
         e.add_field(
             name="Range", value=f"{maker_rate_min:,.4f} - {maker_rate_max:,.4f}"
