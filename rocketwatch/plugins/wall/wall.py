@@ -30,7 +30,7 @@ class Wall(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         wall_address = "0xD779bB0F68F54f7521aA5b35dD88352771843764"
         rpl = rp.get_address_by_name("rocketTokenRPL").lower()
-        url = "https://limit-orders.1inch.io/v2.0/1/limit-order/address/" + wall_address
+        url = "https://limit-orders.1inch.io/v2.0/1/limit-order/address/{wall_address}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 data = await resp.json()
@@ -64,7 +64,7 @@ class Wall(commands.Cog):
         e.set_author(name="🔗 Data from 1inch.io", url="https://1inch.io/")
         percent = 100 * total_volume_left / total_volume_rpl
         e.add_field(
-            name="Volume", value=humanize.intcomma(total_volume_left, 0) + " RPL"
+            name="Volume", value=f"{humanize.intcomma(total_volume_left, 0)} RPL"
         )
         e.add_field(
             name="Range", value=f"{maker_rate_min:,.4f} - {maker_rate_max:,.4f}"
