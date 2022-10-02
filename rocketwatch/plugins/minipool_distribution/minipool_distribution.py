@@ -5,6 +5,7 @@ import inflect
 import matplotlib.pyplot as plt
 import matplotlib.scale as scale
 import numpy as np
+import pymongo
 from discord import File
 from discord.app_commands import describe
 from discord.ext import commands
@@ -42,6 +43,22 @@ class MinipoolDistribution(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
+        self.db = self.mongo.rocketwatch
+
+    def get_minipool_counts_per_node(self):
+        # get an array for minipool counts per node from db using aggregation
+        # example: [0,0,1,2,3,3,3]
+        # 0 nodes have 0 minipools
+        # 1 node has 1 minipool
+        # 1 node has 2 minipools
+        # 3 nodes have 3 minipools
+        pipeline = [
+            {"$group": {"_id": "$minipools", "count": {"$sum": 1}}},
+            {"$sort": {"_id": 1}}
+        ]
+        return [x["count"] for x in self.db.nodes.aggregate(pipeline)]
+
     @hybrid_command()
     @describe(raw="Show the raw Distribution Data")
     async def minipool_distribution(self,
@@ -54,12 +71,12 @@ class MinipoolDistribution(commands.Cog):
         e = Embed()
 
         # Get the minipool distribution
-        counts = get_minipool_counts_per_node()
+        counts = self.get_minipool_counts_per_node()
         # Converts the array of counts, eg [ 0, 0, 0, 1, 1, 2 ], to a list of tuples
         # where the first item is the number of minipools and the second item is the
         # number of nodes, eg [ (0, 3), (1, 2), (2, 1) ]
         bins = np.bincount(counts)
-        distribution = [(i, bins[i]) for i in range(0, len(bins)) if bins[i] > 0]
+        distribution = [(i, bins[i]) for i in range(len(bins)) if bins[i] > 0]
 
         # If the raw data were requested, print them and exit early
         if raw:
@@ -72,8 +89,7 @@ class MinipoolDistribution(commands.Cog):
         # First chart is sorted bars showing total minipools provided by nodes with x minipools per node
         bars = {x: x * y for x, y in distribution}
         # Remove the 0,0 value, since it doesn't provide any insight
-        del bars[0]
-        x_keys = [str(x) for x in bars.keys()]
+        x_keys = [str(x) for x in bars]
         rects = ax.bar(x_keys, bars.values(), color=str(e.color))
         ax.bar_label(rects)
         ax.set_ylabel("Total Minipools")
