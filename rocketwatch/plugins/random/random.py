@@ -1,12 +1,9 @@
-import asyncio
-import csv
-import io
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import aiohttp
+import humanize
 import pytz
-from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -14,10 +11,9 @@ from discord.ext.commands import hybrid_command
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
-from utils.readable import uptime
-from utils.rocketpool import rp
-from utils.sea_creatures import sea_creatures, get_sea_creature_for_address, get_holding_for_address
-from utils.shared_w3 import w3, bacon
+from utils.readable import s_hex
+from utils.sea_creatures import sea_creatures, get_sea_creature_for_address
+from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak
 
 log = logging.getLogger("random")
@@ -27,6 +23,47 @@ log.setLevel(cfg["log_level"])
 class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @hybrid_command()
+    async def burn_reason(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        url = "https://ultrasound.money/api/fees/grouped-analysis-1"
+        # get data from url using aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                data = await resp.json()
+
+        e = Embed()
+        e.set_author(name="🔗 Data from ultrasound.money", url="https://ultrasound.money")
+        description = "**Eth Burned:**\n```"
+        feesburned = data["feesBurned"]
+        for span in ["5m", "1h", "24h"]:
+            k = f"feesBurned{span}"
+            description += f"Last {span}: {solidity.to_float(feesburned[k]):,.2f} ETH ({feesburned[f'{k}Usd']:,.2f} USD)\n"
+        description += "```\n"
+        description += "**Burn Ranking (last 5 minutes):**\n"
+        ranking = data["leaderboards"]["leaderboard5m"][:5]
+        for i, entry in enumerate(ranking):
+            # use a number emoji as rank (:one:, :two:, ...)
+            # first of convert the number to a word
+            description += f":{humanize.apnumber(i + 1)}:"
+            if entry["id"] == "eth-transfers":
+                description += f" {entry['name']}"
+            else:
+                url = cfg["rocketpool.execution_layer.explorer"]
+                if not entry["name"]:
+                    entry["name"] = s_hex(entry["address"])
+                target = f"[{entry['name']}](https://{url}/search?q={entry['address']})"
+                description += f" {target}"
+            if entry.get("category"):
+                description += f" `[{entry['category'].upper()}]`"
+            description += f"\n<:VOID:721787344138797116>`{solidity.to_float(entry['fees']):,.2f} ETH` :fire:\n"
+        e.add_field(
+            name="Current Base Fee:",
+            value=f"`{solidity.to_float(data['latestBlockFees'][0]['baseFeePerGas'], 9):,.2f} GWEI`"
+        )
+        e.description = description
+        await ctx.send(embed=e)
 
     @hybrid_command()
     async def dev_time(self, ctx: Context):
@@ -142,7 +179,7 @@ class Random(commands.Cog):
         await self._smoothie(ctx)
 
     @hybrid_command()
-    async def cow(self, ctx:Context, tnx:str):
+    async def cow(self, ctx: Context, tnx: str):
         # https://etherscan.io/tx/0x47d96c6310f08b473f2c9948d6fbeef1084f0b393c2263d2fc8d5dc624f97fe3
         if "etherscan.io/tx/" not in tnx:
             await ctx.send("nop", ephemeral=True)
