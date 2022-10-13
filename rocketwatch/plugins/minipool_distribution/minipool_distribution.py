@@ -14,7 +14,6 @@ from matplotlib.ticker import ScalarFormatter
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.thegraph import get_minipool_counts_per_node
 from utils.visibility import is_hidden
 
 log = logging.getLogger("minipool_distribution")
@@ -54,10 +53,10 @@ class MinipoolDistribution(commands.Cog):
         # 1 node has 2 minipools
         # 3 nodes have 3 minipools
         pipeline = [
-            {"$group": {"_id": "$minipools", "count": {"$sum": 1}}},
-            {"$sort": {"_id": 1}}
+            {"$group": {"_id": "$node_operator", "count": {"$sum": 1}}},
+            {"$sort": {"count": 1}}
         ]
-        return [x["count"] for x in self.db.nodes.aggregate(pipeline)]
+        return [x["count"] for x in self.db.minipools.aggregate(pipeline)]
 
     @hybrid_command()
     @describe(raw="Show the raw Distribution Data")
@@ -84,29 +83,19 @@ class MinipoolDistribution(commands.Cog):
             return
 
         img = BytesIO()
-        fig, (ax, ax2) = plt.subplots(2, 1)
+        fig, ax = plt.subplots(1, 1)
 
         # First chart is sorted bars showing total minipools provided by nodes with x minipools per node
         bars = {x: x * y for x, y in distribution}
         # Remove the 0,0 value, since it doesn't provide any insight
         x_keys = [str(x) for x in bars]
         rects = ax.bar(x_keys, bars.values(), color=str(e.color))
-        ax.bar_label(rects)
+        ax.bar_label(rects, rotation=90, padding=3, fontsize=7)
         ax.set_ylabel("Total Minipools")
-        # Offset every other x tick, so the numbers don't bunch up
-        for label in ax.xaxis.get_major_ticks()[1::2]:
-            label.set_pad(10)
+        # tilt the x axis labels
+        ax.tick_params(axis='x', labelrotation=90, labelsize=7)
         # Add a 5% buffer to the ylim to help fit all the bar labels
-        ax.set_ylim(top=(ax.get_ylim()[1] * 1.05))
-
-        # Second chart is a line graph showing the total number of nodes with x minipools per node, logscale
-        ax2.plot([x[0] for x in distribution], [x[1] for x in distribution], color=str(e.color))
-        ax2.set_xscale(scale.SymmetricalLogScale(ax2, base=10, linthresh=10))
-        ax2.set_yscale(scale.SymmetricalLogScale(ax2, base=10, linthresh=1))
-        ax2.xaxis.set_major_formatter(ScalarFormatter())
-        ax2.yaxis.set_major_formatter(ScalarFormatter())
-        ax2.set_xlabel("Minipools per Node")
-        ax2.set_ylabel("Total Nodes")
+        ax.set_ylim(top=(ax.get_ylim()[1] * 1.1))
 
         fig.tight_layout()
         fig.savefig(img, format='png')
@@ -125,6 +114,7 @@ class MinipoolDistribution(commands.Cog):
         e.set_footer(text="\n".join(percentile_strings))
         await ctx.send(embed=e, files=[f])
         img.close()
+
 
 
 async def setup(bot):
