@@ -26,6 +26,15 @@ class Random(commands.Cog):
 
     @hybrid_command()
     async def burn_reason(self, ctx: Context):
+        """Show the current burn reason"""
+        await self._burn_reason(ctx)
+
+    @hybrid_command()
+    async def br(self, ctx: Context):
+        """Show the current burn reason"""
+        await self._burn_reason(ctx)
+
+    async def _burn_reason(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         url = "https://ultrasound.money/api/fees/grouped-analysis-1"
         # get data from url using aiohttp
