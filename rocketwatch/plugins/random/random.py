@@ -172,7 +172,7 @@ class Random(commands.Cog):
         # minipool counts
         total_minipool_count = sum(node_minipool_count)
         smoothie_minipool_count = sum(mc for smoothie, mc in zip(node_is_smoothie, node_minipool_count) if smoothie)
-        d = rp.call("rocketRewardsPool.getClaimIntervalTimeStart") + rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime") - datetime.now().timestamp()
+        d = datetime.now().timestamp() - rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
         e.description = f"`{smoothie_node_count}/{total_node_count}` Nodes (`{smoothie_node_count / total_node_count:.2%}`)" \
                         f" have joined the Smoothing Pool.\n" \
                         f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
