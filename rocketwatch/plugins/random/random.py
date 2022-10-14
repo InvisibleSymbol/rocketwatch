@@ -177,8 +177,8 @@ class Random(commands.Cog):
                         f" have joined the Smoothing Pool.\n" \
                         f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
                         f"(`{smoothie_minipool_count / total_minipool_count:.0%}`).\n" \
-                        f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH\n" \
-                        f"This is over a span of `{uptime(d)}`\n\n" \
+                        f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH.\n" \
+                        f"This is over a span of `{uptime(d)}`.\n\n" \
                         f"{min(smoothie_node_count, 5)} largest Nodes:\n"
         e.description += "\n".join(f"- `{mc:>4}` Minipools - Node {el_explorer_url(n)}" for mc, n in sorted(
             [[mc, n] for mc, n, s in zip(node_minipool_count, nodes, node_is_smoothie) if s],
