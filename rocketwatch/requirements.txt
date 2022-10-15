@@ -18,7 +18,7 @@ wordcloud==1.8.2.2
 web3-multicall==0.0.7
 colorama==0.4.5
 seaborn==0.12.0
-git+https://github.com/InvisibleSymbol/etherscan-labels@7b0ac881e6d77c93184b8d0c33882953bc3d0b74#egg=etherscan_labels
+git+https://github.com/InvisibleSymbol/etherscan-labels@7eb617d715a4dda0eabdd858106a526a3abd3394#egg=etherscan_labels
 cronitor==4.6.0
 circuitbreaker==1.4.0
 retry==0.9.2
