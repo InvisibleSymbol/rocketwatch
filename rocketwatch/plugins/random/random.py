@@ -35,13 +35,27 @@ class Random(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         try:
             result = dice.roll(dice_string)
-        except ValueError:
-            await ctx.send("Invalid dice string")
+        except dice.exceptions.DiceException as e:
+            await ctx.send(f"Dice Error:\n```{e}```")
+            return
+        except dice.exceptions.DiceFatalException as e:
+            await ctx.send(f"Dice Fatal Error:\n```{e}```")
+            return
+        except dice.exceptions.ParseException as e:
+            await ctx.send(f"Dice Parse Error:\n```{e}```")
+            return
+        except dice.exceptions.ParseFatalException as e:
+            await ctx.send(f"Dice Parse Fatal Error:\n```{e}```")
             return
         e = Embed()
         e.title = f"🎲 {dice_string}"
-        e.description = f"**Result:** `{result}`"
-        await ctx.send(embed=e)
+        if len(result) <= 2000:
+            e.description = "Result too long to display, attaching as file."
+            file = File(io.StringIO(result), filename="dice_result.txt")
+            await ctx.send(embed=e, file=file)
+        else:
+            e.description = result
+            await ctx.send(embed=e)
 
     @hybrid_command()
     async def burn_reason(self, ctx: Context):
