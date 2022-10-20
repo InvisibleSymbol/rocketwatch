@@ -54,7 +54,7 @@ class Random(commands.Cog):
             file = File(io.StringIO(str(result)), filename="dice_result.txt")
             await ctx.send(embed=e, file=file)
         else:
-            e.description = result
+            e.description = f"Result: `{result}`"
             await ctx.send(embed=e)
 
     @hybrid_command()
