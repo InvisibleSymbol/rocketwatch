@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 import aiohttp
 import humanize
 import pytz
+import dice
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -28,6 +29,19 @@ log.setLevel(cfg["log_level"])
 class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @hybrid_command()
+    async def dice(self, ctx: Context, dice_string: str = "1d6"):
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        try:
+            result = dice.roll(dice_string)
+        except ValueError:
+            await ctx.send("Invalid dice string")
+            return
+        e = Embed()
+        e.title = f"🎲 {dice_string}"
+        e.description = f"**Result:** `{result}`"
+        await ctx.send(embed=e)
 
     @hybrid_command()
     async def burn_reason(self, ctx: Context):
