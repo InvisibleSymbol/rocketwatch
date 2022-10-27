@@ -89,7 +89,7 @@ class Random(commands.Cog):
             # use a number emoji as rank (:one:, :two:, ...)
             # first of convert the number to a word
             description += f":{humanize.apnumber(i + 1)}:"
-            if entry["id"] == "eth-transfers":
+            if "address" not in entry:
                 description += f" {entry['name']}"
             else:
                 url = cfg["rocketpool.execution_layer.explorer"]
