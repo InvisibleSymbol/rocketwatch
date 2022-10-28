@@ -43,18 +43,19 @@ class Collateral(commands.Cog):
 
     @hybrid_command()
     @describe(raw="Show Raw Distribution Data",
-              cap_collateral="Cap Collateral to 100%")
+              cap_collateral="Cap Collateral to 150%")
     async def collateral_distribution(self,
                                       ctx: Context,
                                       raw: bool = False,
-                                      cap_collateral: bool = True):
+                                      cap_collateral: bool = True,
+                                      collateral_cap: int = 150):
         """
         Show the distribution of collateral across nodes.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
-        data = get_average_collateral_percentage_per_node(cap_collateral)
+        data = get_average_collateral_percentage_per_node(150 if cap_collateral else None)
         counts = []
         for collateral, nodes in data.items():
             counts.extend([collateral] * len(nodes))

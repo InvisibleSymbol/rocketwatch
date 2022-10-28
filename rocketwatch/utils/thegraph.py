@@ -288,7 +288,7 @@ def get_claims_current_period():
     return data["rplrewardIntervals"][0]["rplRewardClaims"]
 
 
-def get_average_collateral_percentage_per_node(cap_collateral):
+def get_average_collateral_percentage_per_node(collateral_cap):
     query = """
 {
     nodes(orderBy: id, where: {stakingMinipools_not: "0"}, first: 1000) {
@@ -326,8 +326,8 @@ def get_average_collateral_percentage_per_node(cap_collateral):
         if collateral_percentage < 0.1:
             collateral_percentage = 0
         collateral_percentage = round(round(collateral_percentage * 20) / 20 * 100, 0)
-        if cap_collateral:
-            collateral_percentage = min(collateral_percentage, 150)
+        if collateral_cap:
+            collateral_percentage = min(collateral_percentage, collateral_cap)
         if collateral_percentage not in result:
             result[collateral_percentage] = []
         result[collateral_percentage].append(rpl_stake)
