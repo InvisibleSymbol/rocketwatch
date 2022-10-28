@@ -16,7 +16,7 @@ inflect==5.6.2
 motor==3.0.0
 wordcloud==1.8.2.2
 web3-multicall==0.0.7
-colorama==0.4.5
+colorama==0.4.6
 seaborn==0.12.1
 git+https://github.com/InvisibleSymbol/etherscan-labels@7eb617d715a4dda0eabdd858106a526a3abd3394#egg=etherscan_labels
 cronitor==4.6.0
