@@ -40,7 +40,7 @@ class Snapshot(commands.Cog):
 
     @hybrid_command()
     async def votes(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://snapshot.org/#/delegate/rocketpool-dao.eth")
         proposals = get_active_snapshot_votes()
