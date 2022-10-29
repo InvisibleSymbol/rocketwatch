@@ -18,7 +18,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.thegraph import get_active_snapshot_votes
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden, is_hidden_weak
 from utils.draw import BetterImageDraw
 
 log = logging.getLogger("snapshot")
