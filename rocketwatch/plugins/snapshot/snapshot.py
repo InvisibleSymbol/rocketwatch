@@ -111,7 +111,7 @@ class Snapshot(commands.Cog):
                 20,
                 max_width=p_width - 20,
             )
-            y_offset += 40
+            y_offset += 30
             # show quorum as a progress bar, (capped at 100%) with the percentage next to it
             draw.progress_bar(
                 (x_offset + 10 + 50, y_offset),
