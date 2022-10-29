@@ -368,3 +368,43 @@ def scan_nodes(cols, count=1000):
         page = page + 1
 
     return data
+
+
+def get_active_snapshot_votes():
+    query = """
+{
+  proposals(
+    first: 20,
+    skip: 0,
+    where: {
+      space_in: ["rocketpool-dao.eth", ""],
+      state: "active"
+    },
+    orderBy: "created",
+    orderDirection: desc
+  ) {
+    id
+    title
+    choices
+    state
+    scores
+    scores_total
+    scores_updated
+    end
+  }
+}
+"""
+    # do the request
+    response = requests.post(
+        "https://hub.snapshot.org/graphql",
+        json={'query': query}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+
+    return data["proposals"]
