@@ -391,6 +391,7 @@ def get_active_snapshot_votes():
     scores_total
     scores_updated
     end
+    quorum
   }
 }
 """
