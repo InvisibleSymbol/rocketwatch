@@ -35,5 +35,7 @@ class BetterImageDraw(ImageDraw):
             # cut of the text if it's too long
             while font.getsize(text)[0] > max_width and text:
                 text = text[:-1]
+                # replace last character with an ellipsis
+                text = f"{text[:-1]}…"
         self.text(xy, text, font=font, fill=color, anchor=anchor)
 

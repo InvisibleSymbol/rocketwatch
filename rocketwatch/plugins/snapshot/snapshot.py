@@ -52,7 +52,7 @@ class Snapshot(commands.Cog):
         p_width = 400
         width = p_width * len(proposals)
         # image height is based upon the max number of possible options
-        height = 60 * max(len(p["choices"]) for p in proposals) + 100
+        height = 50 * max(len(p["choices"]) for p in proposals) + 100
         # pillow image
         img = Image.new("RGB", (width, height), color=(40, 40, 40))
         # pillow draw
@@ -76,27 +76,34 @@ class Snapshot(commands.Cog):
                     (x_offset + 10, y_offset),
                     choice,
                     15,
-                    max_width=p_width - 20,
+                    max_width=p_width - 20 - 120,
                 )
-                y_offset += 20
-                # color first place as golden, second place as silver, third place as bronze, rest as gray
-                color = RANK_COLORS.get(i, (128, 128, 128))
-                draw.progress_bar(
-                    (x_offset + 10, y_offset),
-                    (10, p_width - 20),
-                    scores / proposal["scores_total"],
-                    primary=color
-                )
-                y_offset += 20
                 # display the score as text, right aligned
                 draw.dynamic_text(
                     (x_offset + p_width - 10, y_offset),
                     f"{scores:,.2f} votes",
                     15,
-                    max_width=p_width - 20,
+                    max_width=120,
                     anchor="rt"
                 )
                 y_offset += 20
+                # color first place as golden, second place as silver, third place as bronze, rest as gray
+                color = RANK_COLORS.get(i, (128, 128, 128))
+                draw.progress_bar(
+                    (x_offset + 10 + 50, y_offset),
+                    (10, p_width - 30 - 50),
+                    scores / proposal["scores_total"],
+                    primary=color,
+                )
+                # show percentage next to progress bar (max 40 pixels)
+                draw.dynamic_text(
+                    (x_offset + 50, y_offset),
+                    f"{scores / proposal['scores_total']:.0%}",
+                    15,
+                    max_width=45,
+                    anchor="rt"
+                )
+                y_offset += 30
             # show how much time is left using the "end" timestamp
             d = proposal["end"] - datetime.now().timestamp()
             draw.dynamic_text(
