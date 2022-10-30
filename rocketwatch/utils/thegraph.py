@@ -370,7 +370,7 @@ def scan_nodes(cols, count=1000):
     return data
 
 
-def get_active_snapshot_votes():
+def get_active_snapshot_proposals():
     query = """
 {
   proposals(
@@ -409,3 +409,47 @@ def get_active_snapshot_votes():
     data = response.json()["data"]
 
     return data["proposals"]
+
+
+def get_votes_of_snapshot(snapshot_id):
+    query = """
+{{
+  votes (
+    first: 1000
+    skip: 0
+    where: {{
+      proposal: "{snapshot_id}"
+    }}
+    orderBy: "created",
+    orderDirection: desc
+  ) {{
+    id
+    voter
+    created
+        vp
+    choice
+  }}
+  proposal(
+    id:"{snapshot_id}"
+  ) {{
+    choices
+    title
+  }}
+}}
+
+"""
+    # do the request
+    response = requests.post(
+        "https://hub.snapshot.org/graphql",
+        json={'query': query.format(snapshot_id=snapshot_id)}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+
+    return data["votes"], data["proposal"]
+

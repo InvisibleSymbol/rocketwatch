@@ -2,24 +2,21 @@ import logging
 from datetime import datetime
 from io import BytesIO
 
-import matplotlib.pyplot as plt
-import numpy as np
+import pymongo
 from PIL import Image
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
-from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed
-from utils.get_nearest_block import get_block_by_timestamp
-from utils.readable import uptime
-from utils.rocketpool import rp
-from utils.shared_w3 import w3
-from utils.thegraph import get_active_snapshot_votes
-from utils.visibility import is_hidden, is_hidden_weak
+from utils.containers import Response
 from utils.draw import BetterImageDraw
+from utils.embeds import Embed, el_explorer_url
+from utils.readable import uptime
+from utils.shared_w3 import w3
+from utils.thegraph import get_active_snapshot_proposals, get_votes_of_snapshot
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -34,16 +31,133 @@ RANK_COLORS = {
 }
 
 
-class Snapshot(commands.Cog):
+class QueuedSnapshot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
+        self.db = self.mongo.rocketwatch
+        self.ratelimit = 60
+        self.last_ran = datetime.now()
+
+    def run_loop(self):
+        # ratelimit
+        if (datetime.now() - self.last_ran).seconds < self.ratelimit:
+            return []
+        self.last_ran = datetime.now()
+        current_proposals = get_active_snapshot_proposals()
+
+        now = datetime.now()
+        updates = []
+        events = []
+        for proposal in current_proposals:
+            # get the current votes for this proposal
+            current_votes, _ = get_votes_of_snapshot(proposal["id"])
+            # get the previous votes for this proposal
+            previous_votes = list(self.db.snapshot_votes.find({"proposal_id": proposal["id"]}))
+            # compare the two
+            for vote in current_votes:
+                # skip the vote entirely if the voting power is too low
+                if vote["vp"] < 100:
+                    continue
+                # check if the vote is already in the db and if it is old enough
+                prev_vote = next((v for v in previous_votes if v["voter"] == vote["voter"]), None)
+                if prev_vote and (now - prev_vote["timestamp"]).total_seconds() < 300:
+                    continue
+                # make sure the vote actually changed
+                if prev_vote and prev_vote["choice"] == vote["choice"]:
+                    continue
+                # update the db
+                updates.append({
+                    "proposal_id": proposal["id"],
+                    "voter"      : vote["voter"],
+                    "choice"     : vote["choice"],
+                    "timestamp"  : now,
+                })
+                if not previous_votes:
+                    continue
+                # create change embed
+                # important: choices are indexes, use the proposal.choices array to get the actual choice
+                new_choices = [proposal["choices"][c - 1] for c in vote["choice"]]
+                e = Embed(
+                    title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}",
+                )
+                nl = "\n- "
+                if prev_vote:
+                    e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from\n"
+                    old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
+                    e.description += f"**{nl.join(old_choices)}**\nto\n**{nl.join(new_choices)}**"
+                else:
+                    e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**{nl.join(new_choices)}**"
+                e.description += f"\n\n**Voting Power:** {vote['vp']:.2f}"
+                # add the proposal link
+                e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
+                events.append(Response(
+                    embed=e,
+                    topic="snapshot",
+                    block_number=w3.eth.getBlock("latest").number,
+                    event_name="snapshot_vote_changed",
+                    unique_id=f"{proposal['id']}_{vote['voter']}_{'_'.join(new_choices)}_{now.timestamp()}",
+                ))
+        if updates:
+            # update or insert the votes
+            self.db.snapshot_votes.bulk_write([
+                pymongo.UpdateOne(
+                    {"proposal_id": u["proposal_id"], "voter": u["voter"]},
+                    {"$set": u},
+                    upsert=True,
+                ) for u in updates
+            ])
+        return events
+
+    @hybrid_command()
+    async def analyze_pairs_max_leb(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        vote_id = '0x7426469ae1f7c6de482ab4c2929c3e29054991601c95f24f4f4056d424f9f671'
+        votes, proposal = get_votes_of_snapshot(vote_id)
+        # votes is an array of votes that include a 'choice' field
+        # the choice field is an array of choice indices
+        e = Embed()
+        e.set_author(name="🔗 Data from snapshot.org", url="https://snapshot.org/#/delegate/rocketpool-dao.eth")
+        e.title = f"Snapshot Proposal: {proposal['title']}"
+        # we want to find out the amount of voting power for each pair of choices
+
+        voting_pairs = {}
+        choice_mapping = {
+            1: "nETH",
+            2: "fixed ETH",
+            3: "pETH",
+            4: "stupid",
+            5: "dumb"
+        }
+
+        for vote in votes:
+            # resolve the mapping of choice indices to choice names
+            choices = [choice_mapping.get(i, "???") for i in vote['choice']]
+            # sort the choices so that we can use them as a key
+            choices.sort()
+            # convert the choices to a string so that we can use them as a key
+            choices_str = ' & '.join(choices)
+            if choices_str not in voting_pairs:
+                voting_pairs[choices_str] = [0, 0]
+            voting_pairs[choices_str][0] += vote['vp']
+            voting_pairs[choices_str][1] += 1
+
+        # create a ranking of the pairs
+        ranking = sorted(voting_pairs.items(), key=lambda x: x[1], reverse=True)
+
+        des = "```"
+        for i, (pair, power) in enumerate(ranking):
+            des += f"{i + 1}. {pair}\n\t{power[0]:.2f} votes ({power[1]} voters)\n"
+
+        e.description = f"{des}```"
+        await ctx.send(embed=e)
 
     @hybrid_command()
     async def votes(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://snapshot.org/#/delegate/rocketpool-dao.eth")
-        proposals = get_active_snapshot_votes()
+        proposals = get_active_snapshot_proposals()
         if not proposals:
             e.description = "No active proposals"
             return await ctx.send(embed=e)
@@ -147,4 +261,4 @@ class Snapshot(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Snapshot(bot))
+    await bot.add_cog(QueuedSnapshot(bot))
