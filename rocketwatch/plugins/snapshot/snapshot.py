@@ -45,7 +45,7 @@ class QueuedSnapshot(commands.Cog):
         if (datetime.now() - self.last_ran).seconds < self.ratelimit:
             return []
         # nuke db if version changed or not present
-        if not self.db.snapshot.find_one({"_id": "version", "version": self.version}):
+        if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
             log.warning("Snapshot version changed, nuking db")
             self.db.snapshot_votes.drop()
             self.db.snapshot_votes.insert_one({"_id": "version", "version": self.version})
