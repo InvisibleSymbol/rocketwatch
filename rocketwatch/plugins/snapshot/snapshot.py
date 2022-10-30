@@ -57,8 +57,6 @@ class QueuedSnapshot(commands.Cog):
             # compare the two
             for vote in current_votes:
                 # skip the vote entirely if the voting power is too low
-                if vote["vp"] < 100:
-                    continue
                 # check if the vote is already in the db and if it is old enough
                 prev_vote = next((v for v in previous_votes if v["voter"] == vote["voter"]), None)
                 if prev_vote and (now - prev_vote["timestamp"]).total_seconds() < 300:
@@ -85,9 +83,9 @@ class QueuedSnapshot(commands.Cog):
                 if prev_vote:
                     e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from\n"
                     old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
-                    e.description += f"**{nl.join(old_choices)}**\nto\n**{nl.join(new_choices)}**"
+                    e.description += f"**- {nl.join(old_choices)}**\nto\n**- {nl.join(new_choices)}**"
                 else:
-                    e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**{nl.join(new_choices)}**"
+                    e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**- {nl.join(new_choices)}**"
                 e.description += f"\n\n**Voting Power:** {vote['vp']:.2f}"
                 # add the proposal link
                 e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
