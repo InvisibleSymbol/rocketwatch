@@ -38,11 +38,17 @@ class QueuedSnapshot(commands.Cog):
         self.db = self.mongo.rocketwatch
         self.ratelimit = 60
         self.last_ran = datetime.now()
+        self.version = 2
 
     def run_loop(self):
         # ratelimit
         if (datetime.now() - self.last_ran).seconds < self.ratelimit:
             return []
+        # nuke db if version changed or not present
+        if not self.db.snapshot.find_one({"_id": "version", "version": self.version}):
+            log.warning("Snapshot version changed, nuking db")
+            self.db.snapshot_votes.drop()
+            self.db.snapshot_votes.insert_one({"_id": "version", "version": self.version})
         self.last_ran = datetime.now()
         current_proposals = get_active_snapshot_proposals()
 
