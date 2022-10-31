@@ -65,6 +65,9 @@ class QueuedSnapshot(commands.Cog):
                 # skip the vote entirely if the voting power is too low
                 # check if the vote is already in the db and if it is old enough
                 prev_vote = next((v for v in previous_votes if v["voter"] == vote["voter"]), None)
+                # skip if the vote choice isnt an array for now
+                if not isinstance(vote["choice"], list):
+                    continue
                 if prev_vote and (now - prev_vote["timestamp"]).total_seconds() < 300:
                     continue
                 # make sure the vote actually changed
