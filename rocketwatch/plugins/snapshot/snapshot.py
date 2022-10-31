@@ -96,6 +96,9 @@ class QueuedSnapshot(commands.Cog):
                 else:
                     e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**- {nl.join(new_choices)}**"
                 e.description += f"\n\n**Voting Power:** {vote['vp']:.2f}"
+                e.description += f"\n\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
+                if len(e.description) > 2000:
+                    e.description = f"{e.description[:1999]}…"
                 # add the proposal link
                 e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
                 events.append(Response(

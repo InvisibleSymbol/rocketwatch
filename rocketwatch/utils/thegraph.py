@@ -426,8 +426,9 @@ def get_votes_of_snapshot(snapshot_id):
     id
     voter
     created
-        vp
+    vp
     choice
+    reason
   }}
   proposal(
     id:"{snapshot_id}"
