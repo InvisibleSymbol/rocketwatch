@@ -55,7 +55,8 @@ class Collateral(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
-        data = get_average_collateral_percentage_per_node(150 if cap_collateral else None)
+        data = get_average_collateral_percentage_per_node(collateral_cap or 150 if cap_collateral else None)
+
         counts = []
         for collateral, nodes in data.items():
             counts.extend([collateral] * len(nodes))
