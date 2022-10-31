@@ -62,7 +62,7 @@ class Collateral(commands.Cog):
             counts.extend([collateral] * len(nodes))
         counts = list(sorted(counts))
         bins = np.bincount(counts)
-        distribution = [(i, bins[i]) for i in range(len(bins)) if bins[i] > 0]
+        distribution = [(i, bins[i]) for i in range(len(bins)) if i % 5 == 0 and i >= 10]
 
         # If the raw data were requested, print them and exit early
         if raw:
@@ -75,8 +75,6 @@ class Collateral(commands.Cog):
         ax2 = ax.twinx()
 
         bars = dict(distribution)
-        if 0 in bars:
-            del bars[0]
         x_keys = [str(x) for x in bars]
         rects = ax.bar(x_keys, bars.values(), color=str(e.color))
         ax.bar_label(rects)
@@ -96,7 +94,7 @@ class Collateral(commands.Cog):
         bars = dict(staked_distribution)
         if 0 in bars:
             del bars[0]
-        line = ax2.plot(x_keys, bars.values())
+        line = ax2.plot(x_keys, [bars.get(int(x), 0) for x in x_keys])
         ax2.set_ylim(top=(ax2.get_ylim()[1] * 1.1))
         ax2.tick_params(axis='y', colors=line[0].get_color())
         ax2.get_yaxis().set_major_formatter(FuncFormatter(lambda y, _: f"{int(y / 10 ** 3)}k"))

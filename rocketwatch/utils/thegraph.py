@@ -289,48 +289,32 @@ def get_claims_current_period():
 
 
 def get_average_collateral_percentage_per_node(collateral_cap):
-    query = """
-{
-    nodes(orderBy: id, where: {stakingMinipools_not: "0"}, first: 1000) {
-        rplStaked
-        stakingMinipools
-    }
-    networkNodeBalanceCheckpoints(first: 1, orderBy: block, orderDirection: desc) {
-        rplPriceInETH
-        block
-    }
-}
-    """
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query}
-    )
-
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-
-    rpl_eth_price = solidity.to_float(data["networkNodeBalanceCheckpoints"][0]["rplPriceInETH"])
+    data = scan_nodes(["rplStaked", "stakingMinipools"])
+    rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
     result = {}
-    for node in data["nodes"]:
-        minipool_worth = int(node["stakingMinipools"]) * 16
-        rpl_stake = solidity.to_float(node["rplStaked"])
-        effective_staked = rpl_stake * rpl_eth_price
-        # round to 5 % increments
-        collateral_percentage = effective_staked / minipool_worth
-        if collateral_percentage < 0.1:
-            collateral_percentage = 0
-        collateral_percentage = round(round(collateral_percentage * 20) / 20 * 100, 0)
+    # process the data
+    for node in data:
+        # get the minipool value
+        minipool_value = int(node["stakingMinipools"]) * 16
+        if not minipool_value:
+            continue
+        # rpl stake value
+        rpl_stake_value = solidity.to_float(node["rplStaked"]) * rpl_price
+        # cap rpl stake at x% of minipool_value using collateral_cap
         if collateral_cap:
-            collateral_percentage = min(collateral_percentage, collateral_cap)
-        if collateral_percentage not in result:
-            result[collateral_percentage] = []
-        result[collateral_percentage].append(rpl_stake)
+            rpl_stake_value = min(rpl_stake_value, minipool_value * collateral_cap / 100)
+        # anything bellow 10% gets floored to 0
+        if rpl_stake_value / minipool_value < 0.1:
+            rpl_stake_value = 0
+        # calculate percentage
+        percentage = rpl_stake_value / minipool_value * 100
+        # round percentage to 5% steps
+        percentage = round(percentage / 5) * 5
+        # add to result
+        if percentage not in result:
+            result[percentage] = []
+        result[percentage].append(rpl_stake_value / rpl_price)
 
     return result
 
