@@ -166,7 +166,7 @@ class QueuedSnapshot(commands.Cog):
     async def votes(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
-        e.set_author(name="🔗 Data from snapshot.org", url="https://snapshot.org/#/delegate/rocketpool-dao.eth")
+        e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")
         proposals = get_active_snapshot_proposals()
         if not proposals:
             e.description = "No active proposals"
