@@ -43,7 +43,7 @@ class RplApr(commands.Cog):
             "by": w3.soliditySha3(
                 ["string", "address"],
                 ["rocketMerkleDistributorMainnet", rp.get_address_by_name("rocketTokenRPL")])
-        }, fromBlock=m - 1000, toBlock=m + 1000)
+        }, fromBlock=m - 10000, toBlock=m + 10000)
         perc_nodes = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", "rocketClaimNode"))
         perc_odao = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", "rocketClaimTrustedNode"))
         node_operator_rewards = solidity.to_float(events[0].args.amount) * (perc_nodes / (perc_nodes + perc_odao))
