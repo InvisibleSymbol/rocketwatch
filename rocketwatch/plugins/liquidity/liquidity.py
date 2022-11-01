@@ -11,7 +11,6 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.thegraph import scan_nodes
 from utils.visibility import is_hidden
 
 log = logging.getLogger("liquidity")
