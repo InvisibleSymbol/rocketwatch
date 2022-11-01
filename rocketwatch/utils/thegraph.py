@@ -289,7 +289,28 @@ def get_claims_current_period():
 
 
 def get_average_collateral_percentage_per_node(collateral_cap):
-    data = scan_nodes(["rplStaked", "stakingMinipools"])
+    # get node addresses
+    nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+    node_staking = rp.get_contract_by_name("rocketNodeStaking")
+    # get their RPL stake using rocketNodeStaking.getNodeRPLStake
+    rpl_stakes = rp.multicall.aggregate(
+        [node_staking.functions.getNodeRPLStake(node) for node in nodes]
+    )
+    rpl_stakes = [r.results[0] for r in rpl_stakes.results]
+    # get their nETH balance using rocketMinipoolManager.getNodeMinipoolCount
+    minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
+    node_minipools = rp.multicall.aggregate(
+        minipool_manager.functions.getNodeMinipoolCount(node) for node in nodes
+    )
+    node_minipools = [r.results[0] for r in node_minipools.results]
+    # convert to data array with dicts containing stakingMinipools and rplStaked
+    data = [
+        {
+            "stakingMinipools": node_minipools[i],
+            "rplStaked"       : rpl_stakes[i]
+        }
+        for i in range(len(nodes))
+    ]
     rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
     result = {}
@@ -317,41 +338,6 @@ def get_average_collateral_percentage_per_node(collateral_cap):
         result[percentage].append(rpl_stake_value / rpl_price)
 
     return result
-
-
-def scan_nodes(cols, count=1000):
-    # use cols to pass columns you want to request as a list of strings
-    node_query = """
-{{
-    nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
-        {cols}
-    }}
-}}
-    """
-
-    # node request pagination
-    page = 0
-    data = []
-
-    while True:
-        response = requests.post(
-            cfg["graph_endpoint"],
-            json={'query': node_query.format(count=count, offset=(page * count), cols=" ".join(cols))}
-        )
-
-        data.extend(response.json()["data"]["nodes"])
-
-        # parse the response
-        if "errors" in response.json():
-            raise Exception(response.json()["errors"])
-
-        # check if final page
-        if len(response.json()["data"]["nodes"]) < 1000:
-            break
-
-        page = page + 1
-
-    return data
 
 
 def get_active_snapshot_proposals():

@@ -33,8 +33,28 @@ class Liquidity(commands.Cog):
         e = Embed()
         img = BytesIO()
 
-        # get data from thegraph
-        data = scan_nodes(["rplStaked", "stakingMinipools"])
+        # get node addresses
+        nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+        node_staking = rp.get_contract_by_name("rocketNodeStaking")
+        # get their RPL stake using rocketNodeStaking.getNodeRPLStake
+        rpl_stakes = rp.multicall.aggregate(
+            [node_staking.functions.getNodeRPLStake(node) for node in nodes]
+        )
+        rpl_stakes = [r.results[0] for r in rpl_stakes.results]
+        # get their nETH balance using rocketMinipoolManager.getNodeMinipoolCount
+        minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
+        node_minipools = rp.multicall.aggregate(
+            minipool_manager.functions.getNodeMinipoolCount(node) for node in nodes
+        )
+        node_minipools = [r.results[0] for r in node_minipools.results]
+        # convert to data array with dicts containing stakingMinipools and rplStaked
+        data = [
+            {
+                "stakingMinipools": node_minipools[i],
+                "rplStaked": rpl_stakes[i]
+            }
+            for i in range(len(nodes))
+        ]
         rpl_eth_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
         # calculate withdrawable RPL at various RPL ETH prices
@@ -86,10 +106,12 @@ class Liquidity(commands.Cog):
                      (rpl_eth_price, current_withdrawable_rpl), textcoords="offset points", xytext=(10, -5), ha='left')
         plt.grid()
 
+
         ax = plt.gca()
         ax.set_ylabel("Withdrawable RPL")
         ax.set_xlabel("RPL / ETH ratio")
         ax.yaxis.set_major_formatter(lambda x, _: "{:.1f}m".format(x / 1000000))
+        ax.xaxis.set_major_formatter(lambda x, _: "{:.4f}".format(x))
 
         plt.tight_layout()
         plt.savefig(img, format='png')
