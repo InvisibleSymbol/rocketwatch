@@ -353,6 +353,35 @@ class Random(commands.Cog):
             txt = f"warning, only gathered {uptime((last - first).total_seconds())}"
         await ctx.send(txt, file=File(fp=f, filename="poap_smoothie.csv"))
 
+    @hybrid_command()
+    async def odao_challenges(self, ctx: Context):
+        """Shows the current oDAO challenges."""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        c = rp.get_contract_by_name("rocketDAONodeTrustedActions")
+        # get challenges made
+        events = c.events["ActionChallengeMade"].createFilter(fromBlock=w3.eth.get_block("latest").number - 7 * 24 * 60 * 60 // 12)
+        # get all events
+        events = events.get_all_entries()
+        # remove all events of nodes that aren't challenged anymore
+        for event in events:
+            if not rp.call("rocketDAONodeTrusted.getMemberIsChallenged", event.args.nodeChallengedAddress):
+                events.remove(event)
+        # sort by block number
+        events.sort(key=lambda x: x.blockNumber)
+        if not events:
+            await ctx.send("no active challenges found")
+            return
+        e = Embed(title="Active oDAO Challenges")
+        e.description = ""
+        # get duration of challenge period
+        challenge_period = rp.call("rocketDAONodeTrustedSettingsMembers.getChallengeWindow")
+        for event in events:
+            time_left = challenge_period - (w3.eth.get_block("latest").timestamp - event.args.time)
+            time_left = uptime(time_left, True)
+            e.description += f"**{el_explorer_url(event.args.nodeChallengedAddress)}** was challenged by **{el_explorer_url(event.args.nodeChallengerAddress)}**\n"
+            e.description += f"Time Left: **{time_left}**\n\n"
+        await ctx.send(embed=e)
+
 
 async def setup(self):
     await self.add_cog(Random(self))
