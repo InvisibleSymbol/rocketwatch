@@ -385,7 +385,7 @@ class Random(commands.Cog):
 
     @hybrid_command()
     async def dai_stats(self, ctx: Context):
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         cdata = requests.get("https://api.makerburn.com/history/reth_a").json()
         if "history" not in cdata or not cdata["history"]:
             await ctx.send("ayo?")
