@@ -16,7 +16,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.reporter import report_error
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
+from utils.shared_w3 import w3, historical_w3
 from utils.thegraph import get_reth_ratio_past_month
 from utils.visibility import is_hidden
 
@@ -53,7 +53,7 @@ class RETHAPR(commands.Cog):
         # get latest block update from the db
         latest_db_block = await self.db.reth_apr.find_one(sort=[("block", -1)])
         latest_db_block = 0 if latest_db_block is None else latest_db_block["block"]
-        cursor_block = w3.eth.getBlock("latest")["number"]
+        cursor_block = historical_w3.eth.getBlock("latest")["number"]
         while True:
             balance_block = rp.call("rocketNetworkBalances.getBalancesBlock", block=cursor_block)
             if balance_block == latest_db_block:
