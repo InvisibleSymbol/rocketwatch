@@ -108,7 +108,7 @@ class DAI(commands.Cog):
                              f"<:VOID:721787344138797116>Borrowed `{int(v['principal']):,}` DAI" \
                              f" with `{v['collateral']:.2f}` rETH as collateral (`{int(v['collateralization'])}%`)\n" \
                              f"<:VOID:721787344138797116>Liquidation Price: `{int(v['liquidation_price'])}` rETH/DAI" \
-                             f" Accrued Fees: `{v['accrued_fees']:,2f} DAI`"
+                             f" Accrued Fees: `{v['accrued_fees']:. 2f} DAI`"
         await ctx.send(embed=e)
 
 
