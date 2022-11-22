@@ -5,9 +5,9 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import aiohttp
+import dice
 import humanize
 import pytz
-import dice
 import requests
 from discord import File
 from discord.ext import commands
@@ -360,7 +360,8 @@ class Random(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         c = rp.get_contract_by_name("rocketDAONodeTrustedActions")
         # get challenges made
-        events = c.events["ActionChallengeMade"].createFilter(fromBlock=w3.eth.get_block("latest").number - 7 * 24 * 60 * 60 // 12)
+        events = c.events["ActionChallengeMade"].createFilter(
+            fromBlock=w3.eth.get_block("latest").number - 7 * 24 * 60 * 60 // 12)
         # get all events
         events = events.get_all_entries()
         # remove all events of nodes that aren't challenged anymore
@@ -392,16 +393,18 @@ class Random(commands.Cog):
             return
         cd = cdata["history"][-1]
         sdata = requests.get("https://api.makerburn.com/status").json()
-        if "collateral_list" not in sdata or not (sd := next(iter([s for s in sdata["collateral_list"] if s["type"] == "reth_a"])), None):
+        if "collateral_list" not in sdata or not (
+        sd := next(iter([s for s in sdata["collateral_list"] if s["type"] == "reth_a"])), None):
             await ctx.send("ayo?")
             return
         e = Embed()
         e.add_field(name="DAI Minted:", value=f"{int(cd['dai_total']):,} DAI")
         e.add_field(name="Debt Ceiling:", value=f"{humanize.intword(cd['temp_dai_cap'])}/{humanize.intword(cd['dai_cap'])} USD")
         e.add_field(name="rETH Locked:", value=f"{sd['locked']:,.2f} rETH", inline=False)
+        stability_fee = sd["fee"] ** solidity.years - 1
+        e.add_field(name="Stability Fee:", value=f"{stability_fee:.2%}")
+        e.add_field(name="Liquidation Ratio:", value=f"{sd['liq_ratio']:.0%}")
         await ctx.send(embed=e)
-
-
 
 
 async def setup(self):
