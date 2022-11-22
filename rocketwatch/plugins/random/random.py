@@ -384,28 +384,6 @@ class Random(commands.Cog):
             e.description += f"Time Left: **{time_left}**\n\n"
         await ctx.send(embed=e)
 
-    @hybrid_command()
-    async def dai_stats(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        cdata = requests.get("https://api.makerburn.com/history/reth_a").json()
-        if "history" not in cdata or not cdata["history"]:
-            await ctx.send("ayo?")
-            return
-        cd = cdata["history"][-1]
-        sdata = requests.get("https://api.makerburn.com/status").json()
-        if "collateral_list" not in sdata or not (
-        sd := next(iter([s for s in sdata["collateral_list"] if s["type"] == "reth_a"])), None):
-            await ctx.send("ayo?")
-            return
-        e = Embed()
-        e.add_field(name="DAI Minted:", value=f"{int(cd['dai_total']):,} DAI")
-        e.add_field(name="Debt Ceiling:", value=f"{humanize.intword(cd['temp_dai_cap'])}/{humanize.intword(cd['dai_cap'])} USD")
-        e.add_field(name="rETH Locked:", value=f"{sd['locked']:,.2f} rETH", inline=False)
-        stability_fee = sd["fee"] ** solidity.years - 1
-        e.add_field(name="Stability Fee:", value=f"{stability_fee:.2%}")
-        e.add_field(name="Liquidation Ratio:", value=f"{sd['liq_ratio']:.0%}")
-        await ctx.send(embed=e)
-
 
 async def setup(self):
     await self.add_cog(Random(self))
