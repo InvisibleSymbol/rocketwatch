@@ -41,6 +41,7 @@ class QueuedSnapshot(commands.Cog):
         self.version = 2
 
     def run_loop(self):
+        return []
         # ratelimit
         if (datetime.now() - self.last_ran).seconds < self.ratelimit:
             return []
