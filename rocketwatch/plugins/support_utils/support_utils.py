@@ -345,7 +345,7 @@ class SupportUtils(GroupCog, name="support"):
             Choice(name="Last Edited Date", value="last_edited_date")
         ]
     )
-    async def list(self, interaction: Interaction, order_by: Choice[str] = "_id"):
+    async def list(self, interaction: Interaction, order_by: Choice[str] = Choice(name="Name", value="_id")):
         await interaction.response.defer(ephemeral=True)
         # get all templates and their last edited date using the support_bot_dumps collection
         templates = await self.db.support_bot.aggregate([
@@ -366,7 +366,7 @@ class SupportUtils(GroupCog, name="support"):
             }
         ]).to_list(None)
         # sort the templates by the specified order
-        templates.sort(key=lambda x: x[order_by])
+        templates.sort(key=lambda x: x[order_by.value])
         # create the embed
         embed = Embed(title="Templates")
         embed.description = "".join(f"\n`{template['_id']}` - <t:{template.get('last_edited_date', datetime.now()).timestamp():.0f}:R>" for template in templates) + ""
