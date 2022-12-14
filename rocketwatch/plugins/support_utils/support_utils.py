@@ -368,7 +368,7 @@ class SupportUtils(GroupCog, name="support"):
         # sort the templates by the specified order
         if isinstance(order_by, Choice):
             order_by = order_by.value
-        templates.sort(key=lambda x: x[order_by.value])
+        templates.sort(key=lambda x: x[order_by])
         # create the embed
         embed = Embed(title="Templates")
         embed.description = "".join(f"\n`{template['_id']}` - <t:{template.get('last_edited_date', datetime.now()).timestamp():.0f}:R>" for template in templates) + ""
