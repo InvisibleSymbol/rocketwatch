@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from bson import CodecOptions
 from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File, TextChannel, \
     ChannelType, User
-from discord.app_commands import Group, Choice
+from discord.app_commands import Group, Choice, choices
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -339,14 +339,46 @@ class SupportUtils(GroupCog, name="support"):
         )
 
     @subgroup.command()
-    async def list(self, interaction: Interaction):
+    @choices(
+        order_by=[
+            Choice(name="Name", value="_id"),
+            Choice(name="Last Edited Date", value="last_edited_date")
+        ]
+    )
+    async def list(self, interaction: Interaction, order_by: Choice[str] = "_id"):
         await interaction.response.defer(ephemeral=True)
-        # get all templates from the db
-        templates = await self.db.support_bot.find().to_list(None)
-        embed = Embed(title="Support Bot Templates")
-        # cant use fields because of the 25 field limit
-        embed.description = f"```{', '.join([template['_id'] for template in templates])}```"
-        await interaction.edit_original_response(embed=embed)
+        # get all templates and their last edited date using the support_bot_dumps collection
+        templates = await self.db.support_bot.aggregate([
+            {
+                "$lookup": {
+                    "from": "support_bot_dumps",
+                    "localField": "_id",
+                    "foreignField": "template",
+                    "as": "dump"
+                }
+
+            },
+            {
+                "$project": {
+                    "_id": 1,
+                    "last_edited_date": {"$arrayElemAt": ["$dump.ts", 0]}
+                }
+            }
+        ]).to_list(None)
+        # sort the templates by the specified order
+        templates.sort(key=lambda x: x[order_by])
+        # create the embed
+        embed = Embed(title="Templates")
+        embed.description = "".join(f"\n`{template['_id']}` - <t:{template.get('last_edited_date', datetime.now()).timestamp():.0f}:R>" for template in templates) + ""
+        # split the embed into multiple embeds if it is too long
+        embeds = [embed]
+        while len(embeds[-1]) > 6000:
+            embeds.append(Embed())
+            embeds[-1].title = embed.title
+            embeds[-1].description = embed.description[6000:]
+            embed.description = embed.description[:6000]
+        await interaction.edit_original_response(embeds=embeds)
+
 
     @subgroup.command()
     async def use(self, interaction: Interaction, name: str, mention: User | None):
