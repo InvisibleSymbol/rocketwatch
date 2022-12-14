@@ -339,6 +339,16 @@ class SupportUtils(GroupCog, name="support"):
         )
 
     @subgroup.command()
+    async def list(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        # get all templates from the db
+        templates = await self.db.support_bot.find().to_list(None)
+        embed = Embed(title="Support Bot Templates")
+        # cant use fields because of the 25 field limit
+        embed.description = f"```{', '.join([template['_id'] for template in templates])}```"
+        await interaction.edit_original_response(embed=embed)
+
+    @subgroup.command()
     async def use(self, interaction: Interaction, name: str, mention: User | None):
         await _use(self.db, interaction, name, mention)
 
