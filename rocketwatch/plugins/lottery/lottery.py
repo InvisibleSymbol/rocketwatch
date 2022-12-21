@@ -148,15 +148,11 @@ class Lottery(commands.Cog):
         Get the status of the current and next sync committee.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed(title="Sync Committee Lottery")
-        description = "**Current sync committee:**\n"
-        description += await lottery.generate_sync_committee_description("latest")
-        description += "\n\n"
-        description += "**Next sync committee:**\n"
-        description += await lottery.generate_sync_committee_description("next")
-        e.description = description
-
-        await ctx.send(embed=e)
+        embeds = [
+            Embed(title="Current sync committee:", description=await lottery.generate_sync_committee_description("latest")),
+            Embed(title="Next sync committee:", description=await lottery.generate_sync_committee_description("next"))
+        ]
+        await ctx.send(embeds=embeds)
 
 
 async def setup(bot):
