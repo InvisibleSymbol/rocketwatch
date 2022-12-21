@@ -179,6 +179,8 @@ class Poap(commands.GroupCog, name="poap-autoclaim"):
                         url = f"https://api.poap.tech/delivery-addresses/{delivery_id}?limit=1000&offset={offset}"
                         async with session.get(url) as resp:
                             data = await resp.json()
+                            log.info(f"Got {len(data)} addresses from {url}")
+                            log.debug(data)
                             if not data["items"]:
                                 break
                             addresses.extend(
