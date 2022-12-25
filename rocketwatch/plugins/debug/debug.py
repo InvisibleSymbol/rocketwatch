@@ -92,6 +92,23 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def get_members_of_role(self, ctx: Context, guild_id: str, role_id: str):
+        """Get members of a role"""
+        await ctx.defer(ephemeral=True)
+        try:
+            guild = self.bot.get_guild(int(guild_id))
+            role = guild.get_role(int(role_id))
+            # print name + identifier and id of each member
+            members = [f"{member.name}#{member.discriminator}, ({member.id})" for member in role.members]
+            # generate a file with a header that mentions what role and guild the members are from
+            file = File(io.StringIO(f"Members of {role.name} ({role.id}) in {guild.name} ({guild.id})\n\n" + "\n".join(members)), filename="members.txt")
+            await ctx.send(file=file)
+        except Exception as err:
+            await ctx.send(content=f"```{repr(err)}```")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def delete(self, ctx: Context, message_url: str):
         """
         Guess what. It deletes a message.
