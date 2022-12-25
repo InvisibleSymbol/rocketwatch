@@ -97,7 +97,9 @@ class Debug(Cog):
         await ctx.defer(ephemeral=True)
         try:
             guild = self.bot.get_guild(int(guild_id))
+            log.debug(guild)
             role = guild.get_role(int(role_id))
+            log.debug(role)
             # print name + identifier and id of each member
             members = [f"{member.name}#{member.discriminator}, ({member.id})" for member in role.members]
             # generate a file with a header that mentions what role and guild the members are from
