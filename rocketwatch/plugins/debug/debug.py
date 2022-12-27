@@ -108,6 +108,24 @@ class Debug(Cog):
         except Exception as err:
             await ctx.send(content=f"```{repr(err)}```")
 
+    # list all roles of a guild with name and id
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def get_roles(self, ctx: Context, guild_id: str):
+        """Get roles of a guild"""
+        await ctx.defer(ephemeral=True)
+        try:
+            guild = self.bot.get_guild(int(guild_id))
+            log.debug(guild)
+            # print name + identifier and id of each member
+            roles = [f"{role.name}, ({role.id})" for role in guild.roles]
+            # generate a file with a header that mentions what role and guild the members are from
+            file = File(io.StringIO(f"Roles of {guild.name} ({guild.id})\n\n" + "\n".join(roles)), filename="roles.txt")
+            await ctx.send(file=file)
+        except Exception as err:
+            await ctx.send(content=f"```{repr(err)}```")
+
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
