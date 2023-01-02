@@ -3,8 +3,7 @@
 A Discord bot that tracks Rocket Pool Events
 
 [![wakatime](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch.svg)](https://wakatime.com/badge/github/InvisibleSymbol/rocketwatch)
-[![LGTM Grade](https://img.shields.io/lgtm/grade/python/github/InvisibleSymbol/rocketwatch?label=code%20quality&logo=lgtm)](https://lgtm.com/projects/g/InvisibleSymbol/rocketwatch/alerts/)
-
+<a href="https://codeclimate.com/github/InvisibleSymbol/rocketwatch/maintainability"><img src="https://api.codeclimate.com/v1/badges/1d046cb1c9da1d667c9c/maintainability" /></a>
 - Ability to track Proposals (Description/Vote Count read from Contract)
 - Ability to track oDAO Member Activity (uses Nicknames of oDAO Members if available)
 - Ability to track Deposit Poll Activity
