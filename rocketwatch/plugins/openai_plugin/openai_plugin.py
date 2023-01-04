@@ -64,7 +64,7 @@ class OpenAi(commands.Cog):
             presence_penalty=1
         )
         e = Embed()
-        e.title = "Chat Summarization of the last 128 messages"
+        e.title = f"Chat Summarization of the last {len(messages)} messages"
         e.description = response["choices"][0]["text"]
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt.txt"
