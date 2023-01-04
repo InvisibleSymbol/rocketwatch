@@ -39,7 +39,7 @@ class OpenAi(commands.Cog):
         return text
 
     @hybrid_command()
-    async def summarize_chat(self, ctx: Context, channel_id: str):
+    async def summarize_chat(self, ctx: Context):
         if self.last_summary is not None and (datetime.now() - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
@@ -48,8 +48,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         await ctx.defer()
-        channel = self.bot.get_channel(int(channel_id))
-        messages = [message async for message in channel.history(limit=128) if message.content != ""]
+        messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         response = openai.Completion.create(
