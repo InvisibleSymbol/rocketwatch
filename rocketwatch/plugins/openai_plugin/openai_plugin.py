@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import openai
@@ -36,6 +36,9 @@ class OpenAi(commands.Cog):
             metadata.append(f"{len(message.embeds)} embeds")
         if metadata:
             text += f" <{', '.join(metadata)}>\n"
+        # ignore messages that are older than an hour
+        if message.created_at < datetime.now(timezone.utc) - timedelta(hours=1):
+            text = ""
         return text
 
     @hybrid_command()
