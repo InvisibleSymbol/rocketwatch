@@ -36,9 +36,6 @@ class OpenAi(commands.Cog):
             metadata.append(f"{len(message.embeds)} embeds")
         if metadata:
             text += f" <{', '.join(metadata)}>\n"
-        # ignore messages that are older than an hour
-        if message.created_at < datetime.now(timezone.utc) - timedelta(hours=1):
-            text = ""
         return text
 
     @hybrid_command()
@@ -52,6 +49,8 @@ class OpenAi(commands.Cog):
             return
         await ctx.defer()
         messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
+        messages = [message for message in messages if (datetime.now() - message.created_at) < timedelta(hours=1)]
+        messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         response = openai.Completion.create(
