@@ -50,6 +50,9 @@ class OpenAi(commands.Cog):
         await ctx.defer()
         messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
         messages = [message for message in messages if (datetime.now() - message.created_at) < timedelta(hours=1)]
+        # if last_summary is set, cut off the messages at that point as well
+        if self.last_summary is not None:
+            messages = [message for message in messages if message.created_at < self.last_summary]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
