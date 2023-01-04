@@ -25,3 +25,4 @@ retry==0.9.2
 checksumdir==1.2.0
 
 dice==3.1.2
+openai==0.25.0
