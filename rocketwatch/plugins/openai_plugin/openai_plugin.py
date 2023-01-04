@@ -3,9 +3,6 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 import openai
-import random
-import pytz
-from datetime import timezone
 from discord import Object, File
 from discord.app_commands import guilds
 from discord.ext import commands
@@ -14,7 +11,6 @@ from discord.ext.commands import hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.visibility import is_hidden
 
 log = logging.getLogger("openai")
 
@@ -43,8 +39,6 @@ class OpenAi(commands.Cog):
         return text
 
     @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
     async def summarize_chat(self, ctx: Context, channel_id: str):
         if self.last_summary is not None and (datetime.now() - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
