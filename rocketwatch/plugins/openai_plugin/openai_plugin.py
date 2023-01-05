@@ -48,7 +48,7 @@ class OpenAi(commands.Cog):
 
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
-        if self.last_summary is not None and (datetime.now() - self.last_summary) < timedelta(minutes=15):
+        if self.last_summary is not None and (datetime.now(timezone.utc) - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
         if ctx.channel.id != 405163713063288832:
