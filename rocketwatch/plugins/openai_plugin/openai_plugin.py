@@ -41,6 +41,9 @@ class OpenAi(commands.Cog):
             metadata.append(f"reply to \"{message.reference.resolved.content[:10]}…\" from {message.reference.resolved.author.name}")
         if metadata:
             text += f" <{', '.join(metadata)}>\n"
+        # replace all <@[0-9]+> with the name of the user
+        for mention in message.mentions:
+            text = text.replace(f"<@{mention.id}>", mention.name)
         return text
 
     @hybrid_command()
