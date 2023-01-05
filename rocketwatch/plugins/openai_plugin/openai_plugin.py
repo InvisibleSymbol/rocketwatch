@@ -48,7 +48,6 @@ class OpenAi(commands.Cog):
         if self.last_summary is not None and (datetime.now() - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
-        self.last_summary = datetime.now(timezone.utc)
         if ctx.channel.id != 405163713063288832:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
@@ -59,6 +58,10 @@ class OpenAi(commands.Cog):
         if self.last_summary is not None:
             messages = [message for message in messages if message.created_at < self.last_summary]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
+        if len(messages) < 32:
+            await ctx.send("Not enough messages to summarize.", ephemeral=True)
+            return
+        self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         response = openai.Completion.create(
