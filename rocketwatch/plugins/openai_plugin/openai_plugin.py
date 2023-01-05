@@ -59,7 +59,7 @@ class OpenAi(commands.Cog):
         messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
         if self.last_summary is not None:
-            messages = [message for message in messages if message.created_at < self.last_summary]
+            messages = [message for message in messages if message.created_at > self.last_summary]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
