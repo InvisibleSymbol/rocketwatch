@@ -64,6 +64,9 @@ class OpenAi(commands.Cog):
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
             return
         await ctx.defer()
+        # remove old messages if we are above 5500 characters overall
+        while sum(len(self.message_to_text(message)) for message in messages) > 5500:
+            messages.pop()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
