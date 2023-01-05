@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import openai
-from discord import Object, File
+from discord import Object, File, DeletedReferencedMessage
 from discord.app_commands import guilds
 from discord.ext import commands
 from discord.ext.commands import Context, is_owner
@@ -27,15 +27,15 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message):
-        text = f"{message.author.name} — at {message.created_at.strftime('%H:%M:%S')}\n {message.content}"
+        text = f"{message.author.name} — at {message.created_at.strftime('%H:%M')}\n {message.content}"
         # if there is an image attached, add it to the text as a note
         metadata = []
         if message.attachments:
             metadata.append(f"{len(message.attachments)} attachments")
         if message.embeds:
             metadata.append(f"{len(message.embeds)} embeds")
-        # replies
-        if message.reference:
+        # replies and make sure the reference is not deleted
+        if message.reference and not isinstance(message.reference.resolved, DeletedReferencedMessage):
             # show name of referenced message author
             # and the first 10 characters of the referenced message
             metadata.append(f"reply to \"{message.reference.resolved.content[:10]}…\" from {message.reference.resolved.author.name}")
@@ -54,7 +54,6 @@ class OpenAi(commands.Cog):
         if ctx.channel.id != 405163713063288832:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        await ctx.defer()
         messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
         messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
@@ -64,6 +63,7 @@ class OpenAi(commands.Cog):
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
             return
+        await ctx.defer()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
