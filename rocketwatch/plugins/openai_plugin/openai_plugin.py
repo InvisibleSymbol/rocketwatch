@@ -34,6 +34,11 @@ class OpenAi(commands.Cog):
             metadata.append(f"{len(message.attachments)} attachments")
         if message.embeds:
             metadata.append(f"{len(message.embeds)} embeds")
+        # replies
+        if message.reference:
+            # show name of referenced message author
+            # and the first 10 characters of the referenced message
+            metadata.append(f"reply to \"{message.reference.resolved.content[:10]}…\" from {message.reference.resolved.author.name}")
         if metadata:
             text += f" <{', '.join(metadata)}>\n"
         return text
@@ -43,13 +48,13 @@ class OpenAi(commands.Cog):
         if self.last_summary is not None and (datetime.now() - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
-        self.last_summary = datetime.now()
+        self.last_summary = datetime.now(timezone.utc)
         if ctx.channel.id != 405163713063288832:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         await ctx.defer()
         messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
-        messages = [message for message in messages if (datetime.now() - message.created_at) < timedelta(hours=1)]
+        messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
         if self.last_summary is not None:
             messages = [message for message in messages if message.created_at < self.last_summary]
