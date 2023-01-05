@@ -79,6 +79,7 @@ class OpenAi(commands.Cog):
         e = Embed()
         e.title = f"Chat Summarization of the last {len(messages)} messages"
         e.description = response["choices"][0]["text"]
+        e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt.txt"
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
