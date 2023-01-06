@@ -65,7 +65,7 @@ class OpenAi(commands.Cog):
             return
         await ctx.defer()
         # remove old messages if we are above 5500 characters overall
-        while sum(len(self.message_to_text(message)) for message in messages) > 5500:
+        while sum(len(self.message_to_text(message)) for message in messages) > 10000:
             messages.pop()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
