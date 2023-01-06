@@ -8,6 +8,7 @@ from discord.app_commands import guilds
 from discord.ext import commands
 from discord.ext.commands import Context, is_owner
 from discord.ext.commands import hybrid_command
+from transformers import GPT2TokenizerFast
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -23,6 +24,7 @@ class OpenAi(commands.Cog):
         engines = openai.Engine.list()
         log.debug(engines)
         self.engine = "text-davinci-003"
+        self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
         self.last_summary = None
 
     @classmethod
@@ -43,7 +45,7 @@ class OpenAi(commands.Cog):
             text += f" <{', '.join(metadata)}>\n"
         # replace all <@[0-9]+> with the name of the user
         for mention in message.mentions:
-            text = text.replace(f"<@{mention.id}>", mention.name)
+            text = text.replace(f"<@{mention.id}>", f"@{mention.name}")
         return text
 
     @hybrid_command()
@@ -54,7 +56,7 @@ class OpenAi(commands.Cog):
         if ctx.channel.id != 405163713063288832:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        messages = [message async for message in ctx.channel.history(limit=128) if message.content != ""]
+        messages = [message async for message in ctx.channel.history(limit=512) if message.content != ""]
         messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
         if self.last_summary is not None:
@@ -65,7 +67,7 @@ class OpenAi(commands.Cog):
             return
         await ctx.defer()
         # remove old messages if we are above 5500 characters overall
-        while sum(len(self.message_to_text(message)) for message in messages) > 10000:
+        while len(self.tokenizer("".join(self.message_to_text(message)) for message in messages)['input_ids']) > (4000 - 300):
             messages.pop()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
