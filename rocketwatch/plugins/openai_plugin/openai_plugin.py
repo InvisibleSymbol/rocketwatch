@@ -58,7 +58,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         messages = [message async for message in ctx.channel.history(limit=512) if message.content != ""]
-        messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
+        # messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
         if self.last_summary is not None:
             messages = [message for message in messages if message.created_at > self.last_summary]
