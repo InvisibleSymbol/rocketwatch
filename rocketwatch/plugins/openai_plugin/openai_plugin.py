@@ -50,6 +50,7 @@ class OpenAi(commands.Cog):
 
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
+        await ctx.defer(ephemeral=True)
         if self.last_summary is not None and (datetime.now(timezone.utc) - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
@@ -65,8 +66,6 @@ class OpenAi(commands.Cog):
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
             return
-        await ctx.defer()
-        # remove old messages if we are above 5500 characters overall
         while len(self.tokenizer("".join(self.message_to_text(message)) for message in messages)['input_ids']) > (4000 - 300):
             messages.pop()
         self.last_summary = datetime.now(timezone.utc)
@@ -88,7 +87,9 @@ class OpenAi(commands.Cog):
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt.txt"
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
-        await ctx.send(embed=e, file=f)
+        # send message in the channel
+        await ctx.send("done")
+        await ctx.channel.send(file=f, embed=e)
 
 
 async def setup(bot):
