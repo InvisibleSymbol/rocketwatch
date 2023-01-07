@@ -59,7 +59,7 @@ class OpenAi(commands.Cog):
         if ctx.channel.id not in [405163713063288832, 998627604686979214]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        response, prompt = self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:")
+        response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:")
         e = Embed()
         e.title = "Chat Summarization"
         e.description = response
@@ -79,7 +79,7 @@ class OpenAi(commands.Cog):
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         return f"{prefix}\n\n{prompt}\n\n{suffix}"
 
-    def prompt_model(self, channel, prompt):
+    async def prompt_model(self, channel, prompt):
         messages = [message async for message in channel.history(limit=512) if message.content != ""]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         if len(messages) < 32:
@@ -115,7 +115,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't use this command here.", ephemeral=True)
             return
 
-        response, prompt = self.prompt_model(ctx.channel, "The following is a financial advice:")
+        response, prompt = await self.prompt_model(ctx.channel, "The following is a financial advice:")
         e = Embed()
         e.title = "Financial Advice"
         e.description = response
