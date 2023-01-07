@@ -59,7 +59,8 @@ class OpenAi(commands.Cog):
         if ctx.channel.id not in [405163713063288832, 998627604686979214]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:")
+        last_ts = self.last_summary_dict.get(ctx.channel.id)
+        response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:", last_ts)
         e = Embed()
         e.title = "Chat Summarization"
         e.description = response["choices"][0]["text"]
@@ -79,9 +80,10 @@ class OpenAi(commands.Cog):
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         return f"{prefix}\n\n{prompt}\n\n{suffix}"
 
-    async def prompt_model(self, channel, prompt):
+    async def prompt_model(self, channel, prompt, cut_off_ts):
         messages = [message async for message in channel.history(limit=512) if message.content != ""]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
+        messages = [message for message in messages if message.created_at > cut_off_ts]
         if len(messages) < 32:
             return None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
@@ -116,10 +118,11 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't use this command here.", ephemeral=True)
             return
 
-        response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice based on the above chat log:")
+        last_ts = self.last_financial_advice_dict.get(ctx.channel.id)
+        response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice based on the above chat log:", last_ts)
         e = Embed()
         e.title = "Financial Advice"
-        e.description = response['choices'][0]['text']
+        e.description = response['choices'][0]['t   ext']
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
