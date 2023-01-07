@@ -86,7 +86,8 @@ class OpenAi(commands.Cog):
             return None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
         while len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']) > (4096 - 256):
-            messages.pop()
+            # remove the oldest message
+            messages.pop(0)
 
         prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.Completion.create(
