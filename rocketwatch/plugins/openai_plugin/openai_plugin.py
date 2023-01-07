@@ -116,7 +116,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't use this command here.", ephemeral=True)
             return
 
-        response, prompt = await self.prompt_model(ctx.channel, "The following is a financial advice:")
+        response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice based on the above chat log:")
         e = Embed()
         e.title = "Financial Advice"
         e.description = response['choices'][0]['text']
