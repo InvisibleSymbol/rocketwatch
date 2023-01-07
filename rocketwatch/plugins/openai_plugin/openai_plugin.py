@@ -66,7 +66,7 @@ class OpenAi(commands.Cog):
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
             return
-        while len(self.tokenizer("".join(self.message_to_text(message) for message in messages))['input_ids']) > (4096 - 600):
+        while len(self.tokenizer("".join(self.message_to_text(message) for message in messages))['input_ids']) > (4096 - 700):
             messages.pop()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
