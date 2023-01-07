@@ -59,7 +59,7 @@ class OpenAi(commands.Cog):
         if ctx.channel.id not in [405163713063288832, 998627604686979214]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        last_ts = self.last_summary_dict.get(ctx.channel.id)
+        last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
         response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:", last_ts)
         e = Embed()
         e.title = "Chat Summarization"
@@ -118,7 +118,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't use this command here.", ephemeral=True)
             return
 
-        last_ts = self.last_financial_advice_dict.get(ctx.channel.id)
+        last_ts = self.last_financial_advice_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
         response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice based on the above chat log:", last_ts)
         e = Embed()
         e.title = "Financial Advice"
