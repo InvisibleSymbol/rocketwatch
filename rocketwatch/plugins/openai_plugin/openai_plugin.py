@@ -73,7 +73,7 @@ class OpenAi(commands.Cog):
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
         response = openai.Completion.create(
             engine=self.engine,
-            prompt=f"The following is a chat log. anything text prefixed with > is a quote.\n\n{prompt}\n\nThe following is a detailed summary of this chat log:",
+            prompt=f"The following is a chat log. Everything prefixed with `>` is a quote.\n\n{prompt}\n\nThe following is a detailed summarization of the above chat log:",
             max_tokens=512,
             temperature=0.7,
             top_p=1.0,
