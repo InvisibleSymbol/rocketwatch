@@ -62,7 +62,7 @@ class OpenAi(commands.Cog):
         response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:")
         e = Embed()
         e.title = "Chat Summarization"
-        e.description = response
+        e.description = response["choices"][0]["text"]
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
@@ -98,7 +98,7 @@ class OpenAi(commands.Cog):
             frequency_penalty=0.0,
             presence_penalty=1
         )
-        return response["choices"][0]["text"], prompt
+        return response, prompt
 
     """
     func financial_advice(), which does the same thing as summarize_chat, but with a different prompt, asking it to give financial advice
@@ -118,7 +118,7 @@ class OpenAi(commands.Cog):
         response, prompt = await self.prompt_model(ctx.channel, "The following is a financial advice:")
         e = Embed()
         e.title = "Financial Advice"
-        e.description = response
+        e.description = response['choices'][0]['text']
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
