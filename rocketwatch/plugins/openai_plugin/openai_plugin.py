@@ -66,7 +66,7 @@ class OpenAi(commands.Cog):
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
             return
-        while len(self.tokenizer("".join(self.message_to_text(message) for message in messages))['input_ids']) > (4096 - 700):
+        while len(self.tokenizer("".join(self.message_to_text(message) for message in messages))['input_ids']) > (4096 - 400):
             messages.pop()
         self.last_summary = datetime.now(timezone.utc)
         messages.sort(key=lambda x: x.created_at)
@@ -74,7 +74,7 @@ class OpenAi(commands.Cog):
         response = openai.Completion.create(
             engine=self.engine,
             prompt=f"The following is a chat log. Everything prefixed with `>` is a quote.\n\n{prompt}\n\nThe following is a summarization of the above chat log:",
-            max_tokens=512,
+            max_tokens=256,
             temperature=0.7,
             top_p=1.0,
             frequency_penalty=0.0,
