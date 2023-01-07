@@ -37,7 +37,7 @@ class OpenAi(commands.Cog):
         if message.embeds:
             metadata.append(f"{len(message.embeds)} embeds")
         # replies and make sure the reference is not deleted
-        if message.reference and not isinstance(message.reference.resolved, DeletedReferencedMessage):
+        if message.reference and not isinstance(message.reference.resolved, DeletedReferencedMessage) and message.reference.resolved:
             # show name of referenced message author
             # and the first 10 characters of the referenced message
             metadata.append(f"reply to \"{message.reference.resolved.content[:10]}…\" from {message.reference.resolved.author.name}")
