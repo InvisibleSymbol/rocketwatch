@@ -26,6 +26,7 @@ class OpenAi(commands.Cog):
         self.engine = "text-davinci-003"
         self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
         self.last_summary_dict = {}
+        self.last_financial_advice_dict = {}
 
     @classmethod
     def message_to_text(cls, message):
@@ -51,46 +52,82 @@ class OpenAi(commands.Cog):
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
-        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary) < timedelta(minutes=15):
+        # ratelimit
+        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary_dict.get(ctx.channel.id)) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
         if ctx.channel.id not in [405163713063288832, 998627604686979214]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        messages = [message async for message in ctx.channel.history(limit=512) if message.content != ""]
-        # messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
-        # if last_summary is set, cut off the messages at that point as well
-        if self.last_summary_dict.get(ctx.channel.id) is not None:
-            messages = [message for message in messages if message.created_at > self.last_summary_dict.get(ctx.channel.id)]
-        messages = [message for message in messages if message.author.id != self.bot.user.id]
-        if len(messages) < 32:
-            await ctx.send("Not enough messages to summarize.", ephemeral=True)
-            return
-        while len(self.tokenizer("".join(self.message_to_text(message) for message in messages))['input_ids']) > (4096 - 400):
-            messages.pop()
-        self.last_summary = datetime.now(timezone.utc)
+        response, prompt = self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:")
+        e = Embed()
+        e.title = "Chat Summarization"
+        e.description = response
+        e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
+        # attach the prompt as a file
+        f = BytesIO(prompt.encode("utf-8"))
+        f.name = "prompt.txt"
+        f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
+        # send message in the channel
+        await ctx.send("done")
+        await ctx.channel.send(embed=e, file=f)
+        self.last_summary_dict[ctx.channel.id] = datetime.now(timezone.utc)
+
+    # a function that generates the prompt for the model by taking an array of messages, a prefix and a suffix
+    def generate_prompt(self, messages, prefix, suffix):
         messages.sort(key=lambda x: x.created_at)
         prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
+        return f"{prefix}\n\n{prompt}\n\n{suffix}"
+
+    def prompt_model(self, channel, prompt):
+        messages = [message async for message in channel.history(limit=512) if message.content != ""]
+        messages = [message for message in messages if message.author.id != self.bot.user.id]
+        if len(messages) < 32:
+            return None
+        prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
+        while len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']) > (4096 - 256):
+            messages.pop()
+
+        prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.Completion.create(
             engine=self.engine,
-            prompt=f"The following is a chat log. Everything prefixed with `>` is a quote.\n\n{prompt}\n\nThe following is a summarization of the above chat log:",
+            prompt=prompt,
             max_tokens=256,
             temperature=0.7,
             top_p=1.0,
             frequency_penalty=0.0,
             presence_penalty=1
         )
+        return response["choices"][0]["text"], prompt
+
+    """
+    func financial_advice(), which does the same thing as summarize_chat, but with a different prompt, asking it to give financial advice
+    should only work for channel 998627604686979214
+    """
+    @hybrid_command()
+    async def financial_advice(self, ctx: Context):
+        await ctx.defer(ephemeral=True)
+        # ratelimit every hour
+        if self.last_financial_advice_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_financial_advice_dict.get(ctx.channel.id)) < timedelta(hours=1):
+            await ctx.send("You can only get financial advice once every hour.", ephemeral=True)
+            return
+        if ctx.channel.id != 998627604686979214:
+            await ctx.send("You can't use this command here.", ephemeral=True)
+            return
+
+        response, prompt = self.prompt_model(ctx.channel, "The following is a financial advice:")
         e = Embed()
-        e.title = f"Chat Summarization of the last {len(messages)} messages"
-        e.description = response["choices"][0]["text"]
+        e.title = "Financial Advice"
+        e.description = response
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
+        # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt.txt"
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
-        # send message in the channel
         await ctx.send("done")
-        await ctx.channel.send(file=f, embed=e)
+        await ctx.channel.send(embed=e, file=f)
+        self.last_financial_advice_dict[ctx.channel.id] = datetime.now(timezone.utc)
 
 
-async def setup(bot):
-    await bot.add_cog(OpenAi(bot))
+async def setup(self):
+    await self.add_cog(OpenAi(self))
