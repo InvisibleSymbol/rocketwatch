@@ -25,7 +25,7 @@ class OpenAi(commands.Cog):
         log.debug(engines)
         self.engine = "text-davinci-003"
         self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-        self.last_summary = None
+        self.last_summary_dict = {}
 
     @classmethod
     def message_to_text(cls, message):
@@ -51,17 +51,17 @@ class OpenAi(commands.Cog):
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
-        if self.last_summary is not None and (datetime.now(timezone.utc) - self.last_summary) < timedelta(minutes=15):
+        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary) < timedelta(minutes=15):
             await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
             return
-        if ctx.channel.id != 405163713063288832:
+        if ctx.channel.id not in [405163713063288832, 998627604686979214]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         messages = [message async for message in ctx.channel.history(limit=512) if message.content != ""]
         # messages = [message for message in messages if (datetime.now(timezone.utc) - message.created_at) < timedelta(hours=1)]
         # if last_summary is set, cut off the messages at that point as well
-        if self.last_summary is not None:
-            messages = [message for message in messages if message.created_at > self.last_summary]
+        if self.last_summary_dict.get(ctx.channel.id) is not None:
+            messages = [message for message in messages if message.created_at > self.last_summary_dict.get(ctx.channel.id)]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         if len(messages) < 32:
             await ctx.send("Not enough messages to summarize.", ephemeral=True)
