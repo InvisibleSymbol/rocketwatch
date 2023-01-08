@@ -60,7 +60,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
-        response, prompt = await self.prompt_model(ctx.channel, "The following is a summarization of the above chat log:", last_ts)
+        response, prompt = await self.prompt_model(ctx.channel, "The following is a short summary of the above chat log:", last_ts)
         e = Embed()
         e.title = "Chat Summarization"
         e.description = response["choices"][0]["text"]
@@ -122,7 +122,7 @@ class OpenAi(commands.Cog):
         response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice based on the above chat log:", last_ts)
         e = Embed()
         e.title = "Financial Advice"
-        e.description = response['choices'][0]['t   ext']
+        e.description = response['choices'][0]['text']
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
