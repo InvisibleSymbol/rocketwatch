@@ -121,7 +121,7 @@ class OpenAi(commands.Cog):
         last_ts = self.last_financial_advice_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
         response, prompt = await self.prompt_model(ctx.channel, "The following is financial advice. This advice should either be bullish or bearish depending on the above chat log. Do not talk about the concept of financial advice itself.", last_ts)
         e = Embed()
-        e.title = "Financial Advice"
+        e.title = "(Not) Financial Advice"
         e.description = response['choices'][0]['text']
         e.set_footer(text=f"Request cost: ${response['usage']['total_tokens'] / 1000 * 0.02:.2f} | /donate if you like this command")
         # attach the prompt as a file
