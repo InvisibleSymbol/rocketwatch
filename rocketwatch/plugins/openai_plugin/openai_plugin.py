@@ -114,7 +114,7 @@ class OpenAi(commands.Cog):
         if self.last_financial_advice_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_financial_advice_dict.get(ctx.channel.id)) < timedelta(hours=1):
             await ctx.send("You can only get financial advice once every hour.", ephemeral=True)
             return
-        if ctx.channel.id != 998627604686979214:
+        if ctx.channel.id not in [405163713063288832,998627604686979214]:
             await ctx.send("You can't use this command here.", ephemeral=True)
             return
 
