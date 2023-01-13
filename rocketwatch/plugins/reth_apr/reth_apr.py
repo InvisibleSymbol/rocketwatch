@@ -114,14 +114,14 @@ class RETHAPR(commands.Cog):
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
 
-        e.add_field(name="Observed rETH APR (7 day average):",
+        e.add_field(name="Observed rETH APR (7 period average):",
                     value=f"{y_7d[-1]:.2%} (Commissions Fees accounted for)",
                     inline=False)
         fig = plt.figure()
         # format the daily average line as a line with dots
-        plt.plot(x, y, color=str(e.color), linestyle="-", marker=".", label="Daily Average")
+        plt.plot(x, y, color=str(e.color), linestyle="-", marker=".", label="Period Average")
         # format the 7 day average line as --
-        plt.plot(x, y_7d, color=str(e.color), linestyle="--", label="7 Day Average")
+        plt.plot(x, y_7d, color=str(e.color), linestyle="--", label="7 Period Average")
         plt.title("Observed rETH APR values")
         plt.xlabel("Date")
         plt.ylabel("APR")
