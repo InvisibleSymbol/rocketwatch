@@ -149,7 +149,6 @@ class RETHAPR(commands.Cog):
         plt.gca().xaxis.set_major_formatter(old_formatter)
 
         e.set_image(url="attachment://reth_apr.png")
-        """
         # get average node_fee from db
         node_fee = await self.db.minipools.aggregate([
             {"$match": {"node_fee": {"$exists": True}}},
@@ -157,7 +156,6 @@ class RETHAPR(commands.Cog):
         ]).to_list(length=1)
 
         e.add_field(name="Current Average Commission:", value=f"{node_fee[0]['avg']:.2%}")
-        """
 
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
