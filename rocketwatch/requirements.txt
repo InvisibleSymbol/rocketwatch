@@ -11,7 +11,7 @@ uptime==3.0.1
 discord.py==2.1.0
 config==0.5.1
 pytz==2022.6
-matplotlib==3.6.2
+matplotlib==3.6.3
 inflect==5.6.2
 motor==3.1.1
 wordcloud==1.8.2.2
