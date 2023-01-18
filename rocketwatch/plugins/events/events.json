@@ -123,6 +123,10 @@
                 {
                     "event_name": "RewardSnapshot",
                     "name": "odao_rewards_snapshot_event"
+                },
+                {
+                    "event_name": "RewardSnapshotSubmitted",
+                    "name": "odao_rewards_snapshot_submission_event"
                 }
             ]
         },

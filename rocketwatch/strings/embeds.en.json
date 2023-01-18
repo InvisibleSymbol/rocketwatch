@@ -45,6 +45,10 @@
         "title": ":camera_with_flash: Reward Snapshot Published",
         "description": "Snapshot #%{rewardIndex} has been published by the oDAO!\nIt spans from <t:%{intervalStartTime}> till <t:%{intervalEndTime}>"
     },
+    "odao_rewards_snapshot_submission_event": {
+        "title": ":writing_hand: Reward Snapshot Submission Submitted",
+        "description": "%{from} has published their submission for Snapshot #%{rewardIndex}"
+    },
     "odao_proposal_add_event": {
         "title": ":bulb: Proposal Created",
         "description": "%{proposer} created Proposal #%{proposalID}!\n```Description:\n%{message}```"
