@@ -190,6 +190,10 @@
                 {
                     "event_name": "MinipoolPrestaked",
                     "name": "minipool_prestake_event"
+                },
+                {
+                    "event_name": "ScrubVoted",
+                    "name": "minipool_scrub_vote_event"
                 }
             ]
         },

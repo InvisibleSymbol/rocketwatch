@@ -145,6 +145,10 @@
         "title": ":rotating_light: Minipool Scrubbed",
         "description": "Minipool %{minipool} has been scrubbed due to invalid Withdrawal Credentials!"
     },
+    "minipool_scrub_vote_event": {
+        "title": ":warning: Minipool Voted For Scrub",
+        "description": "%{member} has voted for Minipool %{minipool} to be scrubbed due to invalid Withdrawal Credentials!"
+    },
     "node_rpl_slash_event": {
         "title": ":rotating_light: Node Operator Slashed",
         "description": "Node Operator %{node} has been slashed for %{amount} RPL (%{ethValue} ETH)!"
