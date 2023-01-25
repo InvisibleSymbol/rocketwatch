@@ -65,7 +65,20 @@ class MakerAPI:
                 return data
 
     async def get_vaults(self, ilk="RETH-A"):
-        return await self._call_api("v1/vaults/current_state", params={"ilk": ilk, "limit": 10000})
+        # get vaults using v1/vaults/current_state
+        # limit = 100
+        # offset identifier = "skip"
+
+        result = []
+        offset = 0
+        while True:
+            data = await self._call_api("v1/vaults/current_state", params={"ilk": ilk, "limit": 100, "skip": offset})
+
+            if not data:
+                break
+            result.extend(data)
+            offset += 100
+        return result
 
 
 class DAI(commands.Cog):
@@ -104,7 +117,7 @@ class DAI(commands.Cog):
         vaults = vaults[:5]
         e.description = "**5 Largest Vaults:**\n"
         for v in vaults:
-            e.description += f"{el_explorer_url(w3.toChecksumAddress(v['owner']))}:\n" \
+            e.description += f"{el_explorer_url(w3.toChecksumAddress(v['owner'])) if v['owner'] else '???'}:\n" \
                              f"<:VOID:721787344138797116>Borrowed `{int(v['principal']):,} DAI`" \
                              f" with `{v['collateral']:.2f} rETH` as collateral (`{int(v['collateralization'])}%`)\n" \
                              f"<:VOID:721787344138797116>Liquidation Price: `{int(v['liquidation_price'])} rETH/DAI`" \
