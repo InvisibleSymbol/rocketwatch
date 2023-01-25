@@ -65,7 +65,7 @@ class MakerAPI:
                 return data
 
     async def get_vaults(self, ilk="RETH-A"):
-        return await self._call_api("v1/experimental/current_state", params={"ilk": ilk, "limit": 10000})
+        return await self._call_api("v1/vaults/current_state", params={"ilk": ilk, "limit": 10000})
 
 
 class DAI(commands.Cog):
