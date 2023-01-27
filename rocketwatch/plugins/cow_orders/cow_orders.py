@@ -154,13 +154,10 @@ class QueuedCowOrders(commands.Cog):
                     pass
                 data["otherAmount"] = solidity.to_float(int(order["sellAmount"]), decimals)
             # RPL/other ratio
-            data["ratio"] = round(data["otherAmount"] / data["RPLAmount"], 2)
-            # floor to int if no decimals
-            if data["ratio"] == int(data["ratio"]):
-                data["ratio"] = int(data["ratio"])
+            data["ratioAmount"] = data["otherAmount"] / data["RPLAmount"]
             data["otherToken"] = s.functions.symbol().call()
             data["deadline"] = int(order["validTo"])
-            data["timestamp"] = datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")).timestamp()
+            data["timestamp"] = int(datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")).timestamp())
             # if the rpl value in usd is less than 25k, ignore it
             if data["RPLAmount"] * rpl_price < 25000:
                 continue
