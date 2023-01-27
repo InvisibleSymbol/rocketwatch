@@ -172,7 +172,7 @@ class QueuedCowOrders(commands.Cog):
                 topic="cow_orders",
                 block_number=w3.eth.getBlock("latest").number,
                 event_name=data["event_name"],
-                unique_id=f"cow_order_found_{order['cow_uid']}"
+                unique_id=f"cow_order_found_{order['uid']}"
             ))
         # dont emit if the db collection is empty - this is to prevent the bot from spamming the channel with stale data
         if not self.collection.count_documents({}):
