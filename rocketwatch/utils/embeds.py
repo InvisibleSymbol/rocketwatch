@@ -116,6 +116,8 @@ def prepare_args(args):
             # handle validators
             if arg_key == "pubkey":
                 args[arg_key] = cl_explorer_url(arg_value)
+            if arg_key == "cow_uid":
+                args[arg_key] = f"[ORDER](https://explorer.cow.fi/orders/{arg_value})"
             else:
                 args[arg_key] = el_explorer_url(arg_value, prefix=prefix)
                 args[f'{arg_key}_clean'] = el_explorer_url(arg_value)
@@ -128,6 +130,10 @@ def assemble(args):
     e = Embed()
     if args.event_name == "service_interrupted":
         e.colour = Color.from_rgb(235, 86, 86)
+    if "sell" in args.event_name:
+        e.colour = Color.from_rgb(235, 86, 86)
+    if "buy" in args.event_name:
+        e.colour = Color.from_rgb(86, 235, 86)
 
     do_small = all([
         _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small",
@@ -158,6 +164,11 @@ def assemble(args):
         return e
 
     e.description = _(f"embeds.{args.event_name}.description", **args)
+
+    if "cow_uid" in args:
+        e.add_field(name="Cow Order",
+                    value=args.cow_uid,
+                    inline=False)
 
     if "exchangeRate" in args:
         e.add_field(name="Exchange Rate",
