@@ -223,10 +223,10 @@
     },
     "cow_order_buy_rpl_found": {
         "title": ":cow: BUY Order Found",
-        "description": "%{cow_owner} has placed a buy order for %{RPLAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{RPLAmount} RPL (ratio: %{ratio} RPL/%{otherToken})\nExpires: %{deadline}"
+        "description": "%{cow_owner} has placed a buy order for %{RPLAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{RPLAmount} RPL (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
     },
     "cow_order_sell_rpl_found": {
         "title": ":cow: SELL Order Found",
-        "description": "%{cow_owner} has placed a sell order for %{RPLAmount} RPL!\n Exchanging %{RPLAmount} RPL for %{otherAmount} %{otherToken} (ratio: %{ratio} RPL/%{otherToken})\nExpires: %{deadline}"
+        "description": "%{cow_owner} has placed a sell order for %{RPLAmount} RPL!\n Exchanging %{RPLAmount} RPL for %{otherAmount} %{otherToken} (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
     }
 }
