@@ -158,9 +158,9 @@ class QueuedCowOrders(commands.Cog):
             try:
                 data["otherToken"] = s.functions.symbol().call()
             except:
+                data["otherToken"] = "UNKWN"
                 if s.address == w3.toChecksumAddress("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"):
                     data["otherToken"] = "ETH"
-                data["otherToken"] = "UNKWN"
             data["deadline"] = int(order["validTo"])
             data["timestamp"] = int(datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")).timestamp())
             # if the rpl value in usd is less than 25k, ignore it
