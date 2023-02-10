@@ -1,7 +1,10 @@
 import contextlib
 import logging
+from io import BytesIO
+
 import humanize
 import aiohttp
+from discord import File
 
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -11,6 +14,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
+from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
 from utils.visibility import is_hidden_weak
 from utils.readable import s_hex
 
@@ -51,6 +55,18 @@ class Wall(commands.Cog):
 
         e = Embed()
         if total_volume_left == 0:
+            # fallback to alternative method
+            try:
+                alternative = self._get_alternative_wall()
+                e.set_image(url="attachment://wall.png")
+                await ctx.send(
+                    embed=e,
+                    file=File(
+                        alternative, filename="wall.png"
+                    ))
+                return
+            except Exception as err:
+                log.exception(err)
             e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
             await ctx.send(embed=e)
             return
@@ -79,6 +95,60 @@ class Wall(commands.Cog):
         e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
         e.add_field(name="Wallet Address", value=f"[{s_hex(wall_address)}](https://rocketscan.io/address/{wall_address})")
         await ctx.send(embed=e)
+
+    def _get_alternative_wall(self):
+        # test the get_uniswap_pool_depth function
+        a = get_uniswap_pool_depth("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")
+        # get current price from the pool stats
+        sqrt_price = get_uniswap_pool_stats("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")["sqrtPrice"]
+        price = 1 / (int(sqrt_price) ** 2 / 2 ** 192)
+
+        # make a sample matplotlib plot, no interpolation
+        import matplotlib.pyplot as plt
+
+        plt.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-post", color="black", linewidth=1)
+
+        # color everything above the current tick red, below green
+        # get the closest tick to the current price
+        idx = min(range(len(a)), key=lambda i: abs(a[i][0] - price))
+        above = a[idx:]
+        below = a[:idx + 1]
+        # plot the two lists
+        plt.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="post")
+        plt.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="post")
+        # plot the current price
+        plt.axvline(price, color="black", linestyle="--", linewidth=1)
+
+        # hide y axis
+        plt.gca().axes.get_yaxis().set_visible(False)
+
+        # minor ticks for the x axis
+        plt.gca().xaxis.set_minor_locator(plt.MultipleLocator(0.001))
+
+        # set y axis min to 0
+        plt.ylim(bottom=0)
+
+        # vertical grid lines
+        plt.gca().xaxis.grid(True, which="major", linestyle="--")
+        plt.gca().xaxis.grid(True, which="minor", linestyle=":")
+
+        # center the plot around the current price, make the x axis 2x as wide
+        plt.xlim(price * 0.5, price * 1.5)
+
+        # use minimal whitespace
+        plt.tight_layout()
+
+        # store the graph in an file object
+        file = BytesIO()
+        plt.savefig(file, format='png')
+        file.seek(0)
+
+        # clear plot from memory
+        plt.clf()
+        plt.close()
+
+        return file
+
 
 
 async def setup(bot):

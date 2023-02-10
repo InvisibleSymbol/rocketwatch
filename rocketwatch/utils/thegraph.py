@@ -424,3 +424,99 @@ def get_votes_of_snapshot(snapshot_id):
 
     return data["votes"], data["proposal"]
 
+
+"""
+fetch("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", {
+  "body": "{\"operationName\":\"pool\",\"variables\":{\"poolAddress\":\"0xe42318ea3b998e8355a3da364eb9d48ec725eb45\"},\"query\":\"query pool($poolAddress: String!) {\\n  pool(id: $poolAddress) {\\n    tick\\n    token0 {\\n      symbol\\n      id\\n      decimals\\n      __typename\\n    }\\n    token1 {\\n      symbol\\n      id\\n      decimals\\n      __typename\\n    }\\n    feeTier\\n    sqrtPrice\\n    liquidity\\n    __typename\\n  }\\n}\\n\"}",
+  "method": "POST",
+});"""
+
+
+def get_uniswap_pool_stats(pool_address):
+    query = """
+query pool($poolAddress: String!) {
+    pool(id: $poolAddress) {
+        tick
+        sqrtPrice
+    }
+}
+    """
+    # do the request
+    response = requests.post(
+        "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3",
+        json={'query': query, 'variables': {'poolAddress': pool_address}}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+
+    return data["pool"]
+
+
+"""
+fetch("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", {
+  "body": "{\"operationName\":\"surroundingTicks\",\"variables\":{\"poolAddress\":\"0xe42318ea3b998e8355a3da364eb9d48ec725eb45\",\"tickIdxLowerBound\":22560,\"tickIdxUpperBound\":46560,\"skip\":0},\"query\":\"query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tickIdxUpperBound: BigInt!, $skip: Int!) {\\n  ticks(\\n    subgraphError: allow\\n    first: 1000\\n    skip: $skip\\n    where: {poolAddress: $poolAddress, tickIdx_lte: $tickIdxUpperBound, tickIdx_gte: $tickIdxLowerBound}\\n  ) {\\n    tickIdx\\n    liquidityGross\\n    liquidityNet\\n    price0\\n    price1\\n    __typename\\n  }\\n}\\n\"}",
+  "method": "POST",
+});
+"""
+
+
+def get_uniswap_pool_depth(pool_address):
+    # get the pool stats
+    pool_stats = get_uniswap_pool_stats(pool_address)
+
+    # get the tick
+    tick = int(pool_stats["tick"])
+
+    # get the surrounding ticks
+    query = """
+query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tickIdxUpperBound: BigInt!, $skip: Int!) {
+    ticks(
+        subgraphError: allow
+        first: 1000
+        skip: $skip
+        where: {poolAddress: $poolAddress, tickIdx_lte: $tickIdxUpperBound, tickIdx_gte: $tickIdxLowerBound}
+    ) {
+        tickIdx
+        liquidityGross
+        liquidityNet
+        price0
+        price1
+        __typename
+    }
+}
+    """
+    # do the request
+    response = requests.post(
+        "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3",
+        json={'query'    : query,
+              'variables': {'poolAddress': pool_address, 'tickIdxLowerBound': tick - 12000, 'tickIdxUpperBound': tick + 12000,
+                            'skip'       : 0}}
+    )
+
+    # parse the response
+    if "errors" in response.json():
+        raise Exception(response.json()["errors"])
+
+    # get the data
+    data = response.json()["data"]
+
+    # convert to (price1, liquidity) tuples
+    ticks = [(float(tick["price1"]), float(tick["liquidityNet"])) for tick in data["ticks"]]
+    # order by price
+    ticks.sort(key=lambda x: x[0], reverse=True)
+
+    # cumulatively sum the liquidity
+    for i in range(1, len(ticks)):
+        ticks[i] = (ticks[i][0], ticks[i][1] + ticks[i - 1][1])
+
+    ticks.sort(key=lambda x: x[0])
+
+    for i in range(len(ticks)):
+        ticks[i] = (ticks[i][0], solidity.to_float(ticks[i][1]))
+    return ticks
+
