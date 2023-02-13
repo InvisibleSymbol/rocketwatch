@@ -125,6 +125,9 @@ class Wall(commands.Cog):
         # minor ticks for the x axis
         plt.gca().xaxis.set_minor_locator(plt.MultipleLocator(0.001))
 
+        # set x axis ticks to numbers
+        plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.3f}"))
+
         # set y axis min to 0
         plt.ylim(bottom=0)
 
