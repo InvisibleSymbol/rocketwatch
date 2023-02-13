@@ -132,8 +132,8 @@ class Wall(commands.Cog):
         plt.gca().xaxis.grid(True, which="major", linestyle="--")
         plt.gca().xaxis.grid(True, which="minor", linestyle=":")
 
-        # center the plot around the current price, make the x axis 2x as wide
-        plt.xlim(price * 0.5, price * 1.5)
+        # center the plot around the current price, make the x axis 4x as wide
+        plt.xlim(price * 0.25, price * 1.75)
 
         # use minimal whitespace
         plt.tight_layout()
