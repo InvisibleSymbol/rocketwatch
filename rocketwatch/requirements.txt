@@ -1,7 +1,7 @@
 psutil==5.9.4
 python_i18n==0.3.9
 web3==5.31.3
-humanize==4.4.0
+humanize==4.6.0
 termplotlib==0.3.9
 cachetools==5.3.0
 bidict==0.22.1
