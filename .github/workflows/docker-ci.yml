@@ -27,4 +27,4 @@ jobs:
           tags: invisiblesymbol/rocketwatch:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/arm/v7,linux/amd64,linux/arm64
+          platforms: linux/arm64/v8 # ,linux/amd64
