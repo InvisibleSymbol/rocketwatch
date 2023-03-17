@@ -107,7 +107,7 @@ class QueuedCowOrders(commands.Cog):
         cow_orders = [order for order in cow_orders if order["status"] == "open"]
 
         # ensure that all orders have a availableBalance higher than the sellAmount
-        cow_orders = [order for order in cow_orders if int(order["availableBalance"]) > int(order["sellAmount"])]
+        cow_orders = [order for order in cow_orders if order["availableBalance"] and int(order["availableBalance"]) > int(order["sellAmount"]) and not order["invalidated"]]
 
         # efficiently check if the orders are already in the database
         order_uids = [order["uid"] for order in cow_orders]
