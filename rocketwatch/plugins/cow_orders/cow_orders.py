@@ -1,9 +1,11 @@
 import logging
+import math
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pymongo
 import requests
+from datetime import timezone
 from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -107,7 +109,10 @@ class QueuedCowOrders(commands.Cog):
         cow_orders = [order for order in cow_orders if order["status"] == "open"]
 
         # ensure that all orders have a availableBalance higher than the sellAmount
-        cow_orders = [order for order in cow_orders if order["availableBalance"] and int(order["availableBalance"]) > int(order["sellAmount"]) and not order["invalidated"]]
+        cow_orders = [order for order in cow_orders if int(order["availableBalance"] or 2**255) > int(order["sellAmount"]) and not order["invalidated"]]
+
+        # remove all orders that are older than 15 minutes
+        cow_orders = [order for order in cow_orders if datetime.now(timezone.utc) - datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")) < timedelta(minutes=15)]
 
         # efficiently check if the orders are already in the database
         order_uids = [order["uid"] for order in cow_orders]
