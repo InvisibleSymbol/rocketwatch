@@ -56,9 +56,13 @@ class MinipoolTask(commands.Cog):
     @timerun
     def get_untracked_minipools(self):
         minipool_count = rp.call("rocketMinipoolManager.getMinipoolCount")
-        minipool_addresses = rp.multicall.aggregate(
-            self.minipool_manager.functions.getMinipoolAt(i) for i in range(minipool_count))
-        minipool_addresses = [w3.toChecksumAddress(r.results[0]) for r in minipool_addresses.results]
+        minipool_addresses = []
+        for i in range(0, minipool_count, 10000):
+            log.debug(f"getting minipool addresses for {i}/{minipool_count}")
+            i_end = min(i + 10000, minipool_count)
+            minipool_addresses += [
+                w3.toChecksumAddress(r.results[0]) for r in rp.multicall.aggregate(
+                    self.minipool_manager.functions.getMinipoolAt(i) for i in range(i, i_end)).results]
         # remove address that are already in the minipool collection
         tracked_addresses = self.db.minipools.distinct("address")
         return [a for a in minipool_addresses if a not in tracked_addresses]
