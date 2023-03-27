@@ -104,8 +104,9 @@ class MinipoolTask(commands.Cog):
     @timerun
     def get_validator_data(self, pubkeys):
         result = {}
+        pubkeys_divisor = max(len(pubkeys) // 10, 1)  # Make sure divisor is at least 1 to avoid division by zero
         for i, pubkey in enumerate(pubkeys):
-            if i % (len(pubkeys) // 10) == 0:
+            if i % pubkeys_divisor == 0:
                 log.debug(f"getting validator data for {i}/{len(pubkeys)}")
             try:
                 data = bacon.get_validator(validator_id=pubkey, state_id="finalized")
