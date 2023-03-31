@@ -175,7 +175,7 @@ class SupportGlobal(Cog):
                         "$ne"   : "boiler" if interaction.command.name != "edit" else None
                     }
                 }
-            ).to_list(None)
+            ).to_list(25)
         ]
 
 
@@ -401,7 +401,7 @@ class SupportUtils(GroupCog, name="support"):
                         "$ne"   : "boiler" if interaction.command.name != "edit" else None
                     }
                 }
-            ).to_list(None)
+            ).to_list(25)
         ]
 
 
