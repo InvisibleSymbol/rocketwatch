@@ -116,7 +116,7 @@ def prepare_args(args):
             # handle validators
             if arg_key == "pubkey":
                 args[arg_key] = cl_explorer_url(arg_value)
-            if arg_key == "cow_uid":
+            elif arg_key == "cow_uid":
                 args[arg_key] = f"[ORDER](https://explorer.cow.fi/orders/{arg_value})"
             else:
                 args[arg_key] = el_explorer_url(arg_value, prefix=prefix)

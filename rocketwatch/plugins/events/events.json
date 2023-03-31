@@ -105,15 +105,6 @@
             ]
         },
         {
-            "contract_name": "rocketMinipoolStatus",
-            "events": [
-                {
-                    "event_name": "MinipoolWithdrawableSubmitted",
-                    "name": "minipool_exit_event"
-                }
-            ]
-        },
-        {
             "contract_name": "rocketRewardsPool",
             "events": [
                 {
@@ -177,6 +168,19 @@
                     "name": "odao_minipool_penalty_updated"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketMinipoolBondReducer",
+            "events": [
+                {
+                    "event_name": "CancelReductionVoted",
+                    "name": "minipool_vote_against_bond_reduction_event"
+                },
+                {
+                    "event_name": "ReductionCancelled",
+                    "name": "minipool_bond_reduction_cancelled_event"
+                }
+            ]
         }
     ],
     "global": [
@@ -194,6 +198,14 @@
                 {
                     "event_name": "ScrubVoted",
                     "name": "minipool_scrub_vote_event"
+                },
+                {
+                    "event_name": "BondReduced",
+                    "name": "minipool_bond_reduce_event"
+                },
+                {
+                    "event_name": "MinipoolVacancyPrepared",
+                    "name": "minipool_vacancy_prepared_event"
                 }
             ]
         },

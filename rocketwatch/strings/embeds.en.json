@@ -181,6 +181,30 @@
         "title": ":construction_site: Minipool Initial Deposit",
         "description": "Minipool %{minipool_clean} has deposited its initial 16 ETH to the Beacon Chain!"
     },
+    "minipool_deposit_received_event": {
+        "title": ":construction_site: Minipool Created",
+        "description": "Minipool %{minipool_clean} has been created with a node operator share of **%{depositAmount} ETH**!"
+    },
+    "minipool_deposit_received_event_credit": {
+        "title": ":magic_wand: Minipool Created Using Credit",
+        "description": "Minipool %{minipool_clean} has been created with a node operator share of **%{depositAmount} ETH**!"
+    },
+    "minipool_bond_reduce_event": {
+        "title": ":magic_wand: Minipool Bond Reduced",
+        "description_small": "Node operator %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**!"
+    },
+    "minipool_vote_against_bond_reduction_event": {
+        "title": ":warning: Voted Against Bond Reduction",
+        "description": "%{member} has voted against the bond reduction of Minipool %{minipool}!"
+    },
+    "minipool_bond_reduction_cancelled_event": {
+        "title": ":rotating_light: Bond Reduction Cancelled",
+        "description": "Minipool %{minipool} has been denied the ability to reduce its bond!"
+    },
+    "minipool_vacancy_prepared_event": {
+        "title": ":link: Solo Migration Initiated",
+        "description": "Migration of solo validator %{pubkey} to Minipool %{minipool} with a bond of **%{bondAmount} ETH** was initiated!"
+    },
     "minipool_failed_deposit": {
         "title": ":fire: Failed Minipool Deposit",
         "description": ":fire_engine: %{node} burned **%{burnedValue} ETH** trying to create a minipool! :fire_engine:"

@@ -19,9 +19,6 @@ from utils.solidity import SUBMISSION_KEYS
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
-DEPOSIT_EVENT = 2
-WITHDRAWABLE_EVENT = 3
-
 
 class QueuedEvents(commands.Cog):
     update_block = 0
@@ -278,6 +275,26 @@ class QueuedEvents(commands.Cog):
                 args.event_name = "node_merkle_rewards_claimed_both"
             else:
                 args.event_name = "node_merkle_rewards_claimed_rpl"
+        if "minipool_prestake_event" in event_name:
+            # get the transaction receipt
+            tx = w3.eth.get_transaction(args.transactionHash)
+            # get the transaction input
+            contract = rp.get_contract_by_address(tx["to"])
+
+            tx_input = tx["input"]
+            decoded = contract.decode_function_input(tx_input)
+
+            # check if the function name is depositWithCredit
+            if decoded[0].fn_name == "depositWithCredit":
+                args.event_name = "minipool_deposit_received_event_credit"
+            else:
+                args.event_name = "minipool_deposit_received_event"
+            # the deposit amount is the first argument of the function
+            args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
+        if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event"]:
+            # get the node operator address from minipool contract
+            contract = rp.assemble_contract("rocketMinipool", args.minipool)
+            args.node = contract.functions.getNodeAddress().call()
         args = prepare_args(args)
         return assemble(args)
 
