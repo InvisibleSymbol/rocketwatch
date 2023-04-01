@@ -1,9 +1,11 @@
 import base64
+import contextlib
 import json
 
 import utils.solidity as units
 from utils import pako
 from utils.cfg import cfg
+from utils.shared_w3 import bacon
 
 
 def prettify_json_string(data):
@@ -41,9 +43,14 @@ def s_hex(string):
 
 
 def cl_explorer_url(target, name=None):
+    # if name is none, and it has the correct length for a validator pubkey, try to lookup the validator index
+    if not name and isinstance(target, str) and len(target) == 98:
+        with contextlib.suppress(Exception):
+            if v := bacon.get_validator(target)["data"]["index"]:
+                name = f"#{v}"
     if not name and isinstance(target, str):
         name = s_hex(target)
-    else:
+    if not name:
         name = target
     url = cfg["rocketpool.consensus_layer.explorer"]
     return f"[{name}](https://{url}/validator/{target})"
