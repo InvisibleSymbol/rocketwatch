@@ -206,6 +206,10 @@
                 {
                     "event_name": "MinipoolVacancyPrepared",
                     "name": "minipool_vacancy_prepared_event"
+                },
+                {
+                    "event_name": "EtherWithdrawalProcessed",
+                    "name": "minipool_withdrawal_processed_event"
                 }
             ]
         },

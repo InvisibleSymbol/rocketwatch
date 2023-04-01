@@ -36,6 +36,10 @@
         "title": ":leaves: Minipool Closed",
         "description": "Minipool %{minipool} has been flagged as Withdrawable!"
     },
+    "minipool_withdrawal_processed_event": {
+        "title": ":moneybag: Minipool Withdrawal",
+        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Node Operator %{node}! %{transactionHash_small}"
+    },
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",
         "description": "%{amount} ETH deposited into the Deposit Pool!",
@@ -191,7 +195,7 @@
     },
     "minipool_bond_reduce_event": {
         "title": ":magic_wand: Minipool Bond Reduced",
-        "description_small": "Node operator %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**!"
+        "description_small": ":magic_wand: Node operator %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
     },
     "minipool_vote_against_bond_reduction_event": {
         "title": ":warning: Voted Against Bond Reduction",

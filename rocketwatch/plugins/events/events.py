@@ -291,10 +291,12 @@ class QueuedEvents(commands.Cog):
                 args.event_name = "minipool_deposit_received_event"
             # the deposit amount is the first argument of the function
             args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
-        if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event"]:
+        if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event", "minipool_withdrawal_processed_event"]:
             # get the node operator address from minipool contract
             contract = rp.assemble_contract("rocketMinipool", args.minipool)
             args.node = contract.functions.getNodeAddress().call()
+        if event_name == "minipool_withdrawal_processed_event":
+            args.totalAmount = args.nodeAmount + args.userAmount
         args = prepare_args(args)
         return assemble(args)
 
