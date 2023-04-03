@@ -205,6 +205,14 @@
         "title": ":rotating_light: Bond Reduction Cancelled",
         "description": "Minipool %{minipool} has been denied the ability to reduce its bond!"
     },
+    "mev_proposal_event": {
+        "title": ":moneybag: Large Minipool Proposal",
+        "description": "Minipool %{minipool} has proposed a Block worth **%{reward_amount} ETH**!"
+    },
+    "mev_proposal_smoothie_event": {
+        "title": ":cup_with_straw: Large Smoothing Pool Proposal",
+        "description": "Minipool %{minipool} has proposed a Block worth **%{reward_amount} ETH**!"
+    },
     "minipool_vacancy_prepared_event": {
         "title": ":link: Solo Migration Initiated",
         "description": "Migration of solo validator %{pubkey} to Minipool %{minipool} with a bond of **%{bondAmount} ETH** was initiated!"

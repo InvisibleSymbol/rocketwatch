@@ -1,22 +1,22 @@
 import logging
 
 import pymongo
+import requests
 from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
+from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import cl_explorer_url
+from utils.rocketpool import rp
 from utils.shared_w3 import bacon
 from utils.solidity import beacon_block_to_date
 
 log = logging.getLogger("beacon_slashings")
 log.setLevel(cfg["log_level"])
-
-DEPOSIT_EVENT = 2
-WITHDRAWABLE_EVENT = 3
 
 
 class QueuedSlashings(commands.Cog):
@@ -39,16 +39,16 @@ class QueuedSlashings(commands.Cog):
 
         self.state = "RUNNING"
         latest_db_block = self.db.last_checked_block.find_one({"_id": "slashings"})
-        infura_finalized = int(bacon.get_block("finalized")["data"]["message"]["slot"])
+        node_finalized = int(bacon.get_block("finalized")["data"]["message"]["slot"])
         if not latest_db_block:
             log.info("Doing full check")
-            blocks = list(range(infura_finalized - cfg["core.look_back_distance"], infura_finalized))
-        elif latest_db_block["block"] <= infura_finalized:
-            blocks = list(range(latest_db_block["block"], infura_finalized))
+            blocks = list(range(node_finalized - cfg["core.look_back_distance"], node_finalized))
+        elif latest_db_block["block"] <= node_finalized:
+            blocks = list(range(latest_db_block["block"], node_finalized))
         else:
             log.warning(
-                "Infura is being stupid and returned a block that is smaller than a previously seen finalized block: "
-                f"{infura_finalized=} < {latest_db_block['block']=}. Skipping this check.")
+                "Node is being stupid and returned a block that is smaller than a previously seen finalized block: "
+                f"{node_finalized=} < {latest_db_block['block']=}. Skipping this check.")
             return
         for block_number in blocks:
             log.debug(f"Checking Beacon block {block_number}")
@@ -104,11 +104,47 @@ class QueuedSlashings(commands.Cog):
                         block_number=closest_block
                     ))
 
+            # new-feature: track proposals made by rocket pool validators. use mongodb minipools collection to check
+            if (m := self.db.minipools.find_one({"validator": int(block["proposer_index"])})) and "execution_payload" in block[
+                "body"]:
+                log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal")
+                # fetch the values from beaconcha.in. we use that instead of the beacon node because the beacon node
+                # has no idea about mev bribes
+                exec_block = int(block['body']['execution_payload']['block_number'])
+                req = requests.get(f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{exec_block}",
+                                   headers={"apikey": cfg["beaconchain_explorer"]["api_key"]})
+                if req.status_code == 200:
+                    req = req.json()["data"][0]
+                    if (a := solidity.to_float(req["producerReward"])) > 1:
+                        log.info(f"Found a proposal with a mev bribe of {a} ETH")
+                        fee_recipient = req["relay"]["producerFeeRecipient"] if req["relay"] else req["feeRecipient"]
+                        args = {
+                            "event_name"   :
+                                "mev_proposal_smoothie_event"
+                                if fee_recipient.lower() == rp.get_address_by_name("rocketSmoothingPool").lower()
+                                else "mev_proposal_event",
+                            "node_operator": m["node_operator"],
+                            "minipool"     : m["address"],
+                            "blockNumber"  : block["body"]["execution_payload"]["block_number"],
+                            "reward_amount": a,
+                            "timestamp"    : timestamp
+                        }
+                        args = prepare_args(aDict(args))
+                        if embed := assemble(args):
+                            payload.append(Response(
+                                topic="mev_proposals",
+                                embed=embed,
+                                event_name=args["event_name"],
+                                unique_id=f"{timestamp}:mev_proposal-{block['body']['execution_payload']['block_number']}",
+                                block_number=exec_block
+                            ))
+                    print(req)
+
         log.debug("Finished Checking for new Slashes Commands")
         self.state = "OK"
 
         self.db.last_checked_block.update_one({"_id": "slashings"},
-                                              {"$set": {"block": infura_finalized}},
+                                              {"$set": {"block": node_finalized}},
                                               upsert=True)
 
         return payload

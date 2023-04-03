@@ -70,9 +70,14 @@ class MinipoolTask(commands.Cog):
     @timerun
     def get_public_keys(self, addresses):
         # optimizing this doesn't seem to help much, so keep it simple for readability
-        minipool_pubkeys = rp.multicall.aggregate(
-            self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses)
-        minipool_pubkeys = [f"0x{minipool_pubkey.results[0].hex()}" for minipool_pubkey in minipool_pubkeys.results]
+        # batch the same way as get_untracked_minipools
+        minipool_pubkeys = []
+        for i in range(0, len(addresses), 10000):
+            log.debug(f"getting minipool pubkeys for {i}/{len(addresses)}")
+            i_end = min(i + 10000, len(addresses))
+            minipool_pubkeys += [
+                f"0x{r.results[0].hex()}" for r in rp.multicall.aggregate(
+                    self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses[i:i_end]).results]
         return minipool_pubkeys
 
     @timerun

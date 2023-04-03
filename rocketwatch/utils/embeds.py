@@ -276,4 +276,6 @@ def assemble(args):
     if "_slash_" in args.event_name:
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
 
+    if "_proposal_smoothie_" in args.event_name:
+        e.set_image(url="https://i.kym-cdn.com/photos/images/original/001/866/880/db1.png")
     return e
