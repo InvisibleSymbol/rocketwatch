@@ -356,8 +356,8 @@ class Proposals(commands.Cog):
 
         # matplotlib default color
         matplotlib_colors = [color['color'] for color in list(mpl.rcParams['axes.prop_cycle'])]
-        # cap recent versions to available colors
-        recent_versions = recent_versions[:len(matplotlib_colors)]
+        # cap recent versions to available colors, but we want to prioritize the most recent versions
+        recent_versions = recent_versions[-len(matplotlib_colors):]
         recent_colors = [matplotlib_colors[i] for i in range(len(recent_versions))]
         # generate color mapping
         colors = ["darkgray"] * len(versions)
@@ -375,7 +375,7 @@ class Proposals(commands.Cog):
         plt.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
         ax.legend(loc="upper left")
         # add a thin line at current time from y=0 to y=1 with a width of 0.5
-        plt.plot([max(x), max(x)], [0, 1], color="white")
+        plt.plot([max(x), max(x)], [0, 1], color="white", alpha=0.25)
         # calculate future point to make latest data more visible
         diff = x[-1] - x[0]
         future_point = x[-1] + (diff * 0.05)
