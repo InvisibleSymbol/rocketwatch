@@ -62,8 +62,9 @@ class DepositPool(commands.Cog):
         current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100
         e.add_field(name="Current Commission Rate:", value=f"{round(current_commission, 2)}%", inline=False)
 
-        minipool_count = int(deposit_pool / 16)
-        e.add_field(name="Enough For:", value=f"{minipool_count} new Minipools")
+        minipool_count_legacy = int(deposit_pool / 16)
+        minipool_count_leb8 = int(deposit_pool / 24)
+        e.add_field(name="Enough For:", value=f"{minipool_count_leb8}-{minipool_count_legacy} Minipools")
 
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
