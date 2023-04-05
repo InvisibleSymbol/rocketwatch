@@ -244,8 +244,12 @@ def assemble(args):
     # show sender address
     if senders := [value for key, value in args.items() if key.lower() in ["sender", "from"]]:
         sender = senders[0]
+        v = sender
+        # if args["origin"] is an address and does not match the sender, show both
+        if "caller" in args and args["caller"] != sender and "0x" in args["caller"]:
+            v = f"{args.caller} ({sender})"
         e.add_field(name="Sender Address",
-                    value=sender)
+                    value=v)
 
     # show block number
     if "blockNumber" in args:

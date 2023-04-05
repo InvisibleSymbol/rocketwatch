@@ -178,6 +178,7 @@ class QueuedEvents(commands.Cog):
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
             args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
+            args.caller = receipt["from"]
 
         # store event_name in args
         args.event_name = event_name
