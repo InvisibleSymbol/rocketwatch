@@ -60,14 +60,15 @@ class DepositPool(commands.Cog):
                         inline=False)
 
         current_commission = solidity.to_float(rp.call("rocketNetworkFees.getNodeFee")) * 100
-        e.add_field(name="Current Commission Rate:", value=f"{round(current_commission, 2)}%", inline=False)
-
-        minipool_count_legacy = int(deposit_pool / 16)
-        minipool_count_leb8 = int(deposit_pool / 24)
-        e.add_field(name="Enough For:", value=f"{minipool_count_leb8}-{minipool_count_legacy} Minipools")
+        e.add_field(name="Commission Rate:", value=f"{round(current_commission, 2)}%")
 
         queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
         e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
+        e.add_field(name="Enough For:",
+                    value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools"
+                          f"\n**`{deposit_pool // 24:>4.0f}`** 8 ETH Minipools\n" if deposit_pool > 24 else ""
+                          f"\n**`{deposit_pool // 32:>4.0f}`** Vacant Minipools (i.e Credit)" if deposit_pool > 32 else "",
+                    inline=False)
 
         img = BytesIO()
         rendered_graph = get_graph(img, current_commission, current_node_demand)
