@@ -6,7 +6,7 @@
     "reth_burn_event": {
         "title": ":fire: rETH Burn",
         "description": "Burned %{amount} rETH for %{ethAmount} ETH!",
-        "description_small": ":fire: %{from} burned %{amount} rETH for %{ethAmount} ETH! %{transactionHash_small}"
+        "description_small": ":fire: %{fancy_from} burned %{amount} rETH for %{ethAmount} ETH! %{transactionHash_small}"
     },
     "rpl_claim_event": {
         "title": ":moneybag: Major RPL Rewards Claim",
@@ -43,7 +43,7 @@
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",
         "description": "%{amount} ETH deposited into the Deposit Pool!",
-        "description_small": ":rocket: %{from} deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
+        "description_small": ":rocket: %{fancy_from} deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
     },
     "odao_rewards_snapshot_event": {
         "title": ":camera_with_flash: Reward Snapshot Published",
