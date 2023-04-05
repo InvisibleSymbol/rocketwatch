@@ -123,8 +123,9 @@ def prepare_args(args):
                 args[f'{arg_key}_clean'] = el_explorer_url(arg_value)
                 if len(arg_value) == 66:
                     args[f'{arg_key}_small'] = el_explorer_url(arg_value, name="[tnx]")
-    if "from" in args and "caller" in args:
-        args["fancy_from"] = f"{args['caller']} ({args['from']})"
+    args["fancy_from"] = args["from"]
+    if "from" in args and "caller" in args and args["from"] != args["caller"]:
+            args["fancy_from"] = f"{args['caller']} ({args['from']})"
     return args
 
 
