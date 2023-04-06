@@ -1,6 +1,15 @@
 {
     "direct": [
         {
+            "contract_name": "rocketNetworkBalances",
+            "events": [
+                {
+                    "event_name": "BalancesUpdated",
+                    "name": "negative_rETH_ratio_update_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketMerkleDistributorMainnet",
             "events": [
                 {

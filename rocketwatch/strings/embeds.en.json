@@ -1,4 +1,8 @@
 {
+    "negative_rETH_ratio_update_event": {
+        "title": ":warning: Negative rETH Ratio Update",
+        "description": "The rETH ratio has decreased from `%{prevRETHRate}` to `%{currRETHRate}`!"
+    },
     "service_interrupted": {
         "title": ":warning: Failure in Event Processing",
         "description": "The developer has automatically been notified of this Error.\nNo further action is required."

@@ -139,6 +139,14 @@ class QueuedEvents(commands.Cog):
     def create_embed(self, event_name, event):
         # prepare args
         args = aDict(event['args'])
+
+        if "negative_rETH_ratio_update_event" in event_name:
+            args.currRETHRate = solidity.to_float(args.totalEth) / solidity.to_float(args.rethSupply)
+            args.prevRETHRate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=event.blockNumber - 1))
+            d = args.currRETHRate - args.prevRETHRate
+            if d > 0 or abs(d) < 0.00001:
+                return None
+
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
 
