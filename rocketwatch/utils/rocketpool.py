@@ -6,6 +6,7 @@ from bidict import bidict
 from cachetools import cached, FIFOCache
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall
+from cachetools.func import ttl_cache
 
 from utils import solidity
 from utils.cfg import cfg
