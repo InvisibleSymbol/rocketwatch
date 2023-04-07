@@ -67,7 +67,7 @@ class DepositPool(commands.Cog):
         e.add_field(name="Enough For:",
                     value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools" +
                           (f"\n**`{deposit_pool // 24:>4.0f}`** 8 ETH Minipools" if deposit_pool > 24 else "") +
-                          (f"\n**`{deposit_pool // 32:>4.0f}`** Vacant Minipools (i.e Credit)" if deposit_pool > 32 else ""),
+                          (f"\n**`{deposit_pool // 32:>4.0f}`** Credit Minipools" if deposit_pool > 32 else ""),
                     inline=False)
 
         img = BytesIO()
