@@ -325,63 +325,68 @@ class QueuedEvents(commands.Cog):
         self.state = "RUNNING"
         should_reinit = False
 
+        pending_events = []
+
         for events in self.events:
             if do_full_check:
-                pending_events = events.get_all_entries()
+                pending_events += events.get_all_entries()
             else:
-                pending_events = events.get_new_entries()
-            for event in reversed(list(pending_events)):
-                tnx_hash = event.transactionHash.hex()
-                embed = None
-                event_name = None
+                pending_events += events.get_new_entries()
+        log.debug(f"Found {len(pending_events)} pending events")
+        # sort events by block number
+        pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
+        for event in pending_events:
+            tnx_hash = event.transactionHash.hex()
+            embed = None
+            event_name = None
 
-                if event.get("removed", False):
-                    continue
+            if event.get("removed", False):
+                continue
 
-                log.debug(f"Checking Event {event}")
+            log.debug(f"Checking Event {event}")
 
-                address = event.address
-                if n:=rp.get_name_by_address(address) and "topics" in event:
-                    log.info(f"Found event {event} for {n}")
-                    # default event path
-                    contract = rp.get_contract_by_address(address)
-                    contract_event = self.topic_mapping[event.topics[0].hex()]
-                    topics = [w3.toHex(t) for t in event.topics]
-                    event = aDict(contract.events[contract_event]().processLog(event))
-                    event.topics = topics
-                    event_name = self.internal_event_mapping[event.event]
+            address = event.address
+            if n := rp.get_name_by_address(address) and "topics" in event:
+                log.info(f"Found event {event} for {n}")
+                # default event path
+                contract = rp.get_contract_by_address(address)
+                contract_event = self.topic_mapping[event.topics[0].hex()]
+                topics = [w3.toHex(t) for t in event.topics]
+                event = aDict(contract.events[contract_event]().processLog(event))
+                event.topics = topics
+                event_name = self.internal_event_mapping[event.event]
 
-                    embed = self.create_embed(event_name, event)
-                elif event.get("event", None) in self.internal_event_mapping:
-                    if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
-                        if event.blockNumber > self.update_block:
-                            log.info("detected update, setting reinit flag")
-                            should_reinit = True
-                            self.update_block = event.blockNumber
-                    else:
-                        # deposit/exit event path
-                        embed, event_name = self.handle_global_event(event)
+                embed = self.create_embed(event_name, event)
+            elif event.get("event", None) in self.internal_event_mapping:
+                if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
+                    if event.blockNumber > self.update_block:
+                        log.info("detected update, setting reinit flag")
+                        should_reinit = True
+                        self.update_block = event.blockNumber
+                else:
+                    # deposit/exit event path
+                    embed, event_name = self.handle_global_event(event)
 
-                if embed:
-                    # lazy way of making it sort events within a single block correctly
-                    score = event.blockNumber
-                    # sort within block
-                    score += event.transactionIndex * 10 ** -3
-                    # sort within transaction
-                    if "logIndex" in event:
-                        score += event.logIndex * 10 ** -3
+            if embed:
+                # lazy way of making it sort events within a single block correctly
+                score = event.blockNumber
+                # sort within block
+                score += event.transactionIndex * 10 ** -3
+                # sort within transaction
+                if "logIndex" in event:
+                    score += event.logIndex * 10 ** -3
 
-                    messages.append(Response(
-                        embed=embed,
-                        topic="events",
-                        event_name=event_name,
-                        unique_id=f"{tnx_hash}:{event_name}",
-                        block_number=event.blockNumber,
-                        transaction_index=event.transactionIndex,
-                        event_index=event.logIndex
-                    ))
-                if event.blockNumber > self.start_block:
-                    self.start_block = event.blockNumber
+                messages.append(Response(
+                    embed=embed,
+                    topic="events",
+                    event_name=event_name,
+                    unique_id=f"{tnx_hash}:{event_name}",
+                    block_number=event.blockNumber,
+                    transaction_index=event.transactionIndex,
+                    event_index=event.logIndex
+                ))
+            if event.blockNumber > self.start_block and not should_reinit:
+                self.start_block = event.blockNumber
 
         log.debug("Finished Checking for new Events")
         # store last checked block in db if its bigger than the one we have stored
