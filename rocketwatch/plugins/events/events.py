@@ -182,7 +182,7 @@ class QueuedEvents(commands.Cog):
                 # calculate the discount received compared to the market price
                 args.discountAmount = (1 - args.exchangeRate / solidity.to_float(args.marketExchangeRate)) * 100
 
-        if "tnx_fee" not in args:
+        if "tnx_fee" not in args and cfg["rocketpool.chain"] == "mainnet":
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
             args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
