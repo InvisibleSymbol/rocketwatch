@@ -25,7 +25,7 @@ from utils.get_or_fetch import get_or_fetch_channel
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.visibility import is_hidden, is_hidden_weak
+from utils.visibility import is_hidden, is_hidden_weak, is_hidden_role_controlled
 
 log = logging.getLogger("debug")
 log.setLevel(cfg["log_level"])
@@ -357,7 +357,7 @@ class Debug(Cog):
     @hybrid_command()
     async def get_abi_of_contract(self, ctx: Context, contract: str):
         """retrieve the latest ABI for a contract"""
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         try:
             with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
                 await ctx.send(
@@ -368,7 +368,7 @@ class Debug(Cog):
     @hybrid_command()
     async def get_address_of_contract(self, ctx: Context, contract: str):
         """retrieve the latest address for a contract"""
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         try:
             address = cfg["rocketpool.manual_addresses"].get(contract)
             if not address:
@@ -376,6 +376,12 @@ class Debug(Cog):
             await ctx.send(content=el_explorer_url(address))
         except Exception as err:
             await ctx.send(content=f"Exception: ```{repr(err)}```")
+            if "No address found for" in repr(err):
+                # private response as a tip
+                m = "It may be that you are requesting the address of a contract that does not get deployed (`rocketBase` for example), " \
+                    " is deployed multiple times (i.e node operator related contracts, like `rocketNodeDistributor`)," \
+                    " or is not yet deployed on the current chain.\n... Or you simply messed up the name :P"
+                await ctx.send(content=m, ephemeral=True)
 
     @hybrid_command()
     @describe(json_args="json formatted arguments. example: `[1, \"World\"]`",
@@ -386,7 +392,7 @@ class Debug(Cog):
                    json_args: str = "[]",
                    block: str = "latest"):
         """Call Function of Contract"""
-        await ctx.defer()
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
 
         try:
             args = json.loads(json_args)
