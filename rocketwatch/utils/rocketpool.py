@@ -190,6 +190,7 @@ class RocketPool:
             "empty": self.get_minipools_by_type("minipools.available.empty", limit)
         }
 
+    @ttl_cache(ttl=60)
     def get_dai_eth_price(self):
         data = self.call("DAIETH_univ3.slot0", mainnet=True)
         value_dai = data[0] ** 2 / 2 ** 192
