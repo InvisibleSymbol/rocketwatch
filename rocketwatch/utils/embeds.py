@@ -47,6 +47,9 @@ def el_explorer_url(target, name="", prefix=""):
         if target in cfg["override_addresses"]:
             name = cfg["override_addresses"][target]
 
+        if cfg["rocketpool.chain"] != "mainnet" and not name:
+            name = s_hex(target)
+
         if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
             prefix += "🔮"
             name = member_id

@@ -47,6 +47,8 @@ def get_sea_creature_for_holdings(holdings):
 
 
 def get_holding_for_address(address):
+    if cfg["rocketpool.chain"] != "mainnet":
+        return 0
     if price_cache["block"] != (b := w3.eth.blockNumber):
         price_cache["rpl_price"] = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         price_cache["reth_price"] = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
