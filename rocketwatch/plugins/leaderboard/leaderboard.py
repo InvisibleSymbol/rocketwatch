@@ -232,6 +232,29 @@ class Leaderboard(commands.Cog):
         )
         await ctx.send(embed=e)
 
+    # calculate amount of ETH that will be withdrawn on the first withdrawal check (that is, anything above 32 ETH)
+    # note: validators can have balances under 32, in that case they will be ignored
+    @hybrid_command()
+    async def minipool_withdrawal_stats(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+
+        # get minipool balances
+        balances = await self.db.minipools.find(
+            {"balance": {"$gt": 32}},
+            {"balance": 1, "_id": 0}
+        ).to_list(None)
+
+        # get amount over 32
+        amount_over_32 = sum(b["balance"] - 32 for b in balances)
+
+        # generate embed
+        e = Embed(
+            title="Minipool Withdrawal Stats",
+            description=f"Amount over 32 ETH: {amount_over_32:.2f} ETH"
+        )
+        await ctx.send(embed=e)
+
+
 
 async def setup(bot):
     await bot.add_cog(Leaderboard(bot))
