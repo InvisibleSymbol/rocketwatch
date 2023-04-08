@@ -247,10 +247,24 @@ class Leaderboard(commands.Cog):
         # get amount over 32
         amount_over_32 = sum(b["balance"] - 32 for b in balances)
 
+        # estimate amount for rETH users. this is 50% - the average fee
+        reth_share = amount_over_32 * 0.5
+
+
+        # get average node_fee from db
+        node_fee = await self.db.minipools.aggregate([
+            {"$match": {"node_fee": {"$exists": True}}},
+            {"$group": {"_id": None, "avg": {"$avg": "$node_fee"}}}
+        ]).to_list(length=1)
+
+        node_fee = node_fee[0]['avg']
+
+        reth_share = reth_share * (1 - node_fee)
+
         # generate embed
         e = Embed(
             title="Minipool Withdrawal Stats",
-            description=f"Amount over 32 ETH: {amount_over_32:.2f} ETH"
+            description=f"Amount over 32 ETH: {amount_over_32:.2f} ETH\nEstimated rETH share: {reth_share:.2f} ETH"
         )
         await ctx.send(embed=e)
 
