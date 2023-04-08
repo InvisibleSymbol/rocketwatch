@@ -288,16 +288,18 @@ class Proposals(commands.Cog):
         await msg.edit(content="generating version chart...")
 
         e = Embed(title="Version Chart")
-        e.description = "Versions with proposal during the last 2 days are highlighted"
+        e.description = "The graph below shows proposal stats using a **5-day rolling window**, " \
+                        "and **does not represent operator adoption**.\n" \
+                        "Versions with a proposal in the **last 2 days** are emphasized."
 
         # get proposals
         # limit to 6 months
         proposals = await self.db.proposals.find(
             {
                 "version": {"$exists": 1},
-                "slot": {"$gt": date_to_beacon_block((datetime.now() - timedelta(days=180)).timestamp())}
+                "slot"   : {"$gt": date_to_beacon_block((datetime.now() - timedelta(days=180)).timestamp())}
             }).sort("slot", 1).to_list(None)
-        look_back = int(60 / 12 * 60 * 24 * 2)  # last 5 days
+        look_back = int(60 / 12 * 60 * 24 * 2)  # last 2 days
         max_slot = proposals[-1]["slot"]
         # get version used after max_slot - look_back
         # and have at least 10 occurrences
