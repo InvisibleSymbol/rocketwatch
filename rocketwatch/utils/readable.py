@@ -61,3 +61,29 @@ def advanced_tnx_url(tx_hash):
     if chain not in ["mainnet", "goerli"]:
         return ""
     return f"[[A]](https://ethtx.info/{chain}/{tx_hash})"
+
+
+def render_tree(data: dict, name: str) -> str:
+    # remove empty states
+    data = {k: v for k, v in data.items() if v}
+    strings = []
+    values = []
+    for i, (state, substates) in enumerate(data.items()):
+        c = sum(substates.values())
+        l = "├" if i != len(data) - 1 else "└"
+        strings.append( f" {l}{state.title()}: ")
+        values.append(c)
+        l = "│" if i != len(data) - 1 else " "
+        for j, (substate, count) in enumerate(substates.items()):
+            sl = "├" if j != len(substates) - 1 else "└"
+            strings.append(f" {l} {sl}{substate.title()}: ")
+            values.append(count)
+    # longest string offset
+    max_left_len = max(len(s) for s in strings)
+    max_right_len = max(len(str(v)) for v in values)
+    # right align all values
+    for i, v in enumerate(values):
+        strings[i] = strings[i].ljust(max_left_len) + str(v).rjust(max_right_len)
+    description = f"{name}:\n"
+    description += "\n".join(strings)
+    return description
