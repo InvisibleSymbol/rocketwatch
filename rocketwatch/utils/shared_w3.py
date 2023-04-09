@@ -77,6 +77,21 @@ for fallback_endpoint in reversed(endpoints):
             response.raise_for_status()
             return response.json()
 
+        def get_validators(self, *args, **kwargs):
+            state_id = args[-1]
+            if len(args) > 1:
+                log.warning(f"falling back to {self.base_url} for validator balances {state_id}")
+            endpoint = f"/eth/v1/beacon/states/{state_id}/validators"
+            # id array if present, and is array of ints
+            if "ids" in kwargs and all(isinstance(i, int) for i in kwargs['ids']):
+                # turn to array of strings
+                kwargs['ids'] = [str(i) for i in kwargs['ids']]
+                endpoint += f"?id={','.join(kwargs['ids'])}"
+            url = self.base_url + endpoint
+            response = self.session.get(url, timeout=(3.05, 20))
+            response.raise_for_status()
+            return response.json()
+
 
     tmp.append(SuperBacon(fallback_endpoint))
 bacon = tmp[-1]
