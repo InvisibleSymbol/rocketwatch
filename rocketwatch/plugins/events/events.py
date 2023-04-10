@@ -293,14 +293,15 @@ class QueuedEvents(commands.Cog):
             tx_input = tx["input"]
             decoded = contract.decode_function_input(tx_input)
 
-            # check if the function name is depositWithCredit
-            if decoded[0].fn_name == "depositWithCredit":
+            args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
+
+            if tx["value"] < args.depositAmount:
                 args.event_name = "minipool_deposit_received_event_credit"
+                args.creditAmount = args.depositAmount - tx["value"]
             else:
                 args.event_name = "minipool_deposit_received_event"
-            # the deposit amount is the first argument of the function
-            args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
-        if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event", "minipool_withdrawal_processed_event"]:
+        if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
+                          "minipool_withdrawal_processed_event"]:
             # get the node operator address from minipool contract
             contract = rp.assemble_contract("rocketMinipool", args.minipool)
             args.node = contract.functions.getNodeAddress().call()
