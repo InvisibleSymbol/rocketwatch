@@ -33,7 +33,8 @@ LOOKUP = {
         "N": "Nimbus",
         "P": "Prysm",
         "L": "Lighthouse",
-        "T": "Teku"
+        "T": "Teku",
+        "S": "Lodestar"
     },
     "execution": {
         "I": "Infura",
