@@ -111,7 +111,7 @@ class Metrics(commands.Cog):
                 }
             },
             {
-                '$sort': SON([('year', 1), ('month', 1)])
+                '$sort': SON([('id.year', 1), ('id.month', 1)])
             }
         ]).to_list(None)
         event_emission = await self.db.event_queue.aggregate([
@@ -125,7 +125,7 @@ class Metrics(commands.Cog):
                 }
             },
             {
-                '$sort': SON([('year', 1), ('month', 1)])
+                '$sort': SON([('id.year', 1), ('id.month', 1)])
             }
         ]).to_list(None)
 
@@ -135,6 +135,9 @@ class Metrics(commands.Cog):
         # plot the command usage as bars
         ax1.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in command_usage], [x['total'] for x in command_usage])
         ax1.set_title("Command Usage")
+
+        # tilt the x axis labels
+        plt.xticks(rotation=45)
 
         # plot the event usage
         ax2.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_emission], [x['total'] for x in event_emission])
