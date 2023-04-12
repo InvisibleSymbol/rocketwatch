@@ -7,7 +7,6 @@ import motor.motor_asyncio
 from bson import SON
 from cachetools import TTLCache
 from discord import NotFound, File
-from discord.app_commands import Choice, choices
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -135,16 +134,12 @@ class Metrics(commands.Cog):
         # plot the command usage as bars
         ax1.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in command_usage], [x['total'] for x in command_usage])
         ax1.set_title("Command Usage")
-
-        # tilt the x axis labels
-        plt.xticks(rotation=45)
+        ax1.set_xticklabels([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in command_usage], rotation=45)
 
         # plot the event usage
         ax2.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_emission], [x['total'] for x in event_emission])
         ax2.set_title("Event Emission")
-
-        # tilt the x axis labels
-        plt.xticks(rotation=45)
+        ax2.set_xticklabels([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_emission], rotation=45)
 
         # use minimal whitespace
         plt.tight_layout()
@@ -161,8 +156,6 @@ class Metrics(commands.Cog):
         e = Embed(title="Command Usage and Event ")
         e.set_image(url="attachment://metrics.png")
         await ctx.send(embed=e, file=File(file, filename="metrics.png"))
-
-
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
