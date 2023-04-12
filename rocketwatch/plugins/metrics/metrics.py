@@ -111,7 +111,7 @@ class Metrics(commands.Cog):
                 }
             },
             {
-                '$sort': SON([('id.year', 1), ('id.month', 1)])
+                '$sort': SON([('_id.year', 1), ('_id.month', 1)])
             }
         ]).to_list(None)
         event_emission = await self.db.event_queue.aggregate([
@@ -125,7 +125,7 @@ class Metrics(commands.Cog):
                 }
             },
             {
-                '$sort': SON([('id.year', 1), ('id.month', 1)])
+                '$sort': SON([('_id.year', 1), ('_id.month', 1)])
             }
         ]).to_list(None)
 
