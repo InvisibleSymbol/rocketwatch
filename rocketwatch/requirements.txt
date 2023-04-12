@@ -1,6 +1,6 @@
 psutil==5.9.4
 python_i18n==0.3.9
-web3==5.31.3
+web3==5.31.4
 humanize==4.6.0
 termplotlib==0.3.9
 cachetools==5.3.0
@@ -23,7 +23,7 @@ cronitor==4.6.0
 circuitbreaker==1.4.0
 retry==0.9.2
 checksumdir==1.2.0
-
+multicall==0.7.1
 dice==3.1.2
 openai==0.26.5
 transformers==4.26.1

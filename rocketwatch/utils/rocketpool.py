@@ -6,6 +6,7 @@ from bidict import bidict
 from cachetools import cached, FIFOCache
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall
+from multicall import Call, Multicall as Multicall2
 from cachetools.func import ttl_cache
 
 from utils import solidity
@@ -41,6 +42,25 @@ class RocketPool:
             self.multicall = None
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
+
+    def seth_sig(self, abi, function_name):
+        # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
+        for item in abi:
+            if item.get("name") == function_name:
+                inputs = ','.join([i['type'] for i in item['inputs']])
+                outputs = []
+                for o in item['outputs']:
+                    if o['type'] == 'tuple':
+                        outputs.append(f"({','.join([i['type'] for i in o['components']])})")
+                    else:
+                        outputs.append(o['type'])
+                outputs = ','.join(outputs)
+                return f"{function_name}({inputs})({outputs})"
+        raise Exception(f"Function {function_name} not found in ABI")
+
+    def multicall2_do_call(self, calls: [Call]):
+        multicall = Multicall2(calls, _w3=w3, gas_limit=500_000_000)
+        return multicall()
 
     @cached(cache=ADDRESS_CACHE)
     def get_address_by_name(self, name):

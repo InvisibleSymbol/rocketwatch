@@ -133,6 +133,7 @@ class MinipoolTask(commands.Cog):
         self.db.proposals.create_index("validator")
         self.db.minipools.create_index("validator", unique=True)
         self.db.proposals.create_index("slot", unique=True)
+        self.db.minipools.create_index("address")
         log.debug("indexes checked")
 
     def task(self):
