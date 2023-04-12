@@ -59,8 +59,8 @@ class RETHAPR(commands.Cog):
             if balance_block == latest_db_block:
                 break
             block_time = w3.eth.getBlock(balance_block)["timestamp"]
-            # abort if the blocktime is older than 30 days
-            if block_time < (datetime.now().timestamp() - 60 * 60 * 24 * 30):
+            # abort if the blocktime is older than 120 days
+            if block_time < (datetime.now().timestamp() - 120 * 24 * 60 * 60):
                 break
             reth_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=cursor_block))
             await self.db.reth_apr.insert_one({
@@ -79,17 +79,19 @@ class RETHAPR(commands.Cog):
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Current rETH APR"
+        e.description = "For some comparisons against other LST: [dune dashboard](https://dune.com/rp_community/lst-comparison)"
 
         # get the last 30 datapoints
-        datapoints = await self.db.reth_apr.find().sort("block", -1).limit(30).to_list(None)
+        datapoints = await self.db.reth_apr.find().sort("block", -1).limit(90 +38).to_list(None)
         if len(datapoints) == 0:
             e.description = "No data available yet."
             return await ctx.send(embed=e)
         datapoints = sorted(datapoints, key=lambda x: x["time"])
         x = []
         y = []
-        # we also calculate a running average of 7 days. if we dont have enough data, we dont show it
+        # we do a 7 day rolling average (9 periods) and a 30 day one (38 periods)
         y_7d = []
+        y_30d = []
         for i in range(1, len(datapoints)):
             # get the duration between the two datapoints
             duration = datapoints[i]["time"] - datapoints[i - 1]["time"]
@@ -107,21 +109,30 @@ class RETHAPR(commands.Cog):
             # add the data of the datapoint to the x values, need to parse it to a datetime object
             x.append(datetime.fromtimestamp(datapoints[i]["time"]))
 
-            if i > 6:
-                # calculate the 7 day average
-                y_7d.append(sum(y[-7:]) / 7)
+            # calculate the 7 day average
+            if i > 8:
+                y_7d.append(sum(y[-9:]) / 9)
             else:
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
+            # calculate the 30 day average
+            if i > 37:
+                y_30d.append(sum(y[-38:]) / 38)
+            else:
+                # if we dont have enough data, we dont show it
+                y_30d.append(None)
 
-        e.add_field(name="Observed rETH APR (7 period average):",
-                    value=f"{y_7d[-1]:.2%} (Commissions Fees accounted for)",
-                    inline=False)
+        e.add_field(name="7.2 Day Average rETH APR",
+                    value=f"{y_7d[-1]:.2%}")
+        e.add_field(name="30.4 Day Average rETH APR",
+                    value=f"{y_30d[-1]:.2%}")
         fig = plt.figure()
         # format the daily average line as a line with dots
-        plt.plot(x, y, color=str(e.color), linestyle="-", marker=".", label="Period Average")
+        plt.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.7)
         # format the 7 day average line as --
-        plt.plot(x, y_7d, color=str(e.color), linestyle="--", label="7 Period Average")
+        plt.plot(x, y_7d, linestyle="-", label="7.2 Day Average")
+        # format the 30 day average line as --
+        plt.plot(x, y_30d, linestyle="-", label="30.4 Day Average")
         plt.title("Observed rETH APR values")
         plt.xlabel("Date")
         plt.ylabel("APR")
@@ -129,7 +140,9 @@ class RETHAPR(commands.Cog):
         # format y axis as percentage
         plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
         # set the y axis to start at 0
-        plt.ylim(bottom=0)
+        # plt.ylim(bottom=0)
+        # make the x axis skip the first 30 datapoints
+        plt.xlim(left=x[38])
         # rotate x axis labels
         plt.xticks(rotation=45)
         # show the legend
@@ -155,7 +168,7 @@ class RETHAPR(commands.Cog):
             {"$group": {"_id": None, "avg": {"$avg": "$node_fee"}}}
         ]).to_list(length=1)
 
-        e.add_field(name="Current Average Commission:", value=f"{node_fee[0]['avg']:.2%}")
+        e.add_field(name="Current Average Commission:", value=f"{node_fee[0]['avg']:.2%}", inline=False)
 
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
