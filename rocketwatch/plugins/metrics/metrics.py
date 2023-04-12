@@ -1,13 +1,17 @@
 import logging
 import math
 from datetime import datetime, timedelta
+from io import BytesIO
 
 import motor.motor_asyncio
+from bson import SON
 from cachetools import TTLCache
-from discord import NotFound
+from discord import NotFound, File
+from discord.app_commands import Choice, choices
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from matplotlib import pyplot as plt
 
 from utils import reporter
 from utils.cfg import cfg
@@ -91,6 +95,69 @@ class Metrics(commands.Cog):
             log.error(f"Failed to get command metrics: {e}")
             await report_error(e)
 
+    @hybrid_command()
+    async def metrics_chart(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        # generate mathplotlib chart that shows monthly command usage and monthly event usage, in separate subplots
+
+        command_usage = await self.collection.aggregate([
+            {
+                '$group': {
+                    '_id'  : {
+                        'year' : {'$year': '$timestamp'},
+                        'month': {'$month': '$timestamp'}
+                    },
+                    'total': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': SON([('year', 1), ('month', 1)])
+            }
+        ]).to_list(None)
+        event_usage = await self.db.event_queue.aggregate([
+            {
+                '$group': {
+                    '_id'  : {
+                        'year' : {'$year': '$time_seen'},
+                        'month': {'$month': '$time_seen'}
+                    },
+                    'total': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': SON([('year', 1), ('month', 1)])
+            }
+        ]).to_list(None)
+
+        # create a new figure
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+
+        # plot the command usage as bars
+        ax1.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in command_usage], [x['total'] for x in command_usage])
+        ax1.set_title("Command Usage")
+
+        # plot the event usage
+        ax2.plot([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_usage], [x['total'] for x in event_usage])
+        ax2.set_title("Event Usage")
+
+        # use minimal whitespace
+        plt.tight_layout()
+
+        # store the graph in an file object
+        file = BytesIO()
+        plt.savefig(file, format='png')
+        file.seek(0)
+
+        # clear plot from memory
+        plt.clf()
+        plt.close()
+
+        e = Embed(title="Command and Event Usage")
+        e.set_image(url="attachment://metrics.png")
+        await ctx.send(embed=e, file=File(file, filename="metrics.png"))
+
+
+
     @commands.Cog.listener()
     async def on_command(self, ctx):
         log.info(f"/{ctx.command.name} triggered by {ctx.author} in #{ctx.channel.name} ({ctx.guild})")
@@ -148,7 +215,7 @@ class Metrics(commands.Cog):
     async def on_command_error(self, ctx, excep):
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
 
-        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported.'
+        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported. Please try again later'
         try:
             # try to inform the user. this might fail if it took too long to respond
             await ctx.send(content=msg)
