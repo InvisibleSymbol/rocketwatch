@@ -44,7 +44,7 @@ class BeaconStates(commands.Cog):
         res = {int(v["index"]): v for v in res}
         return res
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=5*60)
     async def run_loop(self):
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
