@@ -73,7 +73,7 @@ for fallback_endpoint in reversed(endpoints):
                 log.warning(f"falling back to {self.base_url} for validator balances {state_id}")
             endpoint = f"/eth/v1/beacon/states/{state_id}/validator_balances"
             url = self.base_url + endpoint
-            response = self.session.get(url, timeout=(3.05, 20))
+            response = self.session.get(url, timeout=(5, 30))
             response.raise_for_status()
             return response.json()
 
@@ -88,7 +88,7 @@ for fallback_endpoint in reversed(endpoints):
                 kwargs['ids'] = [str(i) for i in kwargs['ids']]
                 endpoint += f"?id={','.join(kwargs['ids'])}"
             url = self.base_url + endpoint
-            response = self.session.get(url, timeout=(3.05, 20))
+            response = self.session.get(url, timeout=(5, 30))
             response.raise_for_status()
             return response.json()
 
