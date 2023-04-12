@@ -44,7 +44,7 @@ class BeaconStates(commands.Cog):
         res = {int(v["index"]): v for v in res}
         return res
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=5)
     async def run_loop(self):
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
@@ -55,7 +55,7 @@ class BeaconStates(commands.Cog):
             await report_error(err)
 
     def update_states(self):
-        logging.info("Updating validator states")
+        log.info("Updating validator states")
         a = self.get_validators()
         # we get back a dict of index => {status: string}
         # we want to update the db with this using bulk write
@@ -63,7 +63,7 @@ class BeaconStates(commands.Cog):
                                    {"$set": {"status": vali["status"], "is_slashed": vali["validator"]["slashed"]}}) for
                  index, vali in a.items()]
         self.sync_db.minipools.bulk_write(batch, ordered=False)
-        logging.info(f"Updated {len(batch)} validators")
+        log.info(f"Updated {len(batch)} validators")
 
     @hybrid_command()
     async def beacon_states(self, ctx: Context):
