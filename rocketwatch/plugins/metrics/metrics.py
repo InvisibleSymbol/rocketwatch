@@ -98,7 +98,7 @@ class Metrics(commands.Cog):
     @hybrid_command()
     async def metrics_chart(self, ctx):
         await ctx.defer(ephemeral=is_hidden(ctx))
-        # generate mathplotlib chart that shows monthly command usage and monthly event usage, in separate subplots
+        # generate mathplotlib chart that shows monthly command usage and monthly event emission, in separate subplots
 
         command_usage = await self.collection.aggregate([
             {
@@ -114,7 +114,7 @@ class Metrics(commands.Cog):
                 '$sort': SON([('year', 1), ('month', 1)])
             }
         ]).to_list(None)
-        event_usage = await self.db.event_queue.aggregate([
+        event_emission = await self.db.event_queue.aggregate([
             {
                 '$group': {
                     '_id'  : {
@@ -137,8 +137,11 @@ class Metrics(commands.Cog):
         ax1.set_title("Command Usage")
 
         # plot the event usage
-        ax2.plot([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_usage], [x['total'] for x in event_usage])
-        ax2.set_title("Event Usage")
+        ax2.bar([f"{x['_id']['year']}-{x['_id']['month']:0>2}" for x in event_emission], [x['total'] for x in event_emission])
+        ax2.set_title("Event Emission")
+
+        # tilt the x axis labels
+        plt.xticks(rotation=45)
 
         # use minimal whitespace
         plt.tight_layout()
@@ -152,7 +155,7 @@ class Metrics(commands.Cog):
         plt.clf()
         plt.close()
 
-        e = Embed(title="Command and Event Usage")
+        e = Embed(title="Command Usage and Event ")
         e.set_image(url="attachment://metrics.png")
         await ctx.send(embed=e, file=File(file, filename="metrics.png"))
 
