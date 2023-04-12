@@ -293,7 +293,7 @@ class Proposals(commands.Cog):
                         "and **does not represent operator adoption**.\n" \
                         "Versions with a proposal in the **last 2 days** are emphasized.\n\n" \
                         "The percentages in the top left legend show the percentage of proposals observed in the last 5 days using that version.\n" \
-                        "**If an old version is shown to have 10% of the proposals, it means that it was 10% of the proposals in the last 5 days.**\n" \
+                        "**If an old version is shown as 10%, it means that it was 10% of the proposals in the last 5 days.**\n" \
                         "_No it does not mean that the minipools simply haven't proposed with the new version yet._\n" \
                         "This only looks at proposals, it does not care about what individual minipools do."
         # get proposals
