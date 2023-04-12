@@ -291,8 +291,11 @@ class Proposals(commands.Cog):
         e = Embed(title="Version Chart")
         e.description = "The graph below shows proposal stats using a **5-day rolling window**, " \
                         "and **does not represent operator adoption**.\n" \
-                        "Versions with a proposal in the **last 2 days** are emphasized."
-
+                        "Versions with a proposal in the **last 2 days** are emphasized.\n\n" \
+                        "The percentages in the top left legend show the percentage of proposals observed in the last 5 days using that version.\n" \
+                        "**If an old version is shown to have 10% of the proposals, it means that it was 10% of the proposals in the last 5 days.**\n" \
+                        "_No it does not mean that the minipools simply haven't proposed with the new version yet._\n" \
+                        "This only looks at proposals, it does not care about what individual minipools do."
         # get proposals
         # limit to 6 months
         proposals = await self.db.proposals.find(
@@ -385,6 +388,9 @@ class Proposals(commands.Cog):
         last_y_values = [[yy[-1]] * 2 for yy in y.values()]
         plt.stackplot([x[-1], future_point], *last_y_values, colors=colors)
         plt.tight_layout()
+
+        # the title should mention that the /version_chart command contains more information about how this chart works. but short
+        plt.title("READ DESC OF /version_chart IF CONFUSED", y=0.95, fontsize=9)
 
         # respond with image
         img = BytesIO()
