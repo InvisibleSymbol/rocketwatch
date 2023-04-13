@@ -9,7 +9,7 @@ from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
-from utils.embeds import Embed
+from utils.embeds import Embed, el_explorer_url
 from utils.readable import render_tree
 from utils.reporter import report_error
 from utils.shared_w3 import bacon
@@ -87,10 +87,10 @@ class BeaconStates(commands.Cog):
                     data["active"]["ongoing"] = data["active"].get("ongoing", 0) + 1
                 case "active_exiting":
                     data["exiting"]["voluntarily"] = data["exiting"].get("voluntarily", 0) + 1
-                    exiting_valis.append(minipool["validator"])
+                    exiting_valis.append(minipool)
                 case "active_slashed":
                     data["exiting"]["slashed"] = data["exiting"].get("slashed", 0) + 1
-                    exiting_valis.append(minipool["validator"])
+                    exiting_valis.append(minipool)
                 case "exited_unslashed" | "exited_slashed" | "withdrawal_possible" | "withdrawal_done":
                     if minipool["is_slashed"]:
                         data["exited"]["slashed"] = data["exited"].get("slashed", 0) + 1
@@ -104,10 +104,25 @@ class BeaconStates(commands.Cog):
         # render dict as a tree like structure
         description += render_tree(data, "Minipool States")
         if 0 < len(exiting_valis) <= 24:
-            exiting_valis.sort()
             description += "\n\n--- Exiting Minipools ---\n\n"
-            description += ", ".join([str(v) for v in exiting_valis])
-        description += "```"
+            # array of validator attribute, sorted by index
+            valis = sorted([v["validator"] for v in exiting_valis], key=lambda x: x)
+            description += ", ".join([str(v) for v in valis])
+            description += "```"
+        elif len(exiting_valis) > 24:
+            description += "```\n**Exiting Node Operators:**\n"
+            node_operators = {}
+            # dedupe, add count of validators with matching node operator
+            for v in exiting_valis:
+                node_operators[v["node_operator"]] = node_operators.get(v["node_operator"], 0) + 1
+            # turn into list
+            node_operators = list(node_operators.items())
+            # sort by count
+            node_operators.sort(key=lambda x: x[1], reverse=True)
+            description += ""
+            # use el_explorer_url
+            description += ", ".join([f"{el_explorer_url(v)} ({c})" for v, c in node_operators])
+
         embed.description = description
         await ctx.send(embed=embed)
 
