@@ -240,8 +240,9 @@ def assemble(args):
                     inline=False)
 
     if "submission" in args and "merkleTreeCID" in args.submission:
-        e.add_field(name="IPFS Merkle Tree",
-                    value=f"[{s_hex(args.submission.merkleTreeCID)}](https://gateway.ipfs.io/ipfs/{args.submission.merkleTreeCID})")
+        n = f"0x{s_hex(args.submission.merkleRoot.hex())}"
+        e.add_field(name="Merkle Tree",
+                    value=f"[{n}](https://gateway.ipfs.io/ipfs/{args.submission.merkleTreeCID})")
 
     # show transaction hash if possible
     if "transactionHash" in args:
