@@ -153,6 +153,9 @@ class TVL(commands.Cog):
         description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl)} DAI)")
 
         description = "```diff\n" + "\n".join([d for d in description if " 0.00 " not in d or show_all]) + "```"
+
+        # add temporary warning at the end of description that we arent account for minipool balances on the execution layer yet
+        description += "\n**WARNING**: Minipool balances on the execution layer are not yet accounted for in the above TVL."
         # send embed with tvl
         e = Embed()
         e.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
