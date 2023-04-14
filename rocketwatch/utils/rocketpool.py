@@ -42,6 +42,8 @@ class RocketPool:
             self.multicall = None
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
+        # add multicall3 address
+        self.addresses["multicall3"] = Multicall2([], _w3=w3).multicall_address
 
     def seth_sig(self, abi, function_name):
         # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
