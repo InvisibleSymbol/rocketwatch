@@ -85,15 +85,6 @@ class TVL(commands.Cog):
         tvl.append(minipool_count_per_status["initialisedCount"] * 16)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Unmatched Minipools")
 
-        # Withdrawable Minipools: withdrawableCount of minipool_count_per_status * 32 ETH.
-        # Minipools that are flagged as withdrawable have the following applied to them:
-        # - They don't (or shouldn't) have any ETH on the beacon chain.
-        # - The withdrawn ETH should be waiting in their address.
-        # To give an accurate number of this we would have to either scrape all the addresses for their Balance or track some
-        # Event the amount they have withdrawn. Since this hasn't been implemented, a flat 32 ETH is assumed.
-        tvl.append(minipool_count_per_status["withdrawableCount"] * 32)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: Withdrawable Minipools")
-
         # Dissolved Minipools: dissolvedCount of minipool_count_per_status * 16 ETH.
         # Minipools that are flagged as dissolved are Pending minipools that didn't trigger the second phase within the configured
         # LaunchTimeout (14 days at the time of writing).
@@ -106,6 +97,32 @@ class TVL(commands.Cog):
         # TODO fix the above comment.
         tvl.append(minipool_count_per_status["dissolvedCount"] * 16)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Dissolved Minipools")
+
+        # Minipool Balances: Sum of all minipool balances.
+        # This is the sum of all minipools that have a execution layer balance, as reported by our database.
+        # This should only be skimmed Rewards / withdrawals from the Beacon chain.
+        # NOTE: To ensure that we don't accidentally count the pETH share of the minipools while they are getting scrub checked,
+        # we filter out minipools that have a status of "pending_initialized" or "pending_queued".
+        tmp = await self.db.minipools.aggregate(
+            [
+                {
+                    "$match": {
+                        "meta.EthBalance": {"$gt": 0, "$exists": True},
+                        "status" : {"$nin": ["pending_initialized", "pending_queued"]},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id"  : "total",
+                        "total": {"$sum": "$meta.EthBalance"},
+                    }
+                }
+            ]
+        ).to_list(length=None)
+        log.debug(f"tmp: {tmp}")
+        minipool_balances = tmp[0]["total"]
+        tvl.append(minipool_balances)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: EL Minipool Balances")
 
         # Deposit Pool Balance: calls the contract and asks what its balance is, simple enough.
         # ETH in here has been swapped for rETH and is waiting to be matched with a minipool.
@@ -154,8 +171,6 @@ class TVL(commands.Cog):
 
         description = "```diff\n" + "\n".join([d for d in description if " 0.00 " not in d or show_all]) + "```"
 
-        # add temporary warning at the end of description that we arent account for minipool balances on the execution layer yet
-        description += "\n**WARNING**: Minipool balances on the execution layer are not yet accounted for in the above TVL."
         # send embed with tvl
         e = Embed()
         e.set_footer(text="\"that looks good to me\" - kanewallmann 2021")
