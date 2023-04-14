@@ -47,11 +47,12 @@ class TVL(commands.Cog):
         # Beacon Chain Rewards: Subtract the sum of ETH on the beacon chain by their base balance (32 ETH).
         # We can't use stakingCount of minipool_count_per_status because the beacon chain has a delayed view due to
         # the eth1 follow distance. So we use the total number of minipools in the database instead.
+        # Since we only care about rewards, we ignore all minipools with a balance bellow 32 ETH.
         tmp = await self.db.minipools.aggregate(
             [
                 {
                     "$match": {
-                        "balance": {"$ne": 16, "$exists": True},
+                        "balance": {"$gt": 32, "$exists": True},
                     }
                 },
                 {
