@@ -9,12 +9,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from multicall import Call, constants
 
 # enable multiprocessing
+from utils import solidity
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import s_hex
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden
 
-constants.NUM_PROCESSES = 4
+constants.NUM_PROCESSES = 11
 from utils.cfg import cfg
 from utils.reporter import report_error
 from utils.rocketpool import rp
@@ -50,11 +51,14 @@ class MinipoolsUpkeepTask(commands.Cog):
     def get_minipool_stats(self, minipools):
         m_d = rp.get_contract_by_name("rocketMinipoolDelegate")
         m = rp.assemble_contract("rocketMinipool", address=minipools[0])
-        function_pairs = [
-            (rp.seth_sig(m_d.abi, "getNodeFee"), "getNodeFee"),
-            (rp.seth_sig(m.abi, "getDelegate"), "getDelegate"),
-            (rp.seth_sig(m.abi, "getPreviousDelegate"), "getPreviousDelegate"),
-            (rp.seth_sig(m.abi, "getUseLatestDelegate"), "getUseLatestDelegate"),
+        mc = rp.get_contract_by_name("multicall3")
+        lambs = [
+            lambda x: (x, rp.seth_sig(m_d.abi, "getNodeFee"), [((x, "NodeFee"), None)]),
+            lambda x: (x, rp.seth_sig(m.abi, "getDelegate"), [((x, "Delegate"), None)]),
+            lambda x: (x, rp.seth_sig(m.abi, "getPreviousDelegate"), [((x, "PreviousDelegate"), None)]),
+            lambda x: (x, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((x, "UseLatestDelegate"), None)]),
+            # get balances of minipool as well
+            lambda x: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), x], [((x, "EthBalance"), solidity.to_float)])
         ]
         minipool_stats = {}
         batch_size = 2500
@@ -63,19 +67,17 @@ class MinipoolsUpkeepTask(commands.Cog):
             log.debug(f"getting minipool stats for {i}-{i_end}")
             addresses = minipools[i:i_end]
             calls = [
-                Call(a, seth_sig, [((a, func_name), None)])
+                Call(*lamb(a))
                 for a in addresses
-                for seth_sig, func_name in function_pairs
+                for lamb in lambs
             ]
             res = rp.multicall2_do_call(calls)
             # add data to mini pool stats dict (address => {func_name: value})
             # strip get from function name
-            for (address, func_name), value in res.items():
+            for (address, variable_name), value in res.items():
                 if address not in minipool_stats:
                     minipool_stats[address] = {}
-                if func_name.startswith("get"):
-                    func_name = func_name[3:]
-                minipool_stats[address][func_name] = value
+                minipool_stats[address][variable_name] = value
         return minipool_stats
 
     # every 15 minutes
