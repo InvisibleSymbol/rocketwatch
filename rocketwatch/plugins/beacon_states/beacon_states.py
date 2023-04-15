@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import random
 from concurrent.futures import ThreadPoolExecutor
 
 import pymongo
@@ -8,6 +7,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import render_tree
@@ -44,7 +44,7 @@ class BeaconStates(commands.Cog):
         res = {int(v["index"]): v for v in res}
         return res
 
-    @tasks.loop(seconds=5*60)
+    @tasks.loop(seconds=5 * 60)
     async def run_loop(self):
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
@@ -59,9 +59,19 @@ class BeaconStates(commands.Cog):
         a = self.get_validators()
         # we get back a dict of index => {status: string}
         # we want to update the db with this using bulk write
-        batch = [pymongo.UpdateOne({"validator": index},
-                                   {"$set": {"status": vali["status"], "is_slashed": vali["validator"]["slashed"]}}) for
-                 index, vali in a.items()]
+        batch = [
+            pymongo.UpdateOne(
+                {
+                    "validator": index
+                },
+                {
+                    "$set": {
+                        "status"    : vali["status"],
+                        "is_slashed": vali["validator"]["slashed"],
+                        "balance"   : solidity.to_float(vali["balance"], 9)
+                    }
+                }
+            ) for index, vali in a.items()]
         self.sync_db.minipools.bulk_write(batch, ordered=False)
         log.info(f"Updated {len(batch)} validators")
 
