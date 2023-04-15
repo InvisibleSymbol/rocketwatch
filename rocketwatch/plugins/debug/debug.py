@@ -393,7 +393,9 @@ class Debug(Cog):
                    block: str = "latest"):
         """Call Function of Contract"""
         await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
-
+        # convert block to int if number
+        if block.isnumeric():
+            block = int(block)
         try:
             args = json.loads(json_args)
             if not isinstance(args, list):
