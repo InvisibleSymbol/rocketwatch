@@ -43,9 +43,9 @@ class Leaderboard(commands.Cog):
         self.run_loop.start()
 
     @timerun
-    def get_balances(self, slot):
+    def get_balances(self, slot, ids):
         log.debug(f"Getting balances for slot {slot}")
-        return bacon.get_validator_balances(slot)["data"]
+        return bacon.get_validator_balances(slot, ids=ids)["data"]
 
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
@@ -66,11 +66,7 @@ class Leaderboard(commands.Cog):
         current = int(bacon.get_block("head")["data"]["message"]["slot"])
         current_epoch = current // 32
         epochs_per_day = (60 / 12) / 32 * 60 * 24
-        # get balances now
-        current_balances = self.get_balances(slot=current)
-        # get balances a week ago
         last_week = current - int(60 / 12 * 60 * 24 * 7)
-        last_week_balances = self.get_balances(last_week)
         # get all validators from db
         validators = list(
             self.sync_db.minipools.find(
@@ -83,23 +79,18 @@ class Leaderboard(commands.Cog):
             for validator in validators
         }
         validators = [x["validator"] for x in validators]
+        # get balances now
+        current_balances = self.get_balances(slot=current, ids=validators)
+        # get balances a week ago
+        last_week_balances = self.get_balances(slot=last_week, ids=validators)
         validator_data = {}
-        # update balances of validators
-        batch = []
-        cvb = {int(v["index"]): to_float(v["balance"], 9) for v in current_balances if int(v["index"]) in validators}
+        cvb = {int(v["index"]): to_float(v["balance"], 9) for v in current_balances}
         for v, b in cvb.items():
-            if b == 16:
+            if b < 31:
                 continue
             validator_data[v] = {"current_balance": b}
-            batch.append(
-                pymongo.UpdateOne(
-                    {"validator": v},
-                    {"$set": {"balance": b}}
-                )
-            )
-        self.sync_db.minipools.bulk_write(batch)
         # filter
-        last_week_data = [v for v in last_week_balances if int(v["index"]) in validators]
+        last_week_data = [v for v in last_week_balances if int(v["index"]) in validator_data]
         for v in last_week_data:
             index = int(v["index"])
             # split for performance reasons
