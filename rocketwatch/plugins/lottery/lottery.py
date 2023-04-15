@@ -14,7 +14,7 @@ from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.time_debug import timerun_async
 from utils.visibility import is_hidden
 
-log = logging.getLogger("proposals")
+log = logging.getLogger("lottery")
 log.setLevel(cfg["log_level"])
 
 
