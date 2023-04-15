@@ -53,7 +53,7 @@ class MinipoolsUpkeepTask(commands.Cog):
         m = rp.assemble_contract("rocketMinipool", address=minipools[0])
         mc = rp.get_contract_by_name("multicall3")
         lambs = [
-            lambda x: (x, rp.seth_sig(m_d.abi, "getNodeFee"), [((x, "NodeFee"), None)]),
+            lambda x: (x, rp.seth_sig(m_d.abi, "getNodeFee"), [((x, "NodeFee"), solidity.to_float)]),
             lambda x: (x, rp.seth_sig(m.abi, "getDelegate"), [((x, "Delegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getPreviousDelegate"), [((x, "PreviousDelegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((x, "UseLatestDelegate"), None)]),
