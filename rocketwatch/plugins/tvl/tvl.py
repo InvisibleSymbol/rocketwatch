@@ -98,31 +98,47 @@ class TVL(commands.Cog):
         tvl.append(minipool_count_per_status["dissolvedCount"] * 16)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Dissolved Minipools")
 
-        # Minipool Balances: Sum of all minipool balances.
-        # This is the sum of all minipools that have a execution layer balance, as reported by our database.
-        # This should only be skimmed Rewards / withdrawals from the Beacon chain.
+        # Get node fee and eth balance of minipool contracts
         # NOTE: To ensure that we don't accidentally count the pETH share of the minipools while they are getting scrub checked,
         # we filter out minipools that have a status of "pending_initialized" or "pending_queued".
-        tmp = await self.db.minipools.aggregate(
-            [
-                {
-                    "$match": {
-                        "meta.EthBalance": {"$gt": 0, "$exists": True},
-                        "status" : {"$nin": ["pending_initialized", "pending_queued"]},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id"  : "total",
-                        "total": {"$sum": "$meta.EthBalance"},
-                    }
-                }
-            ]
+        tmp = await self.db.minipools.find(
+            {
+                "meta.EthBalance": {"$gt": 0, "$exists": True},
+                "status"         : {"$nin": ["pending_initialized", "pending_queued"]},
+            }, {
+                "meta.EthBalance"       : 1,
+                "meta.NodeFee"          : 1,
+                "meta.NodeOperatorShare": 1
+            }
         ).to_list(length=None)
-        log.debug(f"tmp: {tmp}")
-        minipool_balances = tmp[0]["total"]
-        tvl.append(minipool_balances)
-        description.append(f"+ {tvl[-1]:12.2f} ETH: EL Minipool Balances")
+
+        # Node Share in Minipools Contracts
+        # This is the sum of the node operator shares of all minipools returned by the above query.
+        # The formula is as follows:
+        # (b - (b * n)) * s
+        # Where:
+        # - b is the balance of the minipool contract.
+        # - n is the node fee.
+        # - s is the node operator share.
+
+        total_node_share = 0
+        for minipool in tmp:
+            b = minipool["meta"]["EthBalance"]
+            n = minipool["meta"]["NodeFee"]
+            s = minipool["meta"]["NodeOperatorShare"]
+            total_node_share += (b - (b * n)) * s
+        log.debug(f"totalNodeShare: {total_node_share}")
+        tvl.append(total_node_share)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: Node Share in MP Contracts")
+
+        # rETH share in Minipool Contracts
+        # This is the sum of the rETH shares of all minipools. Easy to claculate, just sum up the balances of all minipools and
+        # subtract the totalNodeShare.
+
+        total_reth_share = sum(minipool["meta"]["EthBalance"] for minipool in tmp) - total_node_share
+        log.debug(f"totalRETHShare: {total_reth_share}")
+        tvl.append(total_reth_share)
+        description.append(f"+ {tvl[-1]:12.2f} ETH: rETH Share in MP Contracts")
 
         # Deposit Pool Balance: calls the contract and asks what its balance is, simple enough.
         # ETH in here has been swapped for rETH and is waiting to be matched with a minipool.
