@@ -57,11 +57,12 @@ class MinipoolsUpkeepTask(commands.Cog):
             lambda x: (x, rp.seth_sig(m.abi, "getDelegate"), [((x, "Delegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getPreviousDelegate"), [((x, "PreviousDelegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((x, "UseLatestDelegate"), None)]),
+            lambda x: (x, rp.seth_sig(m.abi, "getNodeDepositBalance"), [((x, "NodeOperatorShare"), lambda i: solidity.to_float(i) / 32)]),
             # get balances of minipool as well
             lambda x: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), x], [((x, "EthBalance"), solidity.to_float)])
         ]
         minipool_stats = {}
-        batch_size = 2500
+        batch_size = 10_000 // len(lambs)
         for i in range(0, len(minipools), batch_size):
             i_end = min(i + batch_size, len(minipools))
             log.debug(f"getting minipool stats for {i}-{i_end}")
