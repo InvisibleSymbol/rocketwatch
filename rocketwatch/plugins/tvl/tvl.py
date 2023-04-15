@@ -158,7 +158,7 @@ class TVL(commands.Cog):
         eth_tvl = sum(tvl)
         # get eth tvl in dai
         dai_eth_tvl = eth_tvl * eth_price
-        description.append(f"  {eth_tvl:12.2f} ETH ({humanize.intword(dai_eth_tvl)} DAI)")
+        description.append(f"  {eth_tvl:12.2f} ETH ({humanize.intword(dai_eth_tvl, format='%.3f')} DAI)")
 
         # Staked RPL: This is all ETH that has been staked by Node Operators.
         tvl.append(solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake")))
@@ -183,7 +183,7 @@ class TVL(commands.Cog):
         description.append("Total Value Locked".center(max(len(d) for d in description), "-"))
         total_tvl = sum(tvl)
         dai_total_tvl = total_tvl * eth_price
-        description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl)} DAI)")
+        description.append(f"  {total_tvl:12.2f} ETH ({humanize.intword(dai_total_tvl, format='%.3f')} DAI)")
 
         description = "```diff\n" + "\n".join([d for d in description if " 0.00 " not in d or show_all]) + "```"
 
