@@ -80,8 +80,8 @@ class MinipoolsUpkeepTask(commands.Cog):
                 minipool_stats[address][variable_name] = value
         return minipool_stats
 
-    # every 15 minutes
-    @tasks.loop(seconds=60 * 15)
+    # every 6.4 minutes
+    @tasks.loop(seconds=32*12)
     async def run_loop(self):
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
