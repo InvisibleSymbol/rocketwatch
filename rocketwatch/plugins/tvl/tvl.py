@@ -115,7 +115,7 @@ class TVL(commands.Cog):
         # Node Share in Minipools Contracts
         # This is the sum of the node operator shares of all minipools returned by the above query.
         # The formula is as follows:
-        # (b - (b * n)) * s
+        # (b + (b * n)) * s
         # Where:
         # - b is the balance of the minipool contract.
         # - n is the node fee.
@@ -126,7 +126,7 @@ class TVL(commands.Cog):
             b = minipool["meta"]["EthBalance"]
             n = minipool["meta"]["NodeFee"]
             s = minipool["meta"]["NodeOperatorShare"]
-            total_node_share += (b - (b * n)) * s
+            total_node_share += (b + (b * n)) * s
         log.debug(f"totalNodeShare: {total_node_share}")
         tvl.append(total_node_share)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Node Share in MP Contracts")
