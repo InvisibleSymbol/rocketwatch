@@ -45,6 +45,8 @@ def el_explorer_url(target, name="", prefix=""):
                 else:
                     url = f"https://rocketscan.io/minipool/{target}"
             if rp.call("rocketNodeManager.getNodeExists", target):
+                if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target):
+                    prefix += ":cup_with_straw:"
                 if cfg["rocketpool.chain"] == "goerli":
                     url = f"https://prater.rocketscan.io/node/{target}"
                 else:
