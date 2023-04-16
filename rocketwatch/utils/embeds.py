@@ -14,6 +14,7 @@ from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
 from utils.rocketpool import rp
+from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
 
 ens = CachedEns()
