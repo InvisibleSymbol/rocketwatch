@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+import logging
 import math
 
 import discord
@@ -8,14 +9,17 @@ from discord import Color
 from etherscan_labels import Addresses
 
 from strings import _
+from utils import readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
 from utils.rocketpool import rp
-from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
 
 ens = CachedEns()
+
+log = logging.getLogger("embeds")
+log.setLevel(cfg["log_level"])
 
 
 class Embed(discord.Embed):
@@ -80,7 +84,19 @@ def el_explorer_url(target, name="", prefix=""):
                                                                                    "type"        : "string"}],
                                                               "stateMutability": "view",
                                                               "type"           : "function"}])
-                    name = c.functions.name().call()
+                    n = c.functions.name().call()
+                    # make sure nobody is trying to inject a custom link, as there was a guy that made the name of his contract
+                    # 'RocketSwapRouter](https://etherscan.io/search?q=0x16d5a408e807db8ef7c578279beeee6b228f1c1c)[',
+                    # in an attempt to get people to click on his contract
+
+                    # first, if the name has a link in it, we ignore it
+                    if any(keyword in n.lower() for keyword in
+                           ["http", "discord", "airdrop", "telegram", "twitter", "youtube"]):
+                        log.warning(f"Contract {target} has a suspicious name: {n}")
+                    else:
+                        # second, we prevent any markdown characters from being used by sanitizing the name
+                        name = f"{readable.sanitize_for_markdown(n)}*"
+
     if not name:
         # fall back to shortened address
         name = s_hex(target)

@@ -87,3 +87,12 @@ def render_tree(data: dict, name: str) -> str:
     description = f"{name}:\n"
     description += "\n".join(strings)
     return description
+
+
+def sanitize_for_markdown(text):
+    reserved_characters = ['\\', '*', '_', '{', '}', '[', ']', '(', ')', '#', '+', '-', '.', '!', '|']
+    for char in reserved_characters:
+        text = text.replace(char, '\\' + char)
+    # strip urls
+    
+    return text
