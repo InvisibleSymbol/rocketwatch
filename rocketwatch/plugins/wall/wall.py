@@ -2,10 +2,10 @@ import contextlib
 import logging
 from io import BytesIO
 
-import humanize
 import aiohttp
+import humanize
+import matplotlib.pyplot as plt
 from discord import File
-
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -13,10 +13,10 @@ from discord.ext.commands import hybrid_command
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
+from utils.readable import s_hex
 from utils.rocketpool import rp
 from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
 from utils.visibility import is_hidden_weak
-from utils.readable import s_hex
 
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
@@ -103,10 +103,7 @@ class Wall(commands.Cog):
         sqrt_price = get_uniswap_pool_stats("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")["sqrtPrice"]
         price = 1 / (int(sqrt_price) ** 2 / 2 ** 192)
 
-        # make a sample matplotlib plot, no interpolation
-        import matplotlib.pyplot as plt
-
-        plt.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-post", color="black", linewidth=1)
+        plt.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-pre", color="black", linewidth=1)
 
         # color everything above the current tick red, below green
         # get the closest tick to the current price
@@ -114,9 +111,9 @@ class Wall(commands.Cog):
         above = a[idx:]
         below = a[:idx + 1]
         # plot the two lists
-        plt.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="post")
-        plt.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="post")
-        # plot the current price
+        plt.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="pre")
+        plt.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="pre")
+        # plot the current price as a vertical line
         plt.axvline(price, color="black", linestyle="--", linewidth=1)
 
         # hide y axis
@@ -143,7 +140,8 @@ class Wall(commands.Cog):
 
         # store the graph in an file object
         file = BytesIO()
-        plt.savefig(file, format='png')
+        # make sure to increase the dpi to make the graph look better
+        plt.savefig(file, format='png', dpi=300)
         file.seek(0)
 
         # clear plot from memory
@@ -151,7 +149,6 @@ class Wall(commands.Cog):
         plt.close()
 
         return file
-
 
 
 async def setup(bot):
