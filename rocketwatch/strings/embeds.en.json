@@ -199,11 +199,11 @@
     },
     "minipool_bond_reduction_started_event": {
         "title": ":magic_wand: Minipool Bond Reduction Initiated",
-        "description_small": ":compression: Node operator %{node} initiated a bond reduction for their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
+        "description_small": ":compression: %{node} initiated a bond reduction for their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
     },
     "minipool_bond_reduce_event": {
         "title": ":magic_wand: Minipool Bond Reduced",
-        "description_small": ":magic_wand: Node operator %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
+        "description_small": ":magic_wand: %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
     },
     "minipool_vote_against_bond_reduction_event": {
         "title": ":warning: Voted Against Bond Reduction",
