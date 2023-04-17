@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import random
 
 import pymongo
@@ -201,11 +202,12 @@ class QueuedEvents(commands.Cog):
             args.message = rp.call("rocketDAOProposal.getMessage", proposal_id)
             # create bar graph for votes
             votes = [
-                solidity.to_int(rp.call("rocketDAOProposal.getVotesFor", proposal_id)),
-                solidity.to_int(rp.call("rocketDAOProposal.getVotesAgainst", proposal_id))
+                solidity.to_int(rp.call("rocketDAOProposal.getVotesFor", proposal_id, block=event.blockNumber)),
+                solidity.to_int(rp.call("rocketDAOProposal.getVotesAgainst", proposal_id, block=event.blockNumber)),
+                math.ceil(solidity.to_float(rp.call("rocketDAONodeTrusted.getMemberQuorumVotesRequired",block=event.blockNumber - 1))),
             ]
             vote_graph = tpl.figure()
-            vote_graph.barh(votes, ["For", "Against"], max_width=20)
+            vote_graph.barh(votes, ["For", "Against", "Quorum"], max_width=20)
             args.vote_graph = vote_graph.get_string()
 
         # create human-readable decision for votes
