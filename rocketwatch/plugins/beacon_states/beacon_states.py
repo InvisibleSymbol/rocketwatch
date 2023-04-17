@@ -79,7 +79,9 @@ class BeaconStates(commands.Cog):
     async def beacon_states(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         # fetch from db
-        res = await self.db.minipools.find({}).to_list(None)
+        res = await self.db.minipools.find({
+            "status": {"$exists": True}
+        }).to_list(None)    
         data = {
             "pending": {},
             "active" : {},
