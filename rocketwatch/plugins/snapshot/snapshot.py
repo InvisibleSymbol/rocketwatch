@@ -121,49 +121,6 @@ class QueuedSnapshot(commands.Cog):
         return events
 
     @hybrid_command()
-    async def analyze_pairs_max_leb(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        vote_id = '0x7426469ae1f7c6de482ab4c2929c3e29054991601c95f24f4f4056d424f9f671'
-        votes, proposal = get_votes_of_snapshot(vote_id)
-        # votes is an array of votes that include a 'choice' field
-        # the choice field is an array of choice indices
-        e = Embed()
-        e.set_author(name="🔗 Data from snapshot.org", url="https://snapshot.org/#/delegate/rocketpool-dao.eth")
-        e.title = f"Snapshot Proposal: {proposal['title']}"
-        # we want to find out the amount of voting power for each pair of choices
-
-        voting_pairs = {}
-        choice_mapping = {
-            1: "nETH",
-            2: "fixed ETH",
-            3: "pETH",
-            4: "stupid",
-            5: "dumb"
-        }
-
-        for vote in votes:
-            # resolve the mapping of choice indices to choice names
-            choices = [choice_mapping.get(i, "???") for i in vote['choice']]
-            # sort the choices so that we can use them as a key
-            choices.sort()
-            # convert the choices to a string so that we can use them as a key
-            choices_str = ' & '.join(choices)
-            if choices_str not in voting_pairs:
-                voting_pairs[choices_str] = [0, 0]
-            voting_pairs[choices_str][0] += vote['vp']
-            voting_pairs[choices_str][1] += 1
-
-        # create a ranking of the pairs
-        ranking = sorted(voting_pairs.items(), key=lambda x: x[1], reverse=True)
-
-        des = "```"
-        for i, (pair, power) in enumerate(ranking):
-            des += f"{i + 1}. {pair}\n\t{power[0]:.2f} votes ({power[1]} voters)\n"
-
-        e.description = f"{des}```"
-        await ctx.send(embed=e)
-
-    @hybrid_command()
     async def votes(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
