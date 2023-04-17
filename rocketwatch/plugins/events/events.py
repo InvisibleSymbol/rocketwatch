@@ -301,10 +301,13 @@ class QueuedEvents(commands.Cog):
             else:
                 args.event_name = "minipool_deposit_received_event"
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
-                          "minipool_withdrawal_processed_event"]:
+                          "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event"]:
             # get the node operator address from minipool contract
             contract = rp.assemble_contract("rocketMinipool", args.minipool)
             args.node = contract.functions.getNodeAddress().call()
+        if "minipool_bond_reduction_started_event" in event_name:
+            # get the previousBondAmount from the minipool contract
+            args.previousBondAmount = solidity.to_float(rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber - 1))
         if event_name == "minipool_withdrawal_processed_event":
             args.totalAmount = args.nodeAmount + args.userAmount
         args = prepare_args(args)
