@@ -170,7 +170,7 @@
         "description": "Node Operator %{node} joined the Smoothing Pool with their %{minipoolCount} Minipools!"
     },
     "node_smoothing_pool_left": {
-        "title": ":cup_with_straw: Node Operator Left Smoothing Pool",
+        "title": ":leaves: Node Operator Left Smoothing Pool",
         "description": "Node Operator %{node} has left the Smoothing Pool with their %{minipoolCount} Minipools!"
     },
     "auction_lot_create_event": {
