@@ -199,6 +199,9 @@ class Core(commands.Cog):
                     await msg.delete()
                     await self.db.state_messages.delete_one({"_id": "state"})
             for event in events:
+                if Response.should_mention(event):
+                    await target_channel.send(content="<@410507226223083531>", embed=Response.get_embed(event), allowed_mentions=AllowedMentions(users=True))
+                else:
                 await target_channel.send(embed=Response.get_embed(event))
                 # mark event as processed
                 await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True}})

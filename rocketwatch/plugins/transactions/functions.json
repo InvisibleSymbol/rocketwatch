@@ -25,5 +25,8 @@
     },
     "rocketUpgradeOneDotOne": {
         "execute": "redstone_upgrade_triggered"
+    },
+    "rocketUpgradeOneDotTwo": {
+        "execute": "atlas_upgrade_triggered"
     }
 }

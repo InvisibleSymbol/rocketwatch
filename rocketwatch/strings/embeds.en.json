@@ -265,6 +265,10 @@
         "title": ":tada: Redstone Upgrade Complete!",
         "description": ""
     },
+    "atlas_upgrade_triggered": {
+        "title": ":tada: Atlas Upgrade Complete!",
+        "description": ""
+    },
     "cow_order_buy_rpl_found": {
         "title": ":cow: BUY Order Found",
         "description": "%{cow_owner} has placed a buy order for %{RPLAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{RPLAmount} RPL (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"

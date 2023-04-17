@@ -168,6 +168,8 @@ class QueuedTransactions(commands.Cog):
                         if embed := self.create_embed(event_name, event):
                             if event_name == "redstone_upgrade_triggered":
                                 embed.set_image(url="https://cdn.dribbble.com/users/187497/screenshots/2284528/media/123903807d334c15aa105b44f2bd9252.gif")
+                            if event_name == "atlas_upgrade_triggered":
+                                embed.set_image(url="https://cdn.discordapp.com/attachments/912434217118498876/1097528472567558227/DALLE_2023-04-17_16.25.46_-_an_expresive_oil_painting_of_the_atlas_2_rocket_taking_off_moon_colorfull.png")
                             payload.append(Response(
                                 topic="transactions",
                                 embed=embed,
