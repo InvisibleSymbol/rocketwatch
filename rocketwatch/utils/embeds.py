@@ -126,7 +126,7 @@ def prepare_args(args):
 
         # handle hex strings
         if str(arg_value).startswith("0x"):
-            prefix = None
+            prefix = ""
 
             if w3.isAddress(arg_value):
                 # get rocketpool related holdings value for this address
