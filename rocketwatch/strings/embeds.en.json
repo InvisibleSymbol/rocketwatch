@@ -32,9 +32,9 @@
         "title": ":leaves: RPL Withdrawal",
         "description": "%{to} withdrew %{amount} RPL (worth %{ethAmount} ETH)!"
     },
-    "minipool_deposit_event": {
-        "title": ":rocket: Minipool Final Deposit ",
-        "description": "Minipool %{minipool} has deposited its final 16 ETH to the Beacon Chain!"
+    "pool_deposit_assigned_event": {
+        "title": ":rocket: Deposit Assigned To Minipool",
+        "description_small": ":outbox_tray: Minipool %{minipool_clean} owned by Operator %{node} has been dequeued! %{transactionHash_small}"
     },
     "minipool_exit_event": {
         "title": ":leaves: Minipool Closed",
@@ -42,7 +42,7 @@
     },
     "minipool_withdrawal_processed_event": {
         "title": ":moneybag: Minipool Withdrawal",
-        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Node Operator %{node}! %{transactionHash_small}"
+        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Operator %{node}! %{transactionHash_small}"
     },
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",

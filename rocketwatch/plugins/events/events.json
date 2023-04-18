@@ -33,6 +33,10 @@
                 {
                     "event_name": "DepositReceived",
                     "name": "pool_deposit_event"
+                },
+                {
+                    "event_name": "DepositAssigned",
+                    "name": "pool_deposit_assigned_event"
                 }
             ]
         },

@@ -137,8 +137,7 @@ class QueuedEvents(commands.Cog):
 
         return self.create_embed(event_name, event), event_name
 
-    def create_embed(self, event_name, event):
-        # prepare args
+    def create_embed(self, event_name, event, _events=None):
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -303,15 +302,22 @@ class QueuedEvents(commands.Cog):
             else:
                 args.event_name = "minipool_deposit_received_event"
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
-                          "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event"]:
+                          "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event",
+                          "pool_deposit_assigned_event"]:
             # get the node operator address from minipool contract
             contract = rp.assemble_contract("rocketMinipool", args.minipool)
             args.node = contract.functions.getNodeAddress().call()
         if "minipool_bond_reduction_started_event" in event_name:
             # get the previousBondAmount from the minipool contract
-            args.previousBondAmount = solidity.to_float(rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber - 1))
+            args.previousBondAmount = solidity.to_float(
+                rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber - 1))
         if event_name == "minipool_withdrawal_processed_event":
             args.totalAmount = args.nodeAmount + args.userAmount
+        if event_name == "pool_deposit_assigned_event" and _events:
+            # check if we have a prestake event for this minipool
+            for ev in _events:
+                if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash:
+                    return None
         args = prepare_args(args)
         return assemble(args)
 
@@ -362,7 +368,7 @@ class QueuedEvents(commands.Cog):
                 event.topics = topics
                 event_name = self.internal_event_mapping[event.event]
 
-                embed = self.create_embed(event_name, event)
+                embed = self.create_embed(event_name, event, _events=pending_events)
             elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:
