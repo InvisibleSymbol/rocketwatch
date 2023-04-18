@@ -48,9 +48,9 @@ async def get_dp():
     queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
     e.add_field(name="Current Queue:", value=f"{humanize.intcomma(queue_length)} Minipools")
     e.add_field(name="Enough For:",
-                value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools" +
-                      (f"\n**`{deposit_pool // 24:>4.0f}`** 8 ETH Minipools" if deposit_pool > 24 else "") +
-                      (f"\n**`{deposit_pool // 32:>4.0f}`** Credit Minipools" if deposit_pool > 32 else ""),
+                value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools (16 ETH from DP)" +
+                      (f"\n**`{deposit_pool // 24:>4.0f}`** 8 ETH Minipools (24 ETH from DP)" if deposit_pool > 24 else "") +
+                      (f"\n**`{deposit_pool // 32:>4.0f}`** Credit Minipools (32 ETH from DP)" if deposit_pool > 32 else ""),
                 inline=False)
 
     img = BytesIO()
