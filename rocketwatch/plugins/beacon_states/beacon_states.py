@@ -133,7 +133,7 @@ class BeaconStates(commands.Cog):
             node_operators.sort(key=lambda x: x[1], reverse=True)
             description += ""
             # use el_explorer_url
-            description += ", ".join([f"{el_explorer_url(v)} ({c})" for v, c in node_operators])
+            description += ", ".join([f"{el_explorer_url(v)} ({c})" for v, c in node_operators[:16]])
 
         embed.description = description
         await ctx.send(embed=embed)
