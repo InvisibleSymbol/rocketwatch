@@ -131,7 +131,7 @@ class MinipoolsUpkeepTask(commands.Cog):
         ]).to_list(None)
         e = Embed()
         e.title = "Delegate Stats"
-        desc = "**Delegate Distribution of Minipools:**\n"
+        desc = "**Effective Delegate Distribution of Minipools:**\n"
         c_sum = sum(d['count'] for d in distribution_stats)
         s = "\u00A0" * 4
         # latest delegate acording to rp
