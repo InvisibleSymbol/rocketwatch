@@ -35,16 +35,16 @@ class EightBall(commands.Cog):
             "Yes",
             "Yes - definitely",
             "You may rely on it",
-            "Reply hazy, try again",
-            "Ask again later",
-            "Better not tell you now",
-            "Cannot predict now",
-            "Concentrate and ask again",
             "Don't count on it",
             "My reply is no",
             "My sources say no",
             "Outlook not so good",
-            "Very doubtful"
+            "Very doubtful",
+            "Chances aren't good",
+            "Unlikely",
+            "Not likely",
+            "No",
+            "Absolutely not"
         ])
         e.description = f"> \"{question}\"\n - `{ctx.author.display_name}`\n\nThe Magic 8 Ball says: `{res}`"
         await ctx.send(embed=e)
