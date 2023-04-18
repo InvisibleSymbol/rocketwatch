@@ -14,7 +14,7 @@ log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
 
-def _queue():
+def get_queue():
     e = Embed()
     e.title = "Minipool queue"
 
@@ -51,7 +51,7 @@ class Queue(commands.Cog):
     async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue."""
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = _queue()
+        e = get_queue()
         await ctx.send(embed=e)
 
 

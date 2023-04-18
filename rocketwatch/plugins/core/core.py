@@ -10,13 +10,14 @@ from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
 from plugins.deposit_pool import deposit_pool
-from plugins.lottery.lottery import lottery
+from plugins.queue import queue
 from plugins.support_utils.support_utils import generate_template_embed
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, Embed
+from utils.embeds import assemble
 from utils.get_or_fetch import get_or_fetch_channel
 from utils.reporter import report_error
+from utils.rocketpool import rp
 from utils.shared_w3 import w3
 
 log = logging.getLogger("core")
@@ -112,10 +113,11 @@ class Core(commands.Cog):
             if tmp := await generate_template_embed(self.db, "announcement"):
                 e = tmp
             else:
-                e, i = await deposit_pool.get_dp()
-                if i:
-                    i.close()
-                e.description = "**Deposit Pool:**"
+                if rp.call("rocketMinipoolQueue.getTotalLength") > 0:
+                    e = queue.get_queue()
+                else:
+                    e, _ = await deposit_pool.get_dp()
+                    e.description = "**Deposit Pool:**"
                 e.title = ":rocket: Rocket Watch"
             e.timestamp = datetime.now()
             e.set_footer(
