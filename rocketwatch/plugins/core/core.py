@@ -9,6 +9,7 @@ import motor.motor_asyncio
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
+from plugins.deposit_pool import deposit_pool
 from plugins.lottery.lottery import lottery
 from plugins.support_utils.support_utils import generate_template_embed
 from utils.cfg import cfg
@@ -111,10 +112,11 @@ class Core(commands.Cog):
             if tmp := await generate_template_embed(self.db, "announcement"):
                 e = tmp
             else:
-                e = Embed(title=":rocket: Rocket Watch")
-                e.description = "**Current Sync Committee:**\n"
-
-                e.description += await lottery.generate_sync_committee_description("latest")
+                e, i = await deposit_pool.get_dp()
+                if i:
+                    i.close()
+                e.description = "**Deposit Pool:**"
+                e.title = ":rocket: Rocket Watch"
             e.timestamp = datetime.now()
             e.set_footer(
                 text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "
