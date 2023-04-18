@@ -97,15 +97,12 @@ def el_explorer_url(target, name="", prefix=""):
                            ["http", "discord", "airdrop", "telegram", "twitter", "youtube"]):
                         log.warning(f"Contract {target} has a suspicious name: {n}")
                     else:
-                        # second, we prevent any markdown characters from being used by sanitizing the name
-                        name = f"{discord.utils.remove_markdown(n)}*"
+                        name = f"{discord.utils.remove_markdown(n, ignore_links=False)}*"
 
     if not name:
         # fall back to shortened address
         name = s_hex(target)
-    if prefix:
-        name = prefix + name
-    return f"[{name}]({url})"
+    return f"{prefix}[{name}]({url})"
 
 
 def prepare_args(args):
