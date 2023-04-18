@@ -134,6 +134,9 @@ class BeaconStates(commands.Cog):
             description += ""
             # use el_explorer_url
             description += ", ".join([f"{el_explorer_url(v)} ({c})" for v, c in node_operators[:16]])
+            # append ",…" if more than 16
+            if len(node_operators) > 16:
+                description += ",…"
 
         embed.description = description
         await ctx.send(embed=embed)
