@@ -19,7 +19,7 @@ class EightBall(commands.Cog):
     async def eight_ball(self, ctx: Context, question: str):
         e = Embed(title="🎱 Magic 8 Ball")
         if not question.endswith("?"):
-            e.description = "You must ask a question to the magic 8 ball (hint: add a `?` at the end of your question)"
+            e.description = "You must ask a yes or no question to the magic 8 ball (hint: add a `?` at the end of your question)"
             await ctx.send(embed=e, ephemeral=True)
             return
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
