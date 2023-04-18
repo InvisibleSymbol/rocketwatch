@@ -98,7 +98,7 @@ def el_explorer_url(target, name="", prefix=""):
                         log.warning(f"Contract {target} has a suspicious name: {n}")
                     else:
                         # second, we prevent any markdown characters from being used by sanitizing the name
-                        name = f"{readable.sanitize_for_markdown(n)}*"
+                        name = f"{discord.utils.remove_markdown(n)}*"
 
     if not name:
         # fall back to shortened address
