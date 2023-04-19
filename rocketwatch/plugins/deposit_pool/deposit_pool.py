@@ -17,7 +17,7 @@ log = logging.getLogger("despoit_pool")
 log.setLevel(cfg["log_level"])
 
 
-async def get_dp(small=False):
+async def get_dp():
     e = Embed()
     e.title = "Deposit Pool Stats"
 
@@ -41,7 +41,7 @@ async def get_dp(small=False):
     if queue_length > 0:
         e.description = queue.get_queue(l=5)
         e.description += f"\nNeed **{humanize.intcomma(max(round(queue_length * 31 - deposit_pool,2), 0))}** more ETH to dequeue all minipools"
-    if deposit_pool // 16 > 0:
+    elif deposit_pool // 16 > 0:
         e.add_field(name="Enough For:",
                     value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools (16 ETH from DP)" +
                           (f"\n**`{deposit_pool // 24:>4.0f}`** 8 ETH Minipools (24 ETH from DP)" if deposit_pool // 24 > 0 else "") +
