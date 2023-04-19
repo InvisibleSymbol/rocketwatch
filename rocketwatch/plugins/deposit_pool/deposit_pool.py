@@ -34,13 +34,13 @@ async def get_dp(small=False):
         free_capacity = solidity.to_float(rp.call("rocketDepositPool.getMaximumDepositAmount"))
         free_capacity = round(free_capacity, 2)
         e.add_field(name="Status:",
-                    value=f"Buffer {percentage_filled}% Full. Enough space for **{humanize.intcomma(free_capacity)} more ETH**",
+                    value=f"Buffer {percentage_filled}% Full. Enough space for **{humanize.intcomma(free_capacity)}** more ETH",
                     inline=False)
 
     queue_length = rp.call("rocketMinipoolQueue.getTotalLength")
     if queue_length > 0:
         e.description = queue.get_queue(l=5)
-        e.description += f"\nNeed **{humanize.intcomma(max(round(queue_length * 31 - deposit_pool,2), 0))} more ETH** to dequeue all minipools"
+        e.description += f"\nNeed **{humanize.intcomma(max(round(queue_length * 31 - deposit_pool,2), 0))}** more ETH to dequeue all minipools"
     if deposit_pool // 16 > 0:
         e.add_field(name="Enough For:",
                     value=f"**`{deposit_pool // 16:>4.0f}`** 16 ETH Minipools (16 ETH from DP)" +
