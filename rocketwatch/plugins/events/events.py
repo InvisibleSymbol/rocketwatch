@@ -388,11 +388,17 @@ class QueuedEvents(commands.Cog):
                 if "logIndex" in event:
                     score += event.logIndex * 10 ** -3
 
+                unique_id = f"{tnx_hash}:{event_name}"
+                for arg_k, arg_v in event.get("args", {}).items():
+                    if arg_k in ["time", "timestamp", "block"]:
+                        continue
+                    unique_id += f":{arg_k}:{arg_v}"
+
                 messages.append(Response(
                     embed=embed,
                     topic="events",
                     event_name=event_name,
-                    unique_id=f"{tnx_hash}:{event_name}",
+                    unique_id=f"{tnx_hash}:{event_name}:{event}",
                     block_number=event.blockNumber,
                     transaction_index=event.transactionIndex,
                     event_index=event.logIndex
