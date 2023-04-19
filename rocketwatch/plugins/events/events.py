@@ -316,7 +316,7 @@ class QueuedEvents(commands.Cog):
         if event_name == "pool_deposit_assigned_event" and _events:
             # check if we have a prestake event for this minipool
             for ev in _events:
-                if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash:
+                if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
                     return None
         args = prepare_args(args)
         return assemble(args)
