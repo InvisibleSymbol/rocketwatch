@@ -217,10 +217,6 @@
                     "name": "minipool_scrub_vote_event"
                 },
                 {
-                    "event_name": "BondReduced",
-                    "name": "minipool_bond_reduce_event"
-                },
-                {
                     "event_name": "MinipoolVacancyPrepared",
                     "name": "minipool_vacancy_prepared_event"
                 },
