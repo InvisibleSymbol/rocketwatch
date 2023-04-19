@@ -172,6 +172,7 @@ class SupportGlobal(Cog):
                 {
                     "_id": {
                         "$regex": current,
+                        "$options": "i",
                         "$ne"   : "boiler" if interaction.command.name != "edit" else None
                     }
                 }
@@ -398,6 +399,7 @@ class SupportUtils(GroupCog, name="support"):
                 {
                     "_id": {
                         "$regex": current,
+                        "$options": "i",
                         "$ne"   : "boiler" if interaction.command.name != "edit" else None
                     }
                 }
