@@ -390,7 +390,7 @@ class QueuedEvents(commands.Cog):
 
                 unique_id = f"{tnx_hash}:{event_name}"
                 for arg_k, arg_v in event.get("args", {}).items():
-                    if arg_k in ["time", "timestamp", "block"]:
+                    if any(t in arg_k.lower() for t in ["time", "block", "timestamp"]):
                         continue
                     unique_id += f":{arg_k}:{arg_v}"
 
@@ -398,7 +398,7 @@ class QueuedEvents(commands.Cog):
                     embed=embed,
                     topic="events",
                     event_name=event_name,
-                    unique_id=f"{tnx_hash}:{event_name}:{event}",
+                    unique_id=unique_id,
                     block_number=event.blockNumber,
                     transaction_index=event.transactionIndex,
                     event_index=event.logIndex

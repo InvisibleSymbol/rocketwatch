@@ -34,7 +34,7 @@ class Embed(discord.Embed):
         self.set_footer(text=" · ".join(footer_parts))
 
 
-def el_explorer_url(target, name="", prefix=""):
+def el_explorer_url(target, name="", prefix="", make_code=False):
     url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
         # rocketscan url stuff
@@ -45,7 +45,7 @@ def el_explorer_url(target, name="", prefix=""):
                 else:
                     url = f"https://rocketscan.io/minipool/{target}"
             if rp.call("rocketNodeManager.getNodeExists", target):
-                if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target):
+                if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target) and prefix != -1:
                     prefix += ":cup_with_straw:"
                 if cfg["rocketpool.chain"] == "goerli":
                     url = f"https://prater.rocketscan.io/node/{target}"
@@ -59,7 +59,8 @@ def el_explorer_url(target, name="", prefix=""):
             name = s_hex(target)
 
         if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
-            prefix += "🔮"
+            if prefix != -1:
+                prefix += "🔮"
             name = member_id
         if not name:
             a = Addresses.get(target)
@@ -71,7 +72,8 @@ def el_explorer_url(target, name="", prefix=""):
             name = ens.get_name(target)
 
         if code := w3.eth.get_code(target):
-            prefix += "📄"
+            if prefix != -1:
+                prefix += "📄"
             if (
                     not name
                     and w3.keccak(text=code.hex()).hex()
@@ -102,6 +104,10 @@ def el_explorer_url(target, name="", prefix=""):
     if not name:
         # fall back to shortened address
         name = s_hex(target)
+    if make_code:
+        name = f"`{name}`"
+    if prefix == -1:
+        prefix = ""
     return f"{prefix}[{name}]({url})"
 
 
@@ -146,7 +152,7 @@ def prepare_args(args):
     if "from" in args:
         args["fancy_from"] = args["from"]
         if "caller" in args and args["from"] != args["caller"]:
-                args["fancy_from"] = f"{args['caller']} ({args['from']})"
+            args["fancy_from"] = f"{args['caller']} ({args['from']})"
     return args
 
 

@@ -14,12 +14,9 @@ log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
 
-def get_queue():
-    e = Embed()
-    e.title = "Minipool queue"
-
-    # Get the next 10 minipools per category
-    minipools = rp.get_minipools(limit=10)
+def get_queue(l=15):
+    # Get the next n minipools per category
+    minipools = rp.get_minipools(limit=l)
     description = ""
     matchings = [
         ["variable", "Variable Minipool Queue"],
@@ -27,20 +24,17 @@ def get_queue():
     for category, label in matchings:
         data = minipools[category]
         if data[1]:
+            if description:
+                description += "\n"
             description += f"**{label}:** ({data[0]} Minipools)"
-            description += "\n- "
-            description += "\n- ".join([el_explorer_url(m, f'`{m}`') for m in data[1]])
+            for i, m in enumerate(data[1]):
+                n = rp.call("rocketMinipool.getNodeAddress", address=m)
+                t = rp.call("rocketMinipool.getStatusTime", address=m)
+                description += f"\n`#{i+1}` {el_explorer_url(m, make_code=True, prefix=-1)}, created <t:{t}:R> by {el_explorer_url(n)}"
             if data[0] > 10:
-                description += "\n- ..."
-            description += "\n\n"
+                description += "\n`...`"
 
-    # set gif if all queues are empty
-    if not description:
-        e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-    else:
-        e.description = description
-
-    return e
+    return description
 
 
 class Queue(commands.Cog):
@@ -51,7 +45,12 @@ class Queue(commands.Cog):
     async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue."""
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = get_queue()
+        e = Embed()
+        e.title = "Minipool queue"
+        e.description = get_queue()
+        # set gif if all queues are empty
+        if not e.description:
+            e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
         await ctx.send(embed=e)
 
 

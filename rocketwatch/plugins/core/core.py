@@ -113,12 +113,8 @@ class Core(commands.Cog):
             if tmp := await generate_template_embed(self.db, "announcement"):
                 e = tmp
             else:
-                if rp.call("rocketMinipoolQueue.getTotalLength") > 0:
-                    e = queue.get_queue()
-                else:
-                    e, _ = await deposit_pool.get_dp()
-                    e.description = "**Deposit Pool:**"
-                e.title = ":rocket: Rocket Watch"
+                e, _ = await deposit_pool.get_dp()
+                e.title = ":rocket: Live Deposit Pool Status"
             e.timestamp = datetime.now()
             e.set_footer(
                 text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "

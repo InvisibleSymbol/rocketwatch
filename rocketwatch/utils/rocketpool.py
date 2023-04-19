@@ -208,8 +208,6 @@ class RocketPool:
 
     def get_minipools(self, limit=10):
         return {
-            "half"    : self.get_minipools_by_type("minipools.available.half", limit),
-            "full"    : self.get_minipools_by_type("minipools.available.full", limit),
             "variable": self.get_minipools_by_type("minipools.available.variable", limit)
         }
 
