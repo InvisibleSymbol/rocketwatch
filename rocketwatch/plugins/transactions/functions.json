@@ -16,7 +16,8 @@
         "bootstrapDisable": "bootstrap_pdao_disable"
     },
     "rocketNodeDeposit": {
-        "deposit": "minipool_failed_deposit"
+        "deposit": "minipool_failed_deposit",
+        "depositWithCredit": "minipool_failed_deposit"
     },
     "rocketDepositPoolQueue": {
         "clearHalfQueue": "deposit_pool_queue_clear_partial",

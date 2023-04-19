@@ -288,7 +288,7 @@ def assemble(args):
                     value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
 
     if "reason" in args and args["reason"]:
-        e.add_field(name="Revert Reason",
+        e.add_field(name="Likely Revert Reason",
                     value=f"`{args.reason}`",
                     inline=False)
 
