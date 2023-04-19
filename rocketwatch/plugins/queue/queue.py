@@ -27,10 +27,10 @@ def get_queue(l=15):
             if description:
                 description += "\n"
             description += f"**{label}:** ({data[0]} Minipools)"
-            for i, m in enumerate(data[1]):
+            for m in data[1]:
                 n = rp.call("rocketMinipool.getNodeAddress", address=m)
                 t = rp.call("rocketMinipool.getStatusTime", address=m)
-                description += f"\n`#{i+1}` {el_explorer_url(m, make_code=True, prefix=-1)}, created <t:{t}:R> by {el_explorer_url(n)}"
+                description += f"\n{el_explorer_url(m, make_code=True, prefix=-1)}, created <t:{t}:R> by {el_explorer_url(n)}"
             if data[0] > 10:
                 description += "\n`...`"
 
