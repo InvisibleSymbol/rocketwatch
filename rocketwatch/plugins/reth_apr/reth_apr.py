@@ -162,13 +162,80 @@ class RETHAPR(commands.Cog):
         plt.gca().xaxis.set_major_formatter(old_formatter)
 
         e.set_image(url="attachment://reth_apr.png")
-        # get average node_fee from db
+        # get average meta.NodeFee from db, weighted by meta.NodeOperatorShare
         node_fee = await self.db.minipools.aggregate([
-            {"$match": {"node_fee": {"$exists": True}}},
-            {"$group": {"_id": None, "avg": {"$avg": "$node_fee"}}}
+            {
+                '$match': {
+                    'status'                : 'active_ongoing',
+                    'meta.NodeFee'          : {
+                        '$ne': None
+                    },
+                    'meta.NodeOperatorShare': {
+                        '$ne': None
+                    }
+                }
+            },
+            {
+                '$project': {
+                    'fee'  : '$meta.NodeFee',
+                    'share': {
+                        '$multiply': [
+                            {
+                                '$subtract': [
+                                    1, '$meta.NodeOperatorShare'
+                                ]
+                            }, 100
+                        ]
+                    }
+                }
+            },
+            {
+                '$group': {
+                    '_id'          : None,
+                    'pre_numerator': {
+                        '$sum': '$fee'
+                    },
+                    'numerator'    : {
+                        '$sum': {
+                            '$multiply': [
+                                '$fee', '$share'
+                            ]
+                        }
+                    },
+                    'denominator'  : {
+                        '$sum': '$share'
+                    },
+                    'count'        : {
+                        '$sum': 1
+                    }
+                }
+            },
+            {
+                '$project': {
+                    'average'          : {
+                        '$divide': [
+                            '$numerator', '$denominator'
+                        ]
+                    },
+                    'reference_average': {
+                        '$divide': [
+                            '$pre_numerator', '$count'
+                        ]
+                    },
+                    'used_pETH_share'  : {
+                        '$divide': [
+                            {
+                                '$divide': [
+                                    '$denominator', '$count'
+                                ],
+                            }, 100
+                        ]
+                    }
+                }
+            }
         ]).to_list(length=1)
 
-        e.add_field(name="Current Average Commission:", value=f"{node_fee[0]['avg']:.2%}", inline=False)
+        e.add_field(name="Current Average Effective Commission:", value=f"{node_fee[0]['average']:.2%} (Observed pETH Share: {node_fee[0]['used_pETH_share']:.2%})", inline=False)
 
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
