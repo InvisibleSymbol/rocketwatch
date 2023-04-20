@@ -145,8 +145,8 @@ class RETHAPR(commands.Cog):
         plt.xlim(left=x[38])
         # rotate x axis labels
         plt.xticks(rotation=45)
-        # show the legend
-        plt.legend()
+        # show the legend top left
+        plt.legend(loc="upper left")
         # dont show year in x axis labels
         old_formatter = plt.gca().xaxis.get_major_formatter()
         plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
