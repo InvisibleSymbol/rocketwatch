@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
+from decimal import Decimal
 from io import BytesIO
 
 import matplotlib.pyplot as plt
@@ -17,11 +18,17 @@ from utils.embeds import Embed
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3, historical_w3
-from utils.thegraph import get_reth_ratio_past_month
 from utils.visibility import is_hidden
 
 log = logging.getLogger("reth_apr")
 log.setLevel(cfg["log_level"])
+
+
+def to_apr(d1, d2):
+    duration = d2["time"] - d1["time"]
+
+    period_change = (Decimal(d2["value"]) - Decimal(d1["value"])) / Decimal(d1["value"])
+    return period_change * (Decimal(365 * 24 * 60 * 60) / Decimal(duration))
 
 
 class RETHAPR(commands.Cog):
@@ -65,7 +72,7 @@ class RETHAPR(commands.Cog):
             reth_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=cursor_block))
             await self.db.reth_apr.insert_one({
                 "block": balance_block,
-                "time": block_time,
+                "time" : block_time,
                 "value": reth_ratio
             })
             cursor_block = balance_block - 1
@@ -82,7 +89,7 @@ class RETHAPR(commands.Cog):
         e.description = "For some comparisons against other LST: [dune dashboard](https://dune.com/rp_community/lst-comparison)"
 
         # get the last 30 datapoints
-        datapoints = await self.db.reth_apr.find().sort("block", -1).limit(90 +38).to_list(None)
+        datapoints = await self.db.reth_apr.find().sort("block", -1).limit(90 + 38).to_list(None)
         if len(datapoints) == 0:
             e.description = "No data available yet."
             return await ctx.send(embed=e)
@@ -93,31 +100,21 @@ class RETHAPR(commands.Cog):
         y_7d = []
         y_30d = []
         for i in range(1, len(datapoints)):
-            # get the duration between the two datapoints
-            duration = datapoints[i]["time"] - datapoints[i - 1]["time"]
-
-            # get the change between the two datapoints
-            period_change = datapoints[i]["value"] - datapoints[i - 1]["value"]
-            period_change_over_year = (period_change / duration) * 365 * 24 * 60 * 60
-
-            # get the average APR for the day
-            average_apr = ((datapoints[i]["value"] + period_change_over_year) / datapoints[i]["value"]) - 1
-
-            # add the average APR to the y values
-            y.append(average_apr)
-
             # add the data of the datapoint to the x values, need to parse it to a datetime object
             x.append(datetime.fromtimestamp(datapoints[i]["time"]))
 
+            # add the average APR to the y values
+            y.append(to_apr(datapoints[i - 1], datapoints[i]))
+
             # calculate the 7 day average
             if i > 8:
-                y_7d.append(sum(y[-9:]) / 9)
+                y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
             else:
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
             # calculate the 30 day average
             if i > 37:
-                y_30d.append(sum(y[-38:]) / 38)
+                y_30d.append(to_apr(datapoints[i - 38], datapoints[i]))
             else:
                 # if we dont have enough data, we dont show it
                 y_30d.append(None)
@@ -235,7 +232,9 @@ class RETHAPR(commands.Cog):
             }
         ]).to_list(length=1)
 
-        e.add_field(name="Current Average Effective Commission:", value=f"{node_fee[0]['average']:.2%} (Observed pETH Share: {node_fee[0]['used_pETH_share']:.2%})", inline=False)
+        e.add_field(name="Current Average Effective Commission:",
+                    value=f"{node_fee[0]['average']:.2%} (Observed pETH Share: {node_fee[0]['used_pETH_share']:.2%})",
+                    inline=False)
 
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
