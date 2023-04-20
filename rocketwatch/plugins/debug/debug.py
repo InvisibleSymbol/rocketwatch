@@ -308,20 +308,6 @@ class Debug(Cog):
         await channel.send(embed=e)
         await ctx.send(content="Done", ephemeral=True)
 
-    @hybrid_command()
-    async def prank_proposal(self, ctx: Context, channel:str, value=284.39, node_name="🦀dybsynode.eth", minipool="0x7bA73304EFb1203791655653634f1Ff525ac4dC3"):
-        """
-        Prank proposal.
-        """
-        await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, channel)
-        e = Embed(title=":moneybag: Large Minipool Proposal", description=f"Minipool {el_explorer_url(minipool)} has proposed a Block worth **{value} ETH**!")
-        # rick roll
-        e.add_field(name="Node Operator", value=f"[{node_name}](https://etherscan.io/token/0x13b4e2f6f3621b553484c8146c09cc79c0c15025)")
-        e.add_field(name="Block Number", value=f"[{w3.eth.blockNumber}](https://etherscan.io/token/0x13b4e2f6f3621b553484c8146c09cc79c0c15025)")
-        e.add_field(name="Timestamp", value=f"<t:{int(time.time())}:R> (<t:{int(time.time())}:f>)", inline=False)
-        e.set_footer(text="Developed by 0xinvis.eth - /fake")
-        await channel.send(embed=e)
 
     # --------- PUBLIC COMMANDS --------- #
 
