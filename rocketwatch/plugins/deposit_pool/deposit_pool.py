@@ -81,6 +81,25 @@ class DepositPool(commands.Cog):
         else:
             await ctx.send(embed=e)
 
+    @hybrid_command()
+    async def reth_extra_collateral(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+
+        current_reth_value = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", rp.call("rocketTokenRETH.totalSupply")))
+        current_collateral_rate = solidity.to_float(rp.call("rocketTokenRETH.getCollateralRate"))
+        current_collateral_in_eth = current_reth_value * current_collateral_rate
+        collateral_rate_target = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetRethCollateralRate"))
+        collateral_target_in_eth = current_reth_value * collateral_rate_target
+        collateral_used = current_collateral_in_eth / collateral_target_in_eth
+
+        e = Embed()
+        e.title = "rETH Extra Collateral"
+
+        e.description = f"Current Extra Collateral stored in the rETH Contract is **{humanize.intcomma(round(current_collateral_in_eth, 2))}** ETH\n" \
+                        f"That is **{collateral_used:.2%}** of the configured target of **{humanize.intcomma(round(collateral_target_in_eth, 2))}** ETH ({current_collateral_rate:.2%}/{collateral_rate_target:.2%})\n"
+
+        await ctx.send(embed=e)
+
 
 async def setup(bot):
     await bot.add_cog(DepositPool(bot))
