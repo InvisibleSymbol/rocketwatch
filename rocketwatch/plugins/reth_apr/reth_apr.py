@@ -25,10 +25,17 @@ log.setLevel(cfg["log_level"])
 
 
 def to_apr(d1, d2):
-    duration = d2["time"] - d1["time"]
-
-    period_change = (Decimal(d2["value"]) - Decimal(d1["value"])) / Decimal(d1["value"])
+    duration = get_duration(d1, d2)
+    period_change = get_period_change(d1, d2)
     return period_change * (Decimal(365 * 24 * 60 * 60) / Decimal(duration))
+
+
+def get_period_change(d1, d2):
+    return (Decimal(d2["value"]) - Decimal(d1["value"])) / Decimal(d1["value"])
+
+
+def get_duration(d1, d2):
+    return d2["time"] - d1["time"]
 
 
 class RETHAPR(commands.Cog):
@@ -98,7 +105,9 @@ class RETHAPR(commands.Cog):
         y = []
         # we do a 7 day rolling average (9 periods) and a 30 day one (38 periods)
         y_7d = []
+        y_7d_claim = None
         y_30d = []
+        y_30d_claim = None
         for i in range(1, len(datapoints)):
             # add the data of the datapoint to the x values, need to parse it to a datetime object
             x.append(datetime.fromtimestamp(datapoints[i]["time"]))
@@ -109,27 +118,29 @@ class RETHAPR(commands.Cog):
             # calculate the 7 day average
             if i > 8:
                 y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
+                y_7d_claim = get_duration(datapoints[i - 9], datapoints[i]) / (60 * 60 * 24)
             else:
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
             # calculate the 30 day average
             if i > 37:
                 y_30d.append(to_apr(datapoints[i - 38], datapoints[i]))
+                y_30d_claim = get_duration(datapoints[i - 38], datapoints[i]) / (60 * 60 * 24)
             else:
                 # if we dont have enough data, we dont show it
                 y_30d.append(None)
 
-        e.add_field(name="7.2 Day Average rETH APR",
+        e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR",
                     value=f"{y_7d[-1]:.2%}")
-        e.add_field(name="30.4 Day Average rETH APR",
+        e.add_field(name=f"{y_30d_claim:.1f} Day Average rETH APR",
                     value=f"{y_30d[-1]:.2%}")
         fig = plt.figure()
         # format the daily average line as a line with dots
         plt.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.7)
         # format the 7 day average line as --
-        plt.plot(x, y_7d, linestyle="-", label="7.2 Day Average")
+        plt.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average")
         # format the 30 day average line as --
-        plt.plot(x, y_30d, linestyle="-", label="30.4 Day Average")
+        plt.plot(x, y_30d, linestyle="-", label=f"{y_30d_claim:.1f} Day Average")
         plt.title("Observed rETH APR values")
         plt.xlabel("Date")
         plt.ylabel("APR")
