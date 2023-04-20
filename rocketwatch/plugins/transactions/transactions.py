@@ -60,6 +60,10 @@ class QueuedTransactions(commands.Cog):
         if "deposit" in event_name:
             receipt = w3.eth.get_transaction_receipt(args.transactionHash)
             args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
+            # return None if burnedValue is bellow 0.05 ETH
+            if args.burnedValue < 0.05:
+                log.info(f"dropping failed deposit {args.transactionHash} because it burned less than 0.05 ETH ({args.burnedValue} ETH)")
+                return None
             args.node = receipt["from"]
             if "queue" in event_name:
                 event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
