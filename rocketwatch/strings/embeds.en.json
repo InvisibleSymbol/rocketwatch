@@ -99,7 +99,7 @@
     },
     "milestone_max_deposit_size": {
         "title": ":tada: Milestone Reached",
-        "description": "The maximum Deposit Size has hit **%{result_value}** ETH!"
+        "description": "The maximum deposit size has reached **%{result_value}** ETH!"
     },
     "milestone_reth_supply": {
         "title": ":tada: Milestone Reached",
