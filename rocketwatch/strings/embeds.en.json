@@ -38,7 +38,7 @@
     },
     "pool_deposit_recycled_event": {
         "title": ":robot: Pool Deposit by Protocol Contract",
-        "description_small": ":recycle: A Protocol Contract deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
+        "description_small": ":recycle: A Protocol Contract deposited **%{amount} ETH** into the Deposit Pool! %{transactionHash_small}"
     },
     "minipool_exit_event": {
         "title": ":leaves: Minipool Closed",
