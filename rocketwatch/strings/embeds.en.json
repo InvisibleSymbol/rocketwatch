@@ -36,6 +36,10 @@
         "title": ":rocket: Deposit Assigned To Minipool",
         "description_small": ":link: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
+    "pool_deposit_recycled_event": {
+        "title": ":robot: Pool Deposit by Protocol Contract",
+        "description_small": ":recycle: A Protocol Contract deposited %{amount} ETH into the Deposit Pool! %{transactionHash_small}"
+    },
     "minipool_exit_event": {
         "title": ":leaves: Minipool Closed",
         "description": "Minipool %{minipool} has been flagged as Withdrawable!"

@@ -37,6 +37,10 @@
                 {
                     "event_name": "DepositAssigned",
                     "name": "pool_deposit_assigned_event"
+                },
+                {
+                    "event_name": "DepositRecycled",
+                    "name": "pool_deposit_recycled_event"
                 }
             ]
         },
