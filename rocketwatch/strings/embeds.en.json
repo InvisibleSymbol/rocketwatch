@@ -34,7 +34,7 @@
     },
     "pool_deposit_assigned_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
-        "description_small": ":outbox_tray: Minipool %{minipool_clean} owned by Operator %{node} has been dequeued! %{transactionHash_small}"
+        "description_small": ":link: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
     "minipool_exit_event": {
         "title": ":leaves: Minipool Closed",
@@ -96,6 +96,10 @@
     "milestone_rpl_stake": {
         "title": ":tada: Milestone Reached",
         "description": "%{result_value} RPL has been staked by Node Operators!"
+    },
+    "milestone_max_deposit_size": {
+        "title": ":tada: Milestone Reached",
+        "description": "The maximum Deposit Size has hit **%{result_value}** ETH!"
     },
     "milestone_reth_supply": {
         "title": ":tada: Milestone Reached",

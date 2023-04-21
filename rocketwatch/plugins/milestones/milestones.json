@@ -10,6 +10,16 @@
         "step_size": 100000
     },
     {
+        "id": "milestone_max_deposit_size",
+        "function": "call",
+        "args": [
+            "rocketDepositPool.getMaximumDepositAmount"
+        ],
+        "formatter": "to_float",
+        "min": 60000,
+        "step_size": 1000
+    },
+    {
         "id": "milestone_reth_supply",
         "function": "call",
         "args": [
