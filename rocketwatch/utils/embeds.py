@@ -234,7 +234,7 @@ def assemble(args):
                     value=f"{args.commission:.2%}",
                     inline=False)
     """
-    
+
     if "settingContractName" in args:
         e.add_field(name="Contract",
                     value=f"`{args.settingContractName}`",
