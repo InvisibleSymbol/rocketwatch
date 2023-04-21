@@ -82,7 +82,7 @@ class TVL(commands.Cog):
         # Minipools that are flagged as initialised have the following applied to them:
         # - They have 16 ETH from the node operator in their address waiting to be staked.
         # - They have not yet received 16 ETH from the Deposit Pool.
-        tvl.append(minipool_count_per_status["initialisedCount"] * 16)
+        tvl.append(minipool_count_per_status["initialisedCount"] * 1)
         description.append(f"+ {tvl[-1]:12.2f} ETH: Unmatched Minipools")
 
         # Dissolved Minipools: dissolvedCount of minipool_count_per_status * 16 ETH.
