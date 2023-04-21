@@ -29,6 +29,8 @@ class RplApr(commands.Cog):
         """
         Show the RPL APR.
         """
+        await ctx.send("Currently broken, sorry!", ephemeral=is_hidden(ctx))
+        return
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
