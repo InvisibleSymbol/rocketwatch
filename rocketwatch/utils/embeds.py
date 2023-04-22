@@ -172,6 +172,9 @@ def assemble(args):
     if not do_small:
         e.title = _(f"embeds.{args.event_name}.title")
 
+    if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
+        e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
+
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
@@ -314,6 +317,4 @@ def assemble(args):
     if "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1098622561434222622/smoothie_bunny.png")
 
-    if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
-        e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
     return e
