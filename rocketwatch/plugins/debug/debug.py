@@ -26,6 +26,7 @@ from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak, is_hidden_role_controlled
+from strings import _
 
 log = logging.getLogger("debug")
 log.setLevel(cfg["log_level"])
@@ -281,6 +282,23 @@ class Debug(Cog):
         msg = await channel.fetch_message(message_id)
         await msg.edit(embed=embed)
         await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def fix_fuckup_3(self, ctx: Context,
+                           message_id: str):
+        """
+
+        Fix fuckup #3: missing translation for large pool deposit by protocol contract
+        """
+        await ctx.defer(ephemeral=True)
+        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
+        msg = await channel.fetch_message(message_id)
+        e = msg.embeds[0]
+        e.description = _("embeds.pool_deposit_recycled_event.description", amount="105.758")
+        await msg.edit(embed=e)
+        await ctx.send("Done")
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
