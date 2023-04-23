@@ -17,9 +17,6 @@ from utils.shared_w3 import w3
 log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
 
-DEPOSIT_EVENT = 2
-WITHDRAWABLE_EVENT = 3
-
 
 class QueuedTransactions(commands.Cog):
     def __init__(self, bot):
@@ -60,10 +57,6 @@ class QueuedTransactions(commands.Cog):
         if "deposit" in event_name:
             receipt = w3.eth.get_transaction_receipt(args.transactionHash)
             args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
-            # return None if burnedValue is bellow 0.05 ETH
-            if args.burnedValue < 0.05:
-                log.info(f"dropping failed deposit {args.transactionHash} because it burned less than 0.05 ETH ({args.burnedValue} ETH)")
-                return None
             args.node = receipt["from"]
             if "queue" in event_name:
                 event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
@@ -168,6 +161,10 @@ class QueuedTransactions(commands.Cog):
                         event.args["function_name"] = function
                         if not receipt.status:
                             event.args["reason"] = rp.get_revert_reason(tnx)
+                            # if revert reason includes the phrase "insufficient for pre deposit" filter out
+                            if "insufficient for pre deposit" in event.args["reason"]:
+                                log.info(f"Skipping Insufficient Pre Deposit {tnx.hash.hex()}")
+                                continue
 
                         if embed := self.create_embed(event_name, event):
                             if event_name == "redstone_upgrade_triggered":
