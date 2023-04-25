@@ -329,7 +329,7 @@ class QueuedEvents(commands.Cog):
                 # get pubkey from minipool contract
                 pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", args.minipool, block=args.blockNumber - 1).hex()
                 vali_info = bacon.get_validator(f"0x{pubkey}")["data"]
-                reason = "joe fucking up (Unknown reason)"
+                reason = "joe fucking up (unknown reason)"
                 if vali_info:
                     # check for #1
                     if all([vali_info["validator"]["withdrawal_credentials"][:4] == "0x01",
