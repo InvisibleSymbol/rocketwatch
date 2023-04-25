@@ -131,7 +131,11 @@ class MinipoolTask(commands.Cog):
     def check_indexes(self):
         log.debug("checking indexes")
         self.db.proposals.create_index("validator")
-        self.db.minipools.create_index("validator", unique=True)
+        # self.db.minipools.create_index("validator", unique=True)
+        # remove the old unique validator index if it exists, create a new one without unique called validator_2
+        if "validator_1" in self.db.minipools.index_information():
+            self.db.minipools.drop_index("validator_1")
+        self.db.minipools.create_index("validator", name="validator_2")
         self.db.proposals.create_index("slot", unique=True)
         self.db.minipools.create_index("address")
         log.debug("indexes checked")
