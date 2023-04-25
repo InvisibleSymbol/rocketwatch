@@ -290,6 +290,10 @@ def assemble(args):
         e.add_field(name="Block Number",
                     value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
 
+    if "slot" in args:
+        e.add_field(name="Slot",
+                    value=f"[{args.slot}](https://beaconcha.in/slot/{args.slot})")
+
     if "reason" in args and args["reason"]:
         e.add_field(name="Likely Revert Reason",
                     value=f"`{args.reason}`",

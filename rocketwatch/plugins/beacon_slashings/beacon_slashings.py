@@ -125,7 +125,7 @@ class QueuedSlashings(commands.Cog):
                                 else "mev_proposal_event",
                             "node_operator": m["node_operator"],
                             "minipool"     : m["address"],
-                            "blockNumber"  : block["body"]["execution_payload"]["block_number"],
+                            "slot"  : block["slot"],
                             "reward_amount": a,
                             "timestamp"    : timestamp
                         }
