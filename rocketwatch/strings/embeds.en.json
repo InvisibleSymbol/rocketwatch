@@ -160,11 +160,19 @@
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",
-        "description": "Minipool %{minipool} has been scrubbed due to invalid Withdrawal Credentials!"
+        "description": "Minipool %{minipool} has been scrubbed likely due to having invalid withdrawal credentials on the beacon chain!"
+    },
+    "vacant_minipool_scrub_event": {
+        "title": ":rotating_light: Vacant Minipool Scrubbed",
+        "description": "Vacant Minipool %{minipool} has been scrubbed likely due to **%{scrub_reason}**!"
     },
     "minipool_scrub_vote_event": {
         "title": ":warning: Minipool Voted For Scrub",
-        "description": "%{member} has voted for Minipool %{minipool} to be scrubbed due to invalid Withdrawal Credentials!"
+        "description_small": ":warning: %{member} has voted to scrub Minipool %{minipool}! %{transactionHash_small}"
+    },
+    "vacant_minipool_scrub_vote_event": {
+        "title": ":warning: Vacant Minipool Voted For Scrub",
+        "description_small": ":warning: %{member} has voted to scrub Vacant Minipool %{minipool}! %{transactionHash_small}"
     },
     "node_rpl_slash_event": {
         "title": ":rotating_light: Node Operator Slashed",

@@ -318,6 +318,42 @@ class QueuedEvents(commands.Cog):
             for ev in _events:
                 if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
                     return None
+        if "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
+            args.event_name = f"vacant_{event_name}"
+            if args.event_name == "vacant_minipool_scrub_event":
+                # lets try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
+                # 1. the validator does not have the withdrawal credentials set to the minipool address, but to some other address
+                # 2. the validator balance on the beacon chain is lower than configured in the minipool contract
+                # 3. the validator does not have the active_ongoing validator status
+                # 4. the migration could have timed out, the oDAO will scrub minipools after they have passed half of the migration window
+                # get pubkey from minipool contract
+                pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", args.minipool, block=args.blockNumber - 1).hex()
+                vali_info = bacon.get_validator(f"0x{pubkey}")["data"]
+                reason = "joe fucking up (Unknown reason)"
+                if vali_info:
+                    # check for #1
+                    if all([vali_info["validator"]["withdrawal_credentials"][:4] == "0x01",
+                           vali_info["validator"]["withdrawal_credentials"][-40:] != args.minipool[2:]]):
+                        reason = "having invalid withdrawal credentials set on the beacon chain"
+                    # check for #2
+                    configured_balance = solidity.to_float(
+                        rp.call("rocketMinipoolDelegate.getPreMigrationBalance", address=args.minipool,
+                                block=args.blockNumber - 1))
+                    if (solidity.to_float(vali_info["balance"], 9) - configured_balance) < -0.01:
+                        reason = "having a balance lower than configured in the minipool contract on the beacon chain"
+                    # check for #3
+                    if vali_info["status"] != "active_ongoing":
+                        reason = "not being active on the beacon chain"
+                    # check for #4
+                    scrub_period = rp.call("rocketDAONodeTrustedSettingsMinipool.getPromotionScrubPeriod",
+                                           block=args.blockNumber - 1)
+                    minipool_creation = rp.call("rocketMinipoolDelegate.getStatusTime", address=args.minipool,
+                                                block=args.blockNumber - 1)
+                    block_time = w3.eth.getBlock(args.blockNumber - 1)["timestamp"]
+                    if block_time - minipool_creation > scrub_period // 2:
+                        reason = "taking too long to migrate their withdrawal credentials on the beacon chain"
+                args.scrub_reason = reason
+
         args = prepare_args(args)
         return assemble(args)
 
