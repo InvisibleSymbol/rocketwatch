@@ -14,7 +14,7 @@ from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
+from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
 
 log = logging.getLogger("events")
@@ -314,6 +314,10 @@ class QueuedEvents(commands.Cog):
         if event_name == "minipool_withdrawal_processed_event":
             args.totalAmount = args.nodeAmount + args.userAmount
         if event_name == "pool_deposit_assigned_event" and _events:
+            if "assignment_count" in event and event["assignment_count"] > 1:
+                args.assignmentCount = event["assignment_count"]
+            else:
+                args.event_name = "pool_deposit_assigned_single_event"
             # check if we have a prestake event for this minipool
             for ev in _events:
                 if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
@@ -363,6 +367,24 @@ class QueuedEvents(commands.Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
+    def prepare_events(self, events):
+        # deduplicate events with a topic 0 of DepositAssigned so we only have one event per txnhash. also store the count in the event
+        d = {}
+        for event in list(events):
+            if "topics" in event and self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
+                if event["transactionHash"] not in d:
+                    d[event["transactionHash"]] = 1
+                else:
+                    d[event["transactionHash"]] += 1
+                    events.remove(event)
+        events = [aDict(event) for event in events]
+        # add the count to the event
+        for i, event in enumerate(list(events)):
+            if event["transactionHash"] in d and "topics" in event and self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
+                events[i]["assignment_count"] = d[event["transactionHash"]]
+
+        return events
+
     def check_for_new_events(self):
         log.info("Checking for new Events")
 
@@ -383,7 +405,7 @@ class QueuedEvents(commands.Cog):
         log.debug(f"Found {len(pending_events)} pending events")
         # sort events by block number
         pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
-        for event in pending_events:
+        for event in self.prepare_events(pending_events):
             tnx_hash = event.transactionHash.hex()
             embed = None
             event_name = None
@@ -400,11 +422,14 @@ class QueuedEvents(commands.Cog):
                 contract = rp.get_contract_by_address(address)
                 contract_event = self.topic_mapping[event.topics[0].hex()]
                 topics = [w3.toHex(t) for t in event.topics]
-                event = aDict(contract.events[contract_event]().processLog(event))
-                event.topics = topics
+                _event = aDict(contract.events[contract_event]().processLog(event))
+                _event.topics = topics
+                if "assignment_count" in event:
+                    _event.assignment_count = event.assignment_count
+                event = _event
                 event_name = self.internal_event_mapping[event.event]
 
-                embed = self.create_embed(event_name, event, _events=pending_events)
+                embed = self.create_embed(event_name, _event, _events=pending_events)
             elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:

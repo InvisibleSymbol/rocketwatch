@@ -32,9 +32,13 @@
         "title": ":leaves: RPL Withdrawal",
         "description": "%{to} withdrew **%{amount} RPL** (worth %{ethAmount} ETH)!"
     },
-    "pool_deposit_assigned_event": {
+    "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
         "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
+    },
+    "pool_deposit_assigned_event": {
+        "title": ":rocket: Deposit Assigned To Minipools",
+        "description_small": ":handshake: %{assignmentCount} Minipool have been matched and left the queue! %{transactionHash_small}"
     },
     "pool_deposit_recycled_event": {
         "title": ":recycle: Pool Deposit By Protocol Contract",
