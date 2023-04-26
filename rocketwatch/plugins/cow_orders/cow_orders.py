@@ -41,8 +41,12 @@ class QueuedCowOrders(commands.Cog):
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
         self.state = "RUNNING"
-        result = self.check_for_new_events()
-        self.state = "OK"
+        try:
+            result = self.check_for_new_events()
+            self.state = "OK"
+        except Exception as e:
+            log.error(f"Error while checking for new Cow Orders: {e}")
+            result = []
         return result
 
     # noinspection PyTypeChecker
