@@ -320,7 +320,11 @@ class QueuedEvents(commands.Cog):
                 args.event_name = "pool_deposit_assigned_single_event"
             # check if we have a prestake event for this minipool
             for ev in _events:
-                if ev.get("event") == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
+                if "topics" in ev:
+                    t = self.topic_mapping.get(ev["topics"][0].hex())
+                else:
+                    t = ev.get("event")
+                if t == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
                     return None
         if "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
             args.event_name = f"vacant_{event_name}"
@@ -449,11 +453,10 @@ class QueuedEvents(commands.Cog):
                 if "logIndex" in event:
                     score += event.logIndex * 10 ** -3
 
-                unique_id = f"{tnx_hash}:{event_name}"
+                unique_id = f"{tnx_hash}:{event_name}:{random.random()}"
                 for arg_k, arg_v in event.get("args", {}).items():
-                    if any(t in arg_k.lower() for t in ["time", "block", "timestamp"]):
-                        continue
-                    unique_id += f":{arg_k}:{arg_v}"
+                    if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
+                        unique_id += f":{arg_k}:{arg_v}"
 
                 messages.append(Response(
                     embed=embed,
