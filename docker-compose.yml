@@ -19,6 +19,25 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: true
 
+  rocketnode:
+    image: invisiblesymbol/rocketwatch
+    volumes:
+      - ./rocketwatch/main.cfg:/app/main.cfg
+    restart: unless-stopped
+    command: ["python", "rocketnode.py"]
+    depends_on:
+      - mongodb
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    # required to access my node containers
+    networks:
+      - ethereum
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+
   mongodb:
     image: mongo:6.0.5
     volumes:

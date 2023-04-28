@@ -32,3 +32,19 @@ def slot_to_beacon_day_epoch_slot(slot):
 SUBMISSION_KEYS = (
     "rewardIndex", "executionBlock", "consensusBlock", "merkleRoot", "merkleTreeCID", "intervalsPassed", "treasuryRPL",
     "trustedNodeRPL", "nodeRPL", "nodeETH", "userETH")
+
+
+def mp_state_to_str(state):
+    match state:
+        case 0:
+            return "initialised"
+        case 1:
+            return "prelaunch"
+        case 2:
+            return "staking"
+        case 3:
+            return "withdrawable"
+        case 4:
+            return "dissolved"
+        case _:
+            return str(state)

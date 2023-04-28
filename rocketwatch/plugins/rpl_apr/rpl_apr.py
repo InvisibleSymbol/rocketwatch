@@ -7,6 +7,7 @@ from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -23,20 +24,28 @@ log.setLevel(cfg["log_level"])
 class RplApr(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def rpl_apr(self, ctx: Context):
         """
         Show the RPL APR.
         """
-        await ctx.send("Currently broken, sorry!", ephemeral=is_hidden(ctx))
-        return
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
         reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
-        total_rpl_staked = solidity.to_float(
-            rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
+        total_rpl_staked = await self.db.node_operators_new.aggregate([
+            {
+                '$group': {
+                    '_id'                      : 'out',
+                    'total_effective_rpl_stake': {
+                        '$sum': '$effective_rpl_stake'
+                    }
+                }
+            }
+        ]).next()
+        total_rpl_staked = total_rpl_staked["total_effective_rpl_stake"]
 
         # track down the rewards for node operators from the last reward period
         contract = rp.get_contract_by_name("rocketVault")
@@ -77,12 +86,11 @@ class RplApr(commands.Cog):
         ax.yaxis.set_major_formatter("{x:.2%}")
         ax.set_ylabel("APR")
         ax.set_xlabel("RPL Staked")
+        fig.tight_layout()
 
         img = BytesIO()
-        fig.tight_layout()
         fig.savefig(img, format='png')
         img.seek(0)
-        fig.clf()
         plt.close()
 
         e.title = "RPL APR Graph"
@@ -90,6 +98,7 @@ class RplApr(commands.Cog):
         f = File(img, filename="graph.png")
         await ctx.send(embed=e, files=[f])
         img.close()
+
 
 
 async def setup(bot):

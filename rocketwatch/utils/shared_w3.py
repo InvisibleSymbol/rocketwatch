@@ -88,7 +88,7 @@ for fallback_endpoint in reversed(endpoints):
                 log.warning(f"falling back to {self.base_url} for validator balances {state_id}")
             endpoint = f"/eth/v1/beacon/states/{state_id}/validators"
             # id array if present, and is array of ints
-            if "ids" in kwargs and all(isinstance(i, int) for i in kwargs['ids']):
+            if "ids" in kwargs and isinstance(kwargs["ids"], list):
                 # turn to array of strings
                 kwargs['ids'] = [str(i) for i in kwargs['ids']]
                 endpoint += f"?id={','.join(kwargs['ids'])}"

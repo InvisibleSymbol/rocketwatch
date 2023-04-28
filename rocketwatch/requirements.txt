@@ -23,7 +23,8 @@ cronitor==4.6.0
 circuitbreaker==1.4.0
 retry==0.9.2
 checksumdir==1.2.0
-multicall==0.7.1
+multicall==0.7.3
 dice==3.1.2
 openai==0.26.5
 transformers==4.26.1
+schedule==1.2.0

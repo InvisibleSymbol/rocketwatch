@@ -4,6 +4,7 @@ import humanize
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -18,6 +19,7 @@ log.setLevel(cfg["log_level"])
 class EffectiveRPL(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def effective_rpl_staked(self, ctx: Context):
@@ -30,8 +32,17 @@ class EffectiveRPL(commands.Cog):
         total_rpl_staked = solidity.to_float(rp.call("rocketNodeStaking.getTotalRPLStake"))
         e.add_field(name="Total RPL Staked:", value=f"{humanize.intcomma(total_rpl_staked, 2)} RPL", inline=False)
         # get effective RPL staked
-        effective_rpl_stake = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
-        # calculate percentage staked
+        effective_rpl_stake = await self.db.node_operators_new.aggregate([
+            {
+                '$group': {
+                    '_id'                      : 'out',
+                    'total_effective_rpl_stake': {
+                        '$sum': '$effective_rpl_stake'
+                    }
+                }
+            }
+        ]).next()
+        effective_rpl_stake = effective_rpl_stake["total_effective_rpl_stake"]        # calculate percentage staked
         percentage_staked = effective_rpl_stake / total_rpl_staked
         e.add_field(name="Effective RPL Staked:", value=f"{humanize.intcomma(effective_rpl_stake, 2)} RPL "
                                                         f"({percentage_staked:.2%})", inline=False)
