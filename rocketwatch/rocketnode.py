@@ -202,6 +202,8 @@ class Task:
             for e in events:
                 assert "amount" in e[0]["args"]
                 assert "minipool" in e[1]["args"]
+                # assert that the txn hashes match
+                assert e[0]["transactionHash"] == e[1]["transactionHash"]
                 mp = str(e[1]["args"]["minipool"]).lower()
                 if mp not in a:
                     continue
