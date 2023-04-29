@@ -12,7 +12,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import render_tree
 from utils.reporter import report_error
-from utils.shared_w3 import bacon
+from utils.shared_w3 import bacon, w3
 from utils.time_debug import timerun
 from utils.visibility import is_hidden
 
@@ -79,9 +79,9 @@ class BeaconStates(commands.Cog):
     async def beacon_states(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         # fetch from db
-        res = await self.db.minipools.find({
-            "status": {"$exists": True}
-        }).to_list(None)    
+        res = await self.db.minipools_new.find({
+            "beacon.status": {"$exists": True}
+        }).to_list(None)
         data = {
             "pending": {},
             "active" : {},
@@ -90,7 +90,7 @@ class BeaconStates(commands.Cog):
         }
         exiting_valis = []
         for minipool in res:
-            match minipool["status"]:
+            match minipool["beacon"]["status"]:
                 case "pending_initialized":
                     data["pending"]["initialized"] = data["pending"].get("initialized", 0) + 1
                 case "pending_queued":
@@ -104,7 +104,7 @@ class BeaconStates(commands.Cog):
                     data["exiting"]["slashed"] = data["exiting"].get("slashed", 0) + 1
                     exiting_valis.append(minipool)
                 case "exited_unslashed" | "exited_slashed" | "withdrawal_possible" | "withdrawal_done":
-                    if minipool["is_slashed"]:
+                    if minipool["beacon"]["slashed"]:
                         data["exited"]["slashed"] = data["exited"].get("slashed", 0) + 1
                     else:
                         data["exited"]["voluntarily"] = data["exited"].get("voluntarily", 0) + 1
@@ -133,14 +133,13 @@ class BeaconStates(commands.Cog):
             node_operators.sort(key=lambda x: x[1], reverse=True)
             description += ""
             # use el_explorer_url
-            description += ", ".join([f"{el_explorer_url(v)} ({c})" for v, c in node_operators[:16]])
+            description += ", ".join([f"{el_explorer_url(w3.toChecksumAddress(v))} ({c})" for v, c in node_operators[:16]])
             # append ",…" if more than 16
             if len(node_operators) > 16:
                 description += ",…"
 
         embed.description = description
         await ctx.send(embed=embed)
-
 
 async def setup(self):
     await self.add_cog(BeaconStates(self))
