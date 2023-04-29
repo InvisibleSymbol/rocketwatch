@@ -11,8 +11,9 @@ from pymongo import UpdateOne, UpdateMany
 from utils import solidity
 from utils.cfg import cfg
 from utils.rocketpool import rp
-from utils.shared_w3 import bacon
+from utils.shared_w3 import bacon, w3
 from utils.time_debug import timerun
+from utils.get_nearest_block import get_block_by_timestamp
 
 log = logging.getLogger("rocketnode")
 log.setLevel(cfg["log_level"])
@@ -162,6 +163,62 @@ class Task:
         self.db.minipools_new.bulk_write(bulk, ordered=False)
         log.debug("Minipools updated with metadata")
         return
+
+    @timerun
+    def add_static_deposit_data_to_minipools(self):
+        # get all minipool addresses and their status time from db that :
+        # - do not have a deposit_amount
+        # - are in the initialised state
+        # sort by status time
+        minipools = list(self.db.minipools_new.find(
+            {"deposit_amount": {"$exists": False}, "status": "initialised"},
+            {"address": 1, "_id": 0, "status_time": 1}
+        ).sort("status_time", pymongo.ASCENDING))
+        # return early if no minipools need to be updated
+        if not minipools:
+            log.debug("No minipools need to be updated with static deposit data")
+            return
+        nd = rp.get_contract_by_name("rocketNodeDeposit")
+        mm = rp.get_contract_by_name("rocketMinipoolManager")
+        data = {}
+        batch_size = 1000
+        for i in range(0, len(minipools), batch_size):
+            i_end = min(i + batch_size, len(minipools))
+            # turn status time of first and last minipool into blocks
+            block_start = get_block_by_timestamp(minipools[i]["status_time"])[0] - 1
+            block_end = get_block_by_timestamp(minipools[i_end - 1]["status_time"])[0]
+            a = [m["address"] for m in minipools[i:i_end]]
+            log.debug(f"Getting minipool deposit data ({i} to {i_end})")
+            f_deposits = nd.events.DepositReceived.createFilter(fromBlock=block_start, toBlock=block_end)
+            events = f_deposits.get_all_entries()
+            f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end,
+                                                                    argument_filters={"minipool": a})
+            events.extend(f_creations.get_all_entries())
+            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
+            # map to pairs of 2
+            assert len(events) % 2 == 0
+            events = list(zip(events[::2], events[1::2]))
+            # efficiently merge the two lists using
+            for e in events:
+                assert "amount" in e[0]["args"]
+                assert "minipool" in e[1]["args"]
+                mp = str(e[1]["args"]["minipool"]).lower()
+                if mp not in a:
+                    continue
+                amount = solidity.to_float(e[0]["args"]["amount"])
+                data[mp] = {"deposit_amount": amount}
+        log.debug(f"Updating {len(data)} minipools with static deposit data")
+        # update minipools in db
+        bulk = [
+            UpdateOne(
+                {"address": a},
+                {"$set": d},
+            ) for a, d in data.items()
+        ]
+        self.db.minipools_new.bulk_write(bulk, ordered=False)
+        log.debug("Minipools updated with static deposit data")
+
+
 
     @timerun
     def add_static_beacon_data_to_minipools(self):
@@ -403,6 +460,7 @@ class Task:
         self.add_untracked_minipools()
         self.add_static_data_to_minipools()
         self.update_dynamic_minipool_metadata()
+        self.add_static_deposit_data_to_minipools()
         self.add_static_beacon_data_to_minipools()
         self.update_dynamic_minipool_beacon_metadata()
         self.add_untracked_node_operators()

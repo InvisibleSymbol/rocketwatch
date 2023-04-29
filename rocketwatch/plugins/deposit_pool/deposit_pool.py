@@ -5,6 +5,7 @@ from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from plugins.queue import queue
 from utils import solidity
@@ -54,6 +55,7 @@ async def get_dp():
 class DepositPool(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def dp(self, ctx: Context):
@@ -97,6 +99,57 @@ class DepositPool(commands.Cog):
 
         e.description = f"Current Extra Collateral stored in the rETH Contract is **{humanize.intcomma(round(current_collateral_in_eth, 2))}** ETH\n" \
                         f"That is **{collateral_used:.2%}** of the configured target of **{humanize.intcomma(round(collateral_target_in_eth, 2))}** ETH ({current_collateral_rate:.2%}/{collateral_rate_target:.2%})\n"
+
+        await ctx.send(embed=e)
+
+    @hybrid_command()
+    async def atlas_queue(self, ctx):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+
+        e = Embed()
+        e.title = "Atlas Queue Stats"
+
+        data = await self.db.minipools_new.aggregate([
+            {
+                '$match': {
+                    'status'        : 'initialised',
+                    'deposit_amount': {
+                        '$gt': 1
+                    }
+                }
+            }, {
+                '$group': {
+                    '_id'     : 'total',
+                    'value'   : {
+                        '$sum': {
+                            '$subtract': [
+                                '$deposit_amount', 1
+                            ]
+                        }
+                    },
+                    'count'   : {
+                        '$sum': 1
+                    },
+                    'count_16': {
+                        '$sum': {
+                            '$floor': {
+                                '$divide': [
+                                    '$node_deposit_balance', 16
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ]).to_list(None)
+
+        total = int(data[0]['value'])
+        count = data[0]['count']
+        count_16 = int(data[0]['count_16'])
+        count_8 = count - count_16
+
+        e.description = f"Amount deposited into Deposit Pool by Queued Minipools: **{total} ETH**\n" \
+                        f"Non-credit Minipools in the Queue: **{count}** (16 ETH: **{count_16}**, 8 ETH: **{count_8}**)\n" \
 
         await ctx.send(embed=e)
 
