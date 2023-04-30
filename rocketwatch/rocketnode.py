@@ -10,10 +10,10 @@ from pymongo import UpdateOne, UpdateMany
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.rocketpool import rp
-from utils.shared_w3 import bacon, w3
-from utils.time_debug import timerun
 from utils.get_nearest_block import get_block_by_timestamp
+from utils.rocketpool import rp
+from utils.shared_w3 import bacon
+from utils.time_debug import timerun
 
 log = logging.getLogger("rocketnode")
 log.setLevel(cfg["log_level"])
@@ -192,7 +192,7 @@ class Task:
             f_deposits = nd.events.DepositReceived.createFilter(fromBlock=block_start, toBlock=block_end)
             events = f_deposits.get_all_entries()
             f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end,
-                                                                    argument_filters={"minipool": a})
+                                                                 argument_filters={"minipool": a})
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
@@ -382,6 +382,7 @@ class Task:
     def update_dynamic_node_operator_metadata(self):
         ndf = rp.get_contract_by_name("rocketNodeDistributorFactory")
         nm = rp.get_contract_by_name("rocketNodeManager")
+        mm = rp.get_contract_by_name("rocketMinipoolManager")
         ns = rp.get_contract_by_name("rocketNodeStaking")
         mc = rp.get_contract_by_name("multicall3")
         lambs = [
@@ -398,13 +399,18 @@ class Task:
                 [((n["address"], "reward_network"), None)]),
             lambda n: (nm.address, [rp.seth_sig(nm.abi, "getSmoothingPoolRegistrationState"), n["address"]],
                        [((n["address"], "smoothing_pool_registration_state"), None)]),
+            lambda n: (nm.address, [rp.seth_sig(nm.abi, "getAverageNodeFee"), n["address"]],
+                       [((n["address"], "average_node_fee"), func_if_success(solidity.to_float))]),
             lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeRPLStake"), n["address"]],
                        [((n["address"], "rpl_stake"), func_if_success(solidity.to_float))]),
             lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeEffectiveRPLStake"), n["address"]],
                        [((n["address"], "effective_rpl_stake"), func_if_success(solidity.to_float))]),
+            lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeETHCollateralisationRatio"), n["address"]],
+                       [((n["address"], "effective_node_share"), func_if_success(lambda x: 1 / solidity.to_float(x)))]),
             lambda n: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), n["fee_distributor_address"]],
                        [((n["address"], "fee_distributor_eth_balance"), func_if_success(solidity.to_float))]),
-
+            lambda n: (mm.address, [rp.seth_sig(mm.abi, "getNodeStakingMinipoolCount"), n["address"]],
+                       [((n["address"], "staking_minipool_count"), None)])
         ]
         # get all node operators from db, but we only care about the address and the fee_distributor_address
         nodes = list(self.db.node_operators_new.find({}, {"address": 1, "fee_distributor_address": 1}))
