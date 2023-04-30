@@ -150,7 +150,11 @@ class QueuedTransactions(commands.Cog):
 
                     contract = rp.get_contract_by_address(tnx.to)
 
-                    decoded = contract.decode_function_input(tnx.input)
+                    try:
+                        decoded = contract.decode_function_input(tnx.input)
+                    except ValueError:
+                        log.erro    r(f"Skipping Transaction {tnx.hash.hex()} as it has invalid input")
+                        continue
                     log.debug(decoded)
 
                     function = decoded[0].function_identifier
