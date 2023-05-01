@@ -203,6 +203,7 @@ class TVL(commands.Cog):
         # Staking Minipools:
         minipools = await self.db.minipools_new.find({
             'status': {"$nin": ["initialised", "prelaunch", "dissolved"]},
+            'node_deposit_balance': {"$exists": True},
         }).to_list(None)
 
         for minipool in minipools:
