@@ -1,16 +1,19 @@
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 
 import pymongo
+from discord import File
 from discord.ext import commands, tasks
 from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
+import matplotlib.pyplot as plt
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
-from utils.readable import render_tree
+from utils.readable import render_tree_legacy
 from utils.reporter import report_error
 from utils.shared_w3 import bacon, w3
 from utils.time_debug import timerun
@@ -114,7 +117,7 @@ class BeaconStates(commands.Cog):
         embed = Embed(title="Beacon Chain Minipool States", color=0x00ff00)
         description = "```\n"
         # render dict as a tree like structure
-        description += render_tree(data, "Minipool States")
+        description += render_tree_legacy(data, "Minipool States")
         if 0 < len(exiting_valis) <= 24:
             description += "\n\n--- Exiting Minipools ---\n\n"
             # array of validator attribute, sorted by index
@@ -140,6 +143,7 @@ class BeaconStates(commands.Cog):
 
         embed.description = description
         await ctx.send(embed=embed)
+
 
 async def setup(self):
     await self.add_cog(BeaconStates(self))

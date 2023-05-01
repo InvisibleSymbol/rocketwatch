@@ -2,6 +2,8 @@ import base64
 import contextlib
 import json
 
+from colorama import Style, Fore
+
 import utils.solidity as units
 from utils import pako
 from utils.cfg import cfg
@@ -63,7 +65,7 @@ def advanced_tnx_url(tx_hash):
     return f"[[A]](https://ethtx.info/{chain}/{tx_hash})"
 
 
-def render_tree(data: dict, name: str) -> str:
+def render_tree_legacy(data: dict, name: str) -> str:
     # remove empty states
     data = {k: v for k, v in data.items() if v}
     strings = []
@@ -71,7 +73,7 @@ def render_tree(data: dict, name: str) -> str:
     for i, (state, substates) in enumerate(data.items()):
         c = sum(substates.values())
         l = "├" if i != len(data) - 1 else "└"
-        strings.append( f" {l}{state.title()}: ")
+        strings.append(f" {l}{state.title()}: ")
         values.append(c)
         l = "│" if i != len(data) - 1 else " "
         for j, (substate, count) in enumerate(substates.items()):
@@ -87,3 +89,49 @@ def render_tree(data: dict, name: str) -> str:
     description = f"{name}:\n"
     description += "\n".join(strings)
     return description
+
+
+def render_branch(k, v, prefix, current_depth=0, max_depth=0, reverse=False, m_prev=""):
+    m = "┌" if reverse else "└"
+    a = [(f"{prefix}{k}:", v.get("_value", 0), current_depth)]
+    # if the value is a dict, recurse
+    if isinstance(v, dict) and (max_depth == 0 or current_depth < max_depth):
+        # turn the prev char of the prefix from a ├ to a │
+        if prefix and prefix[-2] == "├":
+            prefix = f"{prefix[:-2]}│ "
+        # remove the _value key as it is metadata and not part of the tree.
+        v = {k: v for k, v in v.items() if not k.startswith("_")}
+        for i, (sk, sv) in enumerate(v.items()):
+            p = prefix
+            if p and p[-2] == m_prev:
+                p = p[::-1]
+                p = p.replace(f"─{m_prev}", "  " if m == m_prev else " │", 1)
+                p = p[::-1]
+            p += "├─" if i != len(v) - 1 else f"{m}─"  # last connection
+            if not reverse:
+                a = list(render_branch(sk, sv, p, current_depth + 1, max_depth=max_depth, reverse=False, m_prev=m)) + a
+            else:
+                a.extend(render_branch(sk, sv, p, current_depth + 1, max_depth=max_depth, reverse=False, m_prev=m))
+    return a
+
+
+def render_tree(data: dict, name: str, max_depth: int = 0) -> str:
+    # remove empty states
+    data = {k: v for k, v in data.items() if v}
+    lines, values, depths = map(list, zip(*list(reversed(render_branch(name, data, "", max_depth=max_depth, reverse=True)))))
+    max_right_len, max_left_len = [], []
+    # longest string offset per depth
+    max_left_len = max(max(len(s) for s, d in zip(lines, depths) if d == depth) for depth in set(depths))
+
+    # same for right
+    max_right_len = max(max(len(str(v)) for v, d in zip(values, depths) if d == depth) for depth in set(depths))
+
+    max_right_len += 2
+    COLORS = [Style.BRIGHT, Style.BRIGHT, Fore.RESET, Fore.BLACK, Fore.BLACK, Fore.BLACK]
+    for i, (v, d) in enumerate(zip(values, depths)):
+        _v = v
+        _v = f"{COLORS[d]}{v}{Style.RESET_ALL}"
+        lines[i] = f"{lines[i].ljust(max_left_len, ' ')}{' ' * (max_right_len - len(str(v)))}{_v}"
+    # replace all spaces with non-breaking spaces
+    lines = [l.replace(" ", " ") for l in lines]
+    return "\n".join(lines)
