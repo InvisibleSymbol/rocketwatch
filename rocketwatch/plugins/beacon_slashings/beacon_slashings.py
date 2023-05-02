@@ -107,12 +107,12 @@ class QueuedSlashings(commands.Cog):
             # new-feature: track proposals made by rocket pool validators. use mongodb minipools collection to check
             if (m := self.db.minipools.find_one({"validator": int(block["proposer_index"])})) and "execution_payload" in block[
                 "body"]:
-                log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal")
                 # fetch the values from beaconcha.in. we use that instead of the beacon node because the beacon node
                 # has no idea about mev bribes
                 exec_block = int(block['body']['execution_payload']['block_number'])
                 req = requests.get(f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{exec_block}",
                                    headers={"apikey": cfg["beaconchain_explorer"]["api_key"]})
+                log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal worth {req.json()['data'][0]['producerReward']} ETH")
                 if req.status_code == 200:
                     req = req.json()["data"][0]
                     if (a := solidity.to_float(req["producerReward"])) > 1:
