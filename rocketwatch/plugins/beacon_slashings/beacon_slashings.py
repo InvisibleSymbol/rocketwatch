@@ -112,9 +112,10 @@ class QueuedSlashings(commands.Cog):
                 exec_block = int(block['body']['execution_payload']['block_number'])
                 req = requests.get(f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{exec_block}",
                                    headers={"apikey": cfg["beaconchain_explorer"]["api_key"]})
-                log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal worth {req.json()['data'][0]['producerReward']} ETH")
+                log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal")
                 if req.status_code == 200:
                     req = req.json()["data"][0]
+                    log.debug(f"Proposal data: {req}")
                     if (a := solidity.to_float(req["producerReward"])) > 1:
                         log.info(f"Found a proposal with a mev bribe of {a} ETH")
                         fee_recipient = req["relay"]["producerFeeRecipient"] if req["relay"] else req["feeRecipient"]
