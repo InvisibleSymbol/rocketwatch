@@ -114,7 +114,9 @@ class QueuedSlashings(commands.Cog):
                                    headers={"apikey": cfg["beaconchain_explorer"]["api_key"]})
                 log.info(f"Rocket Pool validator {block['proposer_index']} made a proposal")
                 if req.status_code == 200:
-                    req = req.json()["data"][0]
+                    res = req.json()
+                    log.debug(f"{res=}")
+                    req = res["data"][0]
                     log.debug(f"Proposal data: {req}")
                     if (a := solidity.to_float(req["producerReward"])) > 1:
                         log.info(f"Found a proposal with a mev bribe of {a} ETH")
