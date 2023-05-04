@@ -453,7 +453,7 @@ class QueuedEvents(commands.Cog):
                 if "logIndex" in event:
                     score += event.logIndex * 10 ** -3
 
-                unique_id = f"{tnx_hash}:{event_name}:{random.random()}"
+                unique_id = f"{tnx_hash}:{event_name}"
                 for arg_k, arg_v in event.get("args", {}).items():
                     if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
                         unique_id += f":{arg_k}:{arg_v}"
