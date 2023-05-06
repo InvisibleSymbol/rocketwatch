@@ -3,6 +3,7 @@ import logging
 from io import BytesIO
 
 import matplotlib.pyplot as plt
+import pytz
 import requests
 from discord import File
 from discord.ext import commands
@@ -72,17 +73,19 @@ class Oura(commands.Cog):
             if start_day != end_day:
                 daily_sleep[start_day].append(
                     {"relative_start": start_date - (thresh - datetime.timedelta(days=1)), "duration": thresh - start_date,
-                     "weekday"       : weekday})
+                     "weekday"       : weekday, "tzinfo": end_date.tzinfo})
                 if end_day not in daily_sleep:
                     daily_sleep[end_day] = []
                 daily_sleep[end_day].append(
-                    {"relative_start": datetime.timedelta(), "duration": end_date - thresh, "weekday": weekday})
+                    {"relative_start": datetime.timedelta(), "duration": end_date - thresh, "weekday": weekday,
+                        "tzinfo"       : end_date.tzinfo})
             else:
                 relative_start = start_date - (thresh - datetime.timedelta(days=1))
                 if relative_start >= datetime.timedelta(hours=24):
                     relative_start -= datetime.timedelta(hours=24)
                 daily_sleep[start_day].append(
-                    {"relative_start": relative_start, "duration": end_date - start_date, "weekday": weekday})
+                    {"relative_start": relative_start, "duration": end_date - start_date, "weekday": weekday,
+                        "tzinfo"       : end_date.tzinfo})
         log.debug(daily_sleep)
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
@@ -92,11 +95,19 @@ class Oura(commands.Cog):
         # create horizontal dark gray line at midnight and noon
         ax.axhline(y=18, color="#808080", linewidth=1)
         ax.axhline(y=18-12, color="#808080", linewidth=1)
+        # get vienna timezone
+        tz = pytz.timezone("Europe/Vienna")
         for i, (day, sleeps) in enumerate(daily_sleep.items()):
             # plot each sleep, from top to bottom
-            sunset_prev = self.sun.setlocal(datetime.datetime.fromisoformat(day) - datetime.timedelta(days=1))
-            sunrise_curr = self.sun.riselocal(datetime.datetime.fromisoformat(day))
-            sunset_curr = self.sun.setlocal(datetime.datetime.fromisoformat(day))
+            sunset_prev = self.sun.setutc(datetime.datetime.fromisoformat(day) - datetime.timedelta(days=1))
+            # convert to vienna time
+            sunset_prev = tz.fromutc(sunset_prev)
+            sunrise_curr = self.sun.riseutc(datetime.datetime.fromisoformat(day))
+            # convert to vienna time
+            sunrise_curr = tz.fromutc(sunrise_curr)
+            sunset_curr = self.sun.setutc(datetime.datetime.fromisoformat(day))
+            # convert to vienna time
+            sunset_curr = tz.fromutc(sunset_curr)
             bottom_of_chart = datetime.datetime(year=sunrise_curr.year, month=sunrise_curr.month, day=sunrise_curr.day, hour=18,
                                                 tzinfo=sunrise_curr.tzinfo)
             ax.bar(i, (sunrise_curr - sunset_prev).total_seconds() / 3600,
