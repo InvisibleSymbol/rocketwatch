@@ -140,6 +140,8 @@ class BeaconStates(commands.Cog):
             # append ",…" if more than 16
             if len(node_operators) > 16:
                 description += ",…"
+        else:
+            description += "```"
 
         embed.description = description
         await ctx.send(embed=embed)
