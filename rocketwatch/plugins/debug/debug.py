@@ -208,6 +208,17 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def overwrite_beacon_slashings_block(self, ctx: Context, block_number: int):
+        """
+        Overwrite the beacon slashings block number in the latest_checked_block collection.
+        """
+        await ctx.defer(ephemeral=True)
+        await self.db.last_checked_block.update_one({"_id": "slashings"}, {"$set": {"block": block_number}})
+        await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def force_update_commands(self, ctx: Context):
         """
         Force an update of the commands.
