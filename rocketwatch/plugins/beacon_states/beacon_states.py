@@ -27,56 +27,6 @@ class BeaconStates(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-        self.sync_db = pymongo.MongoClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
-
-    @timerun
-    def get_validators(self):
-        # get all validator indexes from db
-        vali_indexes = self.sync_db.minipools.find({}).distinct("validator")
-        res = bacon.get_validators("head", ids=vali_indexes)["data"]
-        # we get back an array, turn into dict of index
-        res = {int(v["index"]): v for v in res}
-        return res
-
-    @tasks.loop(seconds=5 * 60)
-    async def run_loop(self):
-        executor = ThreadPoolExecutor()
-        loop = asyncio.get_event_loop()
-        futures = [loop.run_in_executor(executor, self.update_states)]
-        try:
-            await asyncio.gather(*futures)
-        except Exception as err:
-            await report_error(err)
-
-    def update_states(self):
-        log.info("Updating validator states")
-        a = self.get_validators()
-        # we get back a dict of index => {status: string}
-        # we want to update the db with this using bulk write
-        batch = [
-            pymongo.UpdateOne(
-                {
-                    "validator": index
-                },
-                {
-                    "$set": {
-                        "status"    : vali["status"],
-                        "is_slashed": vali["validator"]["slashed"],
-                        "balance"   : solidity.to_float(vali["balance"], 9)
-                    }
-                }
-            ) for index, vali in a.items()]
-        self.sync_db.minipools.bulk_write(batch, ordered=False)
-        log.info(f"Updated {len(batch)} validators")
 
     @hybrid_command()
     async def beacon_states(self, ctx: Context):
