@@ -81,7 +81,7 @@ class QueuedSlashings(commands.Cog):
                 } for slash in block["body"]["proposer_slashings"])
 
             for slash in slashings:
-                lookup = self.db.minipools.find_one({"validator": int(slash["minipool"])})
+                lookup = self.db.minipools_new.find_one({"validator_index": int(slash["minipool"])})
                 if not lookup:
                     log.info(f"Skipping slash of unknown validator {slash['minipool']}")
                     continue
@@ -105,7 +105,7 @@ class QueuedSlashings(commands.Cog):
                     ))
 
             # new-feature: track proposals made by rocket pool validators. use mongodb minipools collection to check
-            if (m := self.db.minipools.find_one({"validator": int(block["proposer_index"])})) and "execution_payload" in block[
+            if (m := self.db.minipools_new.find_one({"validator_index": int(block["proposer_index"])})) and "execution_payload" in block[
                 "body"]:
                 # fetch the values from beaconcha.in. we use that instead of the beacon node because the beacon node
                 # has no idea about mev bribes
