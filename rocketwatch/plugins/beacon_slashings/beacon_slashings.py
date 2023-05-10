@@ -130,7 +130,8 @@ class QueuedSlashings(commands.Cog):
                             "minipool"     : m["address"],
                             "slot"  : block["slot"],
                             "reward_amount": a,
-                            "timestamp"    : timestamp
+                            "timestamp"    : timestamp,
+                            "smoothie_amount": rp.call("multicall3.getEthBalance", w3.toChecksumAddress(fee_recipient), block=exec_block)
                         }
                         args = prepare_args(aDict(args))
                         if embed := assemble(args):

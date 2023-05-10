@@ -240,7 +240,7 @@
     },
     "mev_proposal_smoothie_event": {
         "title": ":cup_with_straw: Large Smoothing Pool Proposal",
-        "description": "Minipool %{minipool} has proposed a Block worth **%{reward_amount} ETH**!"
+        "description": "Minipool %{minipool} has proposed a Block worth **%{reward_amount} ETH**!\n The Smoothing Pool now has a balance of **%{smoothie_amount} ETH**!"
     },
     "minipool_vacancy_prepared_event": {
         "title": ":link: Solo Migration Initiated",
