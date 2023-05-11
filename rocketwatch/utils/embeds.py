@@ -294,6 +294,10 @@ def assemble(args):
         e.add_field(name="Slot",
                     value=f"[{args.slot}](https://beaconcha.in/slot/{args.slot})")
 
+    if "smoothie_amount" in args:
+        e.add_field(name="Smoothing Pool Balance",
+                    value=f"{args.smoothie_amount} ETH")
+
     if "reason" in args and args["reason"]:
         e.add_field(name="Likely Revert Reason",
                     value=f"`{args.reason}`",
