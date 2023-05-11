@@ -12,7 +12,7 @@ from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import cl_explorer_url
 from utils.rocketpool import rp
-from utils.shared_w3 import bacon
+from utils.shared_w3 import bacon, w3
 from utils.solidity import beacon_block_to_date
 
 log = logging.getLogger("beacon_slashings")
