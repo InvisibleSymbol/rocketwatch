@@ -327,6 +327,6 @@ def assemble(args):
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
 
     if "_proposal_smoothie_" in args.event_name:
-        e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1098622561434222622/smoothie_bunny.png")
+        e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")
 
     return e
