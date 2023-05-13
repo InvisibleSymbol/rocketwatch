@@ -133,7 +133,7 @@ class QueuedSlashings(commands.Cog):
                             "timestamp"    : timestamp,
                         }
                         if "smoothie" in args["event_name"]:
-                            args["smmoothie_amount"] = rp.call("multicall3.getEthBalance", w3.toChecksumAddress(fee_recipient), block=exec_block)
+                            args["smoothie_amount"] = rp.call("multicall3.getEthBalance", w3.toChecksumAddress(fee_recipient), block=exec_block)
                         args = prepare_args(aDict(args))
                         if embed := assemble(args):
                             payload.append(Response(
