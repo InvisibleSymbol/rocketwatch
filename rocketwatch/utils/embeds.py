@@ -218,6 +218,11 @@ def assemble(args):
                     inline=False)
     """
 
+    if "epoch" in args:
+        e.add_field(name="Epoch",
+                    value=f"[{args.epoch}](https://{cfg['rocketpool']['consensus_layer']['explorer']}/epochs/{args.epoch})",
+                    inline=False)
+
     if "timezone" in args:
         e.add_field(name="Timezone",
                     value=f"`{args.timezone}`",
