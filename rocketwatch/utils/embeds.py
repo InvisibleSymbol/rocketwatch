@@ -158,11 +158,11 @@ def prepare_args(args):
 
 def assemble(args):
     e = Embed()
-    if args.event_name == "service_interrupted":
+    if args.event_name in ["service_interrupted", "finality_delay_event"]:
         e.colour = Color.from_rgb(235, 86, 86)
     if "sell" in args.event_name:
         e.colour = Color.from_rgb(235, 86, 86)
-    if "buy" in args.event_name:
+    if "buy" in args.event_name or "finality_delay_recover_event" in args.event_name:
         e.colour = Color.from_rgb(86, 235, 86)
 
     do_small = all([
@@ -319,7 +319,7 @@ def assemble(args):
                     value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
                     inline=False)
 
-    if "_slash_" in args.event_name:
+    if "_slash_" in args.event_name or "finality_delay_event" in args.event_name:
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
 
     if "_proposal_smoothie_" in args.event_name:

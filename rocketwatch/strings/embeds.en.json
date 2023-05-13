@@ -297,5 +297,13 @@
     "cow_order_sell_rpl_found": {
         "title": ":cow: SELL Order Found",
         "description": "%{cow_owner} has placed a sell order for %{RPLAmount} RPL!\n Exchanging %{RPLAmount} RPL for %{otherAmount} %{otherToken} (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
+    },
+    "finality_delay_event": {
+        "title": ":warning: Finality Delay On Beacon Chain",
+        "description": "Finality has been delayed for **%{finality_delay} Epochs** on the Beacon Chain!\n\nPlease make sure that your node is operating correctly to minimize inactivity leak! **Every attestation counts!**"
+    },
+    "finality_delay_recover_event": {
+        "title": ":tada: Finality Recovered",
+        "description": "Finality has been recovered on the Beacon Chain!"
     }
 }

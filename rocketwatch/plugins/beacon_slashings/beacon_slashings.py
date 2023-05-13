@@ -145,6 +145,59 @@ class QueuedSlashings(commands.Cog):
                             ))
                     print(req)
 
+            # new-feature: alerts for non-finality issue
+            current_epoch = block_number // 32
+            # calculate finality delay
+            finality_checkpoint = bacon.get_finality_checkpoint(state_id=block_number)
+            finality_delay = current_epoch - int(finality_checkpoint["data"]["finalized"]["epoch"])
+            # if delay is over 2 epochs, alert
+            if finality_delay > 2:
+                log.warning(f"Finality delay is {finality_delay} epochs")
+                args = {
+                    "event_name"   : "finality_delay_event",
+                    "finality_delay": finality_delay,
+                    "timestamp"    : timestamp,
+                    "epoch"        : current_epoch
+                }
+                args = prepare_args(aDict(args))
+                if embed := assemble(args):
+                    payload.append(Response(
+                        topic="finality_delay",
+                        embed=embed,
+                        event_name=args["event_name"],
+                        unique_id=f"{current_epoch}:finality_delay",
+                        block_number=block_number
+                    ))
+            # latest finality delay from db
+            latest_finality_delay = self.db.finality_checkpoints.find_one({"epoch": current_epoch - 1})
+            if latest_finality_delay:
+                latest_finality_delay = latest_finality_delay["finality_delay"]
+            else:
+                latest_finality_delay = 2
+
+            # if finality delay recovers, notify
+            if finality_delay <= 2 and latest_finality_delay > 2:
+                log.info(f"Finality delay recovered from {latest_finality_delay} to {finality_delay}")
+                args = {
+                    "event_name"   : "finality_delay_recover_event",
+                    "finality_delay": finality_delay,
+                    "timestamp"    : timestamp,
+                    "epoch"        : current_epoch
+                }
+                args = prepare_args(aDict(args))
+                if embed := assemble(args):
+                    payload.append(Response(
+                        topic="finality_delay_recover",
+                        embed=embed,
+                        event_name=args["event_name"],
+                        unique_id=f"{current_epoch}:finality_delay_recover",
+                        block_number=block_number
+                    ))
+
+            self.db.finality_checkpoints.update_one({"epoch": current_epoch},
+                                                    {"$set": {"finality_delay": finality_delay}},
+                                                    upsert=True)
+
         log.debug("Finished Checking for new Slashes Commands")
         self.state = "OK"
 
