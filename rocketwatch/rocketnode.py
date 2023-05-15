@@ -195,10 +195,17 @@ class Task:
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
+            latest_log_index = 0
+            latest_block = 0
             if len(events) % 2 != 0:
                 for i, a in enumerate(events):
+                    if latest_block != events["blockNumber"]:
+                        latest_block = events["blockNumber"]
+                        latest_log_index = events["logIndex"]
                     print(f"{i}: {a}")
-                raise NotImplemented
+                    if events["logIndex"] - latest_log_index > 1:
+                        raise NotImplemented()
+                raise NotImplemented()
             events = list(zip(events[::2], events[1::2]))
             # efficiently merge the two lists using
             for e in events:
