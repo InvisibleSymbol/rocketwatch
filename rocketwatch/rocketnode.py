@@ -195,7 +195,7 @@ class Task:
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
-            latest_hash
+            latest_hash = 0
             latest_block = 0
             if len(events) % 2 != 0:
                 for i, e in enumerate(events):
