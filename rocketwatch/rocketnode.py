@@ -198,13 +198,14 @@ class Task:
             latest_log_index = 0
             latest_block = 0
             if len(events) % 2 != 0:
-                for i, a in enumerate(events):
-                    if latest_block != events["blockNumber"]:
-                        latest_block = events["blockNumber"]
-                        latest_log_index = events["logIndex"]
-                    print(f"{i}: {a}")
-                    if events["logIndex"] - latest_log_index > 1:
+                for i, e in enumerate(events):
+                    if latest_block != e["blockNumber"]:
+                        latest_block = e["blockNumber"]
+                        latest_log_index = e["logIndex"]
+                    print(f"{i}: {e}")
+                    if e["logIndex"] - latest_log_index > 1:
                         raise NotImplemented()
+                    latest_log_index = e["logIndex"]
                 raise NotImplemented()
             events = list(zip(events[::2], events[1::2]))
             # efficiently merge the two lists using
