@@ -194,8 +194,8 @@ class Task:
             f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=(lambda x: x['blockNumber'] + (x['transactionIndex'] *1e-4) + (x['logIndex'] *1e-8)))
-            log.debug(f"{[(x['blockNumber'] + (x['transactionIndex'] *1e-4) + (x['logIndex'] *1e-8)) for x in events]}")
             events = list(reversed(events))
+            log.debug(f"{[(x['blockNumber'] + (x['transactionIndex'] *1e-4) + (x['logIndex'] *1e-8)) for x in events]}")
             # map to pairs of 2
             prepared_events = []
             last_addition_is_creation = False
