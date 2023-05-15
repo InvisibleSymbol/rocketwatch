@@ -195,7 +195,10 @@ class Task:
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
-            assert len(events) % 2 == 0
+            if len(events) % 2 != 0:
+                for a in list(zip(events[::2], events[1::2])):
+                    log.debug(a)
+                raise NotImplemented
             events = list(zip(events[::2], events[1::2]))
             # efficiently merge the two lists using
             for e in events:
