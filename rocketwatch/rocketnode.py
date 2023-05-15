@@ -195,18 +195,18 @@ class Task:
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
-            latest_log_index = 0
+            latest_hash
             latest_block = 0
             if len(events) % 2 != 0:
                 for i, e in enumerate(events):
-                    if latest_block != e["blockNumber"]:
-                        latest_block = e["blockNumber"]
+                    if latest_hash != (h:= f'{e["blockNumber"]}:{e["transactionIndex"]}'):
+                        latest_block = h
                         latest_log_index = e["logIndex"]
                     print(f"{i}: {e}")
                     if e["logIndex"] - latest_log_index > 1:
-                        raise NotImplemented()
+                        raise NotImplemented
                     latest_log_index = e["logIndex"]
-                raise NotImplemented()
+                raise NotImplemented
             events = list(zip(events[::2], events[1::2]))
             # efficiently merge the two lists using
             for e in events:
