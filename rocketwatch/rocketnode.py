@@ -209,7 +209,7 @@ class Task:
                         log.debug(f"new creation found ({prepared_events[-1]})")
                     else: 
                         prepared_events[-1] = [e]
-                        log.info(f"replacing creation even with newly found one ({prepare_events[-1]})")
+                        log.info(f"replacing creation even with newly found one ({prepared_events[-1]})")
                 elif e["event"] == "DepositReceived" and last_addition_is_creation:
                     prepared_events[-1].insert(0, e)
                     log.debug(f"event matched to creation ({prepared_events[-1]})")
