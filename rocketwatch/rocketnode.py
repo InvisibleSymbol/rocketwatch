@@ -200,7 +200,6 @@ class Task:
             while events:
                 # get event
                 e = events.pop(0)
-                log.debug(f"got event {e}")
                 if e["event"] == "MinipoolCreated":
                     if not last_addition_is_creation:
                         prepared_events.append([e])
