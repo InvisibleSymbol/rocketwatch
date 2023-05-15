@@ -197,7 +197,7 @@ class Task:
             # map to pairs of 2
             if len(events) % 2 != 0:
                 for i, a in enumerate(events):
-                    print(d"{i}: {a}")
+                    print(f"{i}: {a}")
                 raise NotImplemented
             events = list(zip(events[::2], events[1::2]))
             # efficiently merge the two lists using
