@@ -205,7 +205,7 @@ class Task:
                     prepared_events[-1].append(e)
                     log.debug(f"event matched to creation ({prepared_events[-1]})")
                 elif e["event"] == "MinipoolCreated" and not last_addition_is_creation:
-                    prepared_events.append(e)
+                    prepared_events.append([e])
                     log.debug(f"new creation found ({prepared_events[-1]})")
                 last_addition_is_creation = e["event"] == "MinipoolCreated"
             for e in prepared_events:
