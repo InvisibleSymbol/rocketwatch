@@ -195,21 +195,20 @@ class Task:
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
-            latest_hash = 0
-            latest_block = 0
-            if len(events) % 2 != 0:
-                for i, e in enumerate(events):
-                    if latest_hash != (h:= f'{e["blockNumber"]}:{e["transactionIndex"]}'):
-                        latest_block = h
-                        latest_log_index = e["logIndex"]
-                    print(f"{i}: {e}")
-                    if e["logIndex"] - latest_log_index > 1:
-                        raise NotImplemented
-                    latest_log_index = e["logIndex"]
-                raise NotImplemented
-            events = list(zip(events[::2], events[1::2]))
-            # efficiently merge the two lists using
-            for e in events:
+            prepared_events = []
+            last_addition_is_creation = False
+            while events:
+                # get event
+                e = events.pop()
+                log.debug(f"got event {e}")
+                if e["event"] == "DepositReceived" and last_addition_is_creation:
+                    prepared_events[-1].append(e)
+                    log.debug(f"event matched to creation ({prepared_events[-1]})")
+                elif e["event"] == "MinipoolCreated" and not last_addition_is_creation:
+                    prepared_events.append(e)
+                    log.debug(f"new creation found ({prepared_events[-1]})")
+                last_addition_is_creation = e["event"] == "MinipoolCreated"
+            for e in prepared_events:
                 assert "amount" in e[0]["args"]
                 assert "minipool" in e[1]["args"]
                 # assert that the txn hashes match
