@@ -181,7 +181,7 @@ class Task:
         nd = rp.get_contract_by_name("rocketNodeDeposit")
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         data = {}
-        batch_size = 1000
+        batch_size = 25
         for i in range(0, len(minipools), batch_size):
             i_end = min(i + batch_size, len(minipools))
             # turn status time of first and last minipool into blocks
