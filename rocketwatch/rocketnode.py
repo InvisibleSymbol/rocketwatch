@@ -193,7 +193,8 @@ class Task:
             events = f_deposits.get_all_entries()
             f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
             events.extend(f_creations.get_all_entries())
-            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']), reverse=True)
+            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
+            events = reversed(events)
             # map to pairs of 2
             prepared_events = []
             last_addition_is_creation = False
@@ -201,15 +202,15 @@ class Task:
                 # get event
                 e = events.pop()
                 log.debug(f"got event {e}")
-                if e["event"] == "DepositReceived" and last_addition_is_creation:
+                if e["event"] == "MinipoolCreated" and not last_addition_is_creation:
                     prepared_events[-1].insert(0, e)
                     log.debug(f"event matched to creation ({prepared_events[-1]})")
-                elif e["event"] == "MinipoolCreated" and not last_addition_is_creation:
+                elif e["event"] == "DepositReceived" and last_addition_is_creation:
                     prepared_events.append([e])
                     log.debug(f"new creation found ({prepared_events[-1]})")
                 last_addition_is_creation = e["event"] == "MinipoolCreated"
             for e in prepared_events:
-                log.debug(f"processing {e}")
+                log.debug(f"processing {e}") 
                 assert "amount" in e[0]["args"]
                 assert "minipool" in e[1]["args"]
                 # assert that the txn hashes match
