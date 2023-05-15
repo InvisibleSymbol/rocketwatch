@@ -196,7 +196,7 @@ class Task:
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
             if len(events) % 2 != 0:
-                for a in list(zip(events[::2], events[1::2])):
+                for a in list(zip(events[1::2], events[::2])):
                     log.debug(a)
                 raise NotImplemented
             events = list(zip(events[::2], events[1::2]))
