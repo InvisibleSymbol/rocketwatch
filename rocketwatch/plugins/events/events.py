@@ -382,17 +382,35 @@ class QueuedEvents(commands.Cog):
         # deduplicate events with a topic 0 of DepositAssigned so we only have one event per txnhash. also store the count in the event
         d = {}
         for event in list(events):
-            if "topics" in event and self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
-                if event["transactionHash"] not in d:
-                    d[event["transactionHash"]] = 1
-                else:
-                    d[event["transactionHash"]] += 1
-                    events.remove(event)
+            if "topics" in event:
+                if self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
+                    if event["transactionHash"] not in d:
+                        d[event["transactionHash"]] = 1
+                    else:
+                        d[event["transactionHash"]] += 1
+                        events.remove(event)
+                if self.topic_mapping[event["topics"][0].hex()] == "WithdrawalRequested":
+                    # process event
+
+                    contract = rp.get_contract_by_address(event["address"])
+                    contract_event = self.topic_mapping[event.topics[0].hex()]
+                    _event = aDict(contract.events[contract_event]().processLog(event))
+
+                    # sum up the amount of stETH withdrawn in this transaction
+                    if event["transactionHash"] not in d:
+                        d[event["transactionHash"]] = solidity.to_float(_event["args"]["amountOfStETH"])
+                    else:
+                        d[event["transactionHash"]] += solidity.to_float(_event["args"]["amountOfStETH"])
+                        events.remove(event)
+
         events = [aDict(event) for event in events]
         # add the count to the event
         for i, event in enumerate(list(events)):
-            if event["transactionHash"] in d and "topics" in event and self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
-                events[i]["assignment_count"] = d[event["transactionHash"]]
+            if event["transactionHash"] in d and "topics" in event:
+                if self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
+                    events[i]["assignment_count"] = d[event["transactionHash"]]
+                if self.topic_mapping[event["topics"][0].hex()] == "WithdrawalRequested":
+                    events[i]["amountOfStETH"] = d[event["transactionHash"]]
 
         return events
 
@@ -437,6 +455,9 @@ class QueuedEvents(commands.Cog):
                 _event.topics = topics
                 if "assignment_count" in event:
                     _event.assignment_count = event.assignment_count
+                if "amountOfStETH" in event:
+                    _event.args = aDict(_event.args)
+                    _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
                 event_name = self.internal_event_mapping[event.event]
 
