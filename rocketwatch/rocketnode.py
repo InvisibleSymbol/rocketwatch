@@ -209,6 +209,7 @@ class Task:
                     log.debug(f"new creation found ({prepared_events[-1]})")
                 last_addition_is_creation = e["event"] == "MinipoolCreated"
             for e in prepared_events:
+                log.debug(f"processing {e}")
                 assert "amount" in e[0]["args"]
                 assert "minipool" in e[1]["args"]
                 # assert that the txn hashes match
