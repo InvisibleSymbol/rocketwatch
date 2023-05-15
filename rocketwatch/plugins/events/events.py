@@ -182,6 +182,7 @@ class QueuedEvents(commands.Cog):
                 # calculate the discount received compared to the market price
                 args.discountAmount = (1 - args.exchangeRate / solidity.to_float(args.marketExchangeRate)) * 100
 
+        receipt = None
         if "tnx_fee" not in args and cfg["rocketpool.chain"] == "mainnet":
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
@@ -362,6 +363,12 @@ class QueuedEvents(commands.Cog):
                         reason = "taking too long to migrate their withdrawal credentials on the beacon chain"
                 args.scrub_reason = reason
 
+        if "unsteth_withdrawal_requested_event" in event_name:
+            if receipt:
+                args.timestamp = w3.eth.getBlock(receipt["blockNumber"])["timestamp"]
+            if solidity.to_float(args.amountOfStETH) < 10_000:
+                return None
+            # get the node operator address from minipool contract
         args = prepare_args(args)
         return assemble(args)
 

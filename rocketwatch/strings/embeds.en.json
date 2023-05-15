@@ -290,6 +290,10 @@
         "title": ":tada: Atlas Upgrade Complete!",
         "description": ""
     },
+    "unsteth_withdrawal_requested_event": {
+        "title": ":money_with_wings: Large stETH Withdrawal Requested",
+        "description": "%{owner} has requested a withdrawal of **%{amountOfStETH} stETH**!"
+    },
     "cow_order_buy_rpl_found": {
         "title": ":cow: BUY Order Found",
         "description": "%{cow_owner} has placed a buy order for %{RPLAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{RPLAmount} RPL (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"

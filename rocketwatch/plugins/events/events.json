@@ -1,6 +1,15 @@
 {
     "direct": [
         {
+            "contract_name": "unstETH",
+            "events": [
+                {
+                    "event_name": "WithdrawalRequested",
+                    "name": "unsteth_withdrawal_requested_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketNetworkBalances",
             "events": [
                 {
