@@ -201,7 +201,7 @@ class Task:
             last_addition_is_creation = False
             while events:
                 # get event
-                e = events.pop()
+                e = events.pop(0)
                 log.debug(f"got event {e}")
                 if e["event"] == "MinipoolCreated" and not last_addition_is_creation:
                     prepared_events.append([e])
