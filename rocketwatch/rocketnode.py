@@ -196,7 +196,7 @@ class Task:
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']), reverse=True)
             # map to pairs of 2
             prepared_events = []
-            last_addition_is_creation = False
+            last_addition_is_creation = True
             while events:
                 # get event
                 e = events.pop()
