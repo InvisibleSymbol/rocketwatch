@@ -193,7 +193,7 @@ class Task:
             events = f_deposits.get_all_entries()
             f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
             events.extend(f_creations.get_all_entries())
-            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
+            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']), reverse=True)
             # map to pairs of 2
             prepared_events = []
             last_addition_is_creation = False
