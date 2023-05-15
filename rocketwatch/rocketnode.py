@@ -203,9 +203,14 @@ class Task:
                 # get event
                 e = events.pop(0)
                 log.debug(f"got event {e}")
-                if e["event"] == "MinipoolCreated" and not last_addition_is_creation:
-                    prepared_events.append([e])
-                    log.debug(f"new creation found ({prepared_events[-1]})")
+                if e["event"] == "MinipoolCreated":
+                    if not last_addition_is_creation:
+                        prepared_events.append([e])
+                        log.debug(f"new creation found ({prepared_events[-1]})")
+                    else: 
+                        prepared_events[-1] = [e]
+                        log.info(f"replacing creation even with newly found one ({prepare_events[-1]})")
+                    else
                 elif e["event"] == "DepositReceived" and last_addition_is_creation:
                     prepared_events[-1].insert(0, e)
                     log.debug(f"event matched to creation ({prepared_events[-1]})")
