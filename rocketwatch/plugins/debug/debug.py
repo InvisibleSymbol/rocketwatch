@@ -188,6 +188,20 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def purge_minipools_new(self, ctx: Context, confirm: bool = False):
+        """
+        Purge minipools_new collection, so it can be resynced from scratch in the next update.
+        """
+        await ctx.defer(ephemeral=True)
+        if not confirm:
+            await ctx.send("Not running. Set `confirm` to `true` to run.")
+            return
+        await self.db.minipools_new.drop()
+        await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def tmp_fix(self, ctx: Context):
         await ctx.defer(ephemeral=True)
         # delete slot index of proposal collection
