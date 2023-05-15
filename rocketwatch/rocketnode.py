@@ -191,8 +191,7 @@ class Task:
             log.debug(f"Getting minipool deposit data ({i} to {i_end})")
             f_deposits = nd.events.DepositReceived.createFilter(fromBlock=block_start, toBlock=block_end)
             events = f_deposits.get_all_entries()
-            f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end,
-                                                                 argument_filters={"minipool": a})
+            f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
             events.extend(f_creations.get_all_entries())
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex']))
             # map to pairs of 2
