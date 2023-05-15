@@ -181,7 +181,7 @@ class Task:
         nd = rp.get_contract_by_name("rocketNodeDeposit")
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         data = {}
-        batch_size = 25
+        batch_size = 1000
         for i in range(0, len(minipools), batch_size):
             i_end = min(i + batch_size, len(minipools))
             # turn status time of first and last minipool into blocks
@@ -193,9 +193,7 @@ class Task:
             events = f_deposits.get_all_entries()
             f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
             events.extend(f_creations.get_all_entries())
-            events = sorted(events, key=(lambda x: x['blockNumber'] + (x['transactionIndex'] *1e-4) + (x['logIndex'] *1e-8)))
-            events = list(reversed(events))
-            log.debug(f"{[(x['blockNumber'] + (x['transactionIndex'] *1e-4) + (x['logIndex'] *1e-8)) for x in events]}")
+            events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex'] *1e-8), reverse=True)
             # map to pairs of 2
             prepared_events = []
             last_addition_is_creation = False
@@ -206,16 +204,13 @@ class Task:
                 if e["event"] == "MinipoolCreated":
                     if not last_addition_is_creation:
                         prepared_events.append([e])
-                        log.debug(f"new creation found ({prepared_events[-1]})")
                     else: 
                         prepared_events[-1] = [e]
                         log.info(f"replacing creation even with newly found one ({prepared_events[-1]})")
                 elif e["event"] == "DepositReceived" and last_addition_is_creation:
                     prepared_events[-1].insert(0, e)
-                    log.debug(f"event matched to creation ({prepared_events[-1]})")
                 last_addition_is_creation = e["event"] == "MinipoolCreated"
             for e in prepared_events:
-                log.debug(f"processing {e}") 
                 assert "amount" in e[0]["args"]
                 assert "minipool" in e[1]["args"]
                 # assert that the txn hashes match
@@ -392,7 +387,7 @@ class Task:
             ) for a, d in data.items()
         ]
         self.db.node_operators_new.bulk_write(bulk, ordered=False)
-        log.debug("Mode operators updated with static data")
+        log.debug("Node operators updated with static data")
 
     @timerun
     def update_dynamic_node_operator_metadata(self):
