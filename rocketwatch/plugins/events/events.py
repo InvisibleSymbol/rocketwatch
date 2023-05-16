@@ -73,8 +73,8 @@ class QueuedEvents(commands.Cog):
             self.events.append(w3.eth.filter({
                 "address"  : addresses,
                 "topics"   : [aggregated_topics],
-                "fromBlock": self.start_block,
-                "toBlock"  : "latest"
+                "fromBlock": 17270146,
+                "toBlock"  : 17270148
             }))
 
         # Generate Filters for global Events
@@ -83,8 +83,8 @@ class QueuedEvents(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=self.start_block,
-                                                                                         toBlock="latest",
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=17270146,
+                                                                                         toBlock=17270148,
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
@@ -398,9 +398,9 @@ class QueuedEvents(commands.Cog):
 
                     # sum up the amount of stETH withdrawn in this transaction
                     if event["transactionHash"] not in d:
-                        d[event["transactionHash"]] = solidity.to_float(_event["args"]["amountOfStETH"])
+                        d[event["transactionHash"]] = _event["args"]["amountOfStETH"]
                     else:
-                        d[event["transactionHash"]] += solidity.to_float(_event["args"]["amountOfStETH"])
+                        d[event["transactionHash"]] += _event["args"]["amountOfStETH"]
                         events.remove(event)
 
         events = [aDict(event) for event in events]
@@ -484,7 +484,7 @@ class QueuedEvents(commands.Cog):
                 unique_id = f"{tnx_hash}:{event_name}"
                 for arg_k, arg_v in event.get("args", {}).items():
                     if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
-                        unique_id += f":{arg_k}:{arg_v}"
+                        unique_id += f":{arg_k}:{arg_v}{random.random()}"
 
                 messages.append(Response(
                     embed=embed,
