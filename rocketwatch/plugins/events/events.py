@@ -73,7 +73,7 @@ class QueuedEvents(commands.Cog):
             self.events.append(w3.eth.filter({
                 "address"  : addresses,
                 "topics"   : [aggregated_topics],
-                "fromBlock": start_block,
+                "fromBlock": self.start_block,
                 "toBlock"  : "latest"
             }))
 
@@ -83,7 +83,7 @@ class QueuedEvents(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=start_block,
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=self.start_block,
                                                                                          toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
