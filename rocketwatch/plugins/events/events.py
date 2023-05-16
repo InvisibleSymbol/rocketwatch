@@ -73,8 +73,8 @@ class QueuedEvents(commands.Cog):
             self.events.append(w3.eth.filter({
                 "address"  : addresses,
                 "topics"   : [aggregated_topics],
-                "fromBlock": 17270146,
-                "toBlock"  : 17270148
+                "fromBlock": start_block,
+                "toBlock"  : "latest"
             }))
 
         # Generate Filters for global Events
@@ -83,8 +83,8 @@ class QueuedEvents(commands.Cog):
             for event in group["events"]:
                 try:
                     f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=17270146,
-                                                                                         toBlock=17270148,
+                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=start_block,
+                                                                                         toBlock="latest",
                                                                                          argument_filters=f))
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
@@ -484,7 +484,7 @@ class QueuedEvents(commands.Cog):
                 unique_id = f"{tnx_hash}:{event_name}"
                 for arg_k, arg_v in event.get("args", {}).items():
                     if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
-                        unique_id += f":{arg_k}:{arg_v}{random.random()}"
+                        unique_id += f":{arg_k}:{arg_v}"
 
                 messages.append(Response(
                     embed=embed,
