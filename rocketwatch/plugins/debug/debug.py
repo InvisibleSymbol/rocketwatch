@@ -434,7 +434,8 @@ class Debug(Cog):
                    ctx: Context,
                    function: str,
                    json_args: str = "[]",
-                   block: str = "latest"):
+                   block: str = "latest",
+                   address: str = None):
         """Call Function of Contract"""
         await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         # convert block to int if number
@@ -444,7 +445,7 @@ class Debug(Cog):
             args = json.loads(json_args)
             if not isinstance(args, list):
                 args = [args]
-            v = rp.call(function, *args, block=block)
+            v = rp.call(function, *args, block=block, address=w3.toChecksumAddress(address))
         except Exception as err:
             await ctx.send(content=f"Exception: ```{repr(err)}```")
             return
