@@ -369,6 +369,9 @@ class QueuedEvents(commands.Cog):
             if solidity.to_float(args.amountOfStETH) < 10_000:
                 return None
             # get the node operator address from minipool contract
+        if "odao_rpl_transfer" in event_name:
+            if args["from"] not in cfg["dao_multsigs"]:
+                return None
         args = prepare_args(args)
         return assemble(args)
 

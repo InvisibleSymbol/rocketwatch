@@ -127,6 +127,10 @@
                 {
                     "event_name": "RPLInflationLog",
                     "name": "rpl_inflation_event"
+                },
+                {
+                    "event_name": "Transfer",
+                    "name": "odao_rpl_transfer"
                 }
             ]
         },

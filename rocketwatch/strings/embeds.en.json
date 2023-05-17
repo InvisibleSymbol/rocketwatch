@@ -36,6 +36,9 @@
         "title": ":rocket: Deposit Assigned To Minipool",
         "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
+    "odao_rpl_transfer": {
+        "description_small": ":moneybag: %{from} transfered %{value} RPL to %{to}! %{transactionHash_small}"
+    },
     "pool_deposit_assigned_event": {
         "title": ":rocket: Deposit Assigned To Minipools",
         "description_small": ":handshake: %{assignmentCount} Minipools have been matched and left the queue! %{transactionHash_small}"
