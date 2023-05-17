@@ -445,7 +445,7 @@ class Debug(Cog):
             args = json.loads(json_args)
             if not isinstance(args, list):
                 args = [args]
-            v = rp.call(function, *args, block=block, address=w3.toChecksumAddress(address))
+            v = rp.call(function, *args, block=block, address=w3.toChecksumAddress(address) if address else None)
         except Exception as err:
             await ctx.send(content=f"Exception: ```{repr(err)}```")
             return
