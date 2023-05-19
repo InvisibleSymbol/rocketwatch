@@ -435,7 +435,8 @@ class Debug(Cog):
                    function: str,
                    json_args: str = "[]",
                    block: str = "latest",
-                   address: str = None):
+                   address: str = None,
+                   raw_output: bool = False):
         """Call Function of Contract"""
         await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         # convert block to int if number
@@ -456,7 +457,7 @@ class Debug(Cog):
             if isinstance(err, ValueError) and err.args[0]["code"] == -32000:
                 g += f" ({err.args[0]['message']})"
 
-        if isinstance(v, int) and abs(v) >= 10 ** 12:
+        if isinstance(v, int) and abs(v) >= 10 ** 12 and not raw_output:
             v = solidity.to_float(v)
         g = humanize.intcomma(g)
         text = f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): "
