@@ -119,7 +119,7 @@ class DAI(commands.Cog):
         for v in vaults:
             e.description += f"{el_explorer_url(w3.toChecksumAddress(v['owner'])) if v['owner'] else '???'}:\n" \
                              f"<:VOID:721787344138797116>Borrowed `{int(v['principal']):,} DAI`" \
-                             f" with `{v['collateral']:.2f} rETH` as collateral (`{int(v['collateralization'])}%`)\n" \
+                             f" with `{v['collateral']:.2f} rETH` as collateral (`{int(v['collateralization']*100)}%`)\n" \
                              f"<:VOID:721787344138797116>Liquidation Price: `{int(v['liquidation_price'])} rETH/DAI`" \
                              f" Accrued Fees: `{v['accrued_fees']:.2f} DAI`\n"
         await ctx.send(embed=e)
