@@ -198,11 +198,11 @@ class Core(commands.Cog):
                     msg = await target_channel.fetch_message(state_message["message_id"])
                     await msg.delete()
                     await self.db.state_messages.delete_one({"_id": "state"})
-            for event in events:
-                await target_channel.send(embed=Response.get_embed(event))
+            for i, event in enumerate(events):
+                e = Response.get_embed(event)
+                msg = await target_channel.send(embed=e,silent="debug" in event["event_name"])
                 # mark event as processed
-                await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True}})
-
+                await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True, "message_id": msg.id}})
         log.info("Processed all events in event_queue collection.")
 
     def cog_unload(self):

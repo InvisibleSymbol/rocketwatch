@@ -27,10 +27,14 @@ class Embed(discord.Embed):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.colour = Color.from_rgb(235, 142, 85)
+        self.set_footer_parts([])
+
+    def set_footer_parts(self, parts):
         footer_parts = ["Developed by 0xinvis.eth",
                         "/donate"]
         if cfg["rocketpool.chain"] != "mainnet":
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
+        footer_parts.extend(parts)
         self.set_footer(text=" · ".join(footer_parts))
 
 
@@ -117,7 +121,7 @@ def prepare_args(args):
         args[f"{arg_key}_raw"] = arg_value
 
         # handle numbers
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate"]) and isinstance(arg_value, int):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate", "totaleth", "stakingeth", "rethsupply", "rplprice"]) and isinstance(arg_value, int):
             args[arg_key] = arg_value / 10 ** 18
 
         # handle timestamps
@@ -241,7 +245,7 @@ def assemble(args):
                     value=f"{args.commission:.2%}",
                     inline=False)
     """
-    
+
     if "settingContractName" in args:
         e.add_field(name="Contract",
                     value=f"`{args.settingContractName}`",

@@ -384,7 +384,7 @@ class QueuedEvents(commands.Cog):
     def prepare_events(self, events):
         # deduplicate events with a topic 0 of DepositAssigned so we only have one event per txnhash. also store the count in the event
         d = {}
-        for event in list(events):
+        for event in list(reversed(events)):
             if "topics" in event:
                 if self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
                     if event["transactionHash"] not in d:
@@ -476,19 +476,14 @@ class QueuedEvents(commands.Cog):
                     embed, event_name = self.handle_global_event(event)
 
             if embed:
-                # lazy way of making it sort events within a single block correctly
-                score = event.blockNumber
-                # sort within block
-                score += event.transactionIndex * 10 ** -3
-                # sort within transaction
-                if "logIndex" in event:
-                    score += event.logIndex * 10 ** -3
-
                 unique_id = f"{tnx_hash}:{event_name}"
                 for arg_k, arg_v in event.get("args", {}).items():
                     if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
                         unique_id += f":{arg_k}:{arg_v}"
 
+                # get the event offset based on the loweste event log index of events with the same txn hashes
+                log_index_offset = min(e.logIndex for e in pending_events if e.transactionHash == event.transactionHash)
+                unique_id += f":{event.logIndex - log_index_offset}"
                 messages.append(Response(
                     embed=embed,
                     topic="events",
