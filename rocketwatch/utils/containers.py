@@ -29,7 +29,8 @@ class Response:
         self.time_seen = datetime.utcnow()
         self.score = self.block_number + (self.transaction_index * 10 ** -4) + (self.event_index * 10 ** -9)
         d = math.ceil(math.log10(self.score))
-        self.embed.set_footer_parts([f"score: {self.score:0<{d+11}}"])
+        if self.embed.footer and self.embed.footer.text:
+            self.embed.set_footer_parts([f"score: {self.score:0<{d+11}}"])
         # select channel dynamically from config based on event_name prefix
         channels = cfg["discord.channels"]
         channel_candidates = [value for key, value in channels.items() if event_name.startswith(key)]
