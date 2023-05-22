@@ -13,7 +13,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
 from utils.embeds import assemble, prepare_args
-from utils.rocketpool import rp
+from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
 
@@ -50,7 +50,7 @@ class QueuedEvents(commands.Cog):
         for group in events_config["direct"]:
             try:
                 contract = rp.get_contract_by_name(group["contract_name"])
-            except Exception as err:
+            except NoAddressFound as err:
                 log.error(f"Failed to get contract {group['contract_name']}: {err}")
                 continue
             addresses.append(contract.address)

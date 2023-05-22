@@ -21,6 +21,9 @@ from utils.time_debug import timerun
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
 
+# no address found exception
+class NoAddressFound(Exception):
+    pass
 
 class RocketPool:
     ADDRESS_CACHE = FIFOCache(maxsize=2048)
@@ -80,7 +83,7 @@ class RocketPool:
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
         address = self.get_contract_by_name("rocketStorage").functions.getAddress(sha3).call()
         if not w3.toInt(hexstr=address):
-            raise Exception(f"No address found for {name} Contract")
+            raise NoAddressFound(f"No address found for {name} Contract")
         self.addresses[name] = address
         log.debug(f"Retrieved address for {name} Contract: {address}")
         return address
