@@ -6,7 +6,7 @@ termplotlib==0.3.9
 cachetools==5.3.0
 bidict==0.22.1
 tinydb==4.7.1
-requests==2.28.2
+requests==2.31.0
 uptime==3.0.1
 discord.py==2.2.3
 config==0.5.1
