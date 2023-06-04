@@ -119,7 +119,7 @@ class LotteryBase:
         # validators (called minipools here)
         # sort validators
         validators.sort(key=lambda x: x['validator'])
-        description += f"_Minipools:_ `{', '.join(v['validator'] for v in validators)}`\n"
+        description += f"_Minipools:_ `{', '.join(str(v['validator']) for v in validators)}`\n"
         # node operators
         # gather count per
         node_operators = {}
