@@ -51,6 +51,7 @@ COLORS = {
     "Prysm"           : "#40bfbf",
     "Lighthouse"      : "#9933cc",
     "Teku"            : "#3357cc",
+    "LodeStar"        : "#fb5b9d",
 
     "Infura"          : "#ff2f00",
     "Pocket"          : "#e216e9",
@@ -461,7 +462,7 @@ class Proposals(commands.Cog):
 
         ax2.pie(
             [x[1] for x in node_operators],
-            colors=[COLORS.get(x[0], "#fb5b9d") for x in node_operators],
+            colors=[COLORS.get(x[0], "red") for x in node_operators],
             autopct=lambda pct: ('%.1f%%' % pct) if pct > 5 else '',
             startangle=90,
             textprops={'fontsize': '12'},
