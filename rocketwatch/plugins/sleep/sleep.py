@@ -32,7 +32,7 @@ class Oura(commands.Cog):
         end_date = current_date
         res = requests.get("https://api.ouraring.com/v2/usercollection/sleep",
                            params={"start_date": start_date.strftime("%Y-%m-%d"),
-                                   "end_date"  : end_date.strftime("%Y-%m-%d")},
+                                   "end_date"  : (end_date + datetime.timedelta(days=1)).strftime("%Y-%m-%d")},
                            headers={"Authorization": f"Bearer {cfg['oura.secret']}"})
         if res.status_code != 200:
             e.description = "Error fetching sleep data"
@@ -68,6 +68,8 @@ class Oura(commands.Cog):
                                        tzinfo=end_date.tzinfo)
             if start_day not in daily_sleep:
                 daily_sleep[start_day] = []
+            if end_day not in daily_sleep:
+                daily_sleep[end_day] = []
             # weekday based on start date
             weekday = datetime.datetime.fromisoformat(start_day).weekday()
             if start_day != end_day:
