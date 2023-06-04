@@ -54,12 +54,12 @@ class Oura(commands.Cog):
             # skip if sleep_duration is less than 30 minutes. units are in seconds
             if sleep["total_sleep_duration"] < 30 * 60:
                 continue
-            start_date = datetime.datetime.fromisoformat(sleep["bedtime_start"]) + datetime.timedelta(seconds=sleep["latency"])
+            start_date = datetime.datetime.fromisoformat(sleep["bedtime_start"])
             # the start day is the next day if we are past 12pm, otherwise it is the current day
             start_day = start_date + datetime.timedelta(days=1) if start_date.hour >= 18 else start_date
             # format to string
             start_day = start_day.strftime("%Y-%m-%d")
-            end_date = start_date + datetime.timedelta(seconds=sleep["total_sleep_duration"])
+            end_date = datetime.datetime.fromisoformat(sleep["bedtime_end"])
             # the end day is the next day if we are past 12pm, otherwise it is the current day
             end_day = end_date + datetime.timedelta(days=1) if end_date.hour >= 18 else end_date
             # format to string
@@ -72,23 +72,29 @@ class Oura(commands.Cog):
                 daily_sleep[end_day] = []
             # weekday based on start date
             weekday = datetime.datetime.fromisoformat(start_day).weekday()
+            stats = sleep["sleep_phase_5_min"]
             if start_day != end_day:
+                dur_first = thresh - start_date
+                dur_second = end_date - thresh
+                total_dur = dur_first + dur_second
+                # split stats into two parts based on duration of each part
+                stats_first = stats[:int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds()))]
+                stats_second = stats[int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds())):]
                 daily_sleep[start_day].append(
-                    {"relative_start": start_date - (thresh - datetime.timedelta(days=1)), "duration": thresh - start_date,
-                     "weekday"       : weekday, "tzinfo": end_date.tzinfo})
+                    {"relative_start": start_date - (thresh - datetime.timedelta(days=1)), "duration": dur_first,
+                     "weekday"       : weekday, "sleep_stats": stats_first})
                 if end_day not in daily_sleep:
                     daily_sleep[end_day] = []
                 daily_sleep[end_day].append(
-                    {"relative_start": datetime.timedelta(), "duration": end_date - thresh, "weekday": weekday,
-                        "tzinfo"       : end_date.tzinfo})
+                    {"relative_start": datetime.timedelta(), "duration": dur_second, "weekday": weekday,
+                     "sleep_stats"   : stats_second})
             else:
                 relative_start = start_date - (thresh - datetime.timedelta(days=1))
                 if relative_start >= datetime.timedelta(hours=24):
                     relative_start -= datetime.timedelta(hours=24)
                 daily_sleep[start_day].append(
                     {"relative_start": relative_start, "duration": end_date - start_date, "weekday": weekday,
-                        "tzinfo"       : end_date.tzinfo})
-        log.debug(daily_sleep)
+                     "sleep_stats"   : stats})
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
         day_of_week_colors = ["#ff0000", "#ff8000", "#ffff00", "#80ff00", "#00ff00", "#00ff80", "#00ffff"]
@@ -119,8 +125,13 @@ class Oura(commands.Cog):
                        bottom=0, color="#AAAAAA", width=1, alpha=0.5)
             for sleep in sleeps:
                 color = day_of_week_colors[sleep["weekday"]]
-                ax.bar(i, sleep["duration"].total_seconds() / 3600, bottom=((24 * 60 * 60) - sleep[
-                    "relative_start"].total_seconds() - sleep["duration"].total_seconds()) / 3600, color=color, alpha=0.8)
+                bottom = ((24 * 60 * 60) - sleep[
+                    "relative_start"].total_seconds() - sleep["duration"].total_seconds()) / 3600
+                width = sleep["duration"].total_seconds() / 3600
+                current_bottom = bottom + width
+                for state in sleep["sleep_stats"]:
+                    current_bottom -= (width / len(sleep["sleep_stats"]))
+                    ax.bar(i, width / len(sleep["sleep_stats"]), bottom=current_bottom, color=color, alpha=0 if state == "4" else 0.8)
         # set x axis labels, only every 7th day
         ax.set_xticks(range(len(daily_sleep) - 1, 0, -14))
         ax.set_xticklabels([day for i, (day, _) in enumerate(reversed(daily_sleep.items())) if i % 14 == 0])
