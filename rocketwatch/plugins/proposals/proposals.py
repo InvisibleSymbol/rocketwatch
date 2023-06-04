@@ -132,12 +132,14 @@ class Proposals(commands.Cog):
                 '$match': {
                     'node_operator': {
                         '$ne': None
-                    }
+                    },
+                    'beacon.status' : 'active_ongoing',
+                    "status": "staking"
                 }
             }, {
                 '$lookup': {
                     'from'        : 'proposals',
-                    'localField'  : 'validator',
+                    'localField'  : 'validator_index',
                     'foreignField': 'validator',
                     'as'          : 'proposals',
                     'pipeline'    : [
@@ -161,7 +163,7 @@ class Proposals(commands.Cog):
             }, {
                 '$project': {
                     'node_operator': 1,
-                    'validator'    : 1,
+                    'validator'    : "$validator_index",
                     'slot'         : '$proposal.slot'
                 }
             }, {
@@ -202,7 +204,7 @@ class Proposals(commands.Cog):
         await self.db.minipool_proposals.drop()
         await self.db.create_collection(
             "minipool_proposals",
-            viewOn="minipools",
+            viewOn="minipools_new",
             pipeline=pipeline
         )
         self.created_view = True
@@ -394,7 +396,7 @@ class Proposals(commands.Cog):
 
         # respond with image
         img = BytesIO()
-        plt.savefig(img, format="png")
+        plt.savefig(img, format="png", bbox_inches="tight", dpi=300)
         img.seek(0)
         plt.close()
         e.set_image(url="attachment://chart.png")
@@ -411,7 +413,7 @@ class Proposals(commands.Cog):
         minipools = sorted(minipools, key=lambda x: x[1])
 
         # get total minipool count from rocketpool
-        unobserved_minipools = rp.call("rocketMinipoolManager.getStakingMinipoolCount") - sum(d[1] for d in minipools)
+        unobserved_minipools = len(await self.db.minipools_new.find({"beacon.status": "active_ongoing", "status": "staking"}).distinct("_id")) - sum(d[1] for d in minipools)
         if "remove_from_total" in data:
             unobserved_minipools -= data["remove_from_total"]["validator_count"]
         minipools.insert(0, ("No proposals yet", unobserved_minipools))
@@ -427,7 +429,7 @@ class Proposals(commands.Cog):
         node_operators = sorted(node_operators, key=lambda x: x[1])
 
         # get total node operator count from rp
-        unobserved_node_operators = rp.call("rocketNodeManager.getNodeCount") - sum(d[1] for d in node_operators)
+        unobserved_node_operators = len(await self.db.minipools_new.find({"beacon.status": "active_ongoing", "status": "staking"}).distinct("node_operator")) - sum(d[1] for d in node_operators)
         if "remove_from_total" in data:
             unobserved_node_operators -= data["remove_from_total"]["count"]
         node_operators.insert(0, ("No proposals yet", unobserved_node_operators))
