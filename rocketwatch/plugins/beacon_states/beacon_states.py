@@ -69,10 +69,9 @@ class BeaconStates(commands.Cog):
         # render dict as a tree like structure
         description += render_tree_legacy(data, "Minipool States")
         if 0 < len(exiting_valis) <= 24:
-            log.debug(f"exiting_valis: {exiting_valis}")
             description += "\n\n--- Exiting Minipools ---\n\n"
             # array of validator attribute, sorted by index
-            valis = sorted([v["validator"] for v in exiting_valis if "validator" in v], key=lambda x: x)
+            valis = sorted([v["validator_index"] for v in exiting_valis], key=lambda x: x)
             description += ", ".join([str(v) for v in valis])
             description += "```"
         elif len(exiting_valis) > 24:
