@@ -481,8 +481,8 @@ class QueuedEvents(commands.Cog):
                     if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
                         unique_id += f":{arg_k}:{arg_v}"
 
-                # get the event offset based on the loweste event log index of events with the same txn hashes
-                log_index_offset = min(e.logIndex for e in pending_events if e.transactionHash == event.transactionHash)
+                # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
+                log_index_offset = min(e.logIndex for e in pending_events if e.transactionHash == event.transactionHash and e.blockHash == event.blockHash)
                 unique_id += f":{event.logIndex - log_index_offset}"
                 messages.append(Response(
                     embed=embed,
