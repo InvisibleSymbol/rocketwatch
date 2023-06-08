@@ -140,7 +140,8 @@ class TVL(commands.Cog):
                 }
             }
         ]).to_list(1)
-        data["Total ETH Locked"]["Minipools Stake"]["Queued Minipools"]["_val"] = tmp[0]["beacon_balance"]
+        if tmp:
+            data["Total ETH Locked"]["Minipools Stake"]["Queued Minipools"]["_val"] = tmp[0]["beacon_balance"]
 
         # Pending Minipools: prelaunchCount of minipool_count_per_status * 32 ETH.
         # Minipools that are flagged as prelaunch have the following applied to them:
@@ -165,8 +166,9 @@ class TVL(commands.Cog):
                 }
             }
         ]).to_list(1)
-        data["Total ETH Locked"]["Minipools Stake"]["Pending Minipools"]["_val"] = tmp[0]["beacon_balance"] + tmp[0][
-            "execution_balance"]
+        if tmp:
+            data["Total ETH Locked"]["Minipools Stake"]["Pending Minipools"]["_val"] = tmp[0]["beacon_balance"] + tmp[0][
+                "execution_balance"]
 
         # Dissolved Minipools:
         # Minipools that are flagged as dissolved are Pending minipools that didn't trigger the second phase within the configured
