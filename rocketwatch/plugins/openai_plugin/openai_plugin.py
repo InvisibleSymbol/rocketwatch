@@ -64,7 +64,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
-        response, prompt = await self.prompt_model(ctx.channel, "The following is a short summary of the above chat log:", last_ts)
+        response, prompt = await self.prompt_model(ctx.channel, "Please summarize the above chat log:", last_ts)
         e = Embed()
         e.title = "Chat Summarization"
         e.description = response["choices"][0]["message"]["content"]
