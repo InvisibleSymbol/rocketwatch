@@ -4,10 +4,9 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import openai
-from discord import Object, File, DeletedReferencedMessage
-from discord.app_commands import guilds
+from discord import File, DeletedReferencedMessage
 from discord.ext import commands
-from discord.ext.commands import Context, is_owner
+from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from transformers import GPT2TokenizerFast
 
@@ -25,7 +24,6 @@ class OpenAi(commands.Cog):
         # log all possible engines
         models = openai.Model.list()
         log.debug([d.id for d in models.data])
-        self.engine = "gpt-3.5-turbo-16k"
         self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
         self.last_summary_dict = {}
         self.last_financial_advice_dict = {}
@@ -64,9 +62,9 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
-        response, prompt = await self.prompt_model(ctx.channel, "Please summarize the above chat log:", last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log:", last_ts)
         e = Embed()
-        e.title = "Chat Summarization"
+        e.title = f"Chat Summarization of {msgs} messages"
         e.description = response["choices"][0]["message"]["content"]
         token_usage = response['usage']['total_tokens']
         e.set_footer(text=f"Request cost: ${token_usage / 1000 * 0.003:.2f} | Tokens: {token_usage} | /donate if you like this command")
@@ -90,16 +88,15 @@ class OpenAi(commands.Cog):
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages = [message for message in messages if message.created_at > cut_off_ts]
         if len(messages) < 32:
-            return None, None
+            return None, None, None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
-        print(len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']))
-        while len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']) > (16384 - 512):
+        while (l := len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids'])) > (16384 - 512):
             # remove the oldest message
             messages.pop(0)
-
+        engine = "gpt-3.5-turbo-16k" if l > 4096 else "gpt-3.5-turbo"
         prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.ChatCompletion.create(
-            model=self.engine,
+            model=engine,
             max_tokens=512,
             temperature=0.7,
             top_p=1.0,
@@ -107,7 +104,7 @@ class OpenAi(commands.Cog):
             presence_penalty=1,
             messages=[{"role": "user", "content": prompt}]
         )
-        return response, prompt
+        return response, prompt, len(messages)
 
 
 async def setup(self):
