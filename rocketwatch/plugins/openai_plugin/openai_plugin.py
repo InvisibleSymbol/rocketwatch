@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
@@ -48,6 +49,8 @@ class OpenAi(commands.Cog):
         # replace all <@[0-9]+> with the name of the user
         for mention in message.mentions:
             text = text.replace(f"<@{mention.id}>", f"@{mention.name}")
+        # remove all emote ids, i.e change <:emote_name:emote_id> to <:emote_name> using regex
+        text = re.sub(r":[0-9]+>", ":>", text)
         return text
 
     @hybrid_command()
@@ -90,14 +93,14 @@ class OpenAi(commands.Cog):
             return None, None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
         print(len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']))
-        while len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']) > (16384 - 256):
+        while len(self.tokenizer(self.generate_prompt(messages, prefix, prompt))['input_ids']) > (16384 - 512):
             # remove the oldest message
             messages.pop(0)
 
         prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.ChatCompletion.create(
             model=self.engine,
-            max_tokens=256,
+            max_tokens=512,
             temperature=0.7,
             top_p=1.0,
             frequency_penalty=0.0,
