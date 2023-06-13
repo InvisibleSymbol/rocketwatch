@@ -32,7 +32,7 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message):
-        text = f"user {message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}"
+        text = f"user {message.author.global_name if message.author.global_name else message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}"
         # if there is an image attached, add it to the text as a note
         metadata = []
         if message.attachments:
@@ -57,8 +57,8 @@ class OpenAi(commands.Cog):
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
         # ratelimit
-        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary_dict.get(ctx.channel.id)) < timedelta(minutes=15):
-            await ctx.send("You can only summarize once every 15 minutes.", ephemeral=True)
+        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary_dict.get(ctx.channel.id)) < timedelta(minutes=60):
+            await ctx.send("You can only summarize once every hour.", ephemeral=True)
             return
         if ctx.channel.id not in [405163713063288832]:
             await ctx.send("You can't summarize here.", ephemeral=True)
@@ -72,7 +72,7 @@ class OpenAi(commands.Cog):
         e.set_footer(text=f"Request cost: ${token_usage / 1000 * 0.003:.2f} | Tokens: {token_usage} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
-        f.name = "prompt.txt"
+        f.name = "prompt._log"
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
         # send message in the channel
         await ctx.send("done")
