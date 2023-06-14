@@ -28,7 +28,6 @@
     "0x895F6558f0b02F95F48EF0d580eC885056dcCCC6": "markobarko x worthalter 3: Evolution",
     "0xacB7CFB56D6835d9E2Fa3E3F273A0450468082D9": "markobarko x worthalter 4: Centralization",
     "0x22FFBA127F6741a619fa145516EF4D94B90f093A": "markobarko x 0x3afcf6cc: who?",
-    "0xb867EA3bBC909954d737019FEf5AB25dFDb38CB9": "Incentive Management Committee",
     "0x0De51f82E49aA1989Af326521Da56FEbDb8E44f2": "rocketluke",
     "0x1f7e55F2e907dDce8074b916f94F62C7e8A18571": "rocketarb",
     "0xE46BFe6F559041cc1323dB3503a09c49fb5d8828": "rocketarbOwlCitrus",
@@ -51,5 +50,10 @@
     "0xc5DbFAf13F8B0BaC6DEF344FbbCFef06aC84eef9": "Blockscape NFTs",
     "0x90185c4daD355cFf27a708BD0132688A03cE1FF7": "Flashstake rETH Strategy",
     "0x685bD857797306D030d53920C321d4d117aE3137": "Rescue Node",
-    "0xa092982764b223bACAC64422F4862Fff52eCAFf6": "Flashstake rETH Proxy"
+    "0xa092982764b223bACAC64422F4862Fff52eCAFf6": "Flashstake rETH Proxy",
+    "0xb867EA3bBC909954d737019FEf5AB25dFDb38CB9": "Incentive Management Committee",
+    "0x9008D19f58AAbD9eD0D60971565AA8510560ab41": "CowSwap Settlement",
+    "0x9DDb2da7Dd76612e0df237B89AF2CF4413733212": "Hidden Hand Bribe Vault",
+    "0x84E5efD54461299eEe3a9a753760441055A4736B": "Gamma rETH/WETH Rewarder",
+    "0xeCc90d54B10ADd1ab746ABE7E83abe178B72aa9E": "PancakeSwap Multisig"
 }
