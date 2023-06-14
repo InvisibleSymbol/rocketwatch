@@ -56,8 +56,9 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
                 else:
                     url = f"https://rocketscan.io/node/{target}"
 
-        if target in cfg["override_addresses"]:
-            name = cfg["override_addresses"][target]
+        n_key = f"addresses.{target}"
+        if not name and (n := _(n_key)) != n_key:
+            name = n
 
         if cfg["rocketpool.chain"] != "mainnet" and not name:
             name = s_hex(target)
