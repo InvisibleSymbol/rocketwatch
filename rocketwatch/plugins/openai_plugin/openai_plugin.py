@@ -30,7 +30,8 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message):
-        text = f"user {message.author.global_name if message.author.global_name else message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}"
+        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}"
+
         # if there is an image attached, add it to the text as a note
         metadata = []
         if message.attachments:
@@ -62,7 +63,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log:", last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a bullet list!", last_ts)
         e = Embed()
         e.title = f"Chat Summarization of {msgs} messages"
         e.description = response["choices"][0]["message"]["content"]
@@ -71,7 +72,7 @@ class OpenAi(commands.Cog):
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt._log"
-        f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt")
+        f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}._log")
         # send message in the channel
         await ctx.send("done")
         await ctx.channel.send(embed=e, file=f)
@@ -98,10 +99,6 @@ class OpenAi(commands.Cog):
         response = openai.ChatCompletion.create(
             model=engine,
             max_tokens=512,
-            temperature=0.7,
-            top_p=1.0,
-            frequency_penalty=0.0,
-            presence_penalty=1,
             messages=[{"role": "user", "content": prompt}]
         )
         return response, prompt, len(messages)
