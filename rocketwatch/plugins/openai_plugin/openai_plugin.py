@@ -65,7 +65,7 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a bullet list!", last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a chronological bullet list! Where possible mention the name of the users directly.", last_ts)
         e = Embed()
         e.title = f"Chat Summarization of {msgs} messages"
         e.description = response["choices"][0]["message"]["content"]
