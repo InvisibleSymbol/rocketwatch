@@ -8,6 +8,7 @@ from discord import File, DeletedReferencedMessage
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 from transformers import GPT2TokenizerFast
 
 from utils.cfg import cfg
@@ -25,8 +26,7 @@ class OpenAi(commands.Cog):
         models = openai.Model.list()
         log.debug([d.id for d in models.data])
         self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-        self.last_summary_dict = {}
-        self.last_financial_advice_dict = {}
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @classmethod
     def message_to_text(cls, message):
@@ -55,20 +55,22 @@ class OpenAi(commands.Cog):
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
+        last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
         # ratelimit
-        if self.last_summary_dict.get(ctx.channel.id) is not None and (datetime.now(timezone.utc) - self.last_summary_dict.get(ctx.channel.id)) < timedelta(minutes=60):
+        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"]) < timedelta(minutes=60):
             await ctx.send("You can only summarize once every hour.", ephemeral=True)
             return
         if ctx.channel.id not in [405163713063288832]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        last_ts = self.last_summary_dict.get(ctx.channel.id) or datetime(2021, 1, 1, tzinfo=timezone.utc)
+        last_ts = last_ts["timestamp"] if last_ts else datetime.now(timezone.utc) - timedelta(days=365)
         response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a bullet list!", last_ts)
         e = Embed()
         e.title = f"Chat Summarization of {msgs} messages"
         e.description = response["choices"][0]["message"]["content"]
         token_usage = response['usage']['total_tokens']
-        e.set_footer(text=f"Request cost: ${token_usage / 1000 * 0.003:.2f} | Tokens: {token_usage} | /donate if you like this command")
+        e.set_footer(
+            text=f"Request cost: ${token_usage / 1000 * 0.003:.2f} | Tokens: {token_usage} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt._log"
@@ -76,7 +78,8 @@ class OpenAi(commands.Cog):
         # send message in the channel
         await ctx.send("done")
         await ctx.channel.send(embed=e, file=f)
-        self.last_summary_dict[ctx.channel.id] = datetime.now(timezone.utc)
+        # save the timestamp of the last summary
+        await self.db["last_summary"].update_one({"channel_id": ctx.channel.id}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
 
     # a function that generates the prompt for the model by taking an array of messages, a prefix and a suffix
     def generate_prompt(self, messages, prefix, suffix):
@@ -99,6 +102,10 @@ class OpenAi(commands.Cog):
         response = openai.ChatCompletion.create(
             model=engine,
             max_tokens=512,
+            temperature=0.7,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=1,
             messages=[{"role": "user", "content": prompt}]
         )
         return response, prompt, len(messages)
