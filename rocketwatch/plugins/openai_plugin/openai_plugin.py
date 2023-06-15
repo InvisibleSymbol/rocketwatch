@@ -58,13 +58,13 @@ class OpenAi(commands.Cog):
         await ctx.defer(ephemeral=True)
         last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
         # ratelimit
-        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tz=pytz.utc)) < timedelta(minutes=60):
+        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(minutes=60):
             await ctx.send("You can only summarize once every hour.", ephemeral=True)
             return
         if ctx.channel.id not in [405163713063288832]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
-        last_ts = last_ts["timestamp"] if last_ts["timestamp"].replace(tz=pytz.utc) else datetime.now(timezone.utc) - timedelta(days=365)
+        last_ts = last_ts["timestamp"] if last_ts["timestamp"].replace(tzinfo=pytz.utc) else datetime.now(timezone.utc) - timedelta(days=365)
         response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a bullet list!", last_ts)
         e = Embed()
         e.title = f"Chat Summarization of {msgs} messages"
