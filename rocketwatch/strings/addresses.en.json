@@ -56,5 +56,8 @@
     "0x9008D19f58AAbD9eD0D60971565AA8510560ab41": "CowSwap Settlement",
     "0x9DDb2da7Dd76612e0df237B89AF2CF4413733212": "Hidden Hand Bribe Vault",
     "0x84E5efD54461299eEe3a9a753760441055A4736B": "Gamma rETH/WETH Rewarder",
-    "0xeCc90d54B10ADd1ab746ABE7E83abe178B72aa9E": "PancakeSwap Multisig"
+    "0xeCc90d54B10ADd1ab746ABE7E83abe178B72aa9E": "PancakeSwap Multisig",
+    "0xDCC3A6Fea47ea451D5Cba2de39aAc17537421a7D": "Rocket Fuel",
+    "0x48e239Fa0B364Cd92Fc750A50045c9f9E04DD781": "Paris (Alpha Day Dashboard)",
+    
 }
