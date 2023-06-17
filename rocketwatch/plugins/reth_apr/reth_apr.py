@@ -24,14 +24,17 @@ log = logging.getLogger("reth_apr")
 log.setLevel(cfg["log_level"])
 
 
-def to_apr(d1, d2):
+def to_apr(d1, d2, effective=True):
     duration = get_duration(d1, d2)
-    period_change = get_period_change(d1, d2)
+    period_change = get_period_change(d1, d2, effective)
     return period_change * (Decimal(365 * 24 * 60 * 60) / Decimal(duration))
 
 
-def get_period_change(d1, d2):
-    return (Decimal(d2["value"]) - Decimal(d1["value"])) / Decimal(d1["value"])
+def get_period_change(d1, d2, effective=True):
+    v = (Decimal(d2["value"]) - Decimal(d1["value"])) / Decimal(d1["value"])
+    if not effective:
+        v *= Decimal(1/d2["effectiveness"])
+    return v
 
 
 def get_duration(d1, d2):
@@ -69,7 +72,9 @@ class RETHAPR(commands.Cog):
         latest_db_block = 0 if latest_db_block is None else latest_db_block["block"]
         cursor_block = historical_w3.eth.getBlock("latest")["number"]
         while True:
-            balance_block = rp.call("rocketNetworkBalances.getBalancesBlock", block=cursor_block)
+            # get address of rocketNetworkBalances contract at cursor block
+            address = rp.uncached_get_address_by_name("rocketNetworkBalances", block=cursor_block)
+            balance_block = rp.call("rocketNetworkBalances.getBalancesBlock", block=cursor_block, address=address)
             if balance_block == latest_db_block:
                 break
             block_time = w3.eth.getBlock(balance_block)["timestamp"]
@@ -77,10 +82,12 @@ class RETHAPR(commands.Cog):
             if block_time < (datetime.now().timestamp() - 120 * 24 * 60 * 60):
                 break
             reth_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=cursor_block))
+            effectiveness = solidity.to_float(rp.call("rocketNetworkBalances.getETHUtilizationRate", block=cursor_block, address=address))
             await self.db.reth_apr.insert_one({
                 "block": balance_block,
                 "time" : block_time,
-                "value": reth_ratio
+                "value": reth_ratio,
+                "effectiveness": effectiveness
             })
             cursor_block = balance_block - 1
             await asyncio.sleep(0.01)
@@ -103,44 +110,40 @@ class RETHAPR(commands.Cog):
         datapoints = sorted(datapoints, key=lambda x: x["time"])
         x = []
         y = []
+        y_effectiveness = []
+        y_virtual = []
         # we do a 7 day rolling average (9 periods) and a 30 day one (38 periods)
         y_7d = []
         y_7d_claim = None
-        y_30d = []
-        y_30d_claim = None
+        y_7d_virtual = []
         for i in range(1, len(datapoints)):
             # add the data of the datapoint to the x values, need to parse it to a datetime object
             x.append(datetime.fromtimestamp(datapoints[i]["time"]))
 
             # add the average APR to the y values
             y.append(to_apr(datapoints[i - 1], datapoints[i]))
+            y_virtual.append(to_apr(datapoints[i - 1], datapoints[i], effective=False))
+            y_effectiveness.append(datapoints[i]["effectiveness"])
 
             # calculate the 7 day average
             if i > 8:
                 y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
+                y_7d_virtual.append(to_apr(datapoints[i - 9], datapoints[i], effective=False))
                 y_7d_claim = get_duration(datapoints[i - 9], datapoints[i]) / (60 * 60 * 24)
             else:
                 # if we dont have enough data, we dont show it
                 y_7d.append(None)
-            # calculate the 30 day average
-            if i > 37:
-                y_30d.append(to_apr(datapoints[i - 38], datapoints[i]))
-                y_30d_claim = get_duration(datapoints[i - 38], datapoints[i]) / (60 * 60 * 24)
-            else:
-                # if we dont have enough data, we dont show it
-                y_30d.append(None)
-
+                y_7d_virtual.append(None)
         e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR",
                     value=f"{y_7d[-1]:.2%}")
-        e.add_field(name=f"{y_30d_claim:.1f} Day Average rETH APR",
-                    value=f"{y_30d[-1]:.2%}")
         fig = plt.figure()
         # format the daily average line as a line with dots
-        plt.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.7)
+        plt.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.4)
+        plt.plot(x, y_virtual, marker="x", linestyle="", label="Period Average (Virtual)", alpha=0.4)
         # format the 7 day average line as --
         plt.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average")
         # format the 30 day average line as --
-        plt.plot(x, y_30d, linestyle="-", label=f"{y_30d_claim:.1f} Day Average")
+        plt.plot(x, y_7d_virtual, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (Virtual)")
         plt.title("Observed rETH APR values")
         plt.xlabel("Date")
         plt.ylabel("APR")
@@ -148,7 +151,6 @@ class RETHAPR(commands.Cog):
         # format y axis as percentage
         plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
         # set the y axis to start at 0
-        # plt.ylim(bottom=0)
         # make the x axis skip the first 30 datapoints
         plt.xlim(left=x[38])
         # rotate x axis labels
@@ -158,6 +160,14 @@ class RETHAPR(commands.Cog):
         # dont show year in x axis labels
         old_formatter = plt.gca().xaxis.get_major_formatter()
         plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
+        # effectiveness on seperate axis
+        ax2 = plt.twinx()
+        ax2.plot(x, y_effectiveness, linestyle="--", label="Effectiveness", alpha=0.7)
+        ax2.set_ylabel("Effectiveness")
+        ax2.set_ylim(top=1)
+        ax2.legend(loc="upper right")
+        # format y axis as percentage
+        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
 
         img = BytesIO()
         fig.tight_layout()

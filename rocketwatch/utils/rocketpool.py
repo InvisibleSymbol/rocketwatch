@@ -78,10 +78,10 @@ class RocketPool:
             return self.addresses[name]
         return self.uncached_get_address_by_name(name)
 
-    def uncached_get_address_by_name(self, name):
+    def uncached_get_address_by_name(self, name, block="latest"):
         log.debug(f"Retrieving address for {name} Contract")
         sha3 = w3.soliditySha3(["string", "string"], ["contract.address", name])
-        address = self.get_contract_by_name("rocketStorage").functions.getAddress(sha3).call()
+        address = self.get_contract_by_name("rocketStorage", historical=block != "latest").functions.getAddress(sha3).call(block_identifier=block)
         if not w3.toInt(hexstr=address):
             raise NoAddressFound(f"No address found for {name} Contract")
         self.addresses[name] = address
@@ -144,9 +144,9 @@ class RocketPool:
     def get_name_by_address(self, address):
         return self.addresses.inverse.get(address, None)
 
-    def get_contract_by_name(self, name):
+    def get_contract_by_name(self, name, historical=False):
         address = self.get_address_by_name(name)
-        return self.assemble_contract(name, address)
+        return self.assemble_contract(name, address, historical=historical)
 
     def get_contract_by_address(self, address):
         """
