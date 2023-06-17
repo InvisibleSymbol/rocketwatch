@@ -391,6 +391,7 @@ class Task:
     @timerun
     def update_dynamic_node_operator_metadata(self):
         ndf = rp.get_contract_by_name("rocketNodeDistributorFactory")
+        nd = rp.get_contract_by_name("rocketNodeDeposit")
         nm = rp.get_contract_by_name("rocketNodeManager")
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         ns = rp.get_contract_by_name("rocketNodeStaking")
@@ -420,7 +421,9 @@ class Task:
             lambda n: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), n["fee_distributor_address"]],
                        [((n["address"], "fee_distributor_eth_balance"), func_if_success(solidity.to_float))]),
             lambda n: (mm.address, [rp.seth_sig(mm.abi, "getNodeStakingMinipoolCount"), n["address"]],
-                       [((n["address"], "staking_minipool_count"), None)])
+                       [((n["address"], "staking_minipool_count"), None)]),
+            lambda n: (nd.address, [rp.seth_sig(nd.abi, "getNodeDepositCredit"), n["address"]],
+                          [((n["address"], "deposit_credit"), func_if_success(solidity.to_float))])
         ]
         # get all node operators from db, but we only care about the address and the fee_distributor_address
         nodes = list(self.db.node_operators_new.find({}, {"address": 1, "fee_distributor_address": 1}))
