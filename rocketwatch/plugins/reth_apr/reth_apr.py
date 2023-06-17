@@ -137,37 +137,30 @@ class RETHAPR(commands.Cog):
         e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR",
                     value=f"{y_7d[-1]:.2%}")
         fig = plt.figure()
-        # format the daily average line as a line with dots
-        plt.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.4)
-        plt.plot(x, y_virtual, marker="x", linestyle="", label="Period Average (Virtual)", alpha=0.4)
-        # format the 7 day average line as --
-        plt.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average")
-        # format the 30 day average line as --
-        plt.plot(x, y_7d_virtual, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (Virtual)")
+        ax1 = plt.gca()
+        ax2 = plt.twinx()
+
+        ax2.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.4)
+        ax2.plot(x, y_virtual, marker="x", linestyle="", label="Period Average (Virtual)", alpha=0.4)
+        ax2.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average")
+        ax2.plot(x, y_7d_virtual, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (Virtual)")
+        ax1.plot(x, y_effectiveness, linestyle="--", label="Effectiveness", alpha=0.7)
+
         plt.title("Observed rETH APR values")
         plt.xlabel("Date")
-        plt.ylabel("APR")
         plt.grid(True)
-        # format y axis as percentage
-        plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
-        # set the y axis to start at 0
-        # make the x axis skip the first 30 datapoints
         plt.xlim(left=x[38])
-        # rotate x axis labels
         plt.xticks(rotation=45)
-        # show the legend top left
-        plt.legend(loc="upper left")
-        # dont show year in x axis labels
         old_formatter = plt.gca().xaxis.get_major_formatter()
         plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
-        # effectiveness on seperate axis
-        ax2 = plt.twinx()
-        ax2.plot(x, y_effectiveness, linestyle="--", label="Effectiveness", alpha=0.7)
-        ax2.set_ylabel("Effectiveness")
-        ax2.set_ylim(top=1)
-        ax2.legend(loc="upper right")
-        # format y axis as percentage
+
         ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax1.set_ylabel("Effectiveness")
+        ax2.set_ylabel("APR")
+        ax1.set_ylim(top=1)
+        ax1.legend(loc="upper left")
+        ax2.legend(loc="upper right")
 
         img = BytesIO()
         fig.tight_layout()
