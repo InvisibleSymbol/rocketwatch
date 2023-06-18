@@ -454,7 +454,7 @@ class Debug(Cog):
             g = rp.estimate_gas_for_call(function, *args, block=block)
         except Exception as err:
             g = "N/A"
-            if isinstance(err, ValueError) and err.args[0]["code"] == -32000:
+            if isinstance(err, ValueError) and err.args and "code" in err.args and err.args[0]["code"] == -32000:
                 g += f" ({err.args[0]['message']})"
 
         if isinstance(v, int) and abs(v) >= 10 ** 12 and not raw_output:
