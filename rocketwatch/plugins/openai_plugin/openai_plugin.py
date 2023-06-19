@@ -56,7 +56,6 @@ class OpenAi(commands.Cog):
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
-        msg = await ctx.channel.send("Summarizing chat…")
         last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
         # ratelimit
         if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(minutes=60):
@@ -65,17 +64,35 @@ class OpenAi(commands.Cog):
         if ctx.channel.id not in [405163713063288832]:
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
+        msg = await ctx.channel.send("Summarizing chat…")
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if last_ts and "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a message index for context at the end of each bullet list entry with the following syntax: {message_index:0}, with 0 being the index of the message. You MUST only mention a single index!" , last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a message index for context at the end of each bullet list entry with the following syntax: {message_index:0}, with 0 being the index of the message. You MUST only mention a single index per bullet point list entry!" , last_ts)
         if not response:
             await msg.delete()
             await ctx.send(content="Not enough messages to summarize.")
             return
-        e = Embed()
-        e.title = f"Chat Summarization of {msgs} messages since {last_ts.strftime('%Y-%m-%d %H:%M')}"
-        e.description = response["choices"][0]["message"]["content"]
+        es = [Embed()]
+        es[0].title = f"Chat Summarization of {msgs} messages since {last_ts.strftime('%Y-%m-%d %H:%M')}"
+        res = response["choices"][0]["message"]["content"]
+        # split content in multiple embeds if it is too long. limit for description is 4096
+        while len(res):
+            if len(res) > 4096:
+                # find last newline before 4096 characters
+                idx = res[:4096].rfind("\n")
+                # if there is no newline, just split at 4096
+                if idx == -1:
+                    idx = 4096
+                # add embed
+                es[-1].description = res[:idx]
+                es[-1].footer = ""
+                # create new embed
+                es.append(Embed())
+                res = res[idx:]
+            else:
+                es[-1].description = res
+                res = ""
         token_usage = response['usage']['total_tokens']
-        e.set_footer(
+        es[-1].set_footer(
             text=f"Request cost: ${token_usage / 1000 * 0.003:.2f} | Tokens: {token_usage} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
@@ -83,7 +100,7 @@ class OpenAi(commands.Cog):
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}._log")
         # send message in the channel
         await ctx.send("done", ephemeral=True)
-        await msg.edit(embeds=[e], attachments=[f])
+        await msg.edit(embeds=es, attachments=[f])
         # save the timestamp of the last summary
         await self.db["last_summary"].update_one({"channel_id": ctx.channel.id}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
 
