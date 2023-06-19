@@ -30,8 +30,8 @@ class OpenAi(commands.Cog):
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @classmethod
-    def message_to_text(cls, message):
-        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}"
+    def message_to_text(cls, message, index):
+        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')} {{message:{index}}}:\n {message.content}"
 
         # if there is an image attached, add it to the text as a note
         metadata = []
@@ -56,6 +56,7 @@ class OpenAi(commands.Cog):
     @hybrid_command()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
+        msg = await ctx.channel.send("Summarizing chat…")
         last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
         # ratelimit
         if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(minutes=60):
@@ -65,9 +66,13 @@ class OpenAi(commands.Cog):
             await ctx.send("You can't summarize here.", ephemeral=True)
             return
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if last_ts and "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics!", last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a message index for context at the end of each bullet list entry with the following syntax: {message_index:0}, with 0 being the index of the message. You MUST only mention a single index!" , last_ts)
+        if not response:
+            await msg.delete()
+            await ctx.send(content="Not enough messages to summarize.")
+            return
         e = Embed()
-        e.title = f"Chat Summarization of {msgs} messages"
+        e.title = f"Chat Summarization of {msgs} messages since {last_ts.strftime('%Y-%m-%d %H:%M')}"
         e.description = response["choices"][0]["message"]["content"]
         token_usage = response['usage']['total_tokens']
         e.set_footer(
@@ -77,15 +82,15 @@ class OpenAi(commands.Cog):
         f.name = "prompt._log"
         f = File(f, filename=f"prompt_log_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}._log")
         # send message in the channel
-        await ctx.send("done")
-        await ctx.channel.send(embed=e, file=f)
+        await ctx.send("done", ephemeral=True)
+        await msg.edit(embeds=[e], attachments=[f])
         # save the timestamp of the last summary
         await self.db["last_summary"].update_one({"channel_id": ctx.channel.id}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
 
     # a function that generates the prompt for the model by taking an array of messages, a prefix and a suffix
     def generate_prompt(self, messages, prefix, suffix):
         messages.sort(key=lambda x: x.created_at)
-        prompt = "\n".join([self.message_to_text(message) for message in messages]).replace("\n\n", "\n")
+        prompt = "\n".join([self.message_to_text(message, i) for i, message in enumerate(messages)]).replace("\n\n", "\n")
         return f"{prefix}\n\n{prompt}\n\n{suffix}"
 
     async def prompt_model(self, channel, prompt, cut_off_ts):
@@ -102,13 +107,22 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.ChatCompletion.create(
             model=engine,
-            max_tokens=256,
+            max_tokens=512,
             temperature=0.7,
             top_p=1.0,
             frequency_penalty=0.0,
             presence_penalty=1,
             messages=[{"role": "user", "content": prompt}]
         )
+        # find all {message:index} in response["choices"][0]["message"]["content"]
+        references = re.findall(r"{message:([0-9]+)}", response["choices"][0]["message"]["content"])
+        # sanitize references
+        references = [int(reference) for reference in references if int(reference) < len(messages)]
+        # replace all {message:index} with a link to the message
+        for reference in references:
+            response["choices"][0]["message"]["content"] = response["choices"][0]["message"]["content"].replace(
+                f"{{message:{reference}}}",
+                f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{messages[int(reference)].id}")
         return response, prompt, len(messages)
 
 
