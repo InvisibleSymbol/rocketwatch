@@ -102,7 +102,7 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(messages, prefix, prompt)
         response = openai.ChatCompletion.create(
             model=engine,
-            max_tokens=512,
+            max_tokens=256,
             temperature=0.7,
             top_p=1.0,
             frequency_penalty=0.0,
