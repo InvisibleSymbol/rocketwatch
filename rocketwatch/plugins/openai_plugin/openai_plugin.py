@@ -142,6 +142,43 @@ class OpenAi(commands.Cog):
                 f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{messages[int(reference)].id}")
         return response, prompt, len(messages)
 
+    # react to mentions of the bot in the channel with a completion
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+        if not self.bot.user.mentioned_in(message):
+            return
+        if message.channel.id not in [405163713063288832]:
+            return
+        # ratelimit
+        last_ts = await self.db["last_mention"].find_one({"channel_id": f"{message.channel.id}_inline"})
+        # once per 20 seconds
+        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(seconds=20):
+            log.debug("Ratelimiting mention")
+            return
+        # update last mention timestamp
+        await self.db["last_mention"].update_one({"channel_id": f"{message.channel.id}_inline"}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
+
+        # get the last 32 messages
+        messages = [message async for message in message.channel.history(limit=32)]
+
+        # generate prompt
+        prompt = self.generate_prompt(messages, "", f"The user has sent you the following message: `{message.content}`. Respond to the message, and say nothing else.")
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            max_tokens=128,
+            temperature=0.7,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=1,
+            messages=[{"role": "system", "content": "You are the Rocket Watch Discord Bot in the public Rocket Pool Discord Server. Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. Please keep your messages short and conses. Try to blend in with the rest of the chat."},{"role": "user", "content": prompt}],
+
+        )
+        # respond with the completion
+        await message.reply(response["choices"][0]["message"]["content"])
+
+
 
 async def setup(self):
     await self.add_cog(OpenAi(self))
