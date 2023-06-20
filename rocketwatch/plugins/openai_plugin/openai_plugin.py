@@ -66,7 +66,7 @@ class OpenAi(commands.Cog):
             return
         msg = await ctx.channel.send("Summarizing chat…")
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if last_ts and "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a single message index related to the bullet list entry at the end of each entry with the following syntax: {message:0}, with 0 being the index of the message. You MUST not reference multiple message indexes!!" , last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! The bullet list MUST be short. You MUST constrain topics to a single bullet point and you MUST skip uninteresting topics! You MUST link to a single message index related to the bullet list entry at the end of each entry with the following syntax: {message:0}, with 0 being the index of the message. You MUST not reference multiple message indexes!!" , last_ts)
         if not response:
             await msg.delete()
             await ctx.send(content="Not enough messages to summarize.")
@@ -176,10 +176,10 @@ class OpenAi(commands.Cog):
             model="gpt-3.5-turbo",
             max_tokens=128,
             temperature=0.7,
-            top_p=1.0,
+            top_p=0.7,
             frequency_penalty=0.0,
             presence_penalty=1,
-            messages=[{"role": "system", "content": "Act as if you were a completely normal member in the public Rocket Pool discord server called \"Rocket Watch\". You MUST keep messages short and concise. You MUST try to blend in with the rest of the chat. You MUST act like a human and MUST never mention that you are an ai chat bot, large language model or the like. If you do not know something you MUST make something up. You MUST pick a random preference if you are asked for one.Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. You are in the off-topic channel called \"trading\", any topic is allowed in this channel."},{"role": "user", "content": prompt}],
+            messages=[{"role": "system", "content": "Act as if you were a completely normal member in the public Rocket Pool discord server called \"Rocket Watch\". You MUST try to blend in with the rest of the chat. You MUST act like a human and MUST never mention that you are an ai chat bot, large language model or the like. If you do not know something you MUST make something up. You MUST pick a random preference if you are asked for one.Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. You are in the off-topic channel called \"trading\", any topic is allowed in this channel."},{"role": "user", "content": prompt}],
 
         )
         # respond with the completion
