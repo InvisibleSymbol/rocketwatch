@@ -40,6 +40,7 @@ if __name__ == '__main__':
     intents = Intents.none()
     intents.guilds = True
     intents.members = True
+    intents.messages = True
     bot = RocketWatch(intents=intents, command_prefix=str(uuid.uuid4()))
     reporter.bot = bot
     log.info('Starting bot')

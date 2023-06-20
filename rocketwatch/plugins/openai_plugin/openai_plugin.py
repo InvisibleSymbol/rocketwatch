@@ -156,6 +156,8 @@ class OpenAi(commands.Cog):
         # once per 20 seconds
         if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(seconds=20):
             log.debug("Ratelimiting mention")
+            # react with a appropriate emoji
+            await message.add_reaction("🐀")
             return
         # update last mention timestamp
         await self.db["last_mention"].update_one({"channel_id": f"{message.channel.id}_inline"}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
