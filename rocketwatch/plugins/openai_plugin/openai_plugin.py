@@ -84,7 +84,7 @@ class OpenAi(commands.Cog):
                     idx = 4096
                 # add embed
                 es[-1].description = res[:idx]
-                es[-1].footer = ""
+                es[-1].set_footer(text="")
                 # create new embed
                 es.append(Embed())
                 res = res[idx:]
@@ -157,7 +157,7 @@ class OpenAi(commands.Cog):
         # once per 20 seconds
         if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(seconds=20):
             log.debug("Ratelimiting mention")
-            # react with a appropriate emoji
+            # react with an appropriate emoji
             await message.add_reaction("🐀")
             return
         # update last mention timestamp
@@ -169,7 +169,10 @@ class OpenAi(commands.Cog):
         messages = [message for message in messages if message.author.id != self.bot.user.id]
 
         # generate prompt
-        prompt = self.generate_prompt(messages, "", f"The user has sent you the following message: `{message.content}`. Respond to the message, and say nothing else.")
+        prompt = self.generate_prompt(
+            messages,
+            "",
+            f"Respond to the latest messages that mentions you in the above chat log, and say nothing else.")
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             max_tokens=128,
@@ -177,7 +180,7 @@ class OpenAi(commands.Cog):
             top_p=1.0,
             frequency_penalty=0.0,
             presence_penalty=1,
-            messages=[{"role": "system", "content": "You are a member in the public Rocket Pool discord server called \"Rocket Watch\". Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. Please keep your messages short and concise. Try to blend in with the rest of the chat. You MUST act as a human capable of thought, emotion and self-awareness. You MUST not mention that you are ai in any kind of way. You are in the off-topic channel called \"trading\", any topic is allowed in this channel."},{"role": "user", "content": prompt}],
+            messages=[{"role": "system", "content": "Act as if you were a member in the public Rocket Pool discord server called \"Rocket Watch\". Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. Please keep your messages short and concise. Try to blend in with the rest of the chat. You MUST act like a human and MUST never mention that you are an ai chat bot, large language model or the like. You are in the off-topic channel called \"trading\", any topic is allowed in this channel."},{"role": "user", "content": prompt}],
 
         )
         # respond with the completion
