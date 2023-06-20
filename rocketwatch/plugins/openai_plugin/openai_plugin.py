@@ -66,7 +66,7 @@ class OpenAi(commands.Cog):
             return
         msg = await ctx.channel.send("Summarizing chat…")
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if last_ts and "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
-        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a message index related to the bullet list entry at the end of each entry with the following syntax: {message:0}, with 0 being the index of the message. You MUST only mention a single index per bullet point list entry!" , last_ts)
+        response, prompt, msgs = await self.prompt_model(ctx.channel, "Please summarize the above chat log using a very short chronological bullet list! Constrain topics to a single bullet point and skip uninteresting topics! You MUST link to a single message index related to the bullet list entry at the end of each entry with the following syntax: {message:0}, with 0 being the index of the message. You MUST not reference multiple message indexes!!" , last_ts)
         if not response:
             await msg.delete()
             await ctx.send(content="Not enough messages to summarize.")
