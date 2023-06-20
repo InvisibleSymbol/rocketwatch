@@ -164,6 +164,8 @@ class OpenAi(commands.Cog):
 
         # get the last 32 messages
         messages = [message async for message in message.channel.history(limit=32)]
+        # ignore messages that are from the bot itself
+        messages = [message for message in messages if message.author.id != self.bot.user.id]
 
         # generate prompt
         prompt = self.generate_prompt(messages, "", f"The user has sent you the following message: `{message.content}`. Respond to the message, and say nothing else.")
