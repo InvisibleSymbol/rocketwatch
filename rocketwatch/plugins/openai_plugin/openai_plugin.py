@@ -145,6 +145,7 @@ class OpenAi(commands.Cog):
     # react to mentions of the bot in the channel with a completion
     @commands.Cog.listener()
     async def on_message(self, message):
+        return 
         if message.author.bot:
             return
         if not self.bot.user.mentioned_in(message):
