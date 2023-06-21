@@ -175,7 +175,7 @@ class OpenAi(commands.Cog):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             max_tokens=128,
-            temperature=0.7,
+            temperature=0.99,
             top_p=0.7,
             frequency_penalty=0.0,
             presence_penalty=1,
