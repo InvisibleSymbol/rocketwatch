@@ -107,74 +107,9 @@ class RETHAPR(commands.Cog):
         if len(datapoints) == 0:
             e.description = "No data available yet."
             return await ctx.send(embed=e)
-        datapoints = sorted(datapoints, key=lambda x: x["time"])
-        x = []
-        y = []
-        y_effectiveness = []
-        y_virtual = []
-        # we do a 7 day rolling average (9 periods) and a 30 day one (38 periods)
-        y_7d = []
-        y_7d_claim = None
-        y_7d_virtual = []
-        for i in range(1, len(datapoints)):
-            # add the data of the datapoint to the x values, need to parse it to a datetime object
-            x.append(datetime.fromtimestamp(datapoints[i]["time"]))
 
-            # add the average APR to the y values
-            y.append(to_apr(datapoints[i - 1], datapoints[i]))
-            y_virtual.append(to_apr(datapoints[i - 1], datapoints[i], effective=False))
-            y_effectiveness.append(datapoints[i]["effectiveness"])
-
-            # calculate the 7 day average
-            if i > 8:
-                y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
-                y_7d_virtual.append(to_apr(datapoints[i - 9], datapoints[i], effective=False))
-                y_7d_claim = get_duration(datapoints[i - 9], datapoints[i]) / (60 * 60 * 24)
-            else:
-                # if we dont have enough data, we dont show it
-                y_7d.append(None)
-                y_7d_virtual.append(None)
-        e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR",
-                    value=f"{y_7d[-1]:.2%}")
-        fig = plt.figure()
-        ax1 = plt.gca()
-        ax2 = plt.twinx()
-
-        ax2.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.4)
-        ax2.plot(x, y_virtual, marker="x", linestyle="", label="Period Average (Virtual)", alpha=0.4)
-        ax2.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average")
-        ax2.plot(x, y_7d_virtual, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (Virtual)")
-        ax1.plot(x, y_effectiveness, linestyle="--", label="Effectiveness", alpha=0.7)
-
-        plt.title("Observed rETH APR values")
-        plt.xlabel("Date")
-        plt.grid(True)
-        plt.xlim(left=x[38])
-        plt.xticks(rotation=45)
-        old_formatter = plt.gca().xaxis.get_major_formatter()
-        plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
-
-        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
-        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
-        ax1.set_ylabel("Effectiveness")
-        ax2.set_ylabel("APR")
-        ax1.set_ylim(top=1)
-        ax1.legend(loc="upper left")
-        ax2.legend(loc="upper right")
-
-        img = BytesIO()
-        fig.tight_layout()
-        fig.savefig(img, format='png')
-        img.seek(0)
-        fig.clf()
-        plt.close()
-
-        # reset the x axis formatter
-        plt.gca().xaxis.set_major_formatter(old_formatter)
-
-        e.set_image(url="attachment://reth_apr.png")
-        # get average meta.NodeFee from db, weighted by meta.NodeOperatorShare
-        node_fee = await self.db.minipools.aggregate([
+            # get average meta.NodeFee from db, weighted by meta.NodeOperatorShare
+        tmp = await self.db.minipools.aggregate([
             {
                 '$match': {
                     'status'                : 'active_ongoing',
@@ -246,8 +181,95 @@ class RETHAPR(commands.Cog):
             }
         ]).to_list(length=1)
 
+        node_fee = tmp[0]["average"] if len(tmp) > 0 else 20
+        peth_share = tmp[0]["used_pETH_share"] if len(tmp) > 0 else 0.75
+
+        datapoints = sorted(datapoints, key=lambda x: x["time"])
+        x = []
+        y = []
+        y_effectiveness = []
+        y_virtual = []
+        y_node_operators = []
+        y_7d = []
+        y_7d_claim = None
+        y_7d_virtual = []
+        y_7d_node_operators = []
+        for i in range(1, len(datapoints)):
+            # add the data of the datapoint to the x values, need to parse it to a datetime object
+            x.append(datetime.fromtimestamp(datapoints[i]["time"]))
+
+            # add the average APR to the y values
+            y.append(to_apr(datapoints[i - 1], datapoints[i]))
+            y_virtual.append(to_apr(datapoints[i - 1], datapoints[i], effective=False))
+            # calculate node operator apr by taking the virtual apr and removing the node fee again.
+            # the bare apr is node bar apr - node fee
+            # the node operator apr is bare apr + node fee
+            # effective pETH share fee is node fee *
+            bare_apr = y_virtual[-1] / Decimal((1 - node_fee))
+            y_node_operators.append(bare_apr * Decimal(1 + (node_fee * peth_share / (1- peth_share))))
+
+            y_effectiveness.append(datapoints[i]["effectiveness"])
+
+            # calculate the 7 day average
+            if i > 8:
+                y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
+                y_7d_virtual.append(to_apr(datapoints[i - 9], datapoints[i], effective=False))
+                bare_apr = y_7d_virtual[-1] / Decimal((1 - node_fee))
+                y_7d_node_operators.append(bare_apr * Decimal(1 + (node_fee * peth_share / (1- peth_share))))
+                y_7d_claim = get_duration(datapoints[i - 9], datapoints[i]) / (60 * 60 * 24)
+            else:
+                # if we dont have enough data, we dont show it
+                y_7d.append(None)
+                y_7d_virtual.append(None)
+                y_7d_node_operators.append(None)
+        e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR",
+                    value=f"{y_7d[-1]:.2%}")
+        e.add_field(name=f"{y_7d_claim:.1f} Day Average rETH APR (without Effectiveness Drag, Virtual)",
+                    value=f"{y_7d_virtual[-1]:.2%}", inline=False)
+        e.add_field(name=f"{y_7d_claim:.1f} Day Average Node Operator APR",
+                    value=f"{y_7d_node_operators[-1]:.2%}", inline=False)
+        fig = plt.figure()
+        ax1 = plt.gca()
+        ax2 = plt.twinx()
+
+        ax2.plot(x, y, marker="+", linestyle="", label="Period Average", alpha=0.6, color="orange")
+        #ax2.plot(x, y_virtual, marker="x", linestyle="", label="Period Average (Virtual)", alpha=0.4)
+        #ax2.plot(x, y_node_operators, marker="+", linestyle="", label="Node Operator APR", alpha=0.4)
+        ax2.plot(x, y_7d, linestyle="-", label=f"{y_7d_claim:.1f} Day Average", color="orange")
+        ax2.plot(x, y_7d_virtual, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (Virtual)", color="green")
+        ax2.plot(x, y_7d_node_operators, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (NO APR)", color="red")
+        ax1.plot(x, y_effectiveness, linestyle="--", label="Effectiveness", alpha=0.7, color="royalblue")
+
+        plt.title("Observed rETH APR values")
+        plt.xlabel("Date")
+        plt.grid(True)
+        plt.xlim(left=x[38])
+        plt.xticks(rotation=45)
+        old_formatter = plt.gca().xaxis.get_major_formatter()
+        plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
+
+        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax1.set_ylabel("Effectiveness")
+        ax2.set_ylabel("APR")
+        ax1.set_ylim(top=1)
+        ax1.legend(loc="upper left")
+        ax2.legend(loc="upper right")
+
+        img = BytesIO()
+        fig.tight_layout()
+        fig.savefig(img, format='png')
+        img.seek(0)
+        fig.clf()
+        plt.close()
+
+        # reset the x axis formatter
+        plt.gca().xaxis.set_major_formatter(old_formatter)
+
+        e.set_image(url="attachment://reth_apr.png")
+
         e.add_field(name="Current Average Effective Commission:",
-                    value=f"{node_fee[0]['average']:.2%} (Observed pETH Share: {node_fee[0]['used_pETH_share']:.2%})",
+                    value=f"{node_fee:.2%} (Observed pETH Share: {peth_share:.2%})",
                     inline=False)
 
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
