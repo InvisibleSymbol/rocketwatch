@@ -171,7 +171,7 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(
             messages,
             "The following is a chat log. Everything prefixed with `>` is a quote.",
-            f"Write a reply to the latest message. Do not add any other text. Do not mention the author at the start of your response.")
+            f"Write a reply to the message with the content \"{message.content}\". Do not add any other text. Do not mention the author at the start of your response.")
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             max_tokens=128,
