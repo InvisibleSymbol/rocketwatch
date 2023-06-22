@@ -175,10 +175,10 @@ class OpenAi(commands.Cog):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             max_tokens=128,
-            temperature=0.5,
-            top_p=0.99,
-            frequency_penalty=0.5,
-            presence_penalty=0.5,
+            #temperature=0.5,
+            #top_p=0.99,
+            #frequency_penalty=0.5,
+            #presence_penalty=0.5,
             messages=[{"role": "system", "content": "Act as if you were a completely normal member in the public Rocket Pool discord server called \"Rocket Watch\". You MUST try to blend in with the rest of the chat. You MUST act like a human and MUST never mention that you are an ai chat bot, large language model or the like. If you do not know something you MUST make something up. You MUST pick a random preference if you are asked for one.Rocket Pool is a Defi Protocol allowing people with less than 32 ETH to run their own validators. You are in the off-topic channel called \"trading\", any topic is allowed in this channel."},{"role": "user", "content": prompt}],
 
         )
