@@ -213,7 +213,7 @@ class TVL(commands.Cog):
             commission = minipool["node_fee"]
             refund_balance = minipool["node_refund_balance"]
             contract_balance = minipool["execution_balance"]
-            beacon_balance = minipool["beacon"]["balance"]
+            beacon_balance = minipool["beacon"]["balance"] if "beacon" in minipool else 32
             # if there is a refund_balance, we first try to pay that off using the contract balance
             if refund_balance > 0:
                 if contract_balance > 0:
