@@ -188,4 +188,5 @@ class OpenAi(commands.Cog):
 
 
 async def setup(self):
-    await self.add_cog(OpenAi(self))
+    return
+    # await self.add_cog(OpenAi(self))
