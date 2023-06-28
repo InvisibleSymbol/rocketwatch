@@ -20,7 +20,7 @@ log = logging.getLogger("effective_rpl")
 log.setLevel(cfg["log_level"])
 
 
-class EffectiveRPL(commands.Cog):
+class PatchesAPI(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
@@ -70,4 +70,4 @@ class EffectiveRPL(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(EffectiveRPL(bot))
+    await bot.add_cog(PatchesAPI(bot))
