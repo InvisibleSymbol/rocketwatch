@@ -1,19 +1,25 @@
 import contextlib
 import logging
+from datetime import datetime, timezone
 from io import BytesIO
 
 import aiohttp
 import humanize
 import matplotlib.pyplot as plt
 from discord import File
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from matplotlib import ticker
+from matplotlib.ticker import AutoMinorLocator
+from motor.motor_asyncio import AsyncIOMotorClient
+from scipy.interpolate import interp1d
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.readable import s_hex
+from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
 from utils.visibility import is_hidden_weak
@@ -25,6 +31,186 @@ log.setLevel(cfg["log_level"])
 class Wall(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+
+        if not self.run_loop.is_running() and bot.is_ready():
+            self.run_loop.start()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if self.run_loop.is_running():
+            return
+        self.run_loop.start()
+
+    @tasks.loop(seconds=120)
+    async def run_loop(self):
+        try:
+            await self.gather_new_data()
+        except Exception as err:
+            await report_error(err)
+
+    async def gather_new_data(self):
+        # gather depth sell / buy values
+        tmp = []
+        ts = datetime.utcnow()
+        api_url = "https://api.cow.fi/mainnet/api/v1/quote"
+        rpl_address = rp.get_address_by_name("rocketTokenRPL")
+        weth_address = rp.get_address_by_name("wrappedETH")
+        params = {
+            "sellToken"          : weth_address,
+            "buyToken"           : rpl_address,
+            "receiver"           : "0x0000000000000000000000000000000000000000",
+            "appData"            : "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "partiallyFillable"  : False,
+            "sellTokenBalance"   : "erc20",
+            "buyTokenBalance"    : "erc20",
+            "from"               : "0x0000000000000000000000000000000000000000",
+            "signingScheme"      : "eip1271",
+            "onchainOrder"       : True,
+            "kind"               : "sell",
+            "sellAmountBeforeFee": str(10 ** 18)
+        }
+        # get exchange rate for 1 RPL, use that as the reference point
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, json=params) as resp:
+                data = await resp.json()
+        reference_point = solidity.to_float(data["quote"]["sellAmount"]) / solidity.to_float(data["quote"]["buyAmount"])
+        for amount in [10 ** (x / 8) for x in range(6*2, 18*2)]:
+            params["sellAmountBeforeFee"] = str(int(amount * 10 ** 18))
+            async with aiohttp.ClientSession() as session:
+                async with session.post(api_url, json=params) as resp:
+                    data = await resp.json()
+            # get rate
+            try:
+                rate = solidity.to_float(data["quote"]["sellAmount"]) / solidity.to_float(data["quote"]["buyAmount"])
+            except KeyError:
+                log.warning(f"Could not get sell depth for {amount} RPL")
+                continue
+            # get slippage
+            slippage = (rate - reference_point) / reference_point
+            log.debug(f"Selling {amount} ETH for RPL at {rate} ({slippage})")
+            # store data
+            tmp.append({
+                "ts"         : ts,
+                "sell_amount": solidity.to_float(data["quote"]["sellAmount"]),
+                "sell_token" : "weth",
+                "buy_amount" : solidity.to_float(data["quote"]["buyAmount"]),
+                "buy_token"  : "rpl",
+                "rate"       : rate,
+                "slippage"   : slippage
+            })
+        # get buy depth for 10, 100, 1000, 10000, 100000, 1000000 RPL but like in ETH
+        # flip sell and buy token
+        params["sellToken"] = rpl_address
+        params["buyToken"] = weth_address
+        for amount in [10 ** (x / 8) for x in range(9*2, 24*2)]:
+            params["sellAmountBeforeFee"] = str(int(amount * 10 ** 18))
+            async with aiohttp.ClientSession() as session:
+                async with session.post(api_url, json=params) as resp:
+                    data = await resp.json()
+            # get rate
+            try:
+                rate = solidity.to_float(data["quote"]["buyAmount"]) / solidity.to_float(data["quote"]["sellAmount"])
+            except KeyError:
+                log.warning(f"Could not get buy depth for {amount} RPL")
+                continue
+            # get slippage
+            slippage = (rate - reference_point) / reference_point
+            log.debug(f"Selling {amount} RPL for ETH at {rate} ({slippage})")
+            # store data
+            tmp.append({
+                "ts"         : ts,
+                "sell_amount": solidity.to_float(data["quote"]["sellAmount"]),
+                "sell_token" : "rpl",
+                "buy_amount" : solidity.to_float(data["quote"]["buyAmount"]),
+                "buy_token"  : "weth",
+                "rate"       : rate,
+                "slippage"   : slippage
+            })
+        # store data in db
+        await self.db["wall"].insert_many(tmp)
+
+    @hybrid_command()
+    async def depth(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        # get latest data from db
+        latest_ts = await self.db["wall"].find_one(sort=[("ts", -1)])
+        if latest_ts is None:
+            return await ctx.send("No data available")
+        latest_ts = latest_ts["ts"]
+        # make ts utc aware
+        latest_ts = latest_ts.replace(tzinfo=timezone.utc)
+        # get data from db
+        data = await self.db["wall"].find({"ts": latest_ts}).to_list(length=None)
+        # create plot using matplotlib. x axis should be slippage, y axis should be amount. use 2 y axis, one for sell amount, one for buy amount
+        fig, ax = plt.subplots()
+        # sell amount
+        x_green = [x["slippage"] for x in data if x["sell_token"] == "weth"]
+        x_green.insert(0, 0)
+        y_green = [x["sell_amount"] for x in data if x["sell_token"] == "weth"]
+        y_green.insert(0, 0)
+        # interpolate
+        x_green, y_green = zip(*sorted(zip(x_green, y_green)))
+        # turn into dict and back to list to remove duplicates
+        tmp = list(dict(zip(x_green, y_green)).items())
+        x_green, y_green = zip(*tmp)
+        inter_green = interp1d(x_green, y_green, kind="linear")
+        x_green_inter = [x / 100 for x in range(151)]
+        y_green_inter = inter_green(x_green_inter)
+        ax.plot(x_green_inter, y_green_inter, color="green")
+        # fill
+        ax.fill_between(x_green_inter, y_green_inter, color="green", alpha=0.2)
+
+        # buy amount
+        x_red = [x["slippage"] for x in data if x["buy_token"] == "weth"]
+        x_red.insert(0, 0)
+        y_red = [x["buy_amount"] for x in data if x["buy_token"] == "weth"]
+        y_red.insert(0, 0)
+        # interpolate
+        x_red, y_red = zip(*sorted(zip(x_red, y_red)))
+        # turn into dict and back to list to remove duplicates
+        tmp = list(dict(zip(x_red, y_red)).items())
+        x_red, y_red = zip(*tmp)
+        inter_red = interp1d(x_red, y_red, kind="linear")
+        x_red_inter = [-x / 100 for x in range(51)]
+        y_red_inter = inter_red(x_red_inter)
+        ax.plot(x_red_inter, y_red_inter, color="red")
+        # fill
+        ax.fill_between(x_red_inter, y_red_inter, color="red", alpha=0.2)
+
+        # set labels
+        ax.set_xlabel("Slippage")
+        ax.set_ylabel("ETH")
+        # enable subticks for x axis
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        # show x axis grid lines, also for minor ticks
+        ax.grid()
+        # format y axis with thousands separator
+        ax.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+        # format x axis with percentage
+        ax.get_xaxis().set_major_formatter(ticker.PercentFormatter(xmax=1))
+        # set x limit to -100% and 100%
+        ax.set_xlim(-0.5, 1.5)
+        ax.set_ylim(0, None)
+
+        # use minimal whitespace
+        plt.tight_layout()
+
+        # store the graph in an file object
+        file = BytesIO()
+        # make sure to increase the dpi to make the graph look better
+        plt.savefig(file, format='png', dpi=300)
+        file.seek(0)
+
+        # clear plot from memory
+        plt.clf()
+        plt.close()
+
+        e = Embed()
+        e.title = "Sell and buy depth"
+        e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
+        e.set_image(url="attachment://depth.png")
+        await ctx.send(file=File(file, "depth.png"), embed=e)
 
     @hybrid_command()
     async def wall(self, ctx: Context):
