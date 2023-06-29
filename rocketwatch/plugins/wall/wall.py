@@ -190,7 +190,7 @@ class Wall(commands.Cog):
         # format x axis with percentage
         ax.get_xaxis().set_major_formatter(ticker.PercentFormatter(xmax=1))
         # set x limit to -100% and 100%
-        ax.set_xlim(-0.5, 1.5)
+        ax.set_xlim(-0.25, 0.25)
         ax.set_ylim(0, None)
 
         # use minimal whitespace
