@@ -155,7 +155,7 @@ class Wall(commands.Cog):
         tmp = list(dict(zip(x_green, y_green)).items())
         x_green, y_green = zip(*tmp)
         inter_green = interp1d(x_green, y_green, kind="linear")
-        x_green_inter = [x / 100 for x in range(151)]
+        x_green_inter = [x / 100 for x in range(26)]
         y_green_inter = inter_green(x_green_inter)
         ax.plot(x_green_inter, y_green_inter, color="green")
         # fill
@@ -172,7 +172,7 @@ class Wall(commands.Cog):
         tmp = list(dict(zip(x_red, y_red)).items())
         x_red, y_red = zip(*tmp)
         inter_red = interp1d(x_red, y_red, kind="linear")
-        x_red_inter = [-x / 100 for x in range(51)]
+        x_red_inter = [-x / 100 for x in range(26)]
         y_red_inter = inter_red(x_red_inter)
         ax.plot(x_red_inter, y_red_inter, color="red")
         # fill
