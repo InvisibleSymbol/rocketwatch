@@ -207,7 +207,7 @@ class Wall(commands.Cog):
         plt.close()
 
         e = Embed()
-        e.title = "Sell and buy depth"
+        e.title = "RPL Sell and Buy depth"
         e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
         e.set_image(url="attachment://depth.png")
         await ctx.send(file=File(file, "depth.png"), embed=e)
