@@ -81,7 +81,7 @@ class About(commands.Cog):
                 for c in requests.get("https://api.github.com/repos/InvisibleSymbol/rocketwatch/contributors").json()
                 if "bot" not in c["login"].lower()
             ]
-            contributors_str = ", ".join(contributors[:5])
+            contributors_str = ", ".join(contributors[:10])
             if len(contributors) > 10:
                 contributors_str += " and more"
             e.add_field(name="Contributors", value=contributors_str)
