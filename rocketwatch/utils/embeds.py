@@ -41,6 +41,8 @@ class Embed(discord.Embed):
 def el_explorer_url(target, name="", prefix="", make_code=False):
     url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
+        # sanitize address
+        target = w3.toChecksumAddress(target)
         # rocketscan url stuff
         if cfg["rocketpool.chain"] == "mainnet":
             if rp.call("rocketMinipoolManager.getMinipoolExists", target):
