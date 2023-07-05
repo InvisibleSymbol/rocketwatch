@@ -13,6 +13,7 @@ from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -30,6 +31,7 @@ log.setLevel(cfg["log_level"])
 class Random(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def dice(self, ctx: Context, dice_string: str = "1d6"):
@@ -181,35 +183,104 @@ class Random(commands.Cog):
 
         e = Embed(title="Smoothing Pool")
         smoothie_eth = solidity.to_float(w3.eth.get_balance(rp.get_address_by_name("rocketSmoothingPool")))
-        # nodes
-        nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
-        node_manager = rp.get_contract_by_name("rocketNodeManager")
-        node_is_smoothie = rp.multicall.aggregate(
-            node_manager.functions.getSmoothingPoolRegistrationState(a) for a in nodes)
-        node_is_smoothie = [r.results[0] for r in node_is_smoothie.results]
-        minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-        node_minipool_count = rp.multicall.aggregate(
-            minipool_manager.functions.getNodeMinipoolCount(a) for a in nodes
-        )
-        node_minipool_count = [r.results[0] for r in node_minipool_count.results]
+        data = await self.db.minipools_new.aggregate([
+            {
+                '$match': {
+                    'beacon.status': {
+                        '$nin': [
+                            'exited_unslashed', 'exited_slashed', 'withdrawal_possible', 'withdrawal_done',
+                            'pending_initialized'
+                        ]
+                    }
+                }
+            }, {
+                '$group': {
+                    '_id'  : '$node_operator',
+                    'count': {
+                        '$sum': 1
+                    }
+                }
+            }, {
+                '$lookup': {
+                    'from'        : 'node_operators_new',
+                    'localField'  : '_id',
+                    'foreignField': 'address',
+                    'as'          : 'meta'
+                }
+            }, {
+                '$unwind': {
+                    'path'                      : '$meta',
+                    'preserveNullAndEmptyArrays': True
+                }
+            }, {
+                '$project': {
+                    '_id'     : 1,
+                    'count'   : 1,
+                    'smoothie': '$meta.smoothing_pool_registration_state'
+                }
+            }, {
+                '$group': {
+                    '_id'       : '$smoothie',
+                    'count'     : {
+                        '$sum': '$count'
+                    },
+                    'node_count': {
+                        '$sum': 1
+                    },
+                    'counts'    : {
+                        '$addToSet': {
+                            'count'  : '$count',
+                            'address': '$_id'
+                        }
+                    }
+                }
+            }, {
+                '$project': {
+                    '_id'       : 1,
+                    'count'     : 1,
+                    'node_count': 1,
+                    'counts'    : {
+                        '$sortArray': {
+                            'input' : '$counts',
+                            'sortBy': {
+                                'count': -1
+                            }
+                        }
+                    }
+                }
+            }, {
+                '$project': {
+                    '_id'       : 1,
+                    'count'     : 1,
+                    'node_count': 1,
+                    'counts'    : {
+                        '$slice': [
+                            '$counts', 5
+                        ]
+                    }
+                }
+            }
+        ]).to_list(length=None)
+        if not data:
+            await ctx.send("no minipools found", ephemeral=True)
+            return
+        data = {d["_id"]: d for d in data}
         # node counts
-        total_node_count = len(nodes)
-        smoothie_node_count = sum(node_is_smoothie)
+        total_node_count = data[True]["node_count"] + data[False]["node_count"]
+        smoothie_node_count = data[True]["node_count"]
         # minipool counts
-        total_minipool_count = sum(node_minipool_count)
-        smoothie_minipool_count = sum(mc for smoothie, mc in zip(node_is_smoothie, node_minipool_count) if smoothie)
+        total_minipool_count = data[True]["count"] + data[False]["count"]
+        smoothie_minipool_count = data[True]["count"]
         d = datetime.now().timestamp() - rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
         e.description = f"`{smoothie_node_count}/{total_node_count}` Nodes (`{smoothie_node_count / total_node_count:.2%}`)" \
                         f" have joined the Smoothing Pool.\n" \
                         f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
-                        f"(`{smoothie_minipool_count / total_minipool_count:.0%}`).\n" \
-                        f"The current (not overall) Balance is `{smoothie_eth:,.2f}` ETH.\n" \
+                        f"(`{smoothie_minipool_count / total_minipool_count:.2%}`).\n" \
+                        f"The current (not overall) Balance is **`{smoothie_eth:,.2f}` ETH.**\n" \
                         f"This is over a span of `{uptime(d)}`.\n\n" \
                         f"{min(smoothie_node_count, 5)} largest Nodes:\n"
-        e.description += "\n".join(f"- `{mc:>4}` Minipools - Node {el_explorer_url(n)}" for mc, n in sorted(
-            [[mc, n] for mc, n, s in zip(node_minipool_count, nodes, node_is_smoothie) if s],
-            key=lambda x: x[0],
-            reverse=True)[:min(smoothie_node_count, 5)])
+        e.description += "\n".join(f"- `{d['count']:>4}` Minipools - Node {el_explorer_url(d['address'])}" for d in
+                                   data[True]["counts"][:min(smoothie_node_count, 5)])
         await ctx.send(embed=e)
 
     @hybrid_command()
