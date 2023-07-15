@@ -231,7 +231,7 @@
     },
     "minipool_vote_against_bond_reduction_event": {
         "title": ":warning: Voted Against Bond Reduction",
-        "description": "%{member} has voted against the bond reduction of Minipool %{minipool}!"
+        "description_small": "%{member} has voted against the bond reduction of Minipool %{minipool}!"
     },
     "minipool_bond_reduction_cancelled_event": {
         "title": ":rotating_light: Bond Reduction Cancelled",
