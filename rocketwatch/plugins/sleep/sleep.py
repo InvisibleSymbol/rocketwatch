@@ -75,7 +75,11 @@ class Oura(commands.Cog):
             stats = sleep["sleep_phase_5_min"]
             if start_day != end_day:
                 dur_first = thresh - start_date
+                if dur_first >= datetime.timedelta(hours=24):
+                    dur_first -= datetime.timedelta(hours=24)
                 dur_second = end_date - thresh
+                if dur_second <= datetime.timedelta(hours=0):
+                    dur_second += datetime.timedelta(hours=24)
                 total_dur = dur_first + dur_second
                 # split stats into two parts based on duration of each part
                 stats_first = stats[:int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds()))]
