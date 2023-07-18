@@ -15,7 +15,7 @@ matplotlib==3.7.1
 scipy==1.11.0
 inflect==6.0.2
 motor==3.1.1
-wordcloud==1.8.2.2
+wordcloud==1.9.2
 web3-multicall==0.0.7
 colorama==0.4.6
 seaborn==0.12.2
