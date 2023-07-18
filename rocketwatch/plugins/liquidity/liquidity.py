@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
@@ -21,6 +22,7 @@ p = inflect.engine()
 class Liquidity(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def withdrawable_rpl(self,
@@ -32,28 +34,28 @@ class Liquidity(commands.Cog):
         e = Embed()
         img = BytesIO()
 
-        # get node addresses
-        nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
-        node_staking = rp.get_contract_by_name("rocketNodeStaking")
-        # get their RPL stake using rocketNodeStaking.getNodeRPLStake
-        rpl_stakes = rp.multicall.aggregate(
-            [node_staking.functions.getNodeRPLStake(node) for node in nodes]
-        )
-        rpl_stakes = [r.results[0] for r in rpl_stakes.results]
-        # get their nETH balance using rocketMinipoolManager.getNodeMinipoolCount
-        minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-        node_minipools = rp.multicall.aggregate(
-            minipool_manager.functions.getNodeMinipoolCount(node) for node in nodes
-        )
-        node_minipools = [r.results[0] for r in node_minipools.results]
-        # convert to data array with dicts containing stakingMinipools and rplStaked
-        data = [
+        data = await self.db.node_operators_new.aggregate([
             {
-                "stakingMinipools": node_minipools[i],
-                "rplStaked": rpl_stakes[i]
+                '$match': {
+                    'staking_minipool_count': {
+                        '$ne': 0
+                    }
+                }
+            }, {
+                '$project': {
+                    'ethStake' : {
+                        '$multiply': [
+                            '$effective_node_share', {
+                                '$multiply': [
+                                    '$staking_minipool_count', 32
+                                ]
+                            }
+                        ]
+                    },
+                    'rpl_stake': 1
+                }
             }
-            for i in range(len(nodes))
-        ]
+        ]).to_list(length=None)
         rpl_eth_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
         # calculate withdrawable RPL at various RPL ETH prices
@@ -61,7 +63,7 @@ class Liquidity(commands.Cog):
 
         free_rpl_liquidity = {}
         max_collateral = 1.5
-
+        current_withdrawable_rpl = 0
         for i in range(1, 31):
 
             test_ratio = (i / 10)
@@ -70,16 +72,16 @@ class Liquidity(commands.Cog):
 
             for node in data:
 
-                minipool_worth = int(node["stakingMinipools"]) * 16
-                rpl_stake = solidity.to_float(node["rplStaked"])
+                eth_stake = node["ethStake"]
+                rpl_stake = node["rpl_stake"]
 
                 # if there are no pools, then all the RPL can be withdrawn
-                if minipool_worth == 0:
+                if eth_stake == 0:
                     liquid_rpl += rpl_stake
                     continue
 
                 effective_staked = rpl_stake * rpl_eth_test_price
-                collateral_percentage = effective_staked / minipool_worth
+                collateral_percentage = effective_staked / eth_stake
 
                 # if there is no extra RPL, go to the next node
                 if collateral_percentage < max_collateral:
@@ -104,7 +106,6 @@ class Liquidity(commands.Cog):
         plt.annotate(f"{current_withdrawable_rpl / 1000000:.2f} million RPL withdrawable",
                      (rpl_eth_price, current_withdrawable_rpl), textcoords="offset points", xytext=(10, -5), ha='left')
         plt.grid()
-
 
         ax = plt.gca()
         ax.set_ylabel("Withdrawable RPL")
