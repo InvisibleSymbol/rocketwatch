@@ -34,7 +34,10 @@ class QueuedCowOrders(commands.Cog):
         self.collection = self.db.cow_orders
         self.collection.create_index("order_uid", unique=True)
 
-        self.rpl = str(rp.get_address_by_name("rocketTokenRPL")).lower()
+        self.tokens = [
+            str(rp.get_address_by_name("rocketTokenRPL")).lower(),
+            str(rp.get_address_by_name("rocketTokenRETH")).lower()
+        ]
 
     def run_loop(self):
         if self.state == "RUNNING":
@@ -107,7 +110,7 @@ class QueuedCowOrders(commands.Cog):
         """
 
         # filter all orders that do not contain RPL
-        cow_orders = [order for order in cow_orders if order["sellToken"] == self.rpl or order["buyToken"] == self.rpl]
+        cow_orders = [order for order in cow_orders if order["sellToken"] in self.tokens or order["buyToken"] in self.tokens]
 
         # filter all orders that are not open
         cow_orders = [order for order in cow_orders if order["status"] == "open"]
@@ -130,22 +133,26 @@ class QueuedCowOrders(commands.Cog):
             return []
         # get rpl price in dai
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
+        reth_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
         rpl_price = rpl_ratio * rp.get_dai_eth_price()
+        reth_price = reth_ratio * rp.get_dai_eth_price()
 
         # generate payloads
         for order in cow_orders:
             data = aDict({})
+            token = None
 
             data["cow_uid"] = order["uid"]
             data["cow_owner"] = w3.toChecksumAddress(order["owner"])
             decimals = 18
             # base the event_name depending on if its buying or selling RPL
-            if order["sellToken"] == self.rpl:
-                data["event_name"] = "cow_order_sell_rpl_found"
-                # RPL/ETH ratio
+            if order["sellToken"] in self.tokens:
+                token = "reth" if order["sellToken"] == self.tokens[1] else "rpl"
+                data["event_name"] = f"cow_order_sell_{token}_found"
+                # token/token ratio
                 data["ratio"] = int(order["sellAmount"]) / int(order["buyAmount"])
                 # store rpl and other token amount
-                data["RPLAmount"] = solidity.to_float(int(order["sellAmount"]))
+                data["ourAmount"] = solidity.to_float(int(order["sellAmount"]))
                 s = rp.assemble_contract(name="ERC20", address=w3.toChecksumAddress(order["buyToken"]))
                 try:
                     decimals = s.functions.decimals().call()
@@ -153,17 +160,18 @@ class QueuedCowOrders(commands.Cog):
                     pass
                 data["otherAmount"] = solidity.to_float(int(order["buyAmount"]), decimals)
             else:
-                data["event_name"] = "cow_order_buy_rpl_found"
+                token = "reth" if order["buyToken"] == self.tokens[1] else "rpl"
+                data["event_name"] = f"cow_order_buy_{token}_found"
                 # store rpl and other token amount
-                data["RPLAmount"] = solidity.to_float(int(order["buyAmount"]))
+                data["ourAmount"] = solidity.to_float(int(order["buyAmount"]))
                 s = rp.assemble_contract(name="ERC20", address=w3.toChecksumAddress(order["sellToken"]))
                 try:
                     decimals = s.functions.decimals().call()
                 except:
                     pass
                 data["otherAmount"] = solidity.to_float(int(order["sellAmount"]), decimals)
-            # RPL/other ratio
-            data["ratioAmount"] = data["otherAmount"] / data["RPLAmount"]
+            # our/other ratio
+            data["ratioAmount"] = data["otherAmount"] / data["ourAmount"]
             try:
                 data["otherToken"] = s.functions.symbol().call()
             except:
@@ -173,7 +181,7 @@ class QueuedCowOrders(commands.Cog):
             data["deadline"] = int(order["validTo"])
             data["timestamp"] = int(datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")).timestamp())
             # if the rpl value in usd is less than 25k, ignore it
-            if data["RPLAmount"] * rpl_price < 25000:
+            if data["ourAmount"] * (rpl_price if token == "rpl" else reth_price) < 25000:
                 continue
 
             data = prepare_args(data)
