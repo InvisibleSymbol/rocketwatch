@@ -167,9 +167,9 @@ def assemble(args):
     e = Embed()
     if args.event_name in ["service_interrupted", "finality_delay_event"]:
         e.colour = Color.from_rgb(235, 86, 86)
-    if "sell" in args.event_name:
+    if "sell_rpl" in args.event_name:
         e.colour = Color.from_rgb(235, 86, 86)
-    if "buy" in args.event_name or "finality_delay_recover_event" in args.event_name:
+    if "buy_rpl" in args.event_name or "finality_delay_recover_event" in args.event_name:
         e.colour = Color.from_rgb(86, 235, 86)
 
     do_small = all([

@@ -299,11 +299,19 @@
     },
     "cow_order_buy_rpl_found": {
         "title": ":cow: BUY Order Found",
-        "description": "%{cow_owner} has placed a buy order for %{RPLAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{RPLAmount} RPL (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
+        "description": "%{cow_owner} has placed a buy order for %{ourAmount} RPL!\n Exchanging %{otherAmount} %{otherToken} for %{ourAmount} RPL (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
+    },
+    "cow_order_buy_reth_found": {
+        "title": ":cow: rETH Order Found",
+        "description": "%{cow_owner} has placed a buy order for %{ourAmount} rETH!\n Exchanging %{otherAmount} %{otherToken} for %{ourAmount} rETH (%{ratioAmount} rETH/%{otherToken})\nExpires: %{deadline}"
     },
     "cow_order_sell_rpl_found": {
         "title": ":cow: SELL Order Found",
-        "description": "%{cow_owner} has placed a sell order for %{RPLAmount} RPL!\n Exchanging %{RPLAmount} RPL for %{otherAmount} %{otherToken} (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
+        "description": "%{cow_owner} has placed a sell order for %{ourAmount} RPL!\n Exchanging %{ourAmount} RPL for %{otherAmount} %{otherToken} (%{ratioAmount} RPL/%{otherToken})\nExpires: %{deadline}"
+    },
+    "cow_order_sell_reth_found": {
+        "title": ":cow: rETH Order Found",
+        "description": "%{cow_owner} has placed a sell order for %{ourAmount} rETH!\n Exchanging %{ourAmount} rETH for %{otherAmount} %{otherToken} (%{ratioAmount} rETH/%{otherToken})\nExpires: %{deadline}"
     },
     "finality_delay_event": {
         "title": ":warning: Finality Delay On Beacon Chain",
