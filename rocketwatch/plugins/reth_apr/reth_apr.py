@@ -353,7 +353,7 @@ class RETHAPR(commands.Cog):
             }
         ]).to_list(length=1)
 
-        node_fee = tmp[0]["average"] if len(tmp) > 0 else 20
+        node_fee = tmp[0]["average"] if len(tmp) > 0 else 0.2
         peth_share = tmp[0]["used_pETH_share"] if len(tmp) > 0 else 0.75
 
         datapoints = sorted(datapoints, key=lambda x: x["time"])
@@ -361,9 +361,11 @@ class RETHAPR(commands.Cog):
         y_7d = []
         y_7d_claim = None
         y_7d_virtual = []
-        y_7d_node_operators = []
-        y_7d_node_operators_leb8 = []
-        y_7d_node_operators_leb16 = []
+        y_7d_node_operators_leb8_14 = []
+        y_7d_node_operators_leb16_05 = []
+        y_7d_node_operators_leb16_14 = []
+        y_7d_node_operators_leb16_20 = []
+        y_7d_solo = []
         for i in range(1, len(datapoints)):
             # add the data of the datapoint to the x values, need to parse it to a datetime object
             x.append(datetime.fromtimestamp(datapoints[i]["time"]))
@@ -373,40 +375,48 @@ class RETHAPR(commands.Cog):
                 y_7d.append(to_apr(datapoints[i - 9], datapoints[i]))
                 y_7d_virtual.append(to_apr(datapoints[i - 9], datapoints[i], effective=False))
                 bare_apr = y_7d_virtual[-1] / Decimal((1 - node_fee))
-                y_7d_node_operators.append(bare_apr * Decimal(1 + (node_fee * peth_share / (1 - peth_share))))
+                y_7d_solo.append(bare_apr)
                 peth_share_leb8 = 0.75
-                y_7d_node_operators_leb8.append(bare_apr * Decimal(1 + (node_fee * peth_share_leb8 / (1 - peth_share_leb8))))
+                y_7d_node_operators_leb8_14.append(bare_apr * Decimal(1 + (0.14 * peth_share_leb8 / (1 - peth_share_leb8))))
                 peth_share_leb16 = 0.5
-                y_7d_node_operators_leb16.append(bare_apr * Decimal(1 + (node_fee * peth_share_leb16 / (1 - peth_share_leb16))))
+                y_7d_node_operators_leb16_05.append(bare_apr * Decimal(1 + (0.05 * peth_share_leb16 / (1 - peth_share_leb16))))
+                y_7d_node_operators_leb16_14.append(bare_apr * Decimal(1 + (0.14 * peth_share_leb16 / (1 - peth_share_leb16))))
+                y_7d_node_operators_leb16_20.append(bare_apr * Decimal(1 + (0.20 * peth_share_leb16 / (1 - peth_share_leb16))))
                 y_7d_claim = get_duration(datapoints[i - 9], datapoints[i]) / (60 * 60 * 24)
             else:
                 # if we dont have enough data, we dont show it
-                y_7d_node_operators.append(None)
-                y_7d_node_operators_leb8.append(None)
-                y_7d_node_operators_leb16.append(None)
+                y_7d_solo.append(None)
+                y_7d_node_operators_leb8_14.append(None)
+                y_7d_node_operators_leb16_05.append(None)
+                y_7d_node_operators_leb16_14.append(None)
+                y_7d_node_operators_leb16_20.append(None)
         e.add_field(name=f"{y_7d_claim:.1f} Day Average Node Operator APR:",
-                    value=f"**leb8:** `{y_7d_node_operators_leb8[-1]:.2%}` | "
-                          f"**leb{(1-peth_share)*32:.2f}:** `{y_7d_node_operators[-1]:.2%}` | "
-                          f"**leb16:** `{y_7d_node_operators_leb16[-1]:.2%}`", inline=False)
+                    value=f"**leb8:** `{y_7d_node_operators_leb8_14[-1]:.2%}`\n"
+                          f"**leb16 5%:** `{y_7d_node_operators_leb16_05[-1]:.2%}` | "
+                          f"**leb16 14%:** `{y_7d_node_operators_leb16_14[-1]:.2%}` | "
+                          f"**leb16 20%:** `{y_7d_node_operators_leb16_20[-1]:.2%}`", inline=False)
 
         fig = plt.figure()
         ax1 = plt.gca()
 
-        ax1.plot(x, y_7d_node_operators_leb8, linestyle="-.", label=f"{y_7d_claim:.1f} Day Average (leb8)", color="red", alpha=0.5)
-        ax1.plot(x, y_7d_node_operators, linestyle="-", label=f"{y_7d_claim:.1f} Day Average (leb{(1-peth_share)*32:.2f})", color="red")
-        ax1.plot(x, y_7d_node_operators_leb16, linestyle="--", label=f"{y_7d_claim:.1f} Day Average (leb16)", color="red", alpha=0.5)
+        # solo apr
+        ax1.plot(x, y_7d_node_operators_leb8_14, linestyle="-.", label=f"{y_7d_claim:.1f} Day Average (leb8 14%)", color="red", alpha=0.5)
+        # use area to show region between leb16 20% and leb16 5%. use a spare dotted fill to show the region between
+        ax1.fill_between(x, y_7d_node_operators_leb16_20, y_7d_node_operators_leb16_05, alpha=0.2, color="red", label=f"{y_7d_claim:.1f} Day Average (leb16 5-20%)")
+        # plot the leb16 14% line
+        ax1.plot(x, y_7d_node_operators_leb16_14, linestyle="--", label=f"{y_7d_claim:.1f} Day Average (leb16 14%)", color="red", alpha=0.5)
+        ax1.plot(x, y_7d_solo, linestyle=":", label=f"{y_7d_claim:.1f} Day Average (solo)", color="black", alpha=0.5)
 
         plt.title("Observed NO APR values")
-        plt.xlabel("Date")
         plt.grid(True)
         plt.xlim(left=x[38])
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=0)
+        plt.ylim(bottom=0.02)
         old_formatter = plt.gca().xaxis.get_major_formatter()
-        plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
+        plt.gca().xaxis.set_major_formatter(DateFormatter("%m.%d"))
 
         ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
-        ax1.set_ylabel("APR")
-        ax1.legend(loc="upper left")
+        ax1.legend(loc="lower left")
 
         img = BytesIO()
         fig.tight_layout()
