@@ -54,11 +54,11 @@ class PatchesAPI(commands.Cog):
             patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
         except Exception as e:
             await report_error(ctx, e)
-            await ctx.send("Error fetching node data from SprocketPool API. blame patches")
+            await ctx.send("Error fetching node data from SprocketPool API. Blame Patches.")
             return
         e = Embed()
         e.title = f"Upcoming rewards for {ens_name or address}"
-        estimated_end_time = patches_res["time"] + rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime")
+        estimated_end_time = patches_res["startTime"] + rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime")
         e.description = f"Values based upon data from <t:{patches_res['time']}:R> (<t:{patches_res['time']}>).\nThis is for Interval {patches_res['interval']}," \
                         f" which ends <t:{estimated_end_time}:R> (<t:{estimated_end_time}>)."
         if "collateralRpl" not in patches_res[address]:
