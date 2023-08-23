@@ -149,7 +149,7 @@ class OpenAi(commands.Cog):
             return
         if not self.bot.user.mentioned_in(message):
             return
-        if message.channel.id not in [405163713063288832]:
+        if message.channel.id not in [870283329264566272]:
             return
         # ratelimit
         last_ts = await self.db["last_mention"].find_one({"channel_id": f"{message.channel.id}_inline"})
@@ -157,8 +157,7 @@ class OpenAi(commands.Cog):
         if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(seconds=20):
             log.debug("Ratelimiting mention")
             # react with an appropriate emoji
-        await message.add_reaction("🐀")
-        return
+            await message.add_reaction("🐀")
         # update last mention timestamp
         await self.db["last_mention"].update_one({"channel_id": f"{message.channel.id}_inline"}, {"$set": {"timestamp": datetime.now(timezone.utc)}}, upsert=True)
 
@@ -172,7 +171,7 @@ class OpenAi(commands.Cog):
             messages,
             "The following is a chat log. Everything prefixed with `>` is a quote.",
             f"Write a reply to the message with the content \"{message.content}\". Do not add any other text. Do not mention the author at the start of your response.")
-        response = openai.ChatCompletion.create(
+        response = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             max_tokens=128,
             temperature=0.5,
