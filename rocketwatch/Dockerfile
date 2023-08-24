@@ -2,7 +2,7 @@
 FROM python:3.10.8
 
 # install stupid rust for safetensors
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 
 RUN pip install setuptools-rust
 
 COPY requirements.txt requirements.txt
