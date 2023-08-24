@@ -41,7 +41,9 @@ if __name__ == '__main__':
     intents.guilds = True
     intents.members = True
     intents.messages = True
-    bot = RocketWatch(intents=intents, command_prefix=str(uuid.uuid4()))
+    a = str(uuid.uuid4())
+    print(f"Using command prefix {a}")
+    bot = RocketWatch(intents=intents, command_prefix=a)
     reporter.bot = bot
     log.info('Starting bot')
     bot.run(cfg["discord.secret"])
