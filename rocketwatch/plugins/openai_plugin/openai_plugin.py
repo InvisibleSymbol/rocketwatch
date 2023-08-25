@@ -31,7 +31,7 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message, index):
-        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')} {{message:{index}}}:\n {message.content}"
+        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')}:\n {message.content}" #  {{message:{index}}}
 
         # if there is an image attached, add it to the text as a note
         metadata = []
@@ -122,13 +122,9 @@ class OpenAi(commands.Cog):
             messages.pop(0)
         engine = "gpt-3.5-turbo-16k" if l > 4096 else "gpt-3.5-turbo"
         prompt = self.generate_prompt(messages, prefix, prompt)
-        response = openai.ChatCompletion.create(
+        response = await openai.ChatCompletion.acreate(
             model=engine,
             max_tokens=512,
-            temperature=0.7,
-            top_p=1.0,
-            frequency_penalty=0.0,
-            presence_penalty=1,
             messages=[{"role": "user", "content": prompt}]
         )
         # find all {message:index} in response["choices"][0]["message"]["content"]
@@ -171,8 +167,8 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(
             messages,
             "The following is a chat log. Everything prefixed with `>` is a quote.",
-            f"Write a reply to the message with the content \"{message.content}\". Do not add any other text. Do not mention the author at the start of your response.")
-        response = openai.ChatCompletion.create(
+            f"Write a reply to the message with the content \"{message.content}\". Do not tag people in your response (i.e, don't use @person).")
+        response = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             max_tokens=128,
             temperature=0.5,
