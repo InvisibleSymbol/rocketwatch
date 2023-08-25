@@ -166,8 +166,8 @@ class OpenAi(commands.Cog):
         # generate prompt
         prompt = self.generate_prompt(
             messages,
-            "The following is a chat log. Everything prefixed with `>` is a quote.",
-            f"Write a reply to the message with the content \"{message.content}\". Do not tag people in your response (i.e, don't use @person).")
+            "",
+            f"")
         response = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             max_tokens=128,
