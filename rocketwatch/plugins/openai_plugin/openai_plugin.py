@@ -167,7 +167,7 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(
             messages,
             "The following is a chat log. Everything prefixed with `>` is a quote.",
-            f"Respond to the latest message in the chat log with a human-like response. You can use the above chat log as context. Messages sent by the Rocket Watch user are your own messages.")
+            f"Respond to only the last message in the chat log with a human-like response. You can use the message before as context, but do not respond to any messages besides the last one. Messages sent by the Rocket Watch user are your own messages.")
         response = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             max_tokens=128,
