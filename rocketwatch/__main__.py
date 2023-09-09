@@ -41,6 +41,7 @@ if __name__ == '__main__':
     intents.guilds = True
     intents.members = True
     intents.messages = True
+    intents.message_content = True
     a = str(uuid.uuid4())
     print(f"Using command prefix {a}")
     bot = RocketWatch(intents=intents, command_prefix=a)

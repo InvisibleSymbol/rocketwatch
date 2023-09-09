@@ -32,3 +32,4 @@ schedule==1.2.0
 suntimes==1.1.2
 pydantic<2
 icalendar==5.0.7
+regex==2023.8.8
