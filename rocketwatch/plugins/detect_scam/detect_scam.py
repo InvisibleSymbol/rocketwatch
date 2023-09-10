@@ -1,7 +1,8 @@
+import contextlib
 import io
 
 import regex as re
-from discord import File
+from discord import File, errors
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -20,7 +21,9 @@ class DetectScam(commands.Cog):
         e.description = f"**Reason:** {reason}\n"
         bak_footer = e.footer.text
         e.set_footer(text="This message will be deleted once the suspicious message is removed.")
-        warning = await msg.reply(embed=e, mention_author=False)
+        # supress failure
+        with contextlib.suppress(errors.Forbidden):
+            warning = await msg.reply(embed=e, mention_author=False)
         e.set_footer(text=bak_footer)
         # report into report-scams channel as well
         ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
