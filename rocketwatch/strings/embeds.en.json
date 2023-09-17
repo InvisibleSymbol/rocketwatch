@@ -215,11 +215,11 @@
     },
     "minipool_deposit_received_event": {
         "title": ":construction_site: Minipool Created",
-        "description": "Minipool %{minipool_clean} has been created with a operator share of **%{depositAmount} ETH**!"
+        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!"
     },
     "minipool_deposit_received_event_credit": {
         "title": ":magic_wand: Minipool Created Using Credit",
-        "description": "Minipool %{minipool_clean} has been created with a operator share of **%{depositAmount} ETH**!\n**%{creditAmount} ETH** worth of Credit used for this deposit!"
+        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!\n**%{creditAmount} ETH** worth of Credit used for this deposit!"
     },
     "minipool_bond_reduction_started_event": {
         "title": ":magic_wand: Minipool Bond Reduction Initiated",
