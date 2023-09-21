@@ -55,6 +55,7 @@ class Task:
         if latest_db == latest_rp:
             log.debug("No new minipools")
             return
+        log.debug(f"Latest minipool in db: {latest_db}, latest minipool in rp: {latest_rp}")
         # batch into 10k minipools at a time, between latest_id and minipool_count
         for i in range(latest_db + 1, latest_rp + 1, self.batch_size):
             i_end = min(i + self.batch_size, latest_rp + 1)
@@ -76,7 +77,6 @@ class Task:
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         lambs = [
             lambda a: (a, rp.seth_sig(m.abi, "getNodeAddress"), [((a, "node_operator"), None)]),
-            lambda a: (a, rp.seth_sig(m.abi, "getVacant"), [((a, "vacant"), lambda _, b: b == True)]),
             lambda a: (mm.address, [rp.seth_sig(mm.abi, "getMinipoolPubkey"), a],
                        [((a, "pubkey"), lambda _, b: f"0x{b.hex()}" if b else None)]),
         ]
@@ -120,6 +120,7 @@ class Task:
         lambs = [
             lambda a: (a, rp.seth_sig(m.abi, "getStatus"), [((a, "status"), func_if_success(solidity.mp_state_to_str))]),
             lambda a: (a, rp.seth_sig(m.abi, "getStatusTime"), [((a, "status_time"), None)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getVacant"), [((a, "vacant"), lambda _, b: b is True)]),
             lambda a: (a, rp.seth_sig(m.abi, "getNodeDepositBalance"),
                        [((a, "node_deposit_balance"), func_if_success(solidity.to_float))]),
             lambda a: (
