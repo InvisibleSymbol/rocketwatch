@@ -327,7 +327,7 @@ class Proposals(commands.Cog):
                 }
             }, {
                 '$sort': {
-                    '_id': 1
+                    '_id': -1
                 }
             }
         ]).to_list(None)
