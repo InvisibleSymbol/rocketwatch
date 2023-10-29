@@ -1,11 +1,13 @@
+import asyncio
 import contextlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from io import BytesIO
 
 import aiohttp
 import humanize
 import matplotlib.pyplot as plt
+import numpy as np
 from discord import File
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
@@ -49,16 +51,12 @@ class Wall(commands.Cog):
         except Exception as err:
             await report_error(err)
 
-    async def gather_new_data(self):
-        # gather depth sell / buy values
-        tmp = []
-        ts = datetime.utcnow()
+    async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
+        # this gets a quote from the cow api
         api_url = "https://api.cow.fi/mainnet/api/v1/quote"
-        rpl_address = rp.get_address_by_name("rocketTokenRPL")
-        weth_address = rp.get_address_by_name("wrappedETH")
         params = {
-            "sellToken"          : weth_address,
-            "buyToken"           : rpl_address,
+            "sellToken"          : sell_token,
+            "buyToken"           : buy_token,
             "receiver"           : "0x0000000000000000000000000000000000000000",
             "appData"            : "0x0000000000000000000000000000000000000000000000000000000000000000",
             "partiallyFillable"  : False,
@@ -68,63 +66,90 @@ class Wall(commands.Cog):
             "signingScheme"      : "eip1271",
             "onchainOrder"       : True,
             "kind"               : "sell",
-            "sellAmountBeforeFee": str(10 ** 18)
+            "sellAmountBeforeFee": str(int(sell_amount*10**18))
         }
-        # get exchange rate for 1 RPL, use that as the reference point
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, json=params) as resp:
                 data = await resp.json()
-        reference_point = solidity.to_float(data["quote"]["sellAmount"]) / solidity.to_float(data["quote"]["buyAmount"])
-        for amount in [10 ** (x / 8) for x in range(6*2, 18*2)]:
-            params["sellAmountBeforeFee"] = str(int(amount * 10 ** 18))
-            async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, json=params) as resp:
-                    data = await resp.json()
+        try:
+            return solidity.to_float(data["quote"]["buyAmount"])
+        except KeyError:
+            raise Exception(f"Could not get sell depth for {sell_amount} RPL, json: {data}")
+
+    async def cow_get_effective_exchange_rate_using_delta(self, sell_token, buy_token, sell_amount):
+        # this method calculates the effective exchange rate using the delta between the 2 token exchanges close by
+        scale = max(1, sell_amount / 100)
+        # gather surrounding quotes
+        numbers = await asyncio.gather(
+            self.cow_get_exchange(sell_token, buy_token, sell_amount - scale),
+            self.cow_get_exchange(sell_token, buy_token, sell_amount + scale)
+        )
+        delta = numbers[1] - numbers[0]
+        delta_scale = sell_amount / (scale * 2)
+        effective_buy_amount = delta * delta_scale
+        effective_ratio = sell_amount / effective_buy_amount
+        # calculate the effective exchange rate
+        return {
+            "sell_amount": sell_amount,
+            "buy_amount" : effective_buy_amount,
+            "rate"       : effective_ratio
+        }
+
+    async def gather_new_data(self):
+        # gather depth sell / buy values
+        tmp = []
+        ts = datetime.utcnow()
+        rpl_address = rp.get_address_by_name("rocketTokenRPL")
+        weth_address = rp.get_address_by_name("wrappedETH")
+        d_ref = await self.cow_get_exchange(weth_address, rpl_address, 1)
+        reference_point = 1 / d_ref
+
+        for amount in [*list(range(10, 300, 30)), *list(range(100, 2000, 100))]:
             # get rate
             try:
-                rate = solidity.to_float(data["quote"]["sellAmount"]) / solidity.to_float(data["quote"]["buyAmount"])
-            except KeyError:
-                log.warning(f"Could not get sell depth for {amount} RPL")
+                d = await self.cow_get_effective_exchange_rate_using_delta(weth_address, rpl_address, amount)
+            except Exception as err:
+                log.exception(err)
                 continue
             # get slippage
-            slippage = (rate - reference_point) / reference_point
-            log.debug(f"Selling {amount} ETH for RPL at {rate} ({slippage})")
+            slippage = (d["rate"] - reference_point) / reference_point
+            log.debug(f"Selling {amount} ETH for RPL at {d['rate']} ({slippage})")
             # store data
             tmp.append({
                 "ts"         : ts,
-                "sell_amount": solidity.to_float(data["quote"]["sellAmount"]),
+                "sell_amount": d["sell_amount"],
                 "sell_token" : "weth",
-                "buy_amount" : solidity.to_float(data["quote"]["buyAmount"]),
+                "buy_amount" : d["buy_amount"],
                 "buy_token"  : "rpl",
-                "rate"       : rate,
+                "rate"       : d["rate"],
                 "slippage"   : slippage
             })
         # get buy depth for 10, 100, 1000, 10000, 100000, 1000000 RPL but like in ETH
         # flip sell and buy token
-        params["sellToken"] = rpl_address
-        params["buyToken"] = weth_address
-        for amount in [10 ** (x / 8) for x in range(9*2, 24*2)]:
-            params["sellAmountBeforeFee"] = str(int(amount * 10 ** 18))
-            async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, json=params) as resp:
-                    data = await resp.json()
+        for amount in [*list(range(1000, 30000, 3000)), *list(range(30000, 200000, 10000))]:
             # get rate
             try:
-                rate = solidity.to_float(data["quote"]["buyAmount"]) / solidity.to_float(data["quote"]["sellAmount"])
-            except KeyError:
-                log.warning(f"Could not get buy depth for {amount} RPL")
+                d = await self.cow_get_effective_exchange_rate_using_delta(rpl_address, weth_address, amount)
+            except Exception as err:
+                log.exception(err)
                 continue
+            # invert rate
+            d["rate"] = 1 / d["rate"]
             # get slippage
-            slippage = (rate - reference_point) / reference_point
-            log.debug(f"Selling {amount} RPL for ETH at {rate} ({slippage})")
+            slippage = (d["rate"] - reference_point) / reference_point
+            # skip if abs slippage is over 25% (trash data)
+            if abs(slippage) > 0.30:
+                log.debug(f"Skipping {amount} RPL for ETH at {d['rate']} ({slippage})")
+                continue
+            log.debug(f"Selling {amount} RPL for ETH at {d['rate']} ({slippage})")
             # store data
             tmp.append({
                 "ts"         : ts,
-                "sell_amount": solidity.to_float(data["quote"]["sellAmount"]),
+                "sell_amount": d["sell_amount"],
                 "sell_token" : "rpl",
-                "buy_amount" : solidity.to_float(data["quote"]["buyAmount"]),
+                "buy_amount" : d["buy_amount"],
                 "buy_token"  : "weth",
-                "rate"       : rate,
+                "rate"       : d["rate"],
                 "slippage"   : slippage
             })
         # store data in db
@@ -160,6 +185,8 @@ class Wall(commands.Cog):
         ax.plot(x_green_inter, y_green_inter, color="green")
         # fill
         ax.fill_between(x_green_inter, y_green_inter, color="green", alpha=0.2)
+        # debug: plot the raw data
+        # ax.plot(x_green, y_green, color="green", marker="+", linestyle="")
 
         # buy amount
         x_red = [x["slippage"] for x in data if x["buy_token"] == "weth"]
@@ -177,6 +204,8 @@ class Wall(commands.Cog):
         ax.plot(x_red_inter, y_red_inter, color="red")
         # fill
         ax.fill_between(x_red_inter, y_red_inter, color="red", alpha=0.2)
+        # debug: plot the raw data
+        # ax.plot(x_red, y_red, color="red", marker="+", linestyle="")
 
         # set labels
         ax.set_xlabel("Slippage")
