@@ -135,7 +135,10 @@ class Random(commands.Cog):
 
         joe_time = datetime.now(tz=pytz.timezone("America/New_York"))
         e.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
-
+        
+        fornax_time = datetime.now(tz=pytz.timezone("America/Sao_Paulo"))
+        e.add_field(name="0xFornax's Time", value=fornax_time.strftime(time_format), inline=False)
+        
         await ctx.send(embed=e)
 
     @hybrid_command()
