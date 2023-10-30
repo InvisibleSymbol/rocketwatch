@@ -137,7 +137,7 @@ class Random(commands.Cog):
         e.add_field(name="Joe's Time", value=joe_time.strftime(time_format), inline=False)
 
         fornax_time = datetime.now(tz=pytz.timezone("America/Sao_Paulo"))
-        e.add_field(name="0xFornax's Time", value=fornax_time.strftime(time_format), inline=False)
+        e.add_field(name="Fornax's Time", value=fornax_time.strftime(time_format), inline=False)
 
         await ctx.send(embed=e)
 
