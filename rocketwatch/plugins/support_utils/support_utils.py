@@ -12,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.get_or_fetch import get_or_fetch_channel
+from utils.reporter import report_error
 
 log = logging.getLogger("support-threads")
 log.setLevel(cfg["log_level"])
@@ -60,6 +61,9 @@ class DeleteableView(ui.View):
             return
         # delete the message
         await interaction.message.delete()
+        # log deletion
+        await report_error(Exception(f"Support Template Message deleted by {interaction.user} in {interaction.channel}"),
+                           {"user": repr(interaction.user), "channel": repr(interaction.channel)})
 
 
 class AdminModal(ui.Modal,
