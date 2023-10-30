@@ -48,6 +48,20 @@ class AdminView(ui.View):
         await interaction.response.send_modal(AdminModal(boiler["title"], boiler["description"], self.db, self.template_name))
 
 
+class DeleteableView(ui.View):
+    def __init__(self, template_name: str):
+        super().__init__()
+        self.template_name = template_name
+
+    @ui.button(emoji='<:deletethis:1168673165489213551>', style=ButtonStyle.secondary)
+    async def delete(self, interaction: Interaction, button: ui.Button):
+        # check if the user has perms
+        if not has_perms(interaction, self.template_name):
+            return
+        # delete the message
+        await interaction.message.delete()
+
+
 class AdminModal(ui.Modal,
                  title="Change Template Message"):
     def __init__(self, old_title, old_description, db, template_name):
@@ -143,9 +157,20 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
         )
         return
     # respond with the template embed
-    await interaction.response.send_message(
-        content=mention.mention if mention else "",
-        embed=await generate_template_embed(db, name))
+    if e := (await generate_template_embed(db, name)):
+        await interaction.response.send_message(
+            content=mention.mention if mention else "",
+            embed=e,
+            view=DeleteableView(name)
+        )
+    else:
+        await interaction.response.send_message(
+            embed=Embed(
+                title="Error",
+                description=f"An error occurred while generating the template embed."
+            ),
+            ephemeral=True
+        )
 
 
 class SupportGlobal(Cog):
