@@ -217,4 +217,5 @@ class Rewards(commands.Cog):
 
 
 async def setup(bot):
+    return
     await bot.add_cog(Rewards(bot))
