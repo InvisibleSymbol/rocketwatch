@@ -137,10 +137,6 @@ class Wall(commands.Cog):
             d["rate"] = 1 / d["rate"]
             # get slippage
             slippage = (d["rate"] - reference_point) / reference_point
-            # skip if abs slippage is over 25% (trash data)
-            if abs(slippage) > 0.30:
-                log.debug(f"Skipping {amount} RPL for ETH at {d['rate']} ({slippage})")
-                continue
             log.debug(f"Selling {amount} RPL for ETH at {d['rate']} ({slippage})")
             # store data
             tmp.append({
