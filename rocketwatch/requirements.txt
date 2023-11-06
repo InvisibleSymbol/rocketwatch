@@ -31,5 +31,5 @@ transformers==4.30.0
 schedule==1.2.0
 suntimes==1.1.2
 pydantic<2
-icalendar==5.0.7
+icalendar==5.0.11
 regex==2023.8.8
