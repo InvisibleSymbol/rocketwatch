@@ -307,15 +307,15 @@ def get_node_minipools_and_collateral():
         minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 8 * 10**18) for node in nodes
     )
     eb8s = [r.results[0] for r in eb8s.results]
-    stakes = [
+    return [
         {
-            "eb8s"     : eb8s[i],
-            "eb16s"    : eb16s[i],
+            "eb8s": eb8s[i],
+            "eb16s": eb16s[i],
             "rplStaked": rpl_stakes[i],
-            "node"     : nodes[i]
-        } for i in range(len(nodes))
+            "node": nodes[i],
+        }
+        for i in range(len(nodes))
     ]
-    return stakes
 
 
 def get_average_collateral_percentage_per_node(collateral_cap, bonded):
@@ -528,7 +528,7 @@ query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tick
         ticks[i] = (ticks[i][0], solidity.to_float(ticks[i][1]))
 
     # offset every liquidity number so that the minimum is 0
-    min_liquidity = min([tick[1] for tick in ticks])
+    min_liquidity = min(tick[1] for tick in ticks)
     for i in range(len(ticks)):
         ticks[i] = (ticks[i][0], ticks[i][1] - min_liquidity)
     return ticks
