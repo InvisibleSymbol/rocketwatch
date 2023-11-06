@@ -288,7 +288,7 @@ def get_claims_current_period():
     return data["rplrewardIntervals"][0]["rplRewardClaims"]
 
 
-def get_average_collateral_percentage_per_node(collateral_cap):
+def get_node_minipools_and_collateral():
     # get node addresses
     nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
     node_staking = rp.get_contract_by_name("rocketNodeStaking")
@@ -297,27 +297,38 @@ def get_average_collateral_percentage_per_node(collateral_cap):
         [node_staking.functions.getNodeRPLStake(node) for node in nodes]
     )
     rpl_stakes = [r.results[0] for r in rpl_stakes.results]
-    # get their nETH balance using rocketMinipoolManager.getNodeMinipoolCount
+    # get the minipool sizes using rocketMinipoolManager.getNodeStakingMinipoolCountBySize
     minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-    node_minipools = rp.multicall.aggregate(
-        minipool_manager.functions.getNodeMinipoolCount(node) for node in nodes
+    eb16s = rp.multicall.aggregate(
+        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 16 * 10**18) for node in nodes
     )
-    node_minipools = [r.results[0] for r in node_minipools.results]
-    # convert to data array with dicts containing stakingMinipools and rplStaked
-    data = [
+    eb16s = [r.results[0] for r in eb16s.results]
+    eb8s = rp.multicall.aggregate(
+        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 8 * 10**18) for node in nodes
+    )
+    eb8s = [r.results[0] for r in eb8s.results]
+    stakes = [
         {
-            "stakingMinipools": node_minipools[i],
-            "rplStaked"       : rpl_stakes[i]
-        }
-        for i in range(len(nodes))
+            "eb8s"     : eb8s[i],
+            "eb16s"    : eb16s[i],
+            "rplStaked": rpl_stakes[i],
+            "node"     : nodes[i]
+        } for i in range(len(nodes))
     ]
+    return stakes
+
+
+def get_average_collateral_percentage_per_node(collateral_cap, bonded):
+    # get stakes for each node
+    stakes = get_node_minipools_and_collateral()
+    # get the current rpl price
     rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
 
     result = {}
     # process the data
-    for node in data:
-        # get the minipool value
-        minipool_value = int(node["stakingMinipools"]) * 16
+    for node in stakes:
+        # get the minipool eth value
+        minipool_value = int(node["eb16s"]) * 16 + int(node["eb8s"]) * (8 if bonded else 24)
         if not minipool_value:
             continue
         # rpl stake value
@@ -325,9 +336,6 @@ def get_average_collateral_percentage_per_node(collateral_cap):
         # cap rpl stake at x% of minipool_value using collateral_cap
         if collateral_cap:
             rpl_stake_value = min(rpl_stake_value, minipool_value * collateral_cap / 100)
-        # anything bellow 10% gets floored to 0
-        if rpl_stake_value / minipool_value < 0.1:
-            rpl_stake_value = 0
         # calculate percentage
         percentage = rpl_stake_value / minipool_value * 100
         # round percentage to 5% steps

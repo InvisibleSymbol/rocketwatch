@@ -43,32 +43,34 @@ class Collateral(commands.Cog):
 
     @hybrid_command()
     @describe(raw="Show Raw Distribution Data",
-              cap_collateral="Cap Collateral to 150%")
+              cap_collateral="Cap Collateral to 150%",
+              bonded="Calculate collateral as percent of bonded eth instead of borrowed")
     async def collateral_distribution(self,
                                       ctx: Context,
                                       raw: bool = False,
                                       cap_collateral: bool = True,
-                                      collateral_cap: int = 150):
+                                      collateral_cap: int = 150,
+                                      bonded: bool = False):
         """
         Show the distribution of collateral across nodes.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed()
 
-        data = get_average_collateral_percentage_per_node(collateral_cap or 150 if cap_collateral else None)
+        data = get_average_collateral_percentage_per_node(collateral_cap or 150 if cap_collateral else None, bonded)
 
         counts = []
         for collateral, nodes in data.items():
             counts.extend([collateral] * len(nodes))
         counts = list(sorted(counts))
         bins = np.bincount(counts)
-        distribution = [(i, bins[i]) for i in range(len(bins)) if i % 5 == 0 and i >= 10]
+        distribution = [(i, bins[i]) for i in range(len(bins)) if i % 5 == 0]
 
         # If the raw data were requested, print them and exit early
         if raw:
             await collateral_distribution_raw(ctx, distribution[::-1])
             return
 
+        e = Embed()
         img = BytesIO()
         # create figure with 2 separate y axes
         fig, ax = plt.subplots()
@@ -76,24 +78,25 @@ class Collateral(commands.Cog):
 
         bars = dict(distribution)
         x_keys = [str(x) for x in bars]
-        rects = ax.bar(x_keys, bars.values(), color=str(e.color))
+        rects = ax.bar(x_keys, bars.values(), color=str(e.color), align='edge')
         ax.bar_label(rects)
 
-        ax.set_xticklabels(x_keys, rotation=45, ha="right")
+        ax.set_xticklabels(x_keys, rotation='vertical')
+        ax.set_xlabel(f"Collateral Percent of { 'Bonded' if bonded else 'Borrowed'} Eth")
 
         for label in ax.xaxis.get_major_ticks()[1::2]:
             label.label.set_visible(False)
         ax.set_ylim(top=(ax.get_ylim()[1] * 1.1))
         ax.yaxis.set_visible(False)
-        ax.get_xaxis().set_major_formatter(FuncFormatter(lambda n, _: f"{x_keys[n] if n < len(x_keys) else 0}%"))
+        ax.get_xaxis().set_major_formatter(FuncFormatter(
+            lambda n, _: f"{x_keys[n] if n < len(x_keys) else 0}{'+' if n == len(x_keys)-1 and cap_collateral else ''}%")
+        )
 
         staked_distribution = [
             (collateral, sum(nodes)) for collateral, nodes in sorted(data.items(), key=lambda x: x[0])
         ]
 
         bars = dict(staked_distribution)
-        if 0 in bars:
-            del bars[0]
         line = ax2.plot(x_keys, [bars.get(int(x), 0) for x in x_keys])
         ax2.set_ylim(top=(ax2.get_ylim()[1] * 1.1))
         ax2.tick_params(axis='y', colors=line[0].get_color())
