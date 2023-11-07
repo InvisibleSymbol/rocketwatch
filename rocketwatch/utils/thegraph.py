@@ -526,7 +526,7 @@ query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tick
         ticks[i] = (ticks[i][0], solidity.to_float(ticks[i][1]))
 
     # offset every liquidity number so that the minimum is 0
-    min_liquidity = min([tick[1] for tick in ticks])
+    min_liquidity = min(tick[1] for tick in ticks)
     for i in range(len(ticks)):
         ticks[i] = (ticks[i][0], ticks[i][1] - min_liquidity)
     return ticks

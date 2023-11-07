@@ -122,8 +122,8 @@ class Collateral(commands.Cog):
         ylabel = f"Collateral (percent {'bonded' if bonded else 'borrowed'})"
         ax.set_ylabel(ylabel)
         ax2.set_ylabel(ylabel)
-        ax.yaxis.set_major_formatter(formatToInt + "%")
-        ax2.yaxis.set_major_formatter(formatToInt + "%")
+        ax.yaxis.set_major_formatter(f"{formatToInt}%")
+        ax2.yaxis.set_major_formatter(f"{formatToInt}%")
         ax2.set_xlabel("Node Bond (Eth only - log scale)")
         ax.xaxis.set_major_formatter(formatToInt)
         ax2.xaxis.set_major_formatter(formatToInt)
