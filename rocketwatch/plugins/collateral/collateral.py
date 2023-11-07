@@ -3,6 +3,7 @@ from io import BytesIO
 
 import inflect
 import math
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from discord import File
@@ -88,38 +89,52 @@ class Collateral(commands.Cog):
 
             x.append(node_tvl(node))
             y.append(node_collateral(node))
-            c.append(math.log10(minis))
+            c.append(minis)
             max_minipools = max(max_minipools, minis)
 
         e = Embed()
         img = BytesIO()
-        fig, ax = plt.subplots()
+        fig, (ax, ax2) = plt.subplots(2)
+        fig.set_figheight(fig.get_figheight() * 2)
 
         # create the scatter plot
-        paths = ax.scatter(x, y, c=c, alpha=0.15)
+        paths = ax.scatter(x, y, c=c, alpha=0.25, norm="log")
+        polys = ax2.hexbin(x, y, gridsize=20, bins="log", xscale="log", cmap="viridis")
+        # fill the background in with the default color.
+        ax2.set_facecolor(mpl.colors.to_rgba(mpl.colormaps["viridis"](0), 0.9))
+        max_nodes = max(polys.get_array())
 
         # log-scale the X-axis to account for thomas
         ax.set_xscale("log", base=8)
 
-        # Add a legend for the color-coding
-        legend = ax.legend(*paths.legend_elements(func=lambda x: 10**x,
-                           num=[1,10,100,max_minipools]),
-                           loc="upper right",
-                           title="Minipools")
-        ax.add_artist(legend)
+        # Add a legend for the color-coding on the scatter plot
+        formatToInt = "{x:.0f}"
+        cb = plt.colorbar(mappable=paths, ax=ax, format=formatToInt)
+        cb.set_label('Minipools')
+        cb.set_ticks([1,10,100,max_minipools])
+
+        # Add a legend for the color-coding on the hex distribution
+        cb = plt.colorbar(mappable=polys, ax=ax2, format=formatToInt)
+        cb.set_label('Nodes')
+        cb.set_ticks([1,10,100,max_nodes - 1])
 
         # Add labels and units
-        ax.set_ylabel(f"Collateral (percent {'bonded' if bonded else 'borrowed'})")
-        ax.yaxis.set_major_formatter("{x:.0f}%")
-        ax.set_xlabel("Node Bond (Eth only - log scale)")
-        ax.xaxis.set_major_formatter("{x:.0f}")
+        ylabel = f"Collateral (percent {'bonded' if bonded else 'borrowed'})"
+        ax.set_ylabel(ylabel)
+        ax2.set_ylabel(ylabel)
+        ax.yaxis.set_major_formatter(formatToInt + "%")
+        ax2.yaxis.set_major_formatter(formatToInt + "%")
+        ax2.set_xlabel("Node Bond (Eth only - log scale)")
+        ax.xaxis.set_major_formatter(formatToInt)
+        ax2.xaxis.set_major_formatter(formatToInt)
 
         # Add a red dot if the user asked to highlight their node
         if address is not None:
             # Print a vline and hline through the requested node
             try:
                 target_node = data[address]
-                plt.plot(node_tvl(target_node), node_collateral(target_node), 'ro')
+                ax.plot(node_tvl(target_node), node_collateral(target_node), 'ro')
+                ax2.plot(node_tvl(target_node), node_collateral(target_node), 'ro')
                 e.description = f"Showing location of {display_name}"
             except KeyError:
                 await ctx.send(f"{display_name} not found in data set - it must have at least one minipool")
