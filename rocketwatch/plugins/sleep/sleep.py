@@ -75,7 +75,7 @@ class Oura(commands.Cog):
         e = Embed(title="Invis's Sleep Schedule")
         current_date = datetime.datetime.now()
         tz = pytz.timezone("Europe/Vienna")
-        start_date = current_date - datetime.timedelta(days=120)
+        start_date = current_date - datetime.timedelta(days=60)
         # make start date timezone aware
         start_date = tz.localize(start_date)
         end_date = current_date
