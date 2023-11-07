@@ -6,6 +6,7 @@ import math
 import discord
 import humanize
 from discord import Color
+from ens import InvalidName
 from etherscan_labels import Addresses
 
 from strings import _
@@ -13,6 +14,7 @@ from utils import readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
+from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
@@ -36,6 +38,40 @@ class Embed(discord.Embed):
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
         footer_parts.extend(parts)
         self.set_footer(text=" · ".join(footer_parts))
+
+
+# Convert a user-provided string into a display name and address.
+# If an ens name is provided, it will be used as the display name.
+# If an address is provided, the display name will either be the reverse record or the address.
+# If the user input isn't sanitary, send an error message back to the user and return None, None.
+async def resolve_ens(ctx, node_address):
+    # if it looks like an ens, attempt to resolve it
+    address = None
+    if "." in node_address:
+        try:
+            address = ens.resolve_name(node_address)
+            if not address:
+                await ctx.send("ENS name not found")
+                return None, None
+
+            return node_address, address
+        except InvalidName:
+            await ctx.send("Invalid ENS name")
+            return None, None
+
+    # if it's just an address, look for a reverse record
+    try:
+        address = w3.toChecksumAddress(node_address)
+    except Exception:
+        await ctx.send("Invalid address")
+        return None, None
+
+    try:
+        display_name = ens.get_name(node_address) or address
+        return display_name, address
+    except InvalidName:
+        await ctx.send("Invalid address")
+        return None, None
 
 
 def el_explorer_url(target, name="", prefix="", make_code=False):

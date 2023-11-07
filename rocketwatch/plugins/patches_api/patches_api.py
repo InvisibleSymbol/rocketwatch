@@ -10,7 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed, ens
+from utils.embeds import Embed, resolve_ens
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -31,25 +31,12 @@ class PatchesAPI(commands.Cog):
         Show the effective RPL staked by users
         """
         await ctx.defer(ephemeral=True)
-        ens_name = None
+        display_name = None
         address = None
-        if "." in node_address:
-            try:
-                address = ens.resolve_name(node_address)
-                if not address:
-                    await ctx.send("ENS name not found")
-                    return
-                ens_name = node_address
-            except InvalidName:
-                await ctx.send("Invalid ENS name")
-                return
-        else:
-            try:
-                address = w3.toChecksumAddress(node_address)
-                ens_name = ens.get_name(address)
-            except InvalidName:
-                await ctx.send("Invalid address")
-                return
+        display_name, address = await resolve_ens(ctx, node_address)
+        if display_name is None:
+            return
+
         try:
             patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
         except Exception as e:
@@ -57,7 +44,7 @@ class PatchesAPI(commands.Cog):
             await ctx.send("Error fetching node data from SprocketPool API. Blame Patches.")
             return
         e = Embed()
-        e.title = f"Upcoming rewards for {ens_name or address}"
+        e.title = f"Upcoming rewards for {display_name}"
         estimated_end_time = patches_res["startTime"] + rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime")
         e.description = f"Values based upon data from <t:{patches_res['time']}:R> (<t:{patches_res['time']}>).\nThis is for Interval {patches_res['interval']}," \
                         f" which ends <t:{estimated_end_time}:R> (<t:{estimated_end_time}>)."

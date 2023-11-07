@@ -9,14 +9,12 @@ from discord import File
 from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
-from ens import InvalidName
 from matplotlib.ticker import FuncFormatter
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed, ens
+from utils.embeds import Embed, resolve_ens
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
 from utils.thegraph import get_average_collateral_percentage_per_node, get_node_minipools_and_collateral
 from utils.visibility import is_hidden
 
@@ -58,30 +56,19 @@ class Collateral(commands.Cog):
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
+        display_name = None
         address = None
         if node_address is not None:
-            if "." in node_address:
-                try:
-                    address = ens.resolve_name(node_address)
-                    if not address:
-                        await ctx.send("ENS name not found")
-                        return
-                except InvalidName:
-                    await ctx.send("Invalid ENS name")
-                    return
-            else:
-                try:
-                    address = w3.toChecksumAddress(node_address)
-                except InvalidName:
-                    await ctx.send("Invalid address")
-                    return
+            display_name, address = await resolve_ens(ctx, node_address)
+            if display_name is None:
+                return
 
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         data = get_node_minipools_and_collateral()
 
         # Calculate each node's tvl and collateral and add it to the data
         def node_tvl(node):
-            return int(node["eb8s"]) * 8 + int(node["eb16s"]) * 16 + solidity.to_float(node["rplStaked"]) * rpl_price
+            return int(node["eb8s"]) * 8 + int(node["eb16s"]) * 16
 
         def node_collateral(node):
             eth = int(node["eb16s"]) * 16 + int(node["eb8s"]) * (8 if bonded else 24)
@@ -89,53 +76,58 @@ class Collateral(commands.Cog):
                 return 0
             return 100 * (solidity.to_float(node["rplStaked"]) * rpl_price) / eth
 
-        def minipools(node):
+        def node_minipools(node):
             return int(node["eb16s"]) + int(node["eb8s"])
 
+        x, y, c = [], [], []
+        max_minipools = 0
         for node in data.values():
-            node.update(
-                {
-                    "tvl": node_tvl(node),
-                    "collateral": node_collateral(node),
-                    "minipools": minipools(node)
-                }
-            )
+            minis = node_minipools(node)
+            if minis <= 0:
+                continue
 
-        nodes = list(filter(lambda node: node["minipools"] != 0, data.values()))
-
-        # sort nodes ascending by tvl
-        nodes.sort(key=lambda node: node["tvl"])
-
-        # create the scatter plot
-        x = [node["tvl"] for node in nodes]
-        y = [node["collateral"] for node in nodes]
-        c = [math.log10(node["minipools"]) for node in nodes]
-        max_minipools = max([node["minipools"] for node in nodes])
+            x.append(node_tvl(node))
+            y.append(node_collateral(node))
+            c.append(math.log10(minis))
+            max_minipools = max(max_minipools, minis)
 
         e = Embed()
         img = BytesIO()
         fig, ax = plt.subplots()
-        ax.set_xscale("log")
-        paths = ax.scatter(x, y, c=c, alpha=0.33)
-        legend = ax.legend(*paths.legend_elements(func=lambda x: 10**x, num=[1,10,100,max_minipools]), loc="upper right", title="Minipools")
+
+        # create the scatter plot
+        paths = ax.scatter(x, y, c=c, alpha=0.15)
+
+        # log-scale the X-axis to account for thomas
+        ax.set_xscale("log", base=8)
+
+        # Add a legend for the color-coding
+        legend = ax.legend(*paths.legend_elements(func=lambda x: 10**x,
+                           num=[1,10,100,max_minipools]),
+                           loc="upper right",
+                           title="Minipools")
         ax.add_artist(legend)
+
+        # Add labels and units
         ax.set_ylabel(f"Collateral (percent {'bonded' if bonded else 'borrowed'})")
         ax.yaxis.set_major_formatter("{x:.0f}%")
-        ax.set_xlabel("Node TVL in Eth")
-        ax.xaxis.set_major_formatter(lambda x, _: "{:.1f}k".format(x / 1000))
+        ax.set_xlabel("Node Bond (Eth only - log scale)")
+        ax.xaxis.set_major_formatter("{x:.0f}")
 
-        # Add lines
-        if node_address is not None:
+        # Add a red dot if the user asked to highlight their node
+        if address is not None:
             # Print a vline and hline through the requested node
-            target_node = data[address]
-            if target_node:
+            try:
+                target_node = data[address]
                 plt.plot(node_tvl(target_node), node_collateral(target_node), 'ro')
-                e.set_footer_parts([f"Showing location of {node_address}"])
-            else:
-                e.set_footer_parts([f"{node_address} not found in set"])
+                e.description = f"Showing location of {display_name}"
+            except KeyError:
+                await ctx.send(f"{display_name} not found in data set - it must have at least one minipool")
+                return
+
+        # Add horizontal lines showing the 10-15% range made optimal by RPIP-30
         if not bonded:
-            ax.axhline(y=10)
-            ax.axhline(y=15)
+            ax.axhspan(10, 15, alpha=0.1, color="grey")
 
         fig.tight_layout()
 
