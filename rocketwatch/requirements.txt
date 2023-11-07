@@ -28,7 +28,7 @@ multicall==0.7.3
 dice==3.1.2
 openai==0.27.8
 transformers==4.30.0
-schedule==1.2.0
+schedule==1.2.1
 suntimes==1.1.2
 pydantic<2
 icalendar==5.0.11
