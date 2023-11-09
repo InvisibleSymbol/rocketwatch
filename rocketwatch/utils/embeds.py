@@ -307,7 +307,7 @@ def assemble(args):
 
     if "smoothie_amount" in args:
         e.add_field(name="Smoothing Pool Balance",
-                    value=f"{args.smoothie_amount} ETH")
+                    value=f"||{args.smoothie_amount}|| ETH")
 
     if "reason" in args and args["reason"]:
         e.add_field(name="Likely Revert Reason",
