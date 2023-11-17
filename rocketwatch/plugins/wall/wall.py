@@ -110,7 +110,7 @@ class Wall(commands.Cog):
                 d = await self.cow_get_effective_exchange_rate_using_delta(weth_address, rpl_address, amount)
             except Exception as err:
                 log.exception(err)
-                continue
+                return
             # get slippage
             slippage = (d["rate"] - reference_point) / reference_point
             log.debug(f"Selling {amount} ETH for RPL at {d['rate']} ({slippage})")
@@ -132,7 +132,7 @@ class Wall(commands.Cog):
                 d = await self.cow_get_effective_exchange_rate_using_delta(rpl_address, weth_address, amount)
             except Exception as err:
                 log.exception(err)
-                continue
+                return
             # invert rate
             d["rate"] = 1 / d["rate"]
             # get slippage
