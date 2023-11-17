@@ -51,7 +51,7 @@ COLORS = {
     "Prysm"           : "#40bfbf",
     "Lighthouse"      : "#9933cc",
     "Teku"            : "#3357cc",
-    "LodeStar"        : "#fb5b9d",
+    "Lodestar"        : "#fb5b9d",
 
     "Infura"          : "#ff2f00",
     "Pocket"          : "#e216e9",
