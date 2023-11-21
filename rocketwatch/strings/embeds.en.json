@@ -243,7 +243,7 @@
     },
     "mev_proposal_smoothie_event": {
         "title": ":cup_with_straw: Large Smoothing Pool Proposal",
-        "description": "Huge shout out to the smoothing pool! Just wasted an **%{reward_amount} eth** proposal 👍👍👍👍 what a useless system. Folks do yourself a favor and quit the smoothing pool. There is no universe where this garbage mechanic makes any fucking sense. (Minipool %{minipool})!"
+        "description": "Minipool %{minipool} has proposed a Block worth **%{reward_amount} ETH**!"
     },
     "minipool_vacancy_prepared_event": {
         "title": ":link: Solo Migration Initiated",
