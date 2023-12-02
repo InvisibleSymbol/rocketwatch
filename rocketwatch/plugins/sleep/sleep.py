@@ -33,6 +33,8 @@ class Oura(commands.Cog):
                 data = await resp.text()
         cal = Calendar.from_ical(data)
         for event in cal.walk("VEVENT"):
+            if not isinstance(event["DTSTART"].dt, datetime.datetime):
+                continue
             sd = event["DTSTART"].dt.replace(tzinfo=pytz.UTC).astimezone(
                     pytz.timezone("Europe/Vienna"))
             sd_r = sd + datetime.timedelta(days=1) if sd > sd.replace(hour=18, minute=0, second=0) else sd
