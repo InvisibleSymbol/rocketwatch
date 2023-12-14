@@ -44,7 +44,7 @@ class Wall(commands.Cog):
             return
         self.run_loop.start()
 
-    @tasks.loop(seconds=120)
+    @tasks.loop(seconds=300)
     async def run_loop(self):
         try:
             await self.gather_new_data()
