@@ -136,7 +136,7 @@ class KarmaUtils(GroupCog, name="karma"):
     # user lookup command, defaults to caller. top 10 points split by issuer
     @app_commands.command(name="user")
     async def user(self, interaction: Interaction, user: User = None):
-        await interaction.response.defer(ephemeral=is_hidden_weak(interaction) or not user)
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction) or not user or user.id == interaction.user.id)
         if not user:
             user = interaction.user
         # find the top karma users
