@@ -8,7 +8,7 @@ from pymongo import IndexModel
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("karma")
 log.setLevel(cfg["log_level"])
@@ -101,7 +101,7 @@ class KarmaUtils(GroupCog, name="karma"):
 
     @app_commands.command(name="top")
     async def top(self, interaction: Interaction):
-        await interaction.response.defer(ephemeral=is_hidden(interaction))
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction))
         # find the top karma users
         top = await self.db.karma.aggregate([
             {"$group": {"_id": "$user", "points": {"$sum": "$points"}}},
@@ -136,7 +136,7 @@ class KarmaUtils(GroupCog, name="karma"):
     # user lookup command, defaults to caller. top 10 points split by issuer
     @app_commands.command(name="user")
     async def user(self, interaction: Interaction, user: User = None):
-        await interaction.response.defer(ephemeral=is_hidden(interaction) or not user)
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction) or not user)
         if not user:
             user = interaction.user
         # find the top karma users
