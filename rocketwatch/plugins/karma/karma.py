@@ -107,16 +107,18 @@ class KarmaUtils(GroupCog, name="karma"):
             {"$group": {"_id": "$user", "points": {"$sum": "$points"}}},
             {"$sort": {"points": -1}},
             {"$limit": 10},
-            # lookup top issuer for each user
             {"$lookup": {
-                "from"        : "karma",
-                "localField"  : "_id",
-                "foreignField": "user",
-                "as"          : "issuer"
+                "from"    : "karma",
+                "let"     : {"user_id": "$_id"},
+                "pipeline": [
+                    {"$match": {"$expr": {"$eq": ["$user", "$$user_id"]}}},
+                    {"$group": {"_id": "$issuer", "total": {"$sum": "$points"}}},
+                    {"$sort": {"total": -1}},
+                    {"$limit": 1}
+                ],
+                "as"      : "top_issuer"
             }},
-            {"$unwind": "$issuer"},
-            {"$project": {"_id": 1, "points": 1, "issuer": "$issuer.issuer"}}
-
+            {"$project": {"_id": 1, "points": 1, "issuer": {"$arrayElemAt": ["$top_issuer._id", 0]}}}
         ]).to_list(length=10)
         e = Embed(title="Top 10 Karma Users")
         des = ""
