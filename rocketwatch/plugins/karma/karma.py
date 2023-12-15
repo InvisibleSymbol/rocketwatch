@@ -142,7 +142,7 @@ class KarmaUtils(GroupCog, name="karma"):
         # find the top karma users
         top = await self.db.karma.find({"user": user.id}).sort("points", -1).to_list(length=10)
         if not top:
-            await interaction.edit_original_response(content=f"`{user.mention}` has no points!")
+            await interaction.edit_original_response(content=f"`{user.global_name or user.name}` has no points!")
             return
         # fetch total score for user
         total = await self.db.karma.aggregate([
