@@ -124,6 +124,7 @@ class Wall(commands.Cog):
                 "rate"       : d["rate"],
                 "slippage"   : slippage
             })
+            await asyncio.sleep(0.25)
         # get buy depth for 10, 100, 1000, 10000, 100000, 1000000 RPL but like in ETH
         # flip sell and buy token
         for amount in [*list(range(1000, 30000, 3000)), *list(range(30000, 200000, 10000))]:
@@ -148,6 +149,7 @@ class Wall(commands.Cog):
                 "rate"       : d["rate"],
                 "slippage"   : slippage
             })
+            await asyncio.sleep(0.25)
         # store data in db
         await self.db["wall"].insert_many(tmp)
 
