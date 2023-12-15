@@ -46,6 +46,7 @@ class Wall(commands.Cog):
 
     @tasks.loop(seconds=300)
     async def run_loop(self):
+        return # cowswap spanked me for using their api
         try:
             await self.gather_new_data()
         except Exception as err:
