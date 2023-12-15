@@ -26,6 +26,7 @@ class QueuedCowOrders(commands.Cog):
         self.state = "OK"
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
+        self.last_run = datetime.now()
         # create the cow_orders collection if it doesn't exist
         # limit the collection to 10000 entries
         # create an index on order_uid
@@ -40,6 +41,8 @@ class QueuedCowOrders(commands.Cog):
         ]
 
     def run_loop(self):
+        if self.state == "ERROR" and datetime.now() - self.last_run < timedelta(minutes=5):
+            return []
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -50,6 +53,8 @@ class QueuedCowOrders(commands.Cog):
         except Exception as e:
             log.error(f"Error while checking for new Cow Orders: {e}")
             result = []
+            self.state = "ERROR"
+        self.last_run = datetime.now()
         return result
 
     # noinspection PyTypeChecker
