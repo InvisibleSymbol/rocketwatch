@@ -94,7 +94,7 @@ class KarmaUtils(GroupCog, name="karma"):
         # create a self-deleting announcement message
         await interaction.channel.send(
             f"Removed {amount} `{interaction.user.global_name or interaction.user.name}`"
-            f" point{'s' if amount != 1 else ''} to `{user.global_name or user.name}`!",
+            f" point{'s' if amount != 1 else ''} from `{user.global_name or user.name}`!",
             delete_after=30
         )
         await interaction.delete_original_response()
