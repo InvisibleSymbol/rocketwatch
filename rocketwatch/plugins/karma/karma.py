@@ -68,8 +68,8 @@ class KaramaUtils(GroupCog):
         )
         # create a self-deleting announcement message
         await interaction.channel.send(
-            f"Gave {amount} `{interaction.user.display_name}` point{'s' if amount != 1 else ''} to `{user.display_name}`!",
-            delete_after=5
+            f"Gave {amount} `{interaction.user.global_name}` point{'s' if amount != 1 else ''} to `{user.display_name}`!",
+            delete_after=30
         )
         await interaction.delete_original_response()
 
@@ -91,8 +91,8 @@ class KaramaUtils(GroupCog):
         )
         # create a self-deleting announcement message
         await interaction.channel.send(
-            f"Removed {amount} `{interaction.user.display_name}` point{'s' if amount != 1 else ''} from `{user.display_name}`!",
-            delete_after=10
+            f"Removed {amount} `{interaction.user.global_name}` point{'s' if amount != 1 else ''} from `{user.display_name}`!",
+            delete_after=30
         )
         await interaction.delete_original_response()
 
