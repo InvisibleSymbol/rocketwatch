@@ -62,7 +62,7 @@ class QueuedCowOrders(commands.Cog):
         api_url = "https://api.cow.fi/mainnet/api/v1/auction"
         response = requests.get(api_url)
         if response.status_code != 200:
-            log.error("Cow API returned non-200 status code")
+            log.error("Cow API returned non-200 status code: %s", response.text)
             raise Exception("Cow API returned non-200 status code")
 
         cow_orders = response.json()["orders"]
