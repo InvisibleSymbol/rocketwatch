@@ -6,7 +6,7 @@ from io import BytesIO
 import motor.motor_asyncio
 from bson import SON
 from cachetools import TTLCache
-from discord import NotFound, File
+from discord import NotFound, File, Interaction, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -212,12 +212,23 @@ class Metrics(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, excep):
-        log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
+        try:
+            author = ctx.author
+        except AttributeError:
+            author = ctx.user
+        log.info(f"/{ctx.command.name} called by {author} in #{ctx.channel.name} ({ctx.guild}) failed")
 
-        msg = f'{ctx.author.mention} An unexpected error occurred. This Error has been automatically reported. Please try again later'
+        msg = f'{author.mention} An unexpected error occurred. This Error has been automatically reported. Please try again later'
+        if isinstance(excep, commands.errors.MaxConcurrencyReached):
+            msg = f'{author.mention} Someone else is already using this command. Please try again later'
+        if isinstance(excep, app_commands.errors.CommandOnCooldown):
+            msg = f'Slow down! You are using this command too fast. Please try again in {excep.retry_after:.0f} seconds'
         try:
             # try to inform the user. this might fail if it took too long to respond
-            await ctx.send(content=msg)
+            await ctx.send(content=msg, ephemeral=True)
+        except AttributeError:
+            await ctx.response.send_message(msg, ephemeral=True,
+                                            delete_after=excep.retry_after if "retry_after" in dir(excep) else 60)
         except NotFound:
             # so fall back to a normal channel message if that happens
             try:
