@@ -19,8 +19,7 @@ class KarmaUtils(GroupCog, name="karma"):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.menus = []
-        for i in range(2):
-            c = 10 ** i
+        for c in [5,10]:
             self.menus.append(app_commands.ContextMenu(
                 name=f"Give {c} Point{'s' if c != 1 else ''}",
                 callback=self.add_user_points,
