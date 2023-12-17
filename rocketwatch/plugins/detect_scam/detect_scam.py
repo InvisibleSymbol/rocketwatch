@@ -63,6 +63,7 @@ class DetectScam(commands.Cog):
     async def on_message(self, message):
         checks = [
             self.markdown_link_trick(message),
+            self.ticket_with_link(message)
         ]
         await asyncio.gather(*checks)
 
@@ -80,6 +81,12 @@ class DetectScam(commands.Cog):
             if "." in m[0] and m[0] != m[1]:
                 await self.report_suspicious_message(message,
                                                      "Markdown link with possible domain in visible portion that does not match the actual domain")
+
+    async def ticket_with_link(self, message):
+        # message contains the word "ticket" and a link
+        if "ticket" in message.content.lower() and "http" in message.content.lower():
+            await self.report_suspicious_message(message, "There is no ticket system in this server.")
+
 
     async def reaction_spam(self, reaction, user):
         # reaction spam is when one user reacts to a message with multiple reactions by only themselves and in quick succession
