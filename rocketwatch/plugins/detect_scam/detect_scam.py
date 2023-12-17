@@ -149,6 +149,16 @@ class DetectScam(commands.Cog):
             # record in db that message was deleted
             await self.db["scam_reports"].update_one({"guild_id": message.guild.id, "message_id": message.id},
                                                      {"$set": {"deleted": True}})
+        # TODO remove this
+        if message.channel.id == cfg["rocketpool.support.channel_id"]:
+            e = Embed(title="Message Deleted")
+            e.description = f"**User:** {message.author.mention} ({message.author.id})\n" \
+                            f"**Channel:** {message.channel.mention} ({message.channel.id})\n" \
+                            f"**Message:**\n{message.content}"
+            e.set_footer(text=f"Message ID: {message.id}")
+            ch = await get_or_fetch_channel(self.bot, 895367217288466482)
+            await ch.send(embed=e)
+
 
     @commands.Cog.listener()
     # on user ban
