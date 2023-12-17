@@ -41,7 +41,7 @@ class DetectScam(commands.Cog):
             e.set_footer(text=bak_footer)
             # report into report-scams channel as well
             ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
-            e.description += f"User ID: `{msg.author.id}`\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
+            e.description += f"User ID: `{msg.author.id}` ({msg.author.mention})\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
             e.description += "Original message has been attached as a file. Please review and take appropriate action."
             with io.StringIO(msg.content) as f:
                 report = await ch.send(embed=e, file=File(f, filename="original_message.txt"))
