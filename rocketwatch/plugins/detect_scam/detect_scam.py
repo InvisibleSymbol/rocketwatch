@@ -5,7 +5,7 @@ from datetime import datetime
 
 import regex as re
 from datetime import timezone
-from discord import File, errors, Color
+from discord import File, errors, Color, DeletedReferencedMessage
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
@@ -26,7 +26,11 @@ class DetectScam(commands.Cog):
 
     async def report_suspicious_message(self, msg, reason):
         # check if the message has been deleted
-        if msg.deleted:
+        try:
+            msg = await msg.channel.fetch_message(msg.id)
+            if isinstance(msg, DeletedReferencedMessage):
+                return
+        except errors.NotFound:
             return
         # lock
         async with self.report_lock:
