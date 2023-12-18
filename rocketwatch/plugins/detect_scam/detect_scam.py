@@ -25,6 +25,9 @@ class DetectScam(commands.Cog):
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
 
     async def report_suspicious_message(self, msg, reason):
+        # check if the message has been deleted
+        if msg.deleted:
+            return
         # lock
         async with self.report_lock:
             # check if message has already been reported
