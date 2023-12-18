@@ -67,6 +67,8 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        if message.guild != cfg["rocketpool.support.server_id"]:
+            return
         checks = [
             self.markdown_link_trick(message),
             self.ticket_with_link(message)
@@ -75,6 +77,8 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
+        if reaction.guild != cfg["rocketpool.support.server_id"]:
+            return
         checks = [
             self.reaction_spam(reaction, user)
         ]
