@@ -19,6 +19,15 @@
             ]
         },
         {
+            "contract_name": "rocketNetworkPrices",
+            "events": [
+                {
+                    "event_name": "PricesUpdated",
+                    "name": "price_update_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketMerkleDistributorMainnet",
             "events": [
                 {
