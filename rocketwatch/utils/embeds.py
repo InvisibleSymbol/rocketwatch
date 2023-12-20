@@ -207,6 +207,8 @@ def assemble(args):
         e.colour = Color.from_rgb(235, 86, 86)
     if "buy_rpl" in args.event_name or "finality_delay_recover_event" in args.event_name:
         e.colour = Color.from_rgb(86, 235, 86)
+    if "price_update_event" in args.event_name:
+        e.colour = Color.from_rgb(86, 235, 235)
 
     do_small = all([
         _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small",

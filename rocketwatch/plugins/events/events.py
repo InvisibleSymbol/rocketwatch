@@ -147,6 +147,19 @@ class QueuedEvents(commands.Cog):
             if d > 0 or abs(d) < 0.00001:
                 return None
 
+        if "price_update_event" in event_name:
+            args.value = args.rplPrice
+            next_period = rp.call("rocketRewardsPool.getClaimIntervalTimeStart", block=event.blockNumber) + rp.call("rocketRewardsPool.getClaimIntervalTime", block=event.blockNumber)
+            args.rewardPeriodEnd = next_period
+            update_rate = rp.call("rocketDAOProtocolSettingsNetwork.getSubmitPricesFrequency", block=event.blockNumber) # in amount of blocks
+            # get timestamp of event block
+            ts = w3.eth.getBlock(event.blockNumber).timestamp
+            # check if the next update is after the next period ts
+            earliest_next_update = ts + (update_rate * 12)
+            # if it will update before the next period, skip
+            if earliest_next_update < next_period:
+                return None
+
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
 
