@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import io
+import logging
 from datetime import datetime
 
 import regex as re
@@ -13,6 +14,10 @@ from cachetools import TTLCache
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.get_or_fetch import get_or_fetch_channel
+
+
+log = logging.getLogger("detect_scam")
+log.setLevel(cfg["log_level"])
 
 
 class DetectScam(commands.Cog):
@@ -67,7 +72,8 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.guild != cfg["rocketpool.support.server_id"]:
+        if message.guild.id != cfg["rocketpool.support.server_id"]:
+            log.warning(f"Ignoring message from {message.guild.id} (Content: {message.content})")
             return
         checks = [
             self.markdown_link_trick(message),
@@ -77,7 +83,8 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
-        if reaction.guild != cfg["rocketpool.support.server_id"]:
+        if reaction.message.guild.id != cfg["rocketpool.support.server_id"]:
+            log.warning(f"Ignoring reaction from {reaction.message.guild.id} (Content: {reaction.message.content})")
             return
         checks = [
             self.reaction_spam(reaction, user)
