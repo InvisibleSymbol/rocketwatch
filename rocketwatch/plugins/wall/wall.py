@@ -154,6 +154,7 @@ class Wall(commands.Cog):
         # store data in db
         await self.db["wall"].insert_many(tmp)
 
+    """
     @hybrid_command()
     async def depth(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
@@ -239,6 +240,7 @@ class Wall(commands.Cog):
         e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
         e.set_image(url="attachment://depth.png")
         await ctx.send(file=File(file, "depth.png"), embed=e)
+    """
 
     @hybrid_command()
     async def wall(self, ctx: Context):
