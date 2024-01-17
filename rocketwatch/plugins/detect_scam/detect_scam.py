@@ -77,7 +77,8 @@ class DetectScam(commands.Cog):
             return
         checks = [
             self.markdown_link_trick(message),
-            self.ticket_with_link(message)
+            self.ticket_with_link(message),
+            self.paperhands(message)
         ]
         await asyncio.gather(*checks)
 
@@ -104,6 +105,10 @@ class DetectScam(commands.Cog):
         if "ticket" in message.content.lower() and "http" in message.content.lower():
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
+    async def paperhands(self, message):
+        # message contains the word "paperhand" and a link
+        if "paperhand" in message.content.lower() and "http" in message.content.lower():
+            await self.report_suspicious_message(message, "High chance the linked website is a scam.")
 
     async def reaction_spam(self, reaction, user):
         # reaction spam is when one user reacts to a message with multiple reactions by only themselves and in quick succession
