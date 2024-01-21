@@ -64,7 +64,7 @@ class PinnedMessages(commands.Cog):
                     e = Embed()
                     e.title = message["title"]
                     e.description = message["content"]
-                    e.footer.text = "This message has been pinned by Invis. Will be automatically removed if not updated within 6 hours."
+                    e.set_footer(text="This message has been pinned by Invis. Will be automatically removed if not updated within 6 hours.")
                     m = await channel.send(embed=e)
                     await self.db.pinned_messages.update_one({"_id": message["_id"]}, {"$set": {"message_id": m.id}})
             except Exception as err:
