@@ -99,7 +99,7 @@ def parse_propsal(entry):
         # Allnodes proposal
         data["type"] = "Allnodes"
         data["consensus_client"] = "Teku"
-        data["execution_client"] = "Geth"
+        data["execution_client"] = "Besu"
     else:
         # normal proposal
         # try to detect the client from the graffiti
