@@ -142,7 +142,7 @@ class OpenAi(commands.Cog):
         messages = [message async for message in channel.history(limit=4096) if message.content != ""]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages = [message for message in messages if message.created_at > cut_off_ts]
-        if len([]) < 320:
+        if len(messages) < 320:
             return None, None, None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
         log.info(f"Prompt len: {len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt)))}")
