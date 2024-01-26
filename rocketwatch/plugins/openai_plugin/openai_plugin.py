@@ -139,7 +139,7 @@ class OpenAi(commands.Cog):
         return f"{prefix}\n\n{prompt}\n\n{suffix}"
 
     async def prompt_model(self, channel, prompt, cut_off_ts):
-        messages = [message async for message in channel.history(limit=1024) if message.content != ""]
+        messages = [message async for message in channel.history(limit=4096) if message.content != ""]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages = [message for message in messages if message.created_at > cut_off_ts]
         if len([]) < 320:
