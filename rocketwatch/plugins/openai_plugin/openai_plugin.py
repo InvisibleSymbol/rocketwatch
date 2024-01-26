@@ -150,9 +150,8 @@ class OpenAi(commands.Cog):
             # remove the oldest message
             messages.pop(0)
         engine = "gpt-4-turbo-preview"
-        prompt = self.generate_prompt([], prefix, prompt)
+        prompt = self.generate_prompt(messages, prefix, prompt)
         # get all models
-        models = await self.client.models.list()
         response = await self.client.chat.completions.create(
             model=engine,
             max_tokens=4096,
