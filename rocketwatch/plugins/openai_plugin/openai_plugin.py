@@ -159,7 +159,8 @@ class OpenAi(commands.Cog):
             messages=[{"role": "system", "content": prompt}]
         )
         # find all {message:index} in response["choices"][0]["message"]["content"]
-        references = re.findall(r"{message:([0-9]+)}", response["choices"][0]["message"]["content"])
+        log.debug(response.choices[0].message.content)
+        references = re.findall(r"{message:([0-9]+)}", response.choices[0].message.content)
         # sanitize references
         references = [int(reference) for reference in references if int(reference) < len(messages)]
         # replace all {message:index} with a link to the message
