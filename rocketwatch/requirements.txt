@@ -10,7 +10,7 @@ requests==2.31.0
 uptime==3.0.1
 discord.py==2.3.2
 config==0.5.1
-pytz==2022.7.1
+pytz==2023.4
 matplotlib==3.7.1
 scipy==1.11.3
 inflect==6.0.2
