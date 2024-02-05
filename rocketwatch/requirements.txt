@@ -1,4 +1,4 @@
-psutil==5.9.6
+psutil==5.9.8
 python_i18n==0.3.9
 web3==5.31.4
 humanize==4.6.0
