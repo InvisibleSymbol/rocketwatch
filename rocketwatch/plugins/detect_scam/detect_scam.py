@@ -68,7 +68,7 @@ class DetectScam(commands.Cog):
             ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
             e.description += f"User ID: `{msg.author.id}` ({msg.author.mention})\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
             e.description += "Original message has been attached as a file. Please review and take appropriate action."
-            with io.StringIO(msg.content) as f:
+            with io.StringIO(get_text_of_message(msg)) as f:
                 report = await ch.send(embed=e, file=File(f, filename="original_message.txt"))
             # insert back reference into database so we can delete it later if removed
             await self.db["scam_reports"].insert_one({
