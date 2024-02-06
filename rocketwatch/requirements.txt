@@ -1,4 +1,4 @@
-psutil==5.9.6
+psutil==5.9.8
 python_i18n==0.3.9
 web3==5.31.4
 humanize==4.6.0
@@ -15,7 +15,7 @@ matplotlib==3.7.1
 scipy==1.11.3
 inflect==6.0.2
 motor==3.1.1
-wordcloud==1.9.2
+wordcloud==1.9.3
 web3-multicall==0.0.7
 colorama==0.4.6
 seaborn==0.12.2

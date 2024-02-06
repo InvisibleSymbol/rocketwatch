@@ -71,10 +71,10 @@ class OpenAi(commands.Cog):
         last_ts = last_ts["timestamp"].replace(tzinfo=pytz.utc) if last_ts and "timestamp" in last_ts else datetime.now(timezone.utc) - timedelta(days=365)
         prompt = (
             "Task Description:\n"
-            "I need a summary of the previous chat log. This summary should be presented in the form of a bullet list.\n\n"
+            "I need a summary of the entire chat log. This summary should be presented in the form of a bullet list.\n\n"
             "Format and Length Requirements:\n"
-            "- The bullet list must be kept short and concise, but has to cover the entire chat log.\n"
-            "- Each bullet point should chronologically represent a distinct topic discussed in the chat log.\n\n"
+            "- The bullet list must be kept short and concise, but the list has to cover the entire chat log.\n"
+            "- Each bullet point should represent a distinct topic discussed in the chat log.\n\n"
             "Content Constraints:\n"
             "- Limit each topic to a single bullet point in the list.\n"
             "- Omit any topics that are uninteresting or not crucial to the overall understanding of the chat log.\n"
