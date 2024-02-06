@@ -20,6 +20,19 @@ log = logging.getLogger("detect_scam")
 log.setLevel(cfg["log_level"])
 
 
+def get_text_of_message(message):
+    text = ""
+    if message.content:
+        text += message.content + "\n"
+    if message.embeds:
+        for embed in message.embeds:
+            text += f"---\n Embed: {embed.title}\n{embed.description}\n---\n"
+    if message.attachments:
+        for attachment in message.attachments:
+            text += f"---\nAttachment: {attachment.url}\n---\n"
+    return text.lower()
+
+
 class DetectScam(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -78,7 +91,8 @@ class DetectScam(commands.Cog):
         checks = [
             self.markdown_link_trick(message),
             self.ticket_with_link(message),
-            self.paperhands(message)
+            self.paperhands(message),
+            self.mention_everyone(message)
         ]
         await asyncio.gather(*checks)
 
@@ -94,7 +108,7 @@ class DetectScam(commands.Cog):
 
     async def markdown_link_trick(self, message):
         r = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
-        matches = r.findall(message.content)
+        matches = r.findall(get_text_of_message(message))
         for m in matches:
             if "." in m[0] and m[0] != m[1]:
                 await self.report_suspicious_message(message,
@@ -102,13 +116,23 @@ class DetectScam(commands.Cog):
 
     async def ticket_with_link(self, message):
         # message contains the word "ticket" and a link
-        if "ticket" in message.content.lower() and "http" in message.content.lower():
+        txt = get_text_of_message(message.content)
+        if "ticket" in txt and "http" in txt:
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
     async def paperhands(self, message):
         # message contains the word "paperhand" and a link
-        if "paperhand" in message.content.lower() and "http" in message.content.lower():
+        txt = get_text_of_message(message.content)
+        # if has http and contains the word paperhand or paperhold
+        if any(x in txt for x in ["paperhand", "paperhold"]) and "http" in txt:
             await self.report_suspicious_message(message, "High chance the linked website is a scam.")
+
+    # contains @here or @everyone but doesn't actually have the permission to do so
+    async def mention_everyone(self, message):
+        txt = get_text_of_message(message.content)
+        if ("@here" in txt or "@everyone" in txt) and not message.author.guild_permissions.mention_everyone:
+            await self.report_suspicious_message(message, "Mentioned @here or @everyone without permission")
+
 
     async def reaction_spam(self, reaction, user):
         # reaction spam is when one user reacts to a message with multiple reactions by only themselves and in quick succession
@@ -172,12 +196,11 @@ class DetectScam(commands.Cog):
             # record in db that message was deleted
             await self.db["scam_reports"].update_one({"guild_id": message.guild.id, "message_id": message.id},
                                                      {"$set": {"deleted": True}})
-        # TODO remove this
         if message.channel.id == cfg["rocketpool.support.channel_id"]:
             e = Embed(title="Message Deleted")
             e.description = f"**User:** {message.author.mention} ({message.author.id})\n" \
                             f"**Channel:** {message.channel.mention} ({message.channel.id})\n" \
-                            f"**Message:**\n{message.content}"
+                            f"**Message:**\n{get_text_of_message(message.content)[:1000]}"
             e.set_footer(text=f"Message ID: {message.id}")
             ch = await get_or_fetch_channel(self.bot, 895367217288466482)
             await ch.send(embed=e)
