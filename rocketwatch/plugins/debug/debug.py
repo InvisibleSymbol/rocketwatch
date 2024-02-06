@@ -328,6 +328,25 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def fix_fuckup_4(self, ctx: Context):
+        """
+
+        Fix fuckup #4: detect_scam plugin self-reporting
+        """
+        await ctx.defer(ephemeral=True)
+        reports = await self.db["scam_reports"].find({"user_id": 884095717168259142})
+        await ctx.send(f"Deleting {len(reports)} self-reports")
+        channel = await get_or_fetch_channel(self.bot, 815453222205652992)
+        for report in reports:
+            assert report["user_id"] == 884095717168259142
+            msg = await channel.fetch_message(report["message_id"])
+            await msg.delete()
+        await ctx.send("Done")
+
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def talk(self, ctx: Context, channel: str, message: str):
         """
         Send a message to a channel.
