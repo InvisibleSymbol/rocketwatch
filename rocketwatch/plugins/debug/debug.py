@@ -349,6 +349,11 @@ class Debug(Cog):
                 await msg.delete()
             except:
                 pass
+            try:
+                msg = await channel.fetch_message(report["warning_id"])
+                await msg.delete()
+            except:
+                pass
         await ctx.send("Done")
 
 
