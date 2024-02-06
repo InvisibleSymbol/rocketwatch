@@ -339,8 +339,16 @@ class Debug(Cog):
         channel = await get_or_fetch_channel(self.bot, 815453222205652992)
         for report in reports:
             assert report["user_id"] == 884095717168259142
-            msg = await channel.fetch_message(report["message_id"])
-            await msg.delete()
+            try:
+                msg = await channel.fetch_message(report["message_id"])
+                await msg.delete()
+            except:
+                pass
+            try:
+                msg = await channel.fetch_message(report["report_id"])
+                await msg.delete()
+            except:
+                pass
         await ctx.send("Done")
 
 
