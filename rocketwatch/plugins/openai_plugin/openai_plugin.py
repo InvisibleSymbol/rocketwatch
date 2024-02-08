@@ -32,7 +32,7 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message, index):
-        text = f"{message.author.global_name or message.author.name} at {message.created_at.strftime('%H:%M')} ({{message:{index}}}):\n {message.content}"
+        text = f"{message.author.global_name or message.author.name} on {message.created_at.strftime('%a at %H:%M')} ({{message:{index}}}):\n {message.content}"
 
         # if there is an image attached, add it to the text as a note
         metadata = []
