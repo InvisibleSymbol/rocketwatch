@@ -15,6 +15,7 @@ from discord.ext.commands import hybrid_command
 from matplotlib import ticker
 from matplotlib.ticker import AutoMinorLocator
 from motor.motor_asyncio import AsyncIOMotorClient
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from scipy.interpolate import interp1d
 
 from utils import solidity
@@ -356,6 +357,38 @@ class Wall(commands.Cog):
 
         # use minimal whitespace
         plt.tight_layout()
+
+        max_y = max(x[1] for x in a)
+        if a[idx][1] < max_y * 0.05:
+            # generate surrounding indexes
+            left = 8
+            right = 2
+            x_min = a[idx - left][0]
+            x_max = a[idx + right][0]
+            # get y max
+            y_max = max(x[1] for x in a[idx - left:idx + right])
+            y_min = 0
+            # zoomed inset
+            axins = plt.gca().axes.inset_axes([0.02, 0.78, 0.2, 0.2])
+            # set yaxis bottom to 0
+            axins.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-pre", color="black", linewidth=1)
+            # red fill
+            axins.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="pre")
+            # green fill
+            axins.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="pre")
+            # draw line for current price
+            axins.axvline(price, color="black", linestyle="--", linewidth=1)
+            # set x limits
+            axins.set_xlim(x_min, x_max)
+            # set y limits
+            axins.set_ylim(y_min, y_max * 1.2)
+            # hide y axis
+            axins.yaxis.set_visible(False)
+            # hide x axis
+            axins.xaxis.set_visible(False)
+            # indicate zoomin using .indicate
+            plt.gca().axes.indicate_inset_zoom(axins, edgecolor="black")
+
 
         # store the graph in an file object
         file = BytesIO()
