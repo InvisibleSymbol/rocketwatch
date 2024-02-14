@@ -41,7 +41,7 @@ class QueuedCowOrders(commands.Cog):
         ]
 
     def run_loop(self):
-        if self.state == "ERROR" and datetime.now() - self.last_run < timedelta(minutes=5):
+        if self.state == "ERROR" and datetime.now() - self.last_run < timedelta(minutes=1):
             return []
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
@@ -64,7 +64,7 @@ class QueuedCowOrders(commands.Cog):
 
         # get all pending orders from the cow api (https://api.cow.fi/mainnet/api/v1/auction)
 
-        api_url = "https://api.cow.fi/mainnet/api/v1/auction"
+        api_url = "https://cow-proxy.invis.workers.dev"
         response = requests.get(api_url)
         if response.status_code != 200:
             log.error("Cow API returned non-200 status code: %s", response.text)
