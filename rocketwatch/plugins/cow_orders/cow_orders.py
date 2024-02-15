@@ -184,9 +184,9 @@ class QueuedCowOrders(commands.Cog):
             # request more data from the api
             extra = None
             try:
-                t = requests.get(f"https://api.cow.fi/mainnet/api/v1/orders/{order['uid']}")
+                t = requests.get(f"https://cow-proxy.invis.workers.dev/mainnet/api/v1/orders/{order['uid']}")
                 if t.status_code != 200:
-                    log.error(f"Failed to get more data from the cow api for order {order['uid']}: {data.text}")
+                    log.error(f"Failed to get more data from the cow api for order {order['uid']}: {t.text}")
                     continue
                 extra = t.json()
             except Exception as e:
