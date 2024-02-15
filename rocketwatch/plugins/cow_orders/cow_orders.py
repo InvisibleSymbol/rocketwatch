@@ -64,8 +64,7 @@ class QueuedCowOrders(commands.Cog):
 
         # get all pending orders from the cow api (https://api.cow.fi/mainnet/api/v1/auction)
 
-        api_url = "https://cow-proxy.invis.workers.dev"
-        response = requests.get(api_url)
+        response = requests.get("https://cow-proxy.invis.workers.dev/mainnet/api/v1/auction")
         if response.status_code != 200:
             log.error("Cow API returned non-200 status code: %s", response.text)
             raise Exception("Cow API returned non-200 status code")
@@ -118,13 +117,7 @@ class QueuedCowOrders(commands.Cog):
         cow_orders = [order for order in cow_orders if order["sellToken"] in self.tokens or order["buyToken"] in self.tokens]
 
         # filter all orders that are not open
-        cow_orders = [order for order in cow_orders if order["status"] == "open"]
-
-        # ensure that all orders have a availableBalance higher than the sellAmount
-        cow_orders = [order for order in cow_orders if int(order["availableBalance"] or 2**255) > int(order["sellAmount"]) and not order["invalidated"]]
-
-        # remove all orders that are older than 15 minutes
-        cow_orders = [order for order in cow_orders if datetime.now(timezone.utc) - datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")) < timedelta(minutes=15)]
+        cow_orders = [order for order in cow_orders if order["executed"] == "0"]
 
         # efficiently check if the orders are already in the database
         order_uids = [order["uid"] for order in cow_orders]
@@ -184,10 +177,32 @@ class QueuedCowOrders(commands.Cog):
                 if s.address == w3.toChecksumAddress("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"):
                     data["otherToken"] = "ETH"
             data["deadline"] = int(order["validTo"])
-            data["timestamp"] = int(datetime.fromisoformat(order["creationDate"].replace("Z", "+00:00")).timestamp())
             # if the rpl value in usd is less than 25k, ignore it
             if data["ourAmount"] * (rpl_price if token == "rpl" else reth_price) < 25000:
                 continue
+
+            # request more data from the api
+            extra = None
+            try:
+                t = requests.get(f"https://api.cow.fi/mainnet/api/v1/orders/{order['uid']}")
+                if t.status_code != 200:
+                    log.error(f"Failed to get more data from the cow api for order {order['uid']}: {data.text}")
+                    continue
+                extra = t.json()
+            except Exception as e:
+                log.error(f"Failed to get more data from the cow api for order {order['uid']}: {e}")
+                continue
+
+            if extra:
+                if extra["invalidated"]:
+                    log.info(f"Order {order['uid']} is invalidated, skipping")
+                    continue
+                created = datetime.fromisoformat(extra["creationDate"].replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - created > timedelta(minutes=15):
+                    log.info(f"Order {order['uid']} is older than 15 minutes, skipping")
+                    continue
+                data["timestamp"] = int(created.timestamp())
+
 
             data = prepare_args(data)
             embed = assemble(data)
