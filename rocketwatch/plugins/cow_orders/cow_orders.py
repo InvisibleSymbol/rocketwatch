@@ -41,7 +41,7 @@ class QueuedCowOrders(commands.Cog):
         ]
 
     def run_loop(self):
-        if self.state == "ERROR" and datetime.now() - self.last_run < timedelta(seconds=15):
+        if self.state == "ERROR" or datetime.now() - self.last_run < timedelta(seconds=15):
             return []
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
