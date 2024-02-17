@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 import logging
+import math
+from asyncio import run
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 
@@ -8,6 +10,7 @@ import aiohttp
 import humanize
 import matplotlib.pyplot as plt
 import numpy as np
+from aiohttp import ContentTypeError
 from discord import File
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
@@ -24,6 +27,7 @@ from utils.embeds import Embed
 from utils.readable import s_hex
 from utils.reporter import report_error
 from utils.rocketpool import rp
+from utils.sampler import CurveSampler
 from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
 from utils.visibility import is_hidden_weak
 
@@ -35,7 +39,20 @@ class Wall(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-
+        self.sell_sampler = CurveSampler(
+            max_step_size=2000,
+            max_y_space=0.02,
+            max_y_wanted=0.26,
+            max_steps=7,
+            max_attempts=7
+        )
+        self.buy_sampler = CurveSampler(
+            max_step_size=400,
+            max_y_space=0.02,
+            max_y_wanted=0.26,
+            max_steps=7
+        )
+        self.api_calls_count = 0
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()
 
@@ -45,9 +62,8 @@ class Wall(commands.Cog):
             return
         self.run_loop.start()
 
-    @tasks.loop(seconds=300)
+    @tasks.loop(seconds=60*30)
     async def run_loop(self):
-        return # cowswap spanked me for using their api
         try:
             await self.gather_new_data()
         except Exception as err:
@@ -55,7 +71,7 @@ class Wall(commands.Cog):
 
     async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
         # this gets a quote from the cow api
-        api_url = "https://api.cow.fi/mainnet/api/v1/quote"
+        api_url = "ttps://cow-proxy.invis.workers.dev/mainnet/api/v1/quote"
         params = {
             "sellToken"          : sell_token,
             "buyToken"           : buy_token,
@@ -67,12 +83,17 @@ class Wall(commands.Cog):
             "from"               : "0x0000000000000000000000000000000000000000",
             "signingScheme"      : "eip1271",
             "onchainOrder"       : True,
+            "priceQuality"       : "optimal",
             "kind"               : "sell",
             "sellAmountBeforeFee": str(int(sell_amount*10**18))
         }
+        self.api_calls_count += 1
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, json=params) as resp:
-                data = await resp.json()
+                try:
+                    data = await resp.json()
+                except ContentTypeError:
+                    raise Exception(f"Could not get sell depth for {sell_amount} RPL, response: {data}")
         try:
             return solidity.to_float(data["quote"]["buyAmount"])
         except KeyError:
@@ -80,7 +101,7 @@ class Wall(commands.Cog):
 
     async def cow_get_effective_exchange_rate_using_delta(self, sell_token, buy_token, sell_amount):
         # this method calculates the effective exchange rate using the delta between the 2 token exchanges close by
-        scale = max(1, sell_amount / 100)
+        scale = max(1, sell_amount / 50)
         # gather surrounding quotes
         numbers = await asyncio.gather(
             self.cow_get_exchange(sell_token, buy_token, sell_amount - scale),
@@ -97,7 +118,15 @@ class Wall(commands.Cog):
             "rate"       : effective_ratio
         }
 
+    async def get_slippage_at_price_or_whatever(self, sell_amount, sell_token, buy_token, rate, inverse=False):
+        # this method calculates the slippage at a given rate
+        buy_amount = sell_amount / rate
+        effective_rate = await self.cow_get_effective_exchange_rate_using_delta(sell_token, buy_token, sell_amount)
+        slippage = (effective_rate["rate"] - rate) / rate
+        return slippage
+
     async def gather_new_data(self):
+        self.api_calls_count = 0
         # gather depth sell / buy values
         tmp = []
         ts = datetime.utcnow()
@@ -106,56 +135,37 @@ class Wall(commands.Cog):
         d_ref = await self.cow_get_exchange(weth_address, rpl_address, 1)
         reference_point = 1 / d_ref
 
-        for amount in [*list(range(10, 300, 30)), *list(range(100, 2000, 100))]:
-            # get rate
-            try:
-                d = await self.cow_get_effective_exchange_rate_using_delta(weth_address, rpl_address, amount)
-            except Exception as err:
-                log.exception(err)
-                return
-            # get slippage
-            slippage = (d["rate"] - reference_point) / reference_point
-            log.debug(f"Selling {amount} ETH for RPL at {d['rate']} ({slippage})")
+        buy_samples = await self.buy_sampler.sample_curve(lambda x: self.get_slippage_at_price_or_whatever(x, weth_address, rpl_address, reference_point))
+        for sample in buy_samples:
             # store data
             tmp.append({
                 "ts"         : ts,
-                "sell_amount": d["sell_amount"],
+                "sell_amount": sample[0],
                 "sell_token" : "weth",
-                "buy_amount" : d["buy_amount"],
+                "buy_amount" : None,
                 "buy_token"  : "rpl",
-                "rate"       : d["rate"],
-                "slippage"   : slippage
+                "rate"       : None,
+                "slippage"   : sample[1]
             })
-            await asyncio.sleep(0.25)
-        # get buy depth for 10, 100, 1000, 10000, 100000, 1000000 RPL but like in ETH
-        # flip sell and buy token
-        for amount in [*list(range(1000, 30000, 3000)), *list(range(30000, 200000, 10000))]:
-            # get rate
-            try:
-                d = await self.cow_get_effective_exchange_rate_using_delta(rpl_address, weth_address, amount)
-            except Exception as err:
-                log.exception(err)
-                return
-            # invert rate
-            d["rate"] = 1 / d["rate"]
-            # get slippage
-            slippage = (d["rate"] - reference_point) / reference_point
-            log.debug(f"Selling {amount} RPL for ETH at {d['rate']} ({slippage})")
+
+        sell_samples = await self.sell_sampler.sample_curve(lambda x: self.get_slippage_at_price_or_whatever(x, rpl_address, weth_address, 1/reference_point))
+
+        for sample in sell_samples:
             # store data
             tmp.append({
                 "ts"         : ts,
-                "sell_amount": d["sell_amount"],
+                "sell_amount": sample[0],
                 "sell_token" : "rpl",
-                "buy_amount" : d["buy_amount"],
+                "buy_amount" : None,
                 "buy_token"  : "weth",
-                "rate"       : d["rate"],
-                "slippage"   : slippage
+                "rate"       : None,
+                "slippage"   : sample[1]
             })
-            await asyncio.sleep(0.25)
-        # store data in db
+
         await self.db["wall"].insert_many(tmp)
 
-    """
+        log.info(f"Wall data gathered, {self.api_calls_count} api calls made")
+
     @hybrid_command()
     async def depth(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
@@ -170,6 +180,8 @@ class Wall(commands.Cog):
         data = await self.db["wall"].find({"ts": latest_ts}).to_list(length=None)
         # create plot using matplotlib. x axis should be slippage, y axis should be amount. use 2 y axis, one for sell amount, one for buy amount
         fig, ax = plt.subplots()
+        # create second y axis for it
+        ax2 = ax.twinx()
         # sell amount
         x_green = [x["slippage"] for x in data if x["sell_token"] == "weth"]
         x_green.insert(0, 0)
@@ -183,45 +195,52 @@ class Wall(commands.Cog):
         inter_green = interp1d(x_green, y_green, kind="linear")
         x_green_inter = [x / 100 for x in range(26)]
         y_green_inter = inter_green(x_green_inter)
-        ax.plot(x_green_inter, y_green_inter, color="green")
+        ax2.plot(x_green_inter, y_green_inter, color="green")
         # fill
-        ax.fill_between(x_green_inter, y_green_inter, color="green", alpha=0.2)
+        ax2.fill_between(x_green_inter, y_green_inter, color="green", alpha=0.2)
         # debug: plot the raw data
-        # ax.plot(x_green, y_green, color="green", marker="+", linestyle="")
+        ax2.plot(x_green, y_green, color="green", marker="+", linestyle="")
 
         # buy amount
         x_red = [x["slippage"] for x in data if x["buy_token"] == "weth"]
         x_red.insert(0, 0)
-        y_red = [x["buy_amount"] for x in data if x["buy_token"] == "weth"]
+        y_red = [x["sell_amount"] for x in data if x["buy_token"] == "weth"]
         y_red.insert(0, 0)
         # interpolate
         x_red, y_red = zip(*sorted(zip(x_red, y_red)))
         # turn into dict and back to list to remove duplicates
         tmp = list(dict(zip(x_red, y_red)).items())
         x_red, y_red = zip(*tmp)
+        # turn x negative
+        x_red = [-x for x in x_red]
         inter_red = interp1d(x_red, y_red, kind="linear")
         x_red_inter = [-x / 100 for x in range(26)]
         y_red_inter = inter_red(x_red_inter)
+        # put y axis on right
+        # make sure the second y axis is on the left
         ax.plot(x_red_inter, y_red_inter, color="red")
         # fill
         ax.fill_between(x_red_inter, y_red_inter, color="red", alpha=0.2)
         # debug: plot the raw data
-        # ax.plot(x_red, y_red, color="red", marker="+", linestyle="")
+        ax.plot(x_red, y_red, color="red", marker="+", linestyle="")
 
         # set labels
         ax.set_xlabel("Slippage")
-        ax.set_ylabel("ETH")
+        ax2.set_ylabel("ETH")
+        ax.set_ylabel("RPL")
         # enable subticks for x axis
         ax.xaxis.set_minor_locator(AutoMinorLocator())
         # show x axis grid lines, also for minor ticks
         ax.grid()
         # format y axis with thousands separator
         ax.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax2.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
         # format x axis with percentage
         ax.get_xaxis().set_major_formatter(ticker.PercentFormatter(xmax=1))
         # set x limit to -100% and 100%
         ax.set_xlim(-0.25, 0.25)
         ax.set_ylim(0, None)
+        ax2.set_ylim(0, None)
 
         # use minimal whitespace
         plt.tight_layout()
@@ -241,7 +260,6 @@ class Wall(commands.Cog):
         e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
         e.set_image(url="attachment://depth.png")
         await ctx.send(file=File(file, "depth.png"), embed=e)
-    """
 
     @hybrid_command()
     async def wall(self, ctx: Context):
