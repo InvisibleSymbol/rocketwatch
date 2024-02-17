@@ -71,7 +71,7 @@ class Wall(commands.Cog):
 
     async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
         # this gets a quote from the cow api
-        api_url = "ttps://cow-proxy.invis.workers.dev/mainnet/api/v1/quote"
+        api_url = "https://cow-proxy.invis.workers.dev/mainnet/api/v1/quote"
         params = {
             "sellToken"          : sell_token,
             "buyToken"           : buy_token,
