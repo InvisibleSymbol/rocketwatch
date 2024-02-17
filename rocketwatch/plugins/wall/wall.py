@@ -62,8 +62,9 @@ class Wall(commands.Cog):
             return
         self.run_loop.start()
 
-    @tasks.loop(seconds=60*30)
+    @tasks.loop(seconds=60 * 30)
     async def run_loop(self):
+        return
         try:
             await self.gather_new_data()
         except Exception as err:
@@ -165,7 +166,7 @@ class Wall(commands.Cog):
         await self.db["wall"].insert_many(tmp)
 
         log.info(f"Wall data gathered, {self.api_calls_count} api calls made")
-
+"""
     @hybrid_command()
     async def depth(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
@@ -260,7 +261,7 @@ class Wall(commands.Cog):
         e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
         e.set_image(url="attachment://depth.png")
         await ctx.send(file=File(file, "depth.png"), embed=e)
-
+"""
     @hybrid_command()
     async def wall(self, ctx: Context):
         """
