@@ -93,7 +93,7 @@ class Wall(commands.Cog):
                 try:
                     data = await resp.json()
                 except ContentTypeError:
-                    raise Exception(f"Could not get sell depth for {sell_amount} RPL, response: {data}")
+                    raise Exception(f"Could not get sell depth for {sell_amount} RPL, response: {resp}")
         try:
             return solidity.to_float(data["quote"]["buyAmount"])
         except KeyError:
