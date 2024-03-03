@@ -15,7 +15,8 @@ from discord import File
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from matplotlib import ticker
+from matplotlib import ticker, image as mpimg
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.ticker import AutoMinorLocator
 from motor.motor_asyncio import AsyncIOMotorClient
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
@@ -410,6 +411,14 @@ class Wall(commands.Cog):
             # indicate zoomin using .indicate
             plt.gca().axes.indicate_inset_zoom(axins, edgecolor="black")
 
+        #overlay png
+        if price < 0.009:
+            img = mpimg.imread('./plugins/wall/waq.png')
+            imagebox = OffsetImage(img, zoom=0.08)  # Adjust zoom level if necessary
+            x_total_min = price * 0.25
+            y_total_min = 0
+            ab = AnnotationBbox(imagebox, (x_total_min, y_total_min), frameon=False, xycoords='data', box_alignment=(0, 0))
+            plt.gca().add_artist(ab)
 
         # store the graph in an file object
         file = BytesIO()
