@@ -2,6 +2,7 @@ import logging
 import re
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
+from typing import Tuple, Awaitable
 
 import pytz
 import tiktoken
@@ -9,8 +10,9 @@ from discord import File, DeletedReferencedMessage
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from discord.channel import TextChannel
 from motor.motor_asyncio import AsyncIOMotorClient
-from openai import AsyncOpenAI
+import anthropic
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -22,9 +24,8 @@ log.setLevel(cfg["log_level"])
 class OpenAi(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.client = AsyncOpenAI(
-            # This is the default and can be omitted
-            api_key=cfg["openai.secret"],
+        self.client = anthropic.AsyncAnthropic(
+            api_key=cfg["anthropic.api_key"],  # Ensure you have this in your configuration
         )
         # log all possible engines
         self.tokenizer = tiktoken.encoding_for_model("gpt-4-turbo")
@@ -88,10 +89,9 @@ class OpenAi(commands.Cog):
             "Truncated Example Output:\n"
             "----------------\n"
             "- Discussions between invis, langers, knoshua and more about the meaning of life. {message:2}\n"
-            "- The current status of war in europe was discussed. {message:53}\n"
+            "- The current status of the war in europe was discussed. {message:53}\n"
             "- Patches announced that he has been taking a vacation in switzerland and shared some images of his skiing. {message:184}\n"
             "----------------\n\n"
-            "Command to Begin:\n"
             "Please begin the task now."
         )
         response, prompt, msgs = await self.prompt_model(ctx.channel, prompt, last_ts)
@@ -101,7 +101,7 @@ class OpenAi(commands.Cog):
             return
         es = [Embed()]
         es[0].title = f"Chat Summarization of {msgs} messages since {last_ts.strftime('%Y-%m-%d %H:%M')}"
-        res = response.choices[0].message.content
+        res = response.content[-1].text
         # split content in multiple embeds if it is too long. limit for description is 4096
         while len(res):
             if len(res) > 4096:
@@ -119,9 +119,9 @@ class OpenAi(commands.Cog):
             else:
                 es[-1].description = res
                 res = ""
-        token_usage = response.usage.prompt_tokens + (response.usage.completion_tokens * 3) # completion tokens are 3x more expensive
+        token_usage = response.usage.input_tokens + (response.usage.output_tokens * 5) # completion tokens are 3x more expensive
         es[-1].set_footer(
-            text=f"Request cost: ${token_usage / 1000 * 0.01:.2f} | Tokens: {response.usage.total_tokens} | /donate if you like this command")
+            text=f"Request cost: ${token_usage / 1000000 * 15:.2f} | Tokens: {response.usage.input_tokens + response.usage.output_tokens} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt._log"
@@ -138,7 +138,7 @@ class OpenAi(commands.Cog):
         prompt = "\n".join([self.message_to_text(message, i) for i, message in enumerate(messages)]).replace("\n\n", "\n")
         return f"{prefix}\n\n{prompt}\n\n{suffix}"
 
-    async def prompt_model(self, channel, prompt, cut_off_ts):
+    async def prompt_model(self, channel: TextChannel, prompt: str, cut_off_ts: int) -> tuple[anthropic.types.Message, str, int]:
         messages = [message async for message in channel.history(limit=4096) if message.content != ""]
         messages = [message for message in messages if message.author.id != self.bot.user.id]
         messages = [message for message in messages if message.created_at > cut_off_ts]
@@ -146,25 +146,24 @@ class OpenAi(commands.Cog):
             return None, None, None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
         log.info(f"Prompt len: {len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt)))}")
-        while len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt))) > 128000 - 4096:
+        while len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt))) > 200000 - 4096:
             # remove the oldest message
             messages.pop(0)
-        engine = "gpt-4-turbo-preview"
         prompt = self.generate_prompt(messages, prefix, prompt)
         # get all models
-        response = await self.client.chat.completions.create(
-            model=engine,
+        response = await self.client.messages.create(
+            model="claude-3-opus-20240229",  # Update this to the desired model
             max_tokens=4096,
             messages=[{"role": "system", "content": prompt}]
         )
         # find all {message:index} in response["choices"][0]["message"]["content"]
-        log.debug(response.choices[0].message.content)
-        references = re.findall(r"{message:([0-9]+)}", response.choices[0].message.content)
+        log.debug(response.content[-1].text)
+        references = re.findall(r"{message:([0-9]+)}", response.content[-1].text)
         # sanitize references
         references = [int(reference) for reference in references if int(reference) < len(messages)]
         # replace all {message:index} with a link to the message
         for reference in references:
-            response.choices[0].message.content = response.choices[0].message.content.replace(
+            response.content[-1].text = response.content[-1].text.replace(
                 f"{{message:{reference}}}",
                 f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{messages[int(reference)].id}")
         return response, prompt, len(messages)
