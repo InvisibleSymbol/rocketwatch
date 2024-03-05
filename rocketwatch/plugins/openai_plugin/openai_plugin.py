@@ -154,7 +154,7 @@ class OpenAi(commands.Cog):
         response = await self.client.messages.create(
             model="claude-3-opus-20240229",  # Update this to the desired model
             max_tokens=4096,
-            messages=[{"role": "system", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}]
         )
         # find all {message:index} in response["choices"][0]["message"]["content"]
         log.debug(response.content[-1].text)
