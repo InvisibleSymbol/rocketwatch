@@ -33,7 +33,7 @@ class OpenAi(commands.Cog):
 
     @classmethod
     def message_to_text(cls, message, index):
-        text = f"{message.author.global_name or message.author.name} on {message.created_at.strftime('%a at %H:%M')} ({{message:{index}}}):\n {message.content}"
+        text = f"{message.author.global_name or message.author.name} on {message.created_at.strftime('%a at %H:%M')}:\n {message.content}"
 
         # if there is an image attached, add it to the text as a note
         metadata = []
@@ -74,23 +74,19 @@ class OpenAi(commands.Cog):
             "Task Description:\n"
             "I need a summary of the entire chat log. This summary should be presented in the form of a bullet list.\n\n"
             "Format and Length Requirements:\n"
-            "- The bullet list must be kept short and concise, but the list has to cover the entire chat log.\n"
+            "- The bullet list must be kept short and concise, but the list has to cover the entire chat log. Make at most around 20 bullet points.\n"
             "- Each bullet point should represent a distinct topic discussed in the chat log.\n\n"
             "Content Constraints:\n"
             "- Limit each topic to a single bullet point in the list.\n"
             "- Omit any topics that are uninteresting or not crucial to the overall understanding of the chat log.\n"
             "- If any content in the chat log goes against guidelines, refer to it in a safe and compliant manner, without detailing the specific content.\n\n"
-            "Referencing Requirements:\n"
-            "- At the end of each bullet point, include a reference to the relevant message from the chat log.\n"
-            "- Use the following syntax for referencing: `{message:index}`, where `index` is the numerical index of the message.\n"
-            "- Ensure that each bullet point references only one message index. Multiple message indexes per bullet point are not allowed.\n\n"
             "Response Instruction:\n"
             "- Respond only with the bullet list summary as specified. Do not include any additional commentary or response outside of this list.\n\n"
             "Truncated Example Output:\n"
             "----------------\n"
-            "- Discussions between invis, langers, knoshua and more about the meaning of life. {message:2}\n"
-            "- The current status of the war in europe was discussed. {message:53}\n"
-            "- Patches announced that he has been taking a vacation in switzerland and shared some images of his skiing. {message:184}\n"
+            "- Discussions between invis, langers, knoshua and more about the meaning of life.\n"
+            "- The current status of the war in europe was discussed.\n"
+            "- Patches announced that he has been taking a vacation in switzerland and shared some images of his skiing.}\n"
             "----------------\n\n"
             "Please begin the task now."
         )
@@ -146,7 +142,7 @@ class OpenAi(commands.Cog):
             return None, None, None
         prefix = "The following is a chat log. Everything prefixed with `>` is a quote."
         log.info(f"Prompt len: {len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt)))}")
-        while len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt))) > 200000 - 4096:
+        while len(self.tokenizer.encode(self.generate_prompt(messages, prefix, prompt))) > 100000 - 4096:
             # remove the oldest message
             messages.pop(0)
         prompt = self.generate_prompt(messages, prefix, prompt)
@@ -158,14 +154,6 @@ class OpenAi(commands.Cog):
         )
         # find all {message:index} in response["choices"][0]["message"]["content"]
         log.debug(response.content[-1].text)
-        references = re.findall(r"{message:([0-9]+)}", response.content[-1].text)
-        # sanitize references
-        references = [int(reference) for reference in references if int(reference) < len(messages)]
-        # replace all {message:index} with a link to the message
-        for reference in references:
-            response.content[-1].text = response.content[-1].text.replace(
-                f"{{message:{reference}}}",
-                f"https://discord.com/channels/{channel.guild.id}/{channel.id}/{messages[int(reference)].id}")
         return response, prompt, len(messages)
 
 
