@@ -128,6 +128,7 @@ class Wall(commands.Cog):
         return slippage
 
     async def gather_new_data(self):
+        return
         self.api_calls_count = 0
         # gather depth sell / buy values
         tmp = []
@@ -271,14 +272,13 @@ class Wall(commands.Cog):
         Show the current limit order sell wall on 1inch
         """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        """
         wall_address = "0xD779bB0F68F54f7521aA5b35dD88352771843764"
         rpl = rp.get_address_by_name("rocketTokenRPL").lower()
-        """
         url = f"https://limit-orders.1inch.io/v3.0/1/limit-order/address/{wall_address}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 data = await resp.json()
-        """
         data = []
         total_volume_left = 0
         total_volume_rpl = 0
@@ -336,6 +336,13 @@ class Wall(commands.Cog):
         e.add_field(name="Status", value=f"{percent:,.2f}% left", inline=False)
         e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
         e.add_field(name="Wallet Address", value=f"[{s_hex(wall_address)}](https://rocketscan.io/address/{wall_address})")
+        """
+        e = Embed()
+        c = await self.db["wall_command"].find_one({"_id": "wall_counter"})
+        c = 0 if c is None else c["count"]
+        c += 1
+        e.description = f"disabled by bawcey. has been called {c} times since"
+        await self.db["wall_command"].update_one({"_id": "wall_counter"}, {"$inc": {"count": 1}}, upsert=True)
         await ctx.send(embed=e)
 
     def _get_alternative_wall(self):
