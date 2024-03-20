@@ -341,7 +341,7 @@ class Wall(commands.Cog):
         c = await self.db["wall_command"].find_one({"_id": "wall_counter"})
         c = 0 if c is None else c["count"]
         c += 1
-        e.description = f"disabled by bawcey. has been called {c} times since"
+        e.description = f"Disabled by LFO to save RPL: has been called {c} times since"
         await self.db["wall_command"].update_one({"_id": "wall_counter"}, {"$inc": {"count": 1}}, upsert=True)
         await ctx.send(embed=e)
 
