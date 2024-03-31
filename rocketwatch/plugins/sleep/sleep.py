@@ -10,6 +10,7 @@ from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 from icalendar import Calendar
+import matplotlib.colors as mcolors
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -18,6 +19,19 @@ from utils.visibility import is_hidden
 log = logging.getLogger("sleep")
 log.setLevel(cfg["log_level"])
 
+
+def get_color_hsv(value):
+    # Ensure the value is within [0, 1]
+    value -= 0.5
+    value *= 2
+    value = max(0, min(1, value))
+
+    # Map the value to the hue in HSV (red to green)
+    hue = value / 3  # Red is at 0, green is at 1/3 in HSV space
+    color_hsv = (hue, 1, 0.8)  # Full saturation and value
+
+    # Convert HSV to RGB
+    return mcolors.hsv_to_rgb(color_hsv)
 
 class Oura(commands.Cog):
     def __init__(self, bot):
@@ -77,7 +91,7 @@ class Oura(commands.Cog):
         e = Embed(title="Invis's Sleep Schedule")
         current_date = datetime.datetime.now()
         tz = pytz.timezone("Europe/Vienna")
-        start_date = current_date - datetime.timedelta(days=60)
+        start_date = current_date - datetime.timedelta(days=90)
         # make start date timezone aware
         start_date = tz.localize(start_date)
         end_date = current_date
@@ -101,7 +115,7 @@ class Oura(commands.Cog):
             (start_date + datetime.timedelta(days=i)).strftime("%Y-%m-%d"): []
             for i in range((end_date - start_date).days + 1)}
 
-        for sleep in data["data"]:
+        for sleep in reversed(data["data"]):
             if sleep["type"] == "rest":
                 continue
             # skip if sleep_duration is less than 30 minutes. units are in seconds
@@ -141,22 +155,21 @@ class Oura(commands.Cog):
                 stats_second = stats[int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds())):]
                 daily_sleep[start_day].append(
                     {"relative_start": sd - (thresh - datetime.timedelta(days=1)), "duration": dur_first,
-                     "weekday"       : weekday, "sleep_stats": stats_first})
+                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": sleep["readiness"]["score"]})
                 if end_day not in daily_sleep:
                     daily_sleep[end_day] = []
                 daily_sleep[end_day].append(
                     {"relative_start": datetime.timedelta(), "duration": dur_second, "weekday": weekday,
-                     "sleep_stats"   : stats_second})
+                     "sleep_stats"   : stats_second, "readiness": sleep["readiness"]["score"]})
             else:
                 relative_start = sd - (thresh - datetime.timedelta(days=1))
                 if relative_start >= datetime.timedelta(hours=24):
                     relative_start -= datetime.timedelta(hours=24)
                 daily_sleep[start_day].append(
                     {"relative_start": relative_start, "duration": ed - sd, "weekday": weekday,
-                     "sleep_stats"   : stats})
+                     "sleep_stats"   : stats, "readiness": sleep["readiness"]["score"]})
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
-        day_of_week_colors = ["#ff0000", "#ff8000", "#ffff00", "#80ff00", "#00ff00", "#00ff80", "#00ffff"]
         # plot
         fig, ax = plt.subplots()
         # create horizontal dark gray line at midnight and noon
@@ -174,21 +187,31 @@ class Oura(commands.Cog):
                         i = list(daily_sleep.keys()).index(day)
                     except ValueError:
                         continue
-                    ax.bar(i, width, bottom=bottom, color="#AAAAAA", width=1, alpha=0.5)
-        for i, (day, sleeps) in enumerate(daily_sleep.items()):
+                    ax.bar(i, width, bottom=bottom, color="#AAAAAA", width=1, alpha=0.25)
+        for i, (day, sleeps) in reversed(list(enumerate(daily_sleep.items()))):
             for sleep in sleeps:
-                color = day_of_week_colors[sleep["weekday"]]
+                color = get_color_hsv(sleep["readiness"] / 100)
                 bottom = ((24 * 60 * 60) - sleep[
                     "relative_start"].total_seconds() - sleep["duration"].total_seconds()) / 3600
                 width = sleep["duration"].total_seconds() / 3600
                 current_bottom = bottom + width
                 for state in sleep["sleep_stats"]:
                     current_bottom -= (width / len(sleep["sleep_stats"]))
+                    w = 0.9
+                    match int(state):
+                        case 4:
+                            w = 0.4
+                        case 3:
+                            w = 0.4
+                        case 2:
+                            w = 0.9
+                        case 1:
+                            w = 0.9
                     ax.bar(i, width / len(sleep["sleep_stats"]), bottom=current_bottom, color=color,
-                           alpha=0 if state == "4" else 0.8)
+                           alpha=0.2 if state == "4" else 1, width=w)
         # set x axis labels, only every 7th day
         ax.set_xticks(range(len(daily_sleep) - 1, 0, -14))
-        ax.set_xticklabels([day for i, (day, _) in enumerate(reversed(daily_sleep.items())) if i % 14 == 0])
+        ax.set_xticklabels([day[2:] for i, (day, _) in enumerate(reversed(daily_sleep.items())) if i % 14 == 0])
         # set y axis labels
         ax.set_yticks(range(0, 25, 2))
         ax.set_yticklabels([f"{i}:00" if i >= 0 else f"{24 + i}:00" for i in range(18, -7, -2)])
@@ -206,7 +229,7 @@ class Oura(commands.Cog):
         plt.tight_layout()
 
         img = BytesIO()
-        fig.savefig(img, format='png')
+        fig.savefig(img, format='png', dpi=250)
         img.seek(0)
         plt.close()
 
