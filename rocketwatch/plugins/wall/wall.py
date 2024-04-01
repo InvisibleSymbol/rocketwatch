@@ -1,15 +1,15 @@
-import asyncio
 import contextlib
+import json
 import logging
-import math
-from asyncio import run
-from datetime import datetime, timezone, timedelta
+import random
+from datetime import datetime, timezone
 from io import BytesIO
+from urllib.parse import quote
 
 import aiohttp
 import humanize
 import matplotlib.pyplot as plt
-import numpy as np
+import yarl
 from aiohttp import ContentTypeError
 from discord import File
 from discord.ext import commands, tasks
@@ -19,7 +19,6 @@ from matplotlib import ticker, image as mpimg
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.ticker import AutoMinorLocator
 from motor.motor_asyncio import AsyncIOMotorClient
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from scipy.interpolate import interp1d
 
 from utils import solidity
@@ -272,7 +271,6 @@ class Wall(commands.Cog):
         Show the current limit order sell wall on 1inch
         """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        """
         wall_address = "0xD779bB0F68F54f7521aA5b35dD88352771843764"
         rpl = rp.get_address_by_name("rocketTokenRPL").lower()
         url = f"https://limit-orders.1inch.io/v3.0/1/limit-order/address/{wall_address}"
@@ -336,7 +334,6 @@ class Wall(commands.Cog):
         e.add_field(name="Status", value=f"{percent:,.2f}% left", inline=False)
         e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
         e.add_field(name="Wallet Address", value=f"[{s_hex(wall_address)}](https://rocketscan.io/address/{wall_address})")
-        """
         e = Embed()
         c = await self.db["wall_command"].find_one({"_id": "wall_counter"})
         c = 0 if c is None else c["count"]
@@ -348,6 +345,13 @@ class Wall(commands.Cog):
     def _get_alternative_wall(self):
         # test the get_uniswap_pool_depth function
         a = get_uniswap_pool_depth("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")
+        max_y = max(z[1] for z in a)
+        for i in range(len(a)):
+            # get previous offset
+            last_height = 1 if i == 0 else a[i - 1][1]
+            # add random walk 25% max
+            last_height += last_height*(0.25*random.random()) * (1 if random.random() >= 0.5 else -1)
+            a[i] = (a[i][0], last_height)
         # get current price from the pool stats
         sqrt_price = get_uniswap_pool_stats("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")["sqrtPrice"]
         price = 1 / (int(sqrt_price) ** 2 / 2 ** 192)
@@ -402,9 +406,11 @@ class Wall(commands.Cog):
             # set yaxis bottom to 0
             axins.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-pre", color="black", linewidth=1)
             # red fill
-            axins.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="pre")
+            axins.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False,
+                               step="pre")
             # green fill
-            axins.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="pre")
+            axins.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False,
+                               step="pre")
             # draw line for current price
             axins.axvline(price, color="black", linestyle="--", linewidth=1)
             # set x limits
