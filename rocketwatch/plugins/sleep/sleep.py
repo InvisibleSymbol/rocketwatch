@@ -111,6 +111,19 @@ class Oura(commands.Cog):
             await ctx.send(embed=e)
             return
 
+        res2 = requests.get("https://api.ouraring.com/v2/usercollection/daily_sleep",
+                           params={"start_date": start_date.strftime("%Y-%m-%d"),
+                                   "end_date"  : (end_date + datetime.timedelta(days=1)).strftime("%Y-%m-%d")},
+                           headers={"Authorization": f"Bearer {cfg['oura.secret']}"})
+        if res2.status_code != 200:
+            e.description = "Error fetching sleep data"
+            await ctx.send(embed=e)
+            return
+        data2 = res2.json()
+        score_mapping = dict()
+        if len(data2["data"]) != 0:
+            for kasd in data2["data"]:
+                score_mapping[kasd["day"]] = kasd["score"]
         daily_sleep = {
             (start_date + datetime.timedelta(days=i)).strftime("%Y-%m-%d"): []
             for i in range((end_date - start_date).days + 1)}
@@ -121,6 +134,7 @@ class Oura(commands.Cog):
             # skip if sleep_duration is less than 30 minutes. units are in seconds
             if sleep["total_sleep_duration"] < 30 * 60:
                 continue
+            score = score_mapping.get(sleep["day"])
             sd = datetime.datetime.fromisoformat(sleep["bedtime_start"])
             log.info(f"start date: {sd}")
             # the start day is the next day if we are past 12pm, otherwise it is the current day
@@ -155,19 +169,19 @@ class Oura(commands.Cog):
                 stats_second = stats[int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds())):]
                 daily_sleep[start_day].append(
                     {"relative_start": sd - (thresh - datetime.timedelta(days=1)), "duration": dur_first,
-                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": sleep["readiness"]["score"]})
+                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": score})
                 if end_day not in daily_sleep:
                     daily_sleep[end_day] = []
                 daily_sleep[end_day].append(
                     {"relative_start": datetime.timedelta(), "duration": dur_second, "weekday": weekday,
-                     "sleep_stats"   : stats_second, "readiness": sleep["readiness"]["score"]})
+                     "sleep_stats"   : stats_second, "readiness": score})
             else:
                 relative_start = sd - (thresh - datetime.timedelta(days=1))
                 if relative_start >= datetime.timedelta(hours=24):
                     relative_start -= datetime.timedelta(hours=24)
                 daily_sleep[start_day].append(
                     {"relative_start": relative_start, "duration": ed - sd, "weekday": weekday,
-                     "sleep_stats"   : stats, "readiness": sleep["readiness"]["score"]})
+                     "sleep_stats"   : stats, "readiness": score})
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
         # plot
@@ -190,7 +204,9 @@ class Oura(commands.Cog):
                     ax.bar(i, width, bottom=bottom, color="#AAAAAA", width=1, alpha=0.25)
         for i, (day, sleeps) in reversed(list(enumerate(daily_sleep.items()))):
             for sleep in sleeps:
-                color = get_color_hsv(sleep["readiness"] / 100)
+                color = "gray"
+                if sleep["readiness"] is not None:
+                    color = get_color_hsv(sleep["readiness"] / 100)
                 bottom = ((24 * 60 * 60) - sleep[
                     "relative_start"].total_seconds() - sleep["duration"].total_seconds()) / 3600
                 width = sleep["duration"].total_seconds() / 3600
