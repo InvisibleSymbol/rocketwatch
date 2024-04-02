@@ -127,7 +127,7 @@ class DetectScam(commands.Cog):
         # message contains the word "paperhand" and a link
         txt = get_text_of_message(message)
         # if has http and contains the word paperhand or paperhold
-        if any(x in txt for x in ["paperhand", "paperhold"]) and "http" in txt:
+        if any(x in txt for x in ["paperhand", "paperhold", "pages.dev"]) and "http" in txt:
             await self.report_suspicious_message(message, "High chance the linked website is a scam.")
 
     # contains @here or @everyone but doesn't actually have the permission to do so
