@@ -120,7 +120,7 @@ class DetectScam(commands.Cog):
     async def ticket_with_link(self, message):
         # message contains the word "ticket" and a link
         txt = get_text_of_message(message)
-        if "ticket" in txt and "http" in txt:
+        if any(x in txt for x in ["ticket", "support team", "admin", "mod"]) in txt and "http" in txt:
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
     async def paperhands(self, message):
