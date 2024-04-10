@@ -27,7 +27,7 @@ checksumdir==1.2.0
 multicall==0.7.3
 dice==3.1.2
 openai==1.10.0
-transformers==4.36.0
+transformers==4.38.0
 schedule==1.2.1
 suntimes==1.1.2
 pydantic<2
