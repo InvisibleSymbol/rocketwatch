@@ -27,9 +27,6 @@ def get_text_of_message(message):
     if message.embeds:
         for embed in message.embeds:
             text += f"---\n Embed: {embed.title}\n{embed.description}\n---\n"
-    if message.attachments:
-        for attachment in message.attachments:
-            text += f"---\nAttachment: {attachment.url}\n---\n"
     return text.lower()
 
 
@@ -41,6 +38,8 @@ class DetectScam(commands.Cog):
         self.report_lock = asyncio.Lock()
         self.reaction_lock = asyncio.Lock()
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
+        self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
+        self.__basic_url_pattern = re.compile(r"https?:\/\/([-_0-9a-zA-Z]+\.)+[-_0-9a-zA-Z]+")
 
     async def report_suspicious_message(self, msg, reason):
         # check if the message has been deleted
@@ -110,9 +109,8 @@ class DetectScam(commands.Cog):
         await asyncio.gather(*checks)
 
     async def markdown_link_trick(self, message):
-        r = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
-        matches = r.findall(get_text_of_message(message))
-        for m in matches:
+        txt = get_text_of_message(message)
+        for m in self.__markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
                 await self.report_suspicious_message(message,
                                                      "Markdown link with possible domain in visible portion that does not match the actual domain")
@@ -120,7 +118,8 @@ class DetectScam(commands.Cog):
     async def ticket_with_link(self, message):
         # message contains the word "ticket" and a link
         txt = get_text_of_message(message)
-        if any(x in txt for x in ["ticket", "support team", "admin", "mod team", "moderator"]) and "http" in txt:
+        has_url = self.__basic_url_pattern.search(txt)
+        if has_url and any(x in txt for x in ["ticket", "support team", "admin", "mod team", "moderator"]):
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
     async def paperhands(self, message):
