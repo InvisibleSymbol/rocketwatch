@@ -39,7 +39,7 @@ class DetectScam(commands.Cog):
         self.reaction_lock = asyncio.Lock()
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
-        self.__basic_url_pattern = re.compile(r"https?:\/\/([-_0-9a-zA-Z]+\.)+[-_0-9a-zA-Z]+")
+        self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
 
     async def report_suspicious_message(self, msg, reason):
         # check if the message has been deleted
