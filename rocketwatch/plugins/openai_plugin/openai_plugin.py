@@ -117,7 +117,7 @@ class OpenAi(commands.Cog):
                 res = ""
         token_usage = response.usage.input_tokens + (response.usage.output_tokens * 5) # completion tokens are 3x more expensive
         es[-1].set_footer(
-            text=f"Request cost: ${token_usage / 1000000 * 15:.2f} | Tokens: {response.usage.input_tokens + response.usage.output_tokens} | /donate if you like this command")
+            text=f"Request cost: ${token_usage / 1000000 * 3:.2f} | Tokens: {response.usage.input_tokens + response.usage.output_tokens} | /donate if you like this command")
         # attach the prompt as a file
         f = BytesIO(prompt.encode("utf-8"))
         f.name = "prompt._log"
