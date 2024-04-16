@@ -148,7 +148,7 @@ class OpenAi(commands.Cog):
         prompt = self.generate_prompt(messages, prefix, prompt)
         # get all models
         response = await self.client.messages.create(
-            model="claude-3-opus-20240229",  # Update this to the desired model
+            model="claude-3-sonnet-20240229",  # Update this to the desired model
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}]
         )
