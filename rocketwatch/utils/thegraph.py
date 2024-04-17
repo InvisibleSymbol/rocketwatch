@@ -337,7 +337,7 @@ def get_average_collateral_percentage_per_node(collateral_cap, bonded):
         # calculate percentage
         percentage = rpl_stake_value / minipool_value * 100
         # round percentage to 5% steps
-        percentage = round(percentage / 5) * 5
+        percentage = (percentage // 5) * 5
         # add to result
         if percentage not in result:
             result[percentage] = []
