@@ -74,7 +74,7 @@ class OpenAi(commands.Cog):
             "Task Description:\n"
             "I need a summary of the entire chat log. This summary should be presented in the form of a bullet list.\n\n"
             "Format and Length Requirements:\n"
-            "- The bullet list must be kept short and concise, but the list has to cover the entire chat log. Make at most around 20 bullet points.\n"
+            "- The bullet list must be kept short and concise, but the list has to cover the entire chat log. Make at most around 5 bullet points.\n"
             "- Each bullet point should represent a distinct topic discussed in the chat log.\n\n"
             "Content Constraints:\n"
             "- Limit each topic to a single bullet point in the list.\n"
