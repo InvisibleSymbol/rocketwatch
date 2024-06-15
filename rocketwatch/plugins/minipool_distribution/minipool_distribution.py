@@ -159,6 +159,8 @@ class MinipoolDistribution(commands.Cog):
         ax.set_xlabel("number of nodes")
         ax.set_ylabel("protocol share")
         ax.set_xscale("log")
+        ax.set_xlim((1, x[-1]))
+        ax.set_ylim((0, 1))
 
         x_ticks = [x[-1]]
 
