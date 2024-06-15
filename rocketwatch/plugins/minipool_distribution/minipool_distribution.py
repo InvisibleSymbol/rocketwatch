@@ -3,14 +3,12 @@ from io import BytesIO
 
 import inflect
 import matplotlib.pyplot as plt
-import matplotlib.scale as scale
 import numpy as np
 import pymongo
 from discord import File
 from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
-from matplotlib.ticker import ScalarFormatter
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -48,7 +46,7 @@ class MinipoolDistribution(commands.Cog):
     def get_minipool_counts_per_node(self):
         # get an array for minipool counts per node from db using aggregation
         # example: [0,0,1,2,3,3,3]
-        # 0 nodes have 0 minipools
+        # 2 nodes have 0 minipools
         # 1 node has 1 minipool
         # 1 node has 2 minipools
         # 3 nodes have 3 minipools
@@ -115,6 +113,91 @@ class MinipoolDistribution(commands.Cog):
         await ctx.send(embed=e, files=[f])
         img.close()
 
+    @hybrid_command()
+    @describe(raw="Show the raw distribution data")
+    async def node_gini(self, ctx: Context, raw: bool = False):
+        """
+        Show the cumulative validator share of the largest nodes.
+        """
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        e = Embed()
+        e.title = "Validator Share of Largest Nodes"
+
+        minipool_counts = np.array(self.get_minipool_counts_per_node())
+        # sort ascending
+        minipool_counts[::-1].sort()
+
+        # divide by sum to get protocol share
+        y = minipool_counts.cumsum() / minipool_counts.sum()
+        x = np.arange(1, len(y) + 1)
+
+        # calculate gini coefficient from sorted list
+        counts_nz = minipool_counts[minipool_counts != 0]
+        n_nz = counts_nz.size
+        gini = -(((2 * np.arange(1, n_nz + 1) - n_nz - 1) * counts_nz).sum() / (n_nz * counts_nz.sum()))
+
+        e.set_footer(text=f"Gini coefficient: {gini:.4f}")
+
+        if raw:
+            description = ""
+            # count number of nodes in 5% intervals + significant thresholds
+            ticks = list(np.arange(0.05, 1, 0.05)) + [1/3, 2/3, 1.0]
+            for threshold in sorted(ticks):
+                index = y.searchsorted(threshold)
+                num_nodes = x[index]
+                node_txt = "node" if num_nodes == 1 else "nodes"
+                description += f"{round(100 * threshold)}%: {num_nodes} {node_txt}\n"
+
+            description += f"\nTotal: {x[-1]} nodes"
+            e.description = description
+            await ctx.send(embed=e)
+            return
+
+        fig, ax = plt.subplots(1, 1)
+
+        ax.plot(x, y)
+        ax.set_xlabel("number of nodes")
+        ax.set_ylabel("protocol share")
+        ax.set_xscale("log")
+
+        x_ticks = [x[-1]]
+
+        def draw_threshold(threshold: float, color: str) -> None:
+            index = y.searchsorted(threshold)
+            x_pos = x[index]
+            percentage = round(100 * threshold)
+            x_ticks.append(x_pos)
+            ax.axvline(x=x_pos, linestyle='--', c=color, label=f'{percentage}%')
+
+        draw_threshold(1/3, "tab:green")
+        draw_threshold(0.5, "tab:olive")
+        draw_threshold(2/3, "tab:orange")
+        draw_threshold(0.9, "tab:red")
+
+        # add powers of 10 to x ticks if not too close to existing ticks
+        i = 1
+        while i < x[-1]:
+            if not any((i / 1.5 < tick < i * 1.5) for tick in x_ticks):
+                x_ticks.append(i)
+            i *= 10
+
+        ax.set_xticks(x_ticks, map(str, x_ticks))
+        ax.legend()
+
+        fig.tight_layout()
+
+        img = BytesIO()
+        fig.savefig(img, format="png")
+        img.seek(0)
+
+        fig.clf()
+        plt.close()
+
+        e.set_image(url="attachment://graph.png")
+        f = File(img, filename="graph.png")
+
+        await ctx.send(embed=e, files=[f])
+        img.close()
 
 
 async def setup(bot):
