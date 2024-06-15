@@ -42,14 +42,15 @@ class RocketPool:
         self.ADDRESS_CACHE.clear()
         self.addresses = bidict()
         try:
-            self.multicall = Multicall(w3.eth)
+            # add multicall3 address
+            multicall_address = Multicall2([], _w3=w3).multicall_address
+            self.addresses["multicall3"] = multicall_address
+            self.multicall = Multicall(w3.eth, multicall_address)
         except Exception as err:
             log.error(f"Failed to initialize Multicall: {err}")
             self.multicall = None
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
-        # add multicall3 address
-        self.addresses["multicall3"] = Multicall2([], _w3=w3).multicall_address
 
     def seth_sig(self, abi, function_name):
         # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
