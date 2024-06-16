@@ -107,7 +107,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
             member_id = rp.call("rocketDAOSecurity.getMemberID", target)
         except utils.rocketpool.NoAddressFound:
             pass
-        if not name and sdao_member_id):
+        if not name and sdao_member_id:
             if prefix != -1:
                 prefix += "🔒"
             name = member_id
