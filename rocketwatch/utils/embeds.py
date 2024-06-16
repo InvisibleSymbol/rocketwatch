@@ -105,7 +105,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         sdao_member_id = ""
         try: 
             member_id = rp.call("rocketDAOSecurity.getMemberID", target)
-        except utils.rocketpool.NoAddressFound:
+        except rp.NoAddressFound:
             pass
         if not name and sdao_member_id:
             if prefix != -1:
