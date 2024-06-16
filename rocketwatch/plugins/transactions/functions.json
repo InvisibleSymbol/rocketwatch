@@ -20,5 +20,8 @@
     },
     "rocketUpgradeOneDotTwo": {
         "execute": "atlas_upgrade_triggered"
+    },
+    "rocketUpgradeOneDotThree": {
+        "execute": "houston_upgrade_triggered"
     }
 }
