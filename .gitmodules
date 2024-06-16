@@ -1,3 +1,4 @@
 [submodule "rocketwatch/contracts/rocketpool"]
 	path = rocketwatch/contracts/rocketpool
 	url = https://github.com/rocket-pool/rocketpool
+	branch = houston
