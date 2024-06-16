@@ -159,15 +159,35 @@
     },
     "bootstrap_pdao_claimer": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Changed Reward Distribution",
-        "description": "Contract `%{contractName}` has been allocated %{perc}% of the Inflation!"
+        "description": "%{description}"
     },
     "bootstrap_pdao_spend_treasury": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Spent Treasury",
         "description": "**%{amount} RPL** from Treasury sent to %{recipientAddress}!"
     },
+    "bootstrap_pdao_spend_treasury_recurring_new": {
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: New Recurring Treasury Spend",
+        "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
+    },
+    "bootstrap_pdao_spend_treasury_recurring_update": {
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Updated Recurring Treasury Spend",
+        "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**"
+    },
     "bootstrap_pdao_disable": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Disabled Bootstrap Mode",
         "description": "Bootstrap mode for the pDAO has been disabled!"
+    },
+    "bootstrap_pdao_enable_governance": {
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Enable Governance",
+        "description": "On-chain protocol DAO governance has been enabled!"
+    },
+    "bootstrap_security_invite": {
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Invited Security Council Member",
+        "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
+    },
+    "bootstrap_security_kick": {
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Kicked Security Council Member",
+        "description": "%{memberAddress} has been removed from the security council!"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",

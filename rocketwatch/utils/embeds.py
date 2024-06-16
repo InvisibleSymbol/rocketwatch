@@ -98,13 +98,18 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         if not name and (n := _(n_key)) != n_key:
             name = n
 
-        if cfg["rocketpool.chain"] != "mainnet" and not name:
-            name = s_hex(target)
-
         if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
             if prefix != -1:
                 prefix += "🔮"
             name = member_id
+        if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target)):
+            if prefix != -1:
+                prefix += "🔒"
+            name = member_id
+
+        if cfg["rocketpool.chain"] != "mainnet" and not name:
+            name = s_hex(target)
+
         if not name:
             a = Addresses.get(target)
             # don't apply name if its only label is one with the id "take-action", as these don't show up on the explorer
@@ -287,15 +292,38 @@ def assemble(args):
                     inline=False)
     """
 
+    if "invoiceID" in args:
+        e.add_field(
+            name="Invoice ID",
+            value=f"`{args.invoiceID}`",
+            inline=False
+        )
+
+    if "contractName" in args:
+        e.add_field(
+            name="Contract",
+            value=f"`{args.contractName}`",
+            inline=False
+        )
+
     if "settingContractName" in args:
         e.add_field(name="Contract",
                     value=f"`{args.settingContractName}`",
                     inline=False)
 
-    if "invoiceID" in args:
-        e.add_field(name="Invoice ID",
-                    value=f"`{args.invoiceID}`",
-                    inline=False)
+    if "startTime" in args:
+        e.add_field(
+            name="Start Time",
+            value=f"<t:{args.startTime}>",
+            inline=False
+        )
+
+    if "periodLength" in args:
+        e.add_field(
+            name="Period Length",
+            value=humanize.naturaldelta(datetime.timedelta(seconds=args.periodLength)),
+            inline=False
+        )
 
     if "contractAddress" in args and "Contract" in args.type:
         e.add_field(name="Contract Address",
