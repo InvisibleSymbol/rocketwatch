@@ -51,7 +51,8 @@ class QueuedTransactions(commands.Cog):
         args.transactionHash = event.hash.hex()
         args.blockNumber = event.blockNumber
 
-        if "dao_disable" in event_name and not args.confirmDisableBootstrapMode:
+        # oDAO bootstrap doesn't emit an event
+        if "odao_disable" in event_name and not args.confirmDisableBootstrapMode:
             return None
 
         if "deposit" in event_name:
@@ -65,29 +66,6 @@ class QueuedTransactions(commands.Cog):
                     warnings.simplefilter("ignore")
                     processed_logs = event.processReceipt(receipt)
                 args.count = len(processed_logs)
-
-        if "SettingBool" in args.function_name:
-            args.value = bool(args.value)
-
-        if event_name == "bootstrap_pdao_multi":
-            description_parts = []
-            for i in range(len(args.settingContractNames)):
-                # these are the only types rocketDAOProtocolProposals checks, so fine to hard code until further changes
-                # SettingType.UINT256
-                if args.types[i] == 0:
-                    value = w3.toInt(args.values[i])
-                # SettingType.BOOL
-                elif args.types[i] == 1:
-                    value = bool(args.values[i])
-                # SettingType.ADDRESS
-                elif args.types[i] == 3:
-                    value = w3.toChecksumAddress(args.values[i])
-                else:
-                    value = "???"
-                description_parts.append(
-                    f"`{args.settingPaths[i]} set to {value}`"
-                )
-            args.description = "\n".join(description_parts)
 
         if event_name == "bootstrap_odao_network_upgrade":
             if args.type == "addContract":

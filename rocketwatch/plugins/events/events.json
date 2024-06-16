@@ -224,6 +224,59 @@
                     "name": "minipool_bond_reduction_started_event"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketDAOProtocol",
+            "events": [
+                {
+                    "event_name": "BootstrapSettingMulti",
+                    "name": "bootstrap_pdao_multi"
+                },
+                {
+                    "event_name": "BootstrapSettingUint",
+                    "name": "bootstrap_pdao_setting"
+                },
+                {
+                    "event_name": "BootstrapSettingBool",
+                    "name": "bootstrap_pdao_setting"
+                },
+                {
+                    "event_name": "BootstrapSettingAddress",
+                    "name": "bootstrap_pdao_setting"
+                },
+                {
+                    "event_name": "BootstrapSettingClaimers",
+                    "name": "bootstrap_pdao_claimer"
+                },
+                {
+                    "event_name": "BootstrapSpendTreasury",
+                    "name": "bootstrap_pdao_spend_treasury"
+                },
+                {
+                    "event_name": "BootstrapTreasuryNewContract",
+                    "name": "bootstrap_pdao_spend_treasury_recurring_new"
+                },
+                {
+                    "event_name": "BootstrapTreasuryUpdateContract",
+                    "name": "bootstrap_pdao_spend_treasury_recurring_update"
+                },
+                {
+                    "event_name": "BootstrapSecurityInvite",
+                    "name": "bootstrap_security_invite"
+                },
+                {
+                    "event_name": "BootstrapSecurityKick",
+                    "name": "bootstrap_security_kick"
+                },
+                {
+                    "event_name": "BootstrapDisabled",
+                    "name": "bootstrap_pdao_disable"
+                },
+                {
+                    "event_name": "BootstrapProtocolDAOEnabled",
+                    "name": "bootstrap_pdao_enable_governance"
+                }
+            ]
         }
     ],
     "global": [

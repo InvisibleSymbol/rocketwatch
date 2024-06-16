@@ -159,6 +159,48 @@ class QueuedEvents(commands.Cog):
             if earliest_next_update < next_period:
                 return None
 
+        if "SettingBool" in args.event:
+            args.value = bool(args.value)
+
+        if "dao_setting_multi" in event_name:
+            description_parts = []
+            for i in range(len(args.settingContractNames)):
+                # these are the only types rocketDAOProtocolProposals checks, so fine to hard code until further changes
+                # SettingType.UINT256
+                if args.types[i] == 0:
+                    value = w3.toInt(args.values[i])
+                # SettingType.BOOL
+                elif args.types[i] == 1:
+                    value = bool(args.values[i])
+                # SettingType.ADDRESS
+                elif args.types[i] == 3:
+                    value = w3.toChecksumAddress(args.values[i])
+                else:
+                    value = "???"
+                description_parts.append(
+                    f"`{args.settingPaths[i]} set to {value}`"
+                )
+            args.description = "\n".join(description_parts)
+
+        if "pdao_claimer" in event_name:
+            def share_repr(share: float) -> str:
+                num_dots = round(200 * share)
+                num_double, num_single = divmod(num_dots, 2)
+                return ':' * num_double + '.' * num_single
+
+            node_share = args.nodePercent / 10 ** 18
+            pdao_share = args.protocolPercent / 10 ** 18
+            odao_share = args.trustedNodePercent / 10 ** 18
+
+            args.description = '\n'.join([
+                f"Node Operators",
+                share_repr(node_share) + f" {100 * node_share:.1f}%",
+                f"Protocol DAO",
+                share_repr(pdao_share) + f" {100 * pdao_share:.1f}%",
+                f"Oracle DAO",
+                share_repr(odao_share) + f" {100 * odao_share:.1f}%",
+            ])
+
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
 

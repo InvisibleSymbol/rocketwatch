@@ -124,7 +124,7 @@ class MinipoolDistribution(commands.Cog):
         e.title = "Validator Share of Largest Nodes"
 
         minipool_counts = np.array(self.get_minipool_counts_per_node())
-        # sort ascending
+        # sort descending
         minipool_counts[::-1].sort()
 
         # divide by sum to get protocol share
