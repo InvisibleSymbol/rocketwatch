@@ -1,7 +1,6 @@
 import json
 import logging
 import math
-import random
 
 import pymongo
 import termplotlib as tpl
@@ -151,11 +150,11 @@ class QueuedEvents(commands.Cog):
             args.value = args.rplPrice
             next_period = rp.call("rocketRewardsPool.getClaimIntervalTimeStart", block=event.blockNumber) + rp.call("rocketRewardsPool.getClaimIntervalTime", block=event.blockNumber)
             args.rewardPeriodEnd = next_period
-            update_rate = rp.call("rocketDAOProtocolSettingsNetwork.getSubmitPricesFrequency", block=event.blockNumber) # in amount of blocks
+            update_rate = rp.call("rocketDAOProtocolSettingsNetwork.getSubmitPricesFrequency", block=event.blockNumber) # in seconds
             # get timestamp of event block
             ts = w3.eth.getBlock(event.blockNumber).timestamp
             # check if the next update is after the next period ts
-            earliest_next_update = ts + (update_rate * 12)
+            earliest_next_update = ts + update_rate
             # if it will update before the next period, skip
             if earliest_next_update < next_period:
                 return None
