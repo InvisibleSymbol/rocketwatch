@@ -31,7 +31,7 @@ transformers==4.38.0
 schedule==1.2.1
 suntimes==1.1.2
 pydantic<2
-icalendar==5.0.11
+icalendar==5.0.12
 regex==2023.8.8
 tiktoken==0.5.2
 anthropic==0.18.1
