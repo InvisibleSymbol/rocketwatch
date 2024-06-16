@@ -159,7 +159,7 @@ class QueuedEvents(commands.Cog):
             if earliest_next_update < next_period:
                 return None
 
-        if "SettingBool" in args.event:
+        if "SettingBool" in event.event:
             args.value = bool(args.value)
 
         if "dao_setting_multi" in event_name:
