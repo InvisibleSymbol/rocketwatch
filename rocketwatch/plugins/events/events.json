@@ -40,6 +40,10 @@
             "contract_name": "rocketTokenRETH",
             "events": [
                 {
+                    "event_name": "Transfer",
+                    "name": "reth_transfer_event"
+                },
+                {
                     "event_name": "TokensBurned",
                     "name": "reth_burn_event"
                 }
@@ -147,10 +151,6 @@
             "contract_name": "rocketRewardsPool",
             "events": [
                 {
-                    "event_name": "RPLTokensClaimed",
-                    "name": "rpl_claim_event"
-                },
-                {
                     "event_name": "RewardSnapshot",
                     "name": "odao_rewards_snapshot_event"
                 },
@@ -230,51 +230,51 @@
             "events": [
                 {
                     "event_name": "BootstrapSettingMulti",
-                    "name": "bootstrap_pdao_multi"
+                    "name": "bootstrap_pdao_multi_event"
                 },
                 {
                     "event_name": "BootstrapSettingUint",
-                    "name": "bootstrap_pdao_setting"
+                    "name": "bootstrap_pdao_setting_event"
                 },
                 {
                     "event_name": "BootstrapSettingBool",
-                    "name": "bootstrap_pdao_setting"
+                    "name": "bootstrap_pdao_setting_event"
                 },
                 {
                     "event_name": "BootstrapSettingAddress",
-                    "name": "bootstrap_pdao_setting"
+                    "name": "bootstrap_pdao_setting_event"
                 },
                 {
                     "event_name": "BootstrapSettingClaimers",
-                    "name": "bootstrap_pdao_claimer"
+                    "name": "bootstrap_pdao_claimer_event"
                 },
                 {
                     "event_name": "BootstrapSpendTreasury",
-                    "name": "bootstrap_pdao_spend_treasury"
+                    "name": "bootstrap_pdao_spend_treasury_event"
                 },
                 {
                     "event_name": "BootstrapTreasuryNewContract",
-                    "name": "bootstrap_pdao_spend_treasury_recurring_new"
+                    "name": "bootstrap_pdao_spend_treasury_recurring_new_event"
                 },
                 {
                     "event_name": "BootstrapTreasuryUpdateContract",
-                    "name": "bootstrap_pdao_spend_treasury_recurring_update"
+                    "name": "bootstrap_pdao_spend_treasury_recurring_update_event"
                 },
                 {
                     "event_name": "BootstrapSecurityInvite",
-                    "name": "bootstrap_security_invite"
+                    "name": "bootstrap_sc_member_invite_event"
                 },
                 {
                     "event_name": "BootstrapSecurityKick",
-                    "name": "bootstrap_security_kick"
+                    "name": "bootstrap_sc_member_kick_event"
                 },
                 {
                     "event_name": "BootstrapDisabled",
-                    "name": "bootstrap_pdao_disable"
+                    "name": "bootstrap_pdao_disable_event"
                 },
                 {
                     "event_name": "BootstrapProtocolDAOEnabled",
-                    "name": "bootstrap_pdao_enable_governance"
+                    "name": "bootstrap_pdao_enable_governance_event"
                 }
             ]
         },

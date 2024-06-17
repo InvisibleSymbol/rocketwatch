@@ -12,10 +12,6 @@
         "description": "Burned **%{amount} rETH** for %{ethAmount} ETH!",
         "description_small": ":fire: %{fancy_from} burned **%{amount} rETH** for %{ethAmount} ETH! %{transactionHash_small}"
     },
-    "rpl_claim_event": {
-        "title": ":moneybag: Major RPL Rewards Claim",
-        "description": "%{claimingAddress} claimed **%{amount} RPL** (worth %{ethAmount} ETH)!"
-    },
     "node_merkle_rewards_claimed_rpl": {
         "title": ":moneybag: Major RPL Rewards Claim",
         "description": "%{claimer} claimed %{amountRPL} RPL (worth %{ethAmount} ETH)!"
@@ -33,11 +29,11 @@
         "description": "%{to} withdrew **%{amount} RPL** (worth %{ethAmount} ETH)!"
     },
     "eth_deposit_event": {
-        "title": ":moneybag: Major ETH Deposit",
+        "title": ":moneybag: ETH Deposit",
         "description": "%{nodeAddress} deposited **%{amount} ETH**!"
     },
     "eth_withdraw_event": {
-        "title": ":leaves: Major ETH Withdrawal",
+        "title": ":leaves: ETH Withdrawal",
         "description": "%{nodeAddress} withdrew **%{amount} ETH**!"
     },
     "pool_deposit_assigned_single_event": {
@@ -45,7 +41,11 @@
         "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
     "odao_rpl_transfer": {
-        "description_small": ":moneybag: %{from} transfered %{value} RPL to %{to}! %{transactionHash_small}"
+        "description_small": ":moneybag: %{from} transferred %{value} RPL to %{to}! %{transactionHash_small}"
+    },
+    "reth_transfer_event": {
+        "title": ":whale: Large rETH Transfer",
+        "description": "%{from} transferred **%{value} rETH** to %{to}!"
     },
     "price_update_event": {
         "title": ":moneybag: RPL Price Update",
@@ -57,7 +57,6 @@
     },
     "pool_deposit_recycled_event": {
         "title": ":recycle: Pool Deposit By Protocol Contract",
-        "description": "A Protocol Contract deposited **%{amount} ETH** into the Deposit Pool!",
         "description_small": ":recycle: A Protocol Contract deposited **%{amount} ETH** into the Deposit Pool! %{transactionHash_small}"
     },
     "minipool_exit_event": {
@@ -157,43 +156,43 @@
         "title": ":satellite_orbital: oDAO Bootstrap Mode: Disabled Bootstrap Mode",
         "description": "Bootstrap mode for the oDAO has been disabled!"
     },
-    "bootstrap_pdao_multi": {
+    "bootstrap_pdao_multi_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Multiple Settings Modified",
         "description": "%{description}"
     },
-    "bootstrap_pdao_setting": {
+    "bootstrap_pdao_setting_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
     },
-    "bootstrap_pdao_claimer": {
+    "bootstrap_pdao_claimer_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Changed Reward Distribution",
         "description": "%{description}"
     },
-    "bootstrap_pdao_spend_treasury": {
+    "bootstrap_pdao_spend_treasury_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Spent Treasury",
         "description": "**%{amount} RPL** from treasury sent to %{recipientAddress}!"
     },
-    "bootstrap_pdao_spend_treasury_recurring_new": {
+    "bootstrap_pdao_spend_treasury_recurring_new_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: New Recurring Treasury Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
-    "bootstrap_pdao_spend_treasury_recurring_update": {
+    "bootstrap_pdao_spend_treasury_recurring_update_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Updated Recurring Treasury Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
-    "bootstrap_pdao_disable": {
+    "bootstrap_pdao_disable_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Disabled Bootstrap Mode",
         "description": "Bootstrap mode for the pDAO has been disabled!"
     },
-    "bootstrap_pdao_enable_governance": {
+    "bootstrap_pdao_enable_governance_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Enable Governance",
         "description": "On-chain governance has been enabled!"
     },
-    "bootstrap_security_invite": {
+    "bootstrap_sc_member_invite_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Invited Security Council Member",
         "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
     },
-    "bootstrap_security_kick": {
+    "bootstrap_sc_member_kick_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Kicked Security Council Member",
         "description": "%{memberAddress} has been removed from the security council!"
     },

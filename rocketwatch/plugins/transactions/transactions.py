@@ -44,12 +44,12 @@ class QueuedTransactions(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def trigger_tx(self, ctx: Context, contract: str, function: str, args: str = "{}"):
+    async def trigger_tx(self, ctx: Context, contract: str, function: str, json_args: str = "{}"):
         await ctx.defer(ephemeral=False)
         event_obj = aDict({
             "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
             "blockNumber": 10_000_000,
-            "args": json.loads(args)
+            "args": json.loads(json_args)
         })
         event_name = self.internal_function_mapping[contract][function]
         if embed := self.create_embed(event_name, event_obj):
