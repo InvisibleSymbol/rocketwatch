@@ -196,6 +196,22 @@
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Kicked Security Council Member",
         "description": "%{memberAddress} has been removed from the security council!"
     },
+    "sc_member_join_event": {
+        "title": ":lock: Security Council Induction",
+        "description": "%{nodeAddress} has joined the security council!"
+    },
+    "sc_member_leave_event": {
+        "title": ":lock: Security Council Resignation",
+        "description": "%{nodeAddress} has left the security council!"
+    },
+    "sc_member_request_leave_event": {
+        "title": ":lock: Security Council Resignation Request",
+        "description": "%{nodeAddress} has requested to leave the security council!"
+    },
+    "sc_member_kick_event": {
+        "title": ":lock: Security Council Expulsion",
+        "description": "%{nodeAddress} has been kicked from the security council!"
+    },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",
         "description": "Minipool %{minipool} has been scrubbed likely due to having invalid withdrawal credentials on the beacon chain!"
