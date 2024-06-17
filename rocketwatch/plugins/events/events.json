@@ -80,19 +80,19 @@
             "events": [
                 {
                     "event_name": "ProposalAdded",
-                    "name": "odao_proposal_add_event"
+                    "name": "dao_proposal_add_event"
                 },
                 {
                     "event_name": "ProposalVoted",
-                    "name": "odao_proposal_vote_event"
+                    "name": "dao_proposal_vote_event"
                 },
                 {
                     "event_name": "ProposalExecuted",
-                    "name": "odao_proposal_execute_event"
+                    "name": "dao_proposal_execute_event"
                 },
                 {
                     "event_name": "ProposalCancelled",
-                    "name": "odao_proposal_cancel_event"
+                    "name": "dao_proposal_cancel_event"
                 }
             ]
         },
@@ -262,11 +262,11 @@
                 },
                 {
                     "event_name": "BootstrapSecurityInvite",
-                    "name": "bootstrap_sc_member_invite_event"
+                    "name": "bootstrap_sdao_member_invite_event"
                 },
                 {
                     "event_name": "BootstrapSecurityKick",
-                    "name": "bootstrap_sc_member_kick_event"
+                    "name": "bootstrap_sdao_member_kick_event"
                 },
                 {
                     "event_name": "BootstrapDisabled",
@@ -296,19 +296,19 @@
             "events": [
                 {
                     "event_name": "ActionJoined",
-                    "name": "sc_member_join_event"
+                    "name": "sdao_member_join_event"
                 },
                 {
                     "event_name": "ActionLeave",
-                    "name": "sc_member_leave_event"
+                    "name": "sdao_member_leave_event"
                 },
                 {
                     "event_name": "ActionRequestLeave",
-                    "name": "sc_member_request_leave_event"
+                    "name": "sdao_member_request_leave_event"
                 },
                 {
                     "event_name": "ActionKick",
-                    "name": "sc_member_kick_event"
+                    "name": "sdao_member_kick_event"
                 }
             ]
         }

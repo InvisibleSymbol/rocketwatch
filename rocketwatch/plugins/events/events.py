@@ -143,7 +143,14 @@ class QueuedEvents(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def trigger_event(self, ctx: Context, contract: str, event: str, json_args: str = "{}"):
+    async def trigger_event(
+            self,
+            ctx: Context,
+            contract: str,
+            event: str,
+            json_args: str = "{}",
+            block_number: int = 0
+    ):
         await ctx.defer(ephemeral=False)
         default_args = {
             "tnx_fee": 0,
@@ -152,8 +159,8 @@ class QueuedEvents(Cog):
         event_obj = aDict({
             "event": event,
             "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
-            "blockNumber": 10_000_000,
-            "args": default_args | json.loads(json_args)
+            "blockNumber": block_number,
+            "args": aDict(default_args | json.loads(json_args))
         })
         if not (event_name := self.internal_event_mapping.get(event, None)):
             event_name = self.internal_event_mapping[f"{contract}.{event}"]
@@ -273,26 +280,34 @@ class QueuedEvents(Cog):
             args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
             args.caller = receipt["from"]
 
-        # store event_name in args
-        args.event_name = event_name
-
         # add transaction hash and block number to args
         args.transactionHash = event.transactionHash.hex()
         args.blockNumber = event.blockNumber
 
         # add proposal message manually if the event contains a proposal
-        if "proposal" in event_name:
+        if "dao_proposal" in event_name:
             proposal_id = event.args.proposalID
             args.message = rp.call("rocketDAOProposal.getMessage", proposal_id)
+
+            # change prefix for DAO-specific event
+            dao_name = args.get("proposalDAO", None) or rp.call("rocketDAOProposal.getDAO", proposal_id)
+            event_name = event_name.replace("dao", {
+                "rocketDAONodeTrustedProposals": "odao",
+                "rocketDAOSecurityProposals": "sdao"
+            }[dao_name])
+
             # create bar graph for votes
             votes = [
                 solidity.to_int(rp.call("rocketDAOProposal.getVotesFor", proposal_id, block=event.blockNumber)),
                 solidity.to_int(rp.call("rocketDAOProposal.getVotesAgainst", proposal_id, block=event.blockNumber)),
-                math.ceil(solidity.to_float(rp.call("rocketDAONodeTrusted.getMemberQuorumVotesRequired",block=event.blockNumber - 1))),
+                math.ceil(solidity.to_float(rp.call("rocketDAOProposal.getVotesRequired", proposal_id, block=event.blockNumber - 1)))
             ]
             vote_graph = tpl.figure()
-            vote_graph.barh(votes, ["For", "Against", "Quorum"], max_width=20)
+            vote_graph.barh(votes, ["For", "Against", "Required"], max_width=20)
             args.vote_graph = vote_graph.get_string()
+
+        # store event_name in args
+        args.event_name = event_name
 
         # create human-readable decision for votes
         if "supported" in args:
@@ -327,10 +342,10 @@ class QueuedEvents(Cog):
                 "rpl_stake_event" in event_name and args.amount < 1000,
                 "rpl_stake_event" in event_name and args.amount < 1000,
                 "node_merkle_rewards_claimed" in event_name and args.ethAmount < 5 and args.amountETH < 5,
-                "rpl_withdraw_event" in event_name and args.ethAmount < 16,
-                "eth_deposit_event" in event_name and args.amount < 32,
-                "eth_withdraw_event" in event_name and args.amount < 32]):
-            amount = args.get("ethAmount", args.amount)
+                "rpl_withdraw_event" in event_name and args.ethAmount < 16]):
+            # "eth_deposit_event" in event_name and args.amount < 32,
+            # "eth_withdraw_event" in event_name and args.amount < 32
+            amount = args.get("ethAmount", None) or args.amount
             log.debug(f"Skipping {event_name} because the event ({amount}) is too small to be interesting")
             return None
 
@@ -543,7 +558,6 @@ class QueuedEvents(Cog):
                 # default event path
                 contract = rp.get_contract_by_address(address)
                 contract_event = self.topic_mapping[event.topics[0].hex()]
-                log.debug(contract_event)
                 topics = [w3.toHex(t) for t in event.topics]
                 _event = aDict(contract.events[contract_event]().processLog(event))
                 _event.topics = topics
@@ -553,9 +567,9 @@ class QueuedEvents(Cog):
                     _event.args = aDict(_event.args)
                     _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
-                event_name = self.internal_event_mapping[f"{n}.{event.event}"]
 
-                embed = self.create_embed(event_name, _event, _events=pending_events)
+                event_name = self.internal_event_mapping[f"{n}.{event.event}"]
+                embed = self.create_embed(event_name, event, _events=pending_events)
             elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:

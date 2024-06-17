@@ -6,6 +6,11 @@
         "bootstrapUpgrade": "bootstrap_odao_network_upgrade",
         "bootstrapDisable": "bootstrap_odao_disable"
     },
+    "rocketDAOSecurityProposals": {
+        "proposalSettingUint": "sdao_setting",
+        "proposalSettingBool": "sdao_setting",
+        "proposalSettingAddress": "sdao_setting"
+    },
     "rocketNodeDeposit": {
         "deposit": "minipool_failed_deposit",
         "depositWithCredit": "minipool_failed_deposit"

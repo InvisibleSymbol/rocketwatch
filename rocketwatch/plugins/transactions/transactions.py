@@ -44,12 +44,19 @@ class QueuedTransactions(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def trigger_tx(self, ctx: Context, contract: str, function: str, json_args: str = "{}"):
+    async def trigger_tx(
+            self,
+            ctx: Context,
+            contract: str,
+            function: str,
+            json_args: str = "{}",
+            block_number: int = 0
+    ):
         await ctx.defer(ephemeral=False)
         event_obj = aDict({
             "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
-            "blockNumber": 10_000_000,
-            "args": json.loads(json_args)
+            "blockNumber": block_number,
+            "args": json.loads(json_args) | {"function_name": function}
         })
         event_name = self.internal_function_mapping[contract][function]
         if embed := self.create_embed(event_name, event_obj):
@@ -83,6 +90,9 @@ class QueuedTransactions(Cog):
                     warnings.simplefilter("ignore")
                     processed_logs = event.processReceipt(receipt)
                 args.count = len(processed_logs)
+
+        if "SettingBool" in args.function_name:
+            args.value = bool(args.value)
 
         if event_name == "bootstrap_odao_network_upgrade":
             if args.type == "addContract":
