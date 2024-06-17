@@ -1,10 +1,11 @@
 import json
 import logging
-import random
 import warnings
 
 import web3.exceptions
-from discord.ext import commands
+from discord import Object
+from discord.app_commands import guilds
+from discord.ext.commands import Cog, Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
@@ -18,7 +19,7 @@ log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedTransactions(commands.Cog):
+class QueuedTransactions(Cog):
     def __init__(self, bot):
         self.bot = bot
         self.state = "INIT"
@@ -39,6 +40,22 @@ class QueuedTransactions(commands.Cog):
                 continue
             self.addresses.append(address)
             self.internal_function_mapping[contract_name] = event_mapping
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def trigger_tx(self, ctx: Context, contract: str, function: str, args: str = "{}"):
+        await ctx.defer(ephemeral=False)
+        event_obj = aDict({
+            "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
+            "blockNumber": 10_000_000,
+            "args": eval(args)  # kinda unsafe but only callable by the owner anyway
+        })
+        event_name = self.internal_function_mapping[contract][function]
+        if embed := self.create_embed(event_name, event_obj):
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(content="<empty>")
 
     def create_embed(self, event_name, event):
         # prepare args
@@ -149,12 +166,6 @@ class QueuedTransactions(commands.Cog):
                                 continue
 
                         if embed := self.create_embed(event_name, event):
-                            if event_name == "redstone_upgrade_triggered":
-                                embed.set_image(url="https://cdn.dribbble.com/users/187497/screenshots/2284528/media/123903807d334c15aa105b44f2bd9252.gif")
-                            elif event_name == "atlas_upgrade_triggered":
-                                embed.set_image(url="https://cdn.discordapp.com/attachments/912434217118498876/1097528472567558227/DALLE_2023-04-17_16.25.46_-_an_expresive_oil_painting_of_the_atlas_2_rocket_taking_off_moon_colorfull.png")
-                            elif event_name == "houston_upgrade_triggered":
-                                embed.set_image(url="https://i.imgur.com/XT5qPWf.png")
                             payload.append(Response(
                                 topic="transactions",
                                 embed=embed,
