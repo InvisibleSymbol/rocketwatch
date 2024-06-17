@@ -19,7 +19,7 @@ class Reloader(commands.Cog):
         """Load a module."""
         await ctx.defer()
         try:
-            self.bot.load_extension(f"plugins.{module}.{module}")
+            await self.bot.load_extension(f"plugins.{module}.{module}")
             await ctx.send(content=f"Loaded {module} Plugin!")
         except ExtensionAlreadyLoaded:
             await ctx.send(content=f"Plugin {module} already loaded!")
