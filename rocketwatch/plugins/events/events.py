@@ -311,13 +311,18 @@ class QueuedEvents(Cog):
             args.amountRPL = sum(solidity.to_float(r) for r in args.amountRPL)
             args.amountETH = sum(solidity.to_float(e) for e in args.amountETH)
             args.ethAmount = args.amountRPL * rpl_ratio
+        if event_name in ["eth_deposit_event", "eth_withdraw_event"]:
+            args.amount = round(args.amount / 10 ** 18, 2)
 
         # reject if the amount is not major
         if any(["rpl_claim_event" in event_name and args.ethAmount < 5,
                 "rpl_stake_event" in event_name and args.amount < 1000,
                 "node_merkle_rewards_claimed" in event_name and args.ethAmount < 5 and args.amountETH < 5,
-                "rpl_withdraw_event" in event_name and args.ethAmount < 16]):
-            log.debug(f"Skipping {event_name} because the event ({args.ethAmount}) is too small to be interesting")
+                "rpl_withdraw_event" in event_name and args.ethAmount < 16,
+                "eth_deposit_event" in event_name and args.amount < 32,
+                "eth_withdraw_event" in event_name and args.amount < 32]):
+            amount = args.get("ethAmount", args.amount)
+            log.debug(f"Skipping {event_name} because the event ({amount}) is too small to be interesting")
             return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
