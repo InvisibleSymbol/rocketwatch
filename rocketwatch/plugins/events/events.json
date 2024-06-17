@@ -290,6 +290,27 @@
                     "name": "eth_withdraw_event"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketDAOSecurityActions",
+            "events": [
+                {
+                    "event_name": "ActionJoined",
+                    "name": "sc_member_join_event"
+                },
+                {
+                    "event_name": "ActionLeave",
+                    "name": "sc_member_leave_event"
+                },
+                {
+                    "event_name": "ActionRequestLeave",
+                    "name": "sc_member_request_leave_event"
+                },
+                {
+                    "event_name": "ActionKick",
+                    "name": "sc_member_kick_event"
+                }
+            ]
         }
     ],
     "global": [
