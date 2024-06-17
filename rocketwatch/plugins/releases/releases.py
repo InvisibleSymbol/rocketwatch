@@ -19,24 +19,18 @@ class Releases(commands.Cog):
         self.tag_url = "https://github.com/rocket-pool/smartnode-install/releases/tag/"
 
     @hybrid_command()
-    async def latest_releases(self, ctx: Context):
+    async def latest_release(self, ctx: Context):
         """
-        Get the latest releases of Smart Node for both Mainnet and Prater.
+        Get the latest release of Smart Node for Mainnet.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
 
         async with aiohttp.ClientSession() as session:
             res = await session.get("https://api.github.com/repos/rocket-pool/smartnode-install/tags")
             res = await res.json()
-        latest_prater_release = f"[{res[0]['name']}]({self.tag_url + res[0]['name']})"
-        latest_mainnet_release = None
-        for tag in res:
-            if tag["name"].split(".")[-1].isnumeric():
-                latest_mainnet_release = f"[{tag['name']}]({self.tag_url + tag['name']})"
-                break
+        latest_release = f"[{res[0]['name']}]({self.tag_url + res[0]['name']})"
         e = Embed()
-        e.add_field(name="Latest Mainnet Release", value=latest_mainnet_release, inline=False)
-        e.add_field(name="Latest Prater Release", value=latest_prater_release, inline=False)
+        e.add_field(name="Latest Smart Node Release", value=latest_release, inline=False)
 
         await ctx.send(embed=e)
 

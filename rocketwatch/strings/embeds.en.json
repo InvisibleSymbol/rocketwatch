@@ -34,11 +34,11 @@
     },
     "eth_deposit_event": {
         "title": ":moneybag: Major ETH Deposit",
-        "description": "%{amount} ETH deposited for %{nodeAddress}!"
+        "description": "%{nodeAddress} deposited **%{amount} ETH**!"
     },
     "eth_withdraw_event": {
         "title": ":leaves: Major ETH Withdrawal",
-        "description": "%{amount} ETH withdrawn from %{nodeAddress}!"
+        "description": "%{nodeAddress} withdrew **%{amount} ETH**!"
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",

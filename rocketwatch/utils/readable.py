@@ -60,7 +60,7 @@ def cl_explorer_url(target, name=None):
 
 def advanced_tnx_url(tx_hash):
     chain = cfg["rocketpool.chain"]
-    if chain not in ["mainnet", "goerli"]:
+    if chain not in ["mainnet"]:
         return ""
     return f"[[A]](https://ethtx.info/{chain}/{tx_hash})"
 

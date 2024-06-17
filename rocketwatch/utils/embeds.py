@@ -79,20 +79,22 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
     if w3.isAddress(target):
         # sanitize address
         target = w3.toChecksumAddress(target)
+
         # rocketscan url stuff
-        if cfg["rocketpool.chain"] == "mainnet":
+        rocketscan_chains = {
+            "mainnet": "https://rocketscan.io",
+            "holesky": "https://holesky.rocketscan.io",
+        }
+
+        if cfg["rocketpool.chain"] in rocketscan_chains:
+            rocketscan_url = rocketscan_chains[cfg["rocketpool.chain"]]
+
             if rp.call("rocketMinipoolManager.getMinipoolExists", target):
-                if cfg["rocketpool.chain"] == "goerli":
-                    url = f"https://prater.rocketscan.io/minipool/{target}"
-                else:
-                    url = f"https://rocketscan.io/minipool/{target}"
+                url = f"{rocketscan_url}/minipool/{target}"
             if rp.call("rocketNodeManager.getNodeExists", target):
                 if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target) and prefix != -1:
                     prefix += ":cup_with_straw:"
-                if cfg["rocketpool.chain"] == "goerli":
-                    url = f"https://prater.rocketscan.io/node/{target}"
-                else:
-                    url = f"https://rocketscan.io/node/{target}"
+                url = f"{rocketscan_url}/node/{target}"
 
         n_key = f"addresses.{target}"
         if not name and (n := _(n_key)) != n_key:
@@ -102,15 +104,14 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
             if prefix != -1:
                 prefix += "🔮"
             name = member_id
-        sdao_member_id = ""
-        try: 
-            member_id = rp.call("rocketDAOSecurity.getMemberID", target)
+
+        try:
+            if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target)):
+                if prefix != -1:
+                    prefix += "🔒"
+                name = member_id
         except NoAddressFound:
             pass
-        if not name and sdao_member_id:
-            if prefix != -1:
-                prefix += "🔒"
-            name = member_id
 
         if cfg["rocketpool.chain"] != "mainnet" and not name:
             name = s_hex(target)
