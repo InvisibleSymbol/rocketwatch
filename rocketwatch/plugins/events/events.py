@@ -4,7 +4,9 @@ import math
 
 import pymongo
 import termplotlib as tpl
-from discord.ext import commands
+from discord import Object
+from discord.app_commands import guilds
+from discord.ext.commands import Cog, Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 
@@ -20,7 +22,7 @@ log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedEvents(commands.Cog):
+class QueuedEvents(Cog):
     update_block = 0
 
     def __init__(self, bot):
@@ -136,6 +138,23 @@ class QueuedEvents(commands.Cog):
 
         return self.create_embed(event_name, event), event_name
 
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def trigger_event(self, ctx: Context, event: str, args: str = "{}"):
+        await ctx.defer(ephemeral=False)
+        event_obj = aDict({
+            "event": event,
+            "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
+            "blockNumber": 10_000_000,
+            "args": eval(args)  # kinda unsafe but only callable by the owner anyway
+        })
+        event_name = self.internal_event_mapping[event_obj.event]
+        if embed := self.create_embed(event_name, event_obj):
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(content="<empty>")
+
     def create_embed(self, event_name, event, _events=None):
         args = aDict(event['args'])
 
@@ -183,23 +202,26 @@ class QueuedEvents(commands.Cog):
             args.description = "\n".join(description_parts)
 
         if "pdao_claimer" in event_name:
-            def share_repr(share: float) -> str:
-                num_dots = round(200 * share)
-                num_double, num_single = divmod(num_dots, 2)
-                return ':' * num_double + '.' * num_single
+            def share_repr(percentage: float) -> str:
+                max_width = 35
+                num_points = round(max_width * percentage / 100)
+                return '*' * num_points
+                # num_dots = round(2 * percentage)
+                # num_double, num_single = divmod(round(percentage), 2)
+                # return ':' * num_double + '.' * num_single
 
-            node_share = args.nodePercent / 10 ** 18
-            pdao_share = args.protocolPercent / 10 ** 18
-            odao_share = args.trustedNodePercent / 10 ** 18
+            node_share = args.nodePercent / 10 ** 16
+            pdao_share = args.protocolPercent / 10 ** 16
+            odao_share = args.trustedNodePercent / 10 ** 16
 
-            args.description = '\n'.join([
-                f"Node Operators",
-                share_repr(node_share) + f" {100 * node_share:.1f}%",
-                f"Protocol DAO",
-                share_repr(pdao_share) + f" {100 * pdao_share:.1f}%",
-                f"Oracle DAO",
-                share_repr(odao_share) + f" {100 * odao_share:.1f}%",
-            ])
+            args.description = "```" + '\n'.join([
+                f"Node Operator Share",
+                f"{share_repr(node_share)} {node_share:.1f}%",
+                f"Protocol DAO Share",
+                f"{share_repr(pdao_share)} {pdao_share:.1f}%",
+                f"Oracle DAO Share",
+                f"{share_repr(odao_share)} {odao_share:.1f}%",
+            ]) + "```"
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
