@@ -277,6 +277,19 @@
                     "name": "bootstrap_pdao_enable_governance"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketNodeDeposit",
+            "events": [
+                {
+                    "event_name": "DepositFor",
+                    "name": "eth_deposit_event"
+                },
+                {
+                    "event_name": "Withdrawal",
+                    "name": "eth_withdraw_event"
+                }
+            ]
         }
     ],
     "global": [

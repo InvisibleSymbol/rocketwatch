@@ -316,17 +316,17 @@ def assemble(args):
                     value=f"`{args.settingContractName}`",
                     inline=False)
 
+    if "periodLength" in args:
+        e.add_field(
+            name="Payment Interval",
+            value=humanize.naturaldelta(datetime.timedelta(seconds=args.periodLength)),
+            inline=False
+        )
+
     if "startTime" in args:
         e.add_field(
             name="Start Time",
             value=f"<t:{args.startTime}>",
-            inline=False
-        )
-
-    if "periodLength" in args:
-        e.add_field(
-            name="Period Length",
-            value=humanize.naturaldelta(datetime.timedelta(seconds=args.periodLength)),
             inline=False
         )
 
@@ -406,5 +406,13 @@ def assemble(args):
 
     if "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")
+
+    match args.event_name:
+        case "redstone_upgrade_triggered":
+            e.set_image(url="https://cdn.dribbble.com/users/187497/screenshots/2284528/media/123903807d334c15aa105b44f2bd9252.gif")
+        case "atlas_upgrade_triggered":
+            e.set_image(url="https://cdn.discordapp.com/attachments/912434217118498876/1097528472567558227/DALLE_2023-04-17_16.25.46_-_an_expresive_oil_painting_of_the_atlas_2_rocket_taking_off_moon_colorfull.png")
+        case "houston_upgrade_triggered":
+            e.set_image(url="https://i.imgur.com/XT5qPWf.png")
 
     return e
