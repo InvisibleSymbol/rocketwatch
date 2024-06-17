@@ -568,8 +568,11 @@ class QueuedEvents(Cog):
                     _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
 
-                event_name = self.internal_event_mapping[f"{n}.{event.event}"]
-                embed = self.create_embed(event_name, event, _events=pending_events)
+                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
+                    embed = self.create_embed(event_name, event, _events=pending_events)
+                else:
+                    log.debug(f"Skipping unknown event {n}.{event.event}")
+
             elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:
