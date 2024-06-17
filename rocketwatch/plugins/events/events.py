@@ -49,24 +49,26 @@ class QueuedEvents(Cog):
         addresses = []
         aggregated_topics = []
         for group in events_config["direct"]:
+            contract_name = group["contract_name"]
             try:
-                contract = rp.get_contract_by_name(group["contract_name"])
+                contract = rp.get_contract_by_name(contract_name)
             except NoAddressFound as err:
-                log.error(f"Failed to get contract {group['contract_name']}: {err}")
+                log.error(f"Failed to get contract {contract_name}: {err}")
                 continue
             addresses.append(contract.address)
 
             for event in group["events"]:
+                event_name = event["event_name"]
                 try:
-                    topic = contract.events[event["event_name"]].build_filter().topics[0]
+                    topic = contract.events[event_name].build_filter().topics[0]
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
                     log.warning(
-                        f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                        f"Skipping {event_name} ({event['name']}) as it can't be found in the contract")
                     continue
 
-                self.internal_event_mapping[event["event_name"]] = event["name"]
-                self.topic_mapping[topic] = event["event_name"]
+                self.internal_event_mapping[f"{contract_name}.{event_name}"] = event["name"]
+                self.topic_mapping[topic] = event_name
                 if topic not in aggregated_topics:
                     aggregated_topics.append(topic)
 
@@ -141,15 +143,21 @@ class QueuedEvents(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def trigger_event(self, ctx: Context, event: str, args: str = "{}"):
+    async def trigger_event(self, ctx: Context, contract: str, event: str, json_args: str = "{}"):
         await ctx.defer(ephemeral=False)
+        default_args = {
+            "tnx_fee": 0,
+            "tnx_fee_dai": 0
+        }
         event_obj = aDict({
             "event": event,
             "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
             "blockNumber": 10_000_000,
-            "args": json.loads(args)
+            "args": default_args | json.loads(json_args)
         })
-        event_name = self.internal_event_mapping[event_obj.event]
+        if not (event_name := self.internal_event_mapping.get(event, None)):
+            event_name = self.internal_event_mapping[f"{contract}.{event}"]
+
         if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)
         else:
@@ -301,7 +309,7 @@ class QueuedEvents(Cog):
                 rp.call("rocketAuctionManager.getLotPriceAtBlock", args.lotIndex, args.blockNumber))
             args.rplAmount = eth / price
 
-        if event_name in ["rpl_claim_event", "rpl_stake_event", "rpl_withdraw_event"]:
+        if event_name in ["rpl_stake_event", "rpl_withdraw_event"]:
             # get eth price by multiplying the amount by the current RPL ratio
             rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
             args.amount = solidity.to_float(args.amount)
@@ -311,11 +319,12 @@ class QueuedEvents(Cog):
             args.amountRPL = sum(solidity.to_float(r) for r in args.amountRPL)
             args.amountETH = sum(solidity.to_float(e) for e in args.amountETH)
             args.ethAmount = args.amountRPL * rpl_ratio
-        if event_name in ["eth_deposit_event", "eth_withdraw_event"]:
-            args.amount = round(args.amount / 10 ** 18, 2)
+        if event_name in ["reth_transfer_event"]:
+            args.amount = args.value / 10 ** 18
 
         # reject if the amount is not major
-        if any(["rpl_claim_event" in event_name and args.ethAmount < 5,
+        if any(["reth_transfer_event" in event_name and args.amount < 1000,
+                "rpl_stake_event" in event_name and args.amount < 1000,
                 "rpl_stake_event" in event_name and args.amount < 1000,
                 "node_merkle_rewards_claimed" in event_name and args.ethAmount < 5 and args.amountETH < 5,
                 "rpl_withdraw_event" in event_name and args.ethAmount < 16,
@@ -529,11 +538,12 @@ class QueuedEvents(Cog):
             log.debug(f"Checking Event {event}")
 
             address = event.address
-            if n := rp.get_name_by_address(address) and "topics" in event:
+            if (n := rp.get_name_by_address(address)) and "topics" in event:
                 log.info(f"Found event {event} for {n}")
                 # default event path
                 contract = rp.get_contract_by_address(address)
                 contract_event = self.topic_mapping[event.topics[0].hex()]
+                log.debug(contract_event)
                 topics = [w3.toHex(t) for t in event.topics]
                 _event = aDict(contract.events[contract_event]().processLog(event))
                 _event.topics = topics
@@ -543,7 +553,7 @@ class QueuedEvents(Cog):
                     _event.args = aDict(_event.args)
                     _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
-                event_name = self.internal_event_mapping[event.event]
+                event_name = self.internal_event_mapping[f"{n}.{event.event}"]
 
                 embed = self.create_embed(event_name, _event, _events=pending_events)
             elif event.get("event", None) in self.internal_event_mapping:
