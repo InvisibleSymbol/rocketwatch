@@ -49,7 +49,7 @@ class QueuedTransactions(Cog):
         event_obj = aDict({
             "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
             "blockNumber": 10_000_000,
-            "args": eval(args)  # kinda unsafe but only callable by the owner anyway
+            "args": json.loads(args)
         })
         event_name = self.internal_function_mapping[contract][function]
         if embed := self.create_embed(event_name, event_obj):

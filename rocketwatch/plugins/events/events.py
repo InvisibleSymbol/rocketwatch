@@ -147,7 +147,7 @@ class QueuedEvents(Cog):
             "event": event,
             "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
             "blockNumber": 10_000_000,
-            "args": eval(args)  # kinda unsafe but only callable by the owner anyway
+            "args": json.loads(args)
         })
         event_name = self.internal_event_mapping[event_obj.event]
         if embed := self.create_embed(event_name, event_obj):
