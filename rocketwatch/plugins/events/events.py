@@ -345,8 +345,11 @@ class QueuedEvents(Cog):
                 "rpl_withdraw_event" in event_name and args.ethAmount < 16]):
             # "eth_deposit_event" in event_name and args.amount < 32,
             # "eth_withdraw_event" in event_name and args.amount < 32
-            amount = args.get("ethAmount", None) or args.amount
-            log.debug(f"Skipping {event_name} because the event ({amount}) is too small to be interesting")
+            amounts = {}
+            for arg in ["ethAmount", "amount", "amountETH"]:
+                if arg in args:
+                    amounts[arg] = args[arg]
+            log.debug(f"Skipping {event_name} because the event ({amounts}) is too small to be interesting")
             return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
