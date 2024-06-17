@@ -6,7 +6,6 @@ rocketpool: {
     channel_id: 912434217118498876
   }
   # mainnet: 0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46
-  # goerli: 0xd8Cd47263414aFEca62d6e2a3917d6600abDceB3
   # kiln: 0x93c769b239c5dBb383683869FaE2667623055420
   manual_addresses: {
     rocketStorage: "0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46",

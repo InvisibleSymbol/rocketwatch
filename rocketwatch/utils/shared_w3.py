@@ -16,14 +16,9 @@ log.setLevel(cfg["log_level"])
 
 w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.current']))
 mainnet_w3 = w3
-if "goerli" in cfg['rocketpool.execution_layer.endpoint'].keys():
-    goerli_w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.goerli']))
-    goerli_w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-
 
 if cfg['rocketpool.chain'] != "mainnet":
     mainnet_w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.mainnet']))
-
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 historical_w3 = None
