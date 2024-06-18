@@ -121,7 +121,7 @@ class QueuedSnapshot(commands.Cog):
         return events
 
     @hybrid_command()
-    async def votes(self, ctx: Context):
+    async def snapshot_votes(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")

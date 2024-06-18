@@ -29,12 +29,12 @@
         "description": "%{to} withdrew **%{amount} RPL** (worth %{ethAmount} ETH)!"
     },
     "eth_deposit_event": {
-        "title": ":moneybag: ETH Deposit",
-        "description": "%{nodeAddress} deposited **%{amount} ETH**!"
+        "title": ":moneybag: Node ETH Deposit",
+        "description": "%{nodeAddress} deposited **%{amount} ETH** for their node!"
     },
     "eth_withdraw_event": {
-        "title": ":leaves: ETH Withdrawal",
-        "description": "%{nodeAddress} withdrew **%{amount} ETH**!"
+        "title": ":leaves: Node ETH Withdrawal",
+        "description": "%{nodeAddress} withdrew **%{amount} ETH** from their node!"
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",

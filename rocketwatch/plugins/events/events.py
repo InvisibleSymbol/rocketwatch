@@ -151,7 +151,7 @@ class QueuedEvents(Cog):
             json_args: str = "{}",
             block_number: int = 0
     ):
-        await ctx.defer(ephemeral=False)
+        await ctx.defer(ephemeral=True)
         default_args = {
             "tnx_fee": 0,
             "tnx_fee_dai": 0
