@@ -34,7 +34,7 @@
     },
     "eth_withdraw_event": {
         "title": ":leaves: Node ETH Withdrawal",
-        "description": "%{nodeAddress} withdrew **%{amount} ETH** from their node!"
+        "description": "%{from} withdrew **%{amount} ETH** from node %{nodeAddress}!"
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
