@@ -234,7 +234,7 @@ def assemble(args):
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
-               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate"]):
+               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate", "votingpower"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
