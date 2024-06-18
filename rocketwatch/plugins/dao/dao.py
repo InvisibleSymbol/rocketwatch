@@ -74,7 +74,7 @@ class DefaultDAO:
             graph.barh(
                 [_proposal["votes_for"], _proposal["votes_against"], _proposal["votes_required"]],
                 ["For", "Against", "Required"],
-                max_width=30
+                max_width=20
             )
             return graph.get_string()
 
@@ -170,7 +170,7 @@ class ProtocolDAO:
                     _proposal["quorum"]
                 ],
                 ["For", "Against", "Veto", "Abstain", "Total", "Veto Quorum", "Quorum"],
-                max_width=30
+                max_width=20
             )
             return graph.get_string()
 

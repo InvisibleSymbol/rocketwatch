@@ -21,7 +21,7 @@ class Releases(commands.Cog):
     @hybrid_command()
     async def latest_release(self, ctx: Context):
         """
-        Get the latest release of Smart Node for Mainnet.
+        Get the latest release of Smart Node.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
 

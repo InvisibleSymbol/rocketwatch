@@ -79,17 +79,19 @@ class QueuedTransactions(Cog):
         if "odao_disable" in event_name and not args.confirmDisableBootstrapMode:
             return None
 
-        if "deposit" in event_name:
+        if "failed_deposit" in event_name:
             receipt = w3.eth.get_transaction_receipt(args.transactionHash)
-            args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
             args.node = receipt["from"]
-            if "queue" in event_name:
-                event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
-                # get the amount of dequeues that happend in this transaction using the event logs
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    processed_logs = event.processReceipt(receipt)
-                args.count = len(processed_logs)
+            args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
+        elif "deposit_pool_queue" in event_name:
+            receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+            args.node = receipt["from"]
+            event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
+            # get the amount of dequeues that happened in this transaction using the event logs
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                processed_logs = event.processReceipt(receipt)
+            args.count = len(processed_logs)
 
         if "SettingBool" in args.function_name:
             args.value = bool(args.value)

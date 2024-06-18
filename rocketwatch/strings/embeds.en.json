@@ -286,7 +286,15 @@
     },
     "minipool_deposit_received_event_credit": {
         "title": ":magic_wand: Minipool Created Using Credit",
-        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!\n**%{creditAmount} ETH** worth of Credit used for this deposit!"
+        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!\n**%{creditAmount} ETH** worth of credit used for this deposit!"
+    },
+    "minipool_deposit_received_event_balance": {
+        "title": ":magic_wand: Minipool Created Using ETH Balance",
+        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!\n**%{balanceAmount} ETH** of the node's existing balance was used for this deposit!"
+    },
+    "minipool_deposit_received_event_shared": {
+        "title": ":magic_wand: Minipool Created Using Credit",
+        "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!\n**%{creditAmount} ETH** of credit and **%{balanceAmount} ETH** of the node's balance were used for this deposit!"
     },
     "minipool_bond_reduction_started_event": {
         "title": ":magic_wand: Minipool Bond Reduction Initiated",
