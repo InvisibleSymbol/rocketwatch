@@ -211,9 +211,9 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def tmp_fix_42(self, ctx: Context, i: int):
+    async def tmp_fix_42(self, ctx: Context, i: str):
         await ctx.defer(ephemeral=True)
-        await self.db.event_queue.delete_one({"_id": i})
+        await self.db.event_queue.delete_one({"_id": int(i)})
         await ctx.send(content="Done")
 
     @hybrid_command()
