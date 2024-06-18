@@ -83,26 +83,32 @@ class DefaultDAO:
         e.description = "\n\n".join(
             [
                 (
-                    f"**Proposal #{proposal['id']}** - Pending\n"
-                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`"
+                    f"**Proposal #{proposal['id']}** - Pending\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}```"
+                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
             ] + [
                 (
-                    f"**Proposal #{proposal['id']}** - Active\n"
-                    f"Ends <t:{proposal['end']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`\n"
-                    f"{build_graph(proposal)}"
+                    f"**Proposal #{proposal['id']}** - Active\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}\n\n"
+                    f"{build_graph(proposal)}```"
+                    f"Ends <t:{proposal['end']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.Active]
             ] + [
                 (
-                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                    f"Expires <t:{proposal['expires']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`\n"
-                    f"{build_graph(proposal)}"
+                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}\n\n"
+                    f"{build_graph(proposal)}```"
+                    f"Expires <t:{proposal['expires']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.Succeeded]
             ]
         ) or "No active proposals."
@@ -163,48 +169,59 @@ class ProtocolDAO:
                     _proposal["votes_against"],
                     _proposal["votes_veto"],
                     _proposal["votes_abstain"],
-                    _proposal["votes_for"] + _proposal["votes_against"] + _proposal["votes_abstain"],
-                    _proposal["veto_quorum"],
-                    _proposal["quorum"]
+                    _proposal["votes_for"] + _proposal["votes_against"] + _proposal["votes_abstain"]
                 ],
-                ["For", "Against", "Veto", "Abstain", "Total", "Veto Quorum", "Quorum"],
+                ["For", "Against", "Veto", "Abstain", "Total"],
                 max_width=20
             )
-            return graph.get_string()
+            width: int = len(str(max(_proposal['quorum'], _proposal['veto_quorum'])))
+            return graph.get_string() + (
+                f"\n\n"
+                f"Quorum       [{_proposal['quorum'] : >{width}}]\n"
+                f"Veto Quorum  [{_proposal['veto_quorum'] : >{width}}]"
+            )
 
         e = Embed()
         e.title = f"pDAO Proposals"
         e.description = "\n\n".join(
             [
                 (
-                    f"**Proposal #{proposal['id']}** - Pending\n"
-                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`"
+                    f"**Proposal #{proposal['id']}** - Pending\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}```"
+                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
             ] + [
                 (
-                    f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
-                    f"Next phase <t:{proposal['end_phase1']}:R>, ends <t:{proposal['end_phase2']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`\n"
-                    f"{build_graph(proposal)}"
+                    f"**Proposal #{proposal['id']}** - Active (Phase 1)\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}\n\n"
+                    f"{build_graph(proposal)}```"
+                    f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
             ] + [
                 (
-                    f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
-                    f"Ends <t:{proposal['end']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`\n"
-                    f"{build_graph(proposal)}"
+                    f"**Proposal #{proposal['id']}** - Active (Phase 2)\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}\n\n"
+                    f"{build_graph(proposal)}```"
+                    f"Ends <t:{proposal['end']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
             ] + [
                 (
-                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                    f"Expires <t:{proposal['expires']}:R>\n"
-                    f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
-                    f"Proposer: `{proposal['proposer']}`\n"
-                    f"{build_graph(proposal)}"
+                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n```"
+                    f"Description:\n"
+                    f"{DAO.sanitize(proposal['message'])}\n"
+                    f"Proposed by:\n"
+                    f"{proposal['proposer']}\n\n"
+                    f"{build_graph(proposal)}```"
+                    f"Expires <t:{proposal['expires']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.Succeeded]
             ]
         ) or "No active proposals."
@@ -217,7 +234,7 @@ class DAO(Cog):
 
     @staticmethod
     def sanitize(message: str) -> str:
-        max_length = 40
+        max_length = 80
         suffix = "..."
         if len(message) > max_length:
             message = message[:max_length - len(suffix)] + suffix
