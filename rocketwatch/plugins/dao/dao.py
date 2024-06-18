@@ -88,7 +88,8 @@ class DefaultDAO:
                     f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
                     f"Proposer: `{proposal['proposer']}`"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
-            ] +
+            ]
+            +
             [
                 (
                     f"**Proposal #{proposal['id']}** - Active\n"
@@ -97,7 +98,8 @@ class DefaultDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.Active]
-            ] +
+            ]
+            +
             [
                 (
                     f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
@@ -184,7 +186,8 @@ class ProtocolDAO:
                     f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
                     f"Proposer: `{proposal['proposer']}`"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
-            ] +
+            ]
+            +
             [
                 (
                     f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
@@ -193,7 +196,8 @@ class ProtocolDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
-            ] +
+            ]
+            +
             [
                 (
                     f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
@@ -202,7 +206,8 @@ class ProtocolDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
-            ] +
+            ]
+            +
             [
                 (
                     f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
