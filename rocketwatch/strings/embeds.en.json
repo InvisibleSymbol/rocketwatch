@@ -246,7 +246,7 @@
     },
     "pdao_proposal_add_event": {
         "title": ":bulb: oDAO Proposal Created",
-        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\nThey posted a bond of **%{proposalBond} RPL**!\n```Description:\n%{message}```"
     },
     "pdao_proposal_vote_event": {
         "title": ":writing_hand: Major pDAO Vote",
@@ -267,6 +267,18 @@
     "pdao_proposal_destroy_event": {
         "title": ":bomb: pDAO Proposal Destroyed",
         "description": "**%Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```Description:\n%{message}```"
+    },
+    "pdao_proposal_challenge_event": {
+        "title": ":crossed_swords: pDAO Proposal Challenge",
+        "description": "%{challenger} challenged **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+    },
+    "pdao_proposal_root_event": {
+        "title": ":shield: pDAO Proposal Defense",
+        "description": "**Proposal #%{proposalID}**:\n%{proposer} responded to a challenge by submitting a new root!\n```Description:\n%{message}```"
+    },
+    "pdao_proposal_bond_burn_event": {
+        "title": ":fire: pDAO Proposal Bond Burned",
+        "description": "**Proposal #%{proposalID}**:\nThe **%{amount} RPL** bond posted by %{proposer} has been burned!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",

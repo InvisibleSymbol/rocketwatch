@@ -153,16 +153,20 @@ class QueuedEvents(Cog):
             block_number: int = 0
     ):
         await ctx.defer(ephemeral=True)
-        default_args = {
-            "tnx_fee": 0,
-            "tnx_fee_dai": 0
-        }
-        event_obj = aDict({
-            "event": event,
-            "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
-            "blockNumber": block_number,
-            "args": aDict(default_args | json.loads(json_args))
-        })
+        try:
+            default_args = {
+                "tnx_fee": 0,
+                "tnx_fee_dai": 0
+            }
+            event_obj = aDict({
+                "event": event,
+                "transactionHash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
+                "blockNumber": block_number,
+                "args": aDict(default_args | json.loads(json_args))
+            })
+        except json.JSONDecodeError:
+            return await ctx.send(content="Invalid JSON args!")
+
         if not (event_name := self.internal_event_mapping.get(event, None)):
             event_name = self.internal_event_mapping[f"{contract}.{event}"]
 
@@ -289,6 +293,17 @@ class QueuedEvents(Cog):
         if "pdao_proposal" in event_name:
             proposal_id = event.args.proposalID
             args.message = rp.call("rocketDAOProtocolProposal.getMessage", proposal_id)
+
+            if "root" in event_name:
+                # not interesting if the root wasn't submitted in response to a challenge
+                # ChallengeState.Challenged = 1
+                if rp.call("rocketDAOProtocolVerifier.getChallengeState", proposal_id, args.index) != 1:
+                    return None
+
+            if "root" in event_name or "challenge" in event_name:
+                args.proposalBond = solidity.to_int(rp.call("rocketDAOProtocolVerifier.getProposalBond", proposal_id))
+                args.challengeBond = solidity.to_int(rp.call("rocketDAOProtocolVerifier.getChallengeBond", proposal_id))
+                args.challengePeriod = rp.call("rocketDAOProtocolVerifier.getChallengePeriod", proposal_id)
 
             # create human-readable decision for votes
             if "direction" in args:

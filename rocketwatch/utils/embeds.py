@@ -324,6 +324,34 @@ def assemble(args):
             inline=False
         )
 
+    if "index" in args:
+        e.add_field(
+            name="Index",
+            value=args.index,
+            inline=True
+        )
+
+    if "challengePeriod" in args:
+        e.add_field(
+            name="Challenge Period",
+            value=humanize.naturaldelta(datetime.timedelta(seconds=args.challengePeriod)),
+            inline=True
+        )
+
+    if "proposalBond" in args:
+        e.add_field(
+            name="Proposal Bond",
+            value=f"{args.proposalBond} RPL",
+            inline=True
+        )
+
+    if "challengeBond" in args:
+        e.add_field(
+            name="Challenge Bond",
+            value=f"{args.challengeBond} RPL",
+            inline=True
+        )
+
     if "startTime" in args:
         e.add_field(
             name="Start Time",
