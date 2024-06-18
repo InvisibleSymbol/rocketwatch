@@ -30,7 +30,7 @@
     },
     "eth_deposit_event": {
         "title": ":moneybag: Node ETH Deposit",
-        "description": "%{nodeAddress} deposited **%{amount} ETH** for their node!"
+        "description": "%{from} deposited **%{amount} ETH** into node %{nodeAddress}!"
     },
     "eth_withdraw_event": {
         "title": ":leaves: Node ETH Withdrawal",
