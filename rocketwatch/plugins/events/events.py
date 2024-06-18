@@ -365,10 +365,6 @@ class QueuedEvents(Cog):
                 if rp.get_address_by_name(contract) == args.claimingContract:
                     return None
 
-        if "minipool_prestake_event" in event_name:
-            contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
-            args.commission = solidity.to_float(contract.functions.getNodeFee().call())
-
         if "node_register_event" in event_name:
             args.timezone = rp.call("rocketNodeManager.getNodeTimezoneLocation", args.node)
         if "odao_member_challenge_event" in event_name:
@@ -395,7 +391,10 @@ class QueuedEvents(Cog):
                 args.event_name = "node_merkle_rewards_claimed_both"
             else:
                 args.event_name = "node_merkle_rewards_claimed_rpl"
-        if "minipool_prestake_event" in event_name:
+
+        if "minipool_deposit_received_event" in event_name:
+            contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
+            args.commission = solidity.to_float(contract.functions.getNodeFee().call())
             # get the transaction receipt
             tx = w3.eth.get_transaction(args.transactionHash)
             # get the transaction input
@@ -423,13 +422,12 @@ class QueuedEvents(Cog):
                     args.balanceAmount = 0
 
                 if args.balanceAmount == 0:
-                    args.event_name = "minipool_deposit_received_event_credit"
+                    args.event_name += "_credit"
                 elif args.creditAmount == 0:
-                    args.event_name = "minipool_deposit_received_event_balance"
+                    args.event_name += "_balance"
                 else:
-                    args.event_name = "minipool_deposit_received_event_shared"
-            else:
-                args.event_name = "minipool_deposit_received_event"
+                    args.event_name += "_shared"
+
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
                           "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event",
                           "pool_deposit_assigned_event"]:

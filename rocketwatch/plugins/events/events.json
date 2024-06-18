@@ -323,7 +323,7 @@
                 },
                 {
                     "event_name": "MinipoolPrestaked",
-                    "name": "minipool_prestake_event"
+                    "name": "minipool_deposit_received_event"
                 },
                 {
                     "event_name": "ScrubVoted",

@@ -276,10 +276,6 @@
         "title": ":scales: RPL Recovered From Lot",
         "description": "%{rplAmount} RPL recovered from Lot #%{lotIndex}!"
     },
-    "minipool_prestake_event": {
-        "title": ":construction_site: Minipool Initial Deposit",
-        "description": "Minipool %{minipool_clean} has deposited its initial 16 ETH to the Beacon Chain!"
-    },
     "minipool_deposit_received_event": {
         "title": ":construction_site: Minipool Created",
         "description": "Minipool %{minipool_clean} has been created with an operator share of **%{depositAmount} ETH**!"
