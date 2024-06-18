@@ -211,6 +211,14 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def tmp_fix_42(self, ctx: Context):
+        await ctx.defer(ephemeral=True)
+        await self.db.event_queue.delete_one({"_id": event["_id"]})
+        await ctx.send(content="Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def overwrite_events_block(self, ctx: Context, block_number: int):
         """
         Overwrite the events block number in the latest_checked_block collection.
