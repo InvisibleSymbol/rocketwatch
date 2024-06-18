@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import warnings
 
 import pymongo
 import termplotlib as tpl
@@ -402,12 +403,31 @@ class QueuedEvents(Cog):
 
             tx_input = tx["input"]
             decoded = contract.decode_function_input(tx_input)
-
             args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
 
             if tx["value"] < args.depositAmount:
-                args.event_name = "minipool_deposit_received_event_credit"
                 args.creditAmount = args.depositAmount - tx["value"]
+                receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+
+                args.node = receipt["from"]
+                event = rp.get_contract_by_name("rocketVault").events.EtherWithdrawn()
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    processed_logs = event.processReceipt(receipt)
+                    processed_logs = [e for e in processed_logs if e.args["amount"] <= args.creditAmount]
+                if processed_logs:
+                    withdraw_event = processed_logs[0]
+                    args.balanceAmount = withdraw_event.args["amount"]
+                    args.creditAmount -= args.balanceAmount
+                else:
+                    args.balanceAmount = 0
+
+                if args.balanceAmount == 0:
+                    args.event_name = "minipool_deposit_received_event_credit"
+                elif args.creditAmount == 0:
+                    args.event_name = "minipool_deposit_received_event_balance"
+                else:
+                    args.event_name = "minipool_deposit_received_event_shared"
             else:
                 args.event_name = "minipool_deposit_received_event"
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
