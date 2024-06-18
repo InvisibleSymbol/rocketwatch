@@ -311,6 +311,56 @@
                     "name": "sdao_member_kick_event"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketDAOProtocolProposals",
+            "events": [
+                {
+                    "event_name": "ProposalSettingUint",
+                    "name": "pdao_setting_event"
+                },
+                {
+                    "event_name": "ProposalSettingBool",
+                    "name": "pdao_setting_event"
+                },
+                {
+                    "event_name": "ProposalSettingAddress",
+                    "name": "pdao_setting_event"
+                },
+                {
+                    "event_name": "ProposalSettingRewardsClaimers",
+                    "name": "pdao_claimer_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "rocketDAOProtocolProposal",
+            "events": [
+                {
+                    "event_name": "ProposalAdded",
+                    "name": "pdao_proposal_add_event"
+                },
+                {
+                    "event_name": "ProposalVoted",
+                    "name": "pdao_proposal_vote_event"
+                },
+                {
+                    "event_name": "ProposalVoteOverridden",
+                    "name": "pdao_proposal_vote_override_event"
+                },
+                {
+                    "event_name": "ProposalExecuted",
+                    "name": "pdao_proposal_execute_event"
+                },
+                {
+                    "event_name": "ProposalFinalised",
+                    "name": "pdao_proposal_finalise_event"
+                },
+                {
+                    "event_name": "ProposalDestroyed",
+                    "name": "pdao_proposal_destroy_event"
+                }
+            ]
         }
     ],
     "global": [

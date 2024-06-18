@@ -286,9 +286,56 @@ class QueuedEvents(Cog):
         args.blockNumber = event.blockNumber
 
         # add proposal message manually if the event contains a proposal
-        if "dao_proposal" in event_name:
+        if "pdao_proposal" in event_name:
+            proposal_id = event.args.proposalID
+            args.message = rp.call("rocketDAOProtocolProposal.getMessage", proposal_id)
+
+            # create human-readable decision for votes
+            if "direction" in args:
+                args.decision = ["invalid", "abstain", "for", "against", "against with veto"][args.direction]
+
+            if "votingPower" in args:
+                args.votingPower = solidity.to_int(args.votingPower)
+                if args.votingPower < 200:
+                    # not interesting
+                    return None
+
+            graph = tpl.figure()
+            votes_for = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerFor", proposal_id))
+            votes_against = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerAgainst", proposal_id))
+            votes_veto = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerVeto", proposal_id))
+            votes_abstain = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerAbstained", proposal_id))
+
+            graph.barh(
+                [
+                    round(votes_for),
+                    round(votes_against),
+                    round(votes_veto),
+                    round(votes_abstain),
+                    round(votes_for + votes_against + votes_abstain)
+                ],
+                ["For", "Against", "Veto", "Abstain", "Total"],
+                max_width=20
+            )
+            quorum = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerRequired", proposal_id))
+            veto_quorum = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVetoQuorum", proposal_id))
+
+            quorum_perc = round(100 * (votes_for + votes_against + votes_abstain) / quorum, 2)
+            veto_quorum_perc = round(100 * votes_veto / veto_quorum, 2)
+            width: int = max(len(str(quorum_perc)), len(str(veto_quorum_perc)))
+
+            args.vote_graph = graph.get_string() + (
+                f"\n\n"
+                f"Quorum       {quorum_perc : >{width}}%\n"
+                f"Veto Quorum  {veto_quorum_perc : >{width}}%"
+            )
+        elif "dao_proposal" in event_name:
             proposal_id = event.args.proposalID
             args.message = rp.call("rocketDAOProposal.getMessage", proposal_id)
+
+            # create human-readable decision for votes
+            if "supported" in args:
+                args.decision = "for" if args.supported else "against"
 
             # change prefix for DAO-specific event
             dao_name = args.get("proposalDAO", None) or rp.call("rocketDAOProposal.getDAO", proposal_id)
@@ -309,10 +356,6 @@ class QueuedEvents(Cog):
 
         # store event_name in args
         args.event_name = event_name
-
-        # create human-readable decision for votes
-        if "supported" in args:
-            args.decision = "for" if args.supported else "against"
 
         # add inflation and new supply if inflation occurred
         if "rpl_inflation" in event_name:
