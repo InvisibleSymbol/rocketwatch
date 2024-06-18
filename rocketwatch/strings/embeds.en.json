@@ -245,12 +245,12 @@
         "description": "%{description}"
     },
     "pdao_proposal_add_event": {
-        "title": ":bulb: oDAO Proposal Created",
+        "title": ":bulb: pDAO Proposal Created",
         "description": "%{proposer} created **proposal #%{proposalID}**!\nThey posted a bond of **%{proposalBond} RPL**!\n```Description:\n%{message}```"
     },
     "pdao_proposal_vote_event": {
         "title": ":writing_hand: Major pDAO Vote",
-        "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of %{votingPower}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of **%{votingPower}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "pdao_proposal_vote_override_event": {
         "title": ":writing_hand: pDAO Delegate Override",

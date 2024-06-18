@@ -310,7 +310,7 @@ class QueuedEvents(Cog):
                 args.decision = ["invalid", "abstain", "for", "against", "against with veto"][args.direction]
 
             if "votingPower" in args:
-                args.votingPower = solidity.to_int(args.votingPower)
+                args.votingPower = solidity.to_float(args.votingPower)
                 if args.votingPower < 200:
                     # not interesting
                     return None
