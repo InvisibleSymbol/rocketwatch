@@ -34,7 +34,7 @@
     },
     "eth_withdraw_event": {
         "title": ":leaves: Node ETH Withdrawal",
-        "description": "%{from} withdrew **%{amount} ETH** from node %{nodeAddress}!"
+        "description": "%{to} withdrew **%{amount} ETH** from node %{nodeAddress}!"
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
@@ -266,7 +266,7 @@
     },
     "pdao_proposal_destroy_event": {
         "title": ":bomb: pDAO Proposal Destroyed",
-        "description": "**%Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```Description:\n%{message}```"
+        "description": "**Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```Description:\n%{message}```"
     },
     "pdao_proposal_challenge_event": {
         "title": ":crossed_swords: pDAO Proposal Challenge",
@@ -278,7 +278,23 @@
     },
     "pdao_proposal_bond_burn_event": {
         "title": ":fire: pDAO Proposal Bond Burned",
-        "description": "**Proposal #%{proposalID}**:\nThe **%{amount} RPL** bond posted by %{proposer} has been burned!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}**:\nThe **%{amount} RPL** bond posted by %{proposer} has been burned!"
+    },
+    "pdao_spend_treasury_event": {
+        "title": ":bank: DAO Treasury Spend",
+        "description": "**%{amount} RPL** from treasury sent to %{to}!"
+    },
+    "pdao_spend_treasury_recurring_new_event": {
+        "title": ":bank: DAO Treasury: New Recurring Spend",
+        "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
+    },
+    "pdao_spend_treasury_recurring_update_event": {
+        "title": ":bank: DAO Treasury: Updated Recurring Spend",
+        "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
+    },
+    "pdao_spend_treasury_recurring_claim_event": {
+        "title": ":bank: DAO Treasury Claim",
+        "description": "%{recipient} has claimed **%{amount} RPL** for this period!"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",
