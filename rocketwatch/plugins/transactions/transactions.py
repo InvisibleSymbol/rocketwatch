@@ -52,7 +52,7 @@ class QueuedTransactions(Cog):
             json_args: str = "{}",
             block_number: int = 0
     ):
-        await ctx.defer(ephemeral=False)
+        await ctx.defer(ephemeral=True)
         event_obj = aDict({
             "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
             "blockNumber": block_number,
