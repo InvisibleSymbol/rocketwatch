@@ -9,7 +9,8 @@
     "rocketDAOSecurityProposals": {
         "proposalSettingUint": "sdao_setting",
         "proposalSettingBool": "sdao_setting",
-        "proposalSettingAddress": "sdao_setting"
+        "proposalSettingAddress": "sdao_setting",
+        "proposalInvite": "sdao_member_invite"
     },
     "rocketNodeDeposit": {
         "deposit": "minipool_failed_deposit",

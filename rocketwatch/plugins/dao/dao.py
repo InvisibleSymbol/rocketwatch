@@ -150,12 +150,12 @@ class ProtocolDAO:
                 "end_phase1": call("getPhase1End"),
                 "end_phase2": call("getPhase2End"),
                 "expires": call("getExpires"),
-                "votes_for": solidity.to_int(call("getVotingPowerFor")),
-                "votes_against": solidity.to_int(call("getVotingPowerAgainst")),
-                "votes_veto": solidity.to_int(call("getVotingPowerVeto")),
-                "votes_abstain": solidity.to_int(call("getVotingPowerAbstained")),
-                "quorum": math.ceil(solidity.to_float(call("getVotingPowerRequired"))),
-                "veto_quorum": math.ceil(solidity.to_float(call("getVetoQuorum"))),
+                "votes_for": solidity.to_float(call("getVotingPowerFor")),
+                "votes_against": solidity.to_float(call("getVotingPowerAgainst")),
+                "votes_veto": solidity.to_float(call("getVotingPowerVeto")),
+                "votes_abstain": solidity.to_float(call("getVotingPowerAbstained")),
+                "quorum": solidity.to_float(call("getVotingPowerRequired")),
+                "veto_quorum": solidity.to_float(call("getVetoQuorum")),
             })
 
         def build_body(_proposal: dict) -> str:
@@ -167,23 +167,28 @@ class ProtocolDAO:
             )
 
         def build_graph(_proposal: dict) -> str:
+            votes_total = _proposal["votes_for"] + _proposal["votes_against"] + _proposal["votes_abstain"]
+            quorum_perc = round(100 * votes_total / _proposal['quorum'], 2)
+            veto_quorum_perc = round(100 * _proposal["votes_veto"] / _proposal['veto_quorum'], 2)
+
             graph = tpl.figure()
             graph.barh(
                 [
-                    _proposal["votes_for"],
-                    _proposal["votes_against"],
-                    _proposal["votes_veto"],
-                    _proposal["votes_abstain"],
-                    _proposal["votes_for"] + _proposal["votes_against"] + _proposal["votes_abstain"]
+                    round(_proposal["votes_for"]),
+                    round(_proposal["votes_against"]),
+                    round(_proposal["votes_veto"]),
+                    round(_proposal["votes_abstain"]),
+                    round(votes_total)
                 ],
                 ["For", "Against", "Veto", "Abstain", "Total"],
                 max_width=20
             )
-            width: int = len(str(max(_proposal['quorum'], _proposal['veto_quorum'])))
+
+            width: int = max(len(str(quorum_perc)), len(str(veto_quorum_perc)))
             return graph.get_string() + (
                 f"\n\n"
-                f"Quorum       [{_proposal['quorum'] : >{width}}]\n"
-                f"Veto Quorum  [{_proposal['veto_quorum'] : >{width}}]"
+                f"Quorum       {quorum_perc : >{width}}%\n"
+                f"Veto Quorum  {veto_quorum_perc : >{width}}%"
             )
 
         e = Embed()

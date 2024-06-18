@@ -221,7 +221,7 @@
         "description": "On-chain governance has been enabled!"
     },
     "bootstrap_sdao_member_invite_event": {
-        "title": ":satellite_orbital: pDAO Bootstrap Mode: Invited Security Council Member",
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Security Council Invite",
         "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
     },
     "bootstrap_sdao_member_kick_event": {
@@ -231,6 +231,42 @@
     "sdao_setting": {
         "title": ":lock: Security Council: Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
+    },
+    "sdao_member_invite": {
+        "title": ":lock: Security Council: New Member Invite",
+        "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
+    },
+    "pdao_setting_event": {
+        "title": ":classical_building: Protocol DAO: Setting Modified",
+        "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
+    },
+    "pdao_claimer_event": {
+        "title": ":classical_building: Protocol DAO: Changed Reward Distribution",
+        "description": "%{description}"
+    },
+    "pdao_proposal_add_event": {
+        "title": ":bulb: oDAO Proposal Created",
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+    },
+    "pdao_proposal_vote_event": {
+        "title": ":writing_hand: Major pDAO Vote",
+        "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of %{votingPower}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+    },
+    "pdao_proposal_vote_override_event": {
+        "title": ":writing_hand: pDAO Delegate Override",
+        "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}`!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+    },
+    "pdao_proposal_execute_event": {
+        "title": ":white_check_mark: pDAO Proposal Executed",
+        "description": "%{executer} executed **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+    },
+    "pdao_proposal_finalise_event": {
+        "title": ":x: pDAO Proposal Finalized",
+        "description": "**Proposal #%{proposalID}** has been finalized after a veto vote!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+    },
+    "pdao_proposal_destroy_event": {
+        "title": ":bomb: pDAO Proposal Destroyed",
+        "description": "**%Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```Description:\n%{message}```"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",
