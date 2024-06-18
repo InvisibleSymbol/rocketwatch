@@ -53,11 +53,15 @@ class QueuedTransactions(Cog):
             block_number: int = 0
     ):
         await ctx.defer(ephemeral=True)
-        event_obj = aDict({
-            "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
-            "blockNumber": block_number,
-            "args": json.loads(json_args) | {"function_name": function}
-        })
+        try:
+            event_obj = aDict({
+                "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
+                "blockNumber": block_number,
+                "args": json.loads(json_args) | {"function_name": function}
+            })
+        except json.JSONDecodeError:
+            return await ctx.send(content="Invalid JSON args!")
+
         event_name = self.internal_function_mapping[contract][function]
         if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)

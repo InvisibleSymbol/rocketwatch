@@ -361,6 +361,23 @@
                     "name": "pdao_proposal_destroy_event"
                 }
             ]
+        },
+        {
+            "contract_name": "rocketDAOProtocolVerifier",
+            "events": [
+                {
+                    "event_name": "RootSubmitted",
+                    "name": "pdao_proposal_root_event"
+                },
+                {
+                    "event_name": "ChallengeSubmitted",
+                    "name": "pdao_proposal_challenge_event"
+                },
+                {
+                    "event_name": "ProposalBondBurned",
+                    "name": "pdao_proposal_bond_burn_event"
+                }
+            ]
         }
     ],
     "global": [

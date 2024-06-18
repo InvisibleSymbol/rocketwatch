@@ -210,7 +210,7 @@ class ProtocolDAO:
                 (
                     f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
                     f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Ends <t:{proposal['end']}:R>"
+                    f"Ends <t:{proposal['end_phase2']}:R>"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
             ] + [
                 (
