@@ -88,9 +88,7 @@ class DefaultDAO:
                     f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
                     f"Proposer: `{proposal['proposer']}`"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
-            ]
-            +
-            [
+            ] + [
                 (
                     f"**Proposal #{proposal['id']}** - Active\n"
                     f"Ends <t:{proposal['end']}:R>\n"
@@ -98,9 +96,7 @@ class DefaultDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.Active]
-            ]
-            +
-            [
+            ] + [
                 (
                     f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
                     f"Expires <t:{proposal['expires']}:R>\n"
@@ -186,9 +182,7 @@ class ProtocolDAO:
                     f"Message:  `{DAO.sanitize(proposal['message'])}`\n"
                     f"Proposer: `{proposal['proposer']}`"
                 ) for proposal in current_proposals[self.ProposalState.Pending]
-            ]
-            +
-            [
+            ] + [
                 (
                     f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
                     f"Next phase <t:{proposal['end_phase1']}:R>, ends <t:{proposal['end_phase2']}:R>\n"
@@ -196,9 +190,7 @@ class ProtocolDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
-            ]
-            +
-            [
+            ] + [
                 (
                     f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
                     f"Ends <t:{proposal['end']}:R>\n"
@@ -206,9 +198,7 @@ class ProtocolDAO:
                     f"Proposer: `{proposal['proposer']}`\n"
                     f"{build_graph(proposal)}"
                 ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
-            ]
-            +
-            [
+            ] + [
                 (
                     f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
                     f"Expires <t:{proposal['expires']}:R>\n"
