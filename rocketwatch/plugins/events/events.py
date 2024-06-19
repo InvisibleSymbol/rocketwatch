@@ -566,39 +566,72 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def prepare_events(self, events):
-        # deduplicate events with a topic 0 of DepositAssigned so we only have one event per txnhash. also store the count in the event
-        d = {}
-        for event in list(reversed(events)):
-            if "topics" in event:
-                if self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
-                    if event["transactionHash"] not in d:
-                        d[event["transactionHash"]] = 1
-                    else:
-                        d[event["transactionHash"]] += 1
-                        events.remove(event)
-                if self.topic_mapping[event["topics"][0].hex()] == "WithdrawalRequested":
-                    # process event
+    def aggregate_events(self, events):
+        # aggregate and deduplicate events within the same transaction
+        events_by_tx = {}
+        for event in reversed(events):
+            if "topics" not in event:
+                continue
 
+            tx_hash = event["transactionHash"]
+            if tx_hash not in events_by_tx:
+                events_by_tx[tx_hash] = []
+
+            events_by_tx[tx_hash].append(event)
+
+        aggregates = {}
+        for tx_hash, tx_events in events_by_tx.items():
+            tx_aggregates = {}
+            aggregates[tx_hash] = tx_aggregates
+
+            for event in tx_events:
+                event_name = self.topic_mapping[event["topics"][0].hex()]
+                if event_name == "WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
                     contract_event = self.topic_mapping[event.topics[0].hex()]
                     _event = aDict(contract.events[contract_event]().processLog(event))
-
                     # sum up the amount of stETH withdrawn in this transaction
-                    if event["transactionHash"] not in d:
-                        d[event["transactionHash"]] = _event["args"]["amountOfStETH"]
-                    else:
-                        d[event["transactionHash"]] += _event["args"]["amountOfStETH"]
+                    if amount := tx_aggregates.get(event_name, 0):
                         events.remove(event)
+                    tx_aggregates[event_name] = amount + _event["args"]["amountOfStETH"]
+                elif "ProposalSetting" in event_name:
+                    bootstrap_eq = event_name.replace("Proposal", "Bootstrap")
+                    if (bootstrap_eq in tx_aggregates) or ("BootstrapSettingMulti" in tx_aggregates):
+                        events.remove(event)
+                elif event_name == "ActionKick":
+                    if "BootstrapSecurityKick" in tx_aggregates:
+                        events.remove(event)
+                elif event_name == "RPLTokensSentByDAOProtocol":
+                    if "BootstrapSpendTreasury" in tx_aggregates:
+                        events.remove(event)
+                elif "RPLTreasury" in event_name:
+                    bootstrap_eq = event_name.replace("RPL", "Bootstrap")
+                    if bootstrap_eq in tx_aggregates:
+                        events.remove(event)
+                elif event_name in ["WithdrawalRequested"]:
+                    # there is a special aggregated event, remove duplicates
+                    if count := tx_aggregates.get(event_name, 0):
+                        events.remove(event)
+                    tx_aggregates[event_name] = count + 1
+                else:
+                    # count, but report as individual events
+                    tx_aggregates[event_name] = tx_aggregates.get(event_name, 0) + 1
 
         events = [aDict(event) for event in events]
-        # add the count to the event
-        for i, event in enumerate(list(events)):
-            if event["transactionHash"] in d and "topics" in event:
-                if self.topic_mapping[event["topics"][0].hex()] == "DepositAssigned":
-                    events[i]["assignment_count"] = d[event["transactionHash"]]
-                if self.topic_mapping[event["topics"][0].hex()] == "WithdrawalRequested":
-                    events[i]["amountOfStETH"] = d[event["transactionHash"]]
+        for event in events:
+            if "topics" not in event:
+                continue
+
+            tx_hash = event["transactionHash"]
+            event_name = self.topic_mapping[event["topics"][0].hex()]
+            if aggregated_value := aggregates[tx_hash].get(event_name, None) is None:
+                continue
+
+            match event_name:
+                case "DepositAssigned":
+                    event["assignment_count"] = aggregated_value
+                case "WithdrawalRequested":
+                    event["amountOfStETH"] = aggregated_value
 
         return events
 
@@ -622,7 +655,7 @@ class QueuedEvents(Cog):
         log.debug(f"Found {len(pending_events)} pending events")
         # sort events by block number
         pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
-        for event in self.prepare_events(pending_events):
+        for event in self.aggregate_events(pending_events):
             tnx_hash = event.transactionHash.hex()
             embed = None
             event_name = None
