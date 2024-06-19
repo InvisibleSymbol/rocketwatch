@@ -30,11 +30,13 @@
     },
     "eth_deposit_event": {
         "title": ":moneybag: Node ETH Deposit",
-        "description": "%{from} deposited **%{amount} ETH** into node %{nodeAddress}!"
+        "description": "%{from} deposited **%{amount} ETH** into node %{nodeAddress}!",
+        "description_small": ":moneybag: %{from} deposited **%{amount} ETH** into node %{nodeAddress}!"
     },
     "eth_withdraw_event": {
         "title": ":leaves: Node ETH Withdrawal",
-        "description": "%{to} withdrew **%{amount} ETH** from node %{nodeAddress}!"
+        "description": "%{to} withdrew **%{amount} ETH** from node %{nodeAddress}!",
+        "description_small": ":leaves: %{to} withdrew **%{amount} ETH** from node %{nodeAddress}!"
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
