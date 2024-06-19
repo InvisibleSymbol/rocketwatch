@@ -463,21 +463,22 @@ class QueuedEvents(Cog):
             args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
 
             if tx["value"] < args.depositAmount:
-                args.creditAmount = args.depositAmount - tx["value"]
                 receipt = w3.eth.get_transaction_receipt(args.transactionHash)
-
                 args.node = receipt["from"]
+                args.creditAmount = args.depositAmount - tx["value"]
+                args.balanceAmount = 0
+
                 event = rp.get_contract_by_name("rocketVault").events.EtherWithdrawn()
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     processed_logs = event.processReceipt(receipt)
-                    processed_logs = [e for e in processed_logs if e.args["amount"] <= args.creditAmount]
-                if processed_logs:
-                    withdraw_event = processed_logs[0]
-                    args.balanceAmount = withdraw_event.args["amount"]
-                    args.creditAmount -= args.balanceAmount
-                else:
-                    args.balanceAmount = 0
+
+                deposit_contract = bytes(w3.soliditySha3(["string"], ["rocketNodeDeposit"]))
+                for withdraw_event in processed_logs:
+                    if withdraw_event.args["by"] == deposit_contract:
+                        args.balanceAmount = withdraw_event.args["amount"]
+                        args.creditAmount -= args.balanceAmount
+                        break
 
                 if args.balanceAmount == 0:
                     args.event_name += "_credit"
