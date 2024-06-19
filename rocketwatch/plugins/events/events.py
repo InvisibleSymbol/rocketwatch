@@ -579,6 +579,11 @@ class QueuedEvents(Cog):
 
             events_by_tx[tx_hash].append(event)
 
+        aggregation_attributes = {
+            "DepositAssigned": "assignment_count",
+            "WithdrawalRequested": "amountOfStETH"
+        }
+
         aggregates = {}
         for tx_hash, tx_events in events_by_tx.items():
             tx_aggregates = {}
@@ -608,7 +613,7 @@ class QueuedEvents(Cog):
                     bootstrap_eq = event_name.replace("RPL", "Bootstrap")
                     if bootstrap_eq in tx_aggregates:
                         events.remove(event)
-                elif event_name in ["WithdrawalRequested"]:
+                elif event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(event_name, 0):
                         events.remove(event)
@@ -624,14 +629,14 @@ class QueuedEvents(Cog):
 
             tx_hash = event["transactionHash"]
             event_name = self.topic_mapping[event["topics"][0].hex()]
+
+            if event_name not in aggregation_attributes:
+                continue
+
             if aggregated_value := aggregates[tx_hash].get(event_name, None) is None:
                 continue
 
-            match event_name:
-                case "DepositAssigned":
-                    event["assignment_count"] = aggregated_value
-                case "WithdrawalRequested":
-                    event["amountOfStETH"] = aggregated_value
+            event[aggregation_attributes[event_name]] = aggregated_value
 
         return events
 
