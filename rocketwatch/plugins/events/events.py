@@ -566,7 +566,7 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events):
+    def aggregate_events(self, events: list[w3.types.LogReceipt]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
@@ -613,6 +613,16 @@ class QueuedEvents(Cog):
                     bootstrap_eq = event_name.replace("RPL", "Bootstrap")
                     if bootstrap_eq in tx_aggregates:
                         events.remove(event)
+                elif event_name == "Transfer":
+                    chained_transfer = False
+                    if prev_event := tx_aggregates.get(event_name, None):
+                        # events traversed in reverse, last will be seen first
+                        if prev_event["args"]["from"] == event["args"]["to"]:
+                            prev_event["args"]["from"] = event["args"]["from"]
+                            chained_transfer = True
+                            events.remove(event)
+                    if not chained_transfer:
+                        tx_aggregates[event_name] = event
                 elif event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(event_name, 0):

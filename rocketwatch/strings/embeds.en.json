@@ -47,7 +47,7 @@
     },
     "reth_transfer_event": {
         "title": ":whale: Large rETH Transfer",
-        "description": "%{from} transferred **%{value} rETH** to %{to}!"
+        "description": "**%{value} rETH** transferred from %{from} to %{to}!"
     },
     "price_update_event": {
         "title": ":moneybag: RPL Price Update",
