@@ -614,15 +614,13 @@ class QueuedEvents(Cog):
                     if bootstrap_eq in tx_aggregates:
                         events.remove(event)
                 elif event_name == "Transfer":
-                    chained_transfer = False
                     if prev_event := tx_aggregates.get(event_name, None):
                         # events traversed in reverse, last will be seen first
                         if prev_event["args"]["from"] == event["args"]["to"]:
                             prev_event["args"]["from"] = event["args"]["from"]
-                            chained_transfer = True
                             events.remove(event)
-                    if not chained_transfer:
-                        tx_aggregates[event_name] = event
+                            event = prev_event
+                    tx_aggregates[event_name] = event
                 elif event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(event_name, 0):
