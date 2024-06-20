@@ -10,11 +10,9 @@ from ens import InvalidName
 from etherscan_labels import Addresses
 
 from strings import _
-from utils import readable
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
-from utils.reporter import report_error
 from utils.rocketpool import rp, NoAddressFound
 from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
@@ -397,13 +395,15 @@ def assemble(args):
                     value=v)
 
     # show block number
+    el_explorer = cfg["rocketpool.execution_layer.explorer"]
     if "blockNumber" in args:
         e.add_field(name="Block Number",
-                    value=f"[{args.blockNumber}](https://etherscan.io/block/{args.blockNumber})")
+                    value=f"[{args.blockNumber}](https://{el_explorer}/block/{args.blockNumber})")
 
+    cl_explorer = cfg["rocketpool.consensus_layer.explorer"]
     if "slot" in args:
         e.add_field(name="Slot",
-                    value=f"[{args.slot}](https://beaconcha.in/slot/{args.slot})")
+                    value=f"[{args.slot}](https://{cl_explorer}/slot/{args.slot})")
 
     if "smoothie_amount" in args:
         e.add_field(name="Smoothing Pool Balance",
