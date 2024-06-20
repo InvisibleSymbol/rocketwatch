@@ -92,7 +92,7 @@
     },
     "odao_proposal_vote_event": {
         "title": ":writing_hand: oDAO Vote",
-        "description": "%{voter} voted %{decision} on proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "odao_proposal_cancel_event": {
         "title": ":no_entry_sign: oDAO Proposal Canceled",
@@ -120,7 +120,7 @@
     },
     "sdao_proposal_vote_event": {
         "title": ":writing_hand: Security Council Vote",
-        "description": "%{voter} voted %{decision} on proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "sdao_proposal_cancel_event": {
         "title": ":no_entry_sign: Security Council Proposal Canceled",
