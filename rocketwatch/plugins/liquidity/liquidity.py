@@ -62,7 +62,7 @@ class Liquidity(commands.Cog):
         # i/10 is the ratio of the price checked to the actual RPL ETH price
 
         free_rpl_liquidity = {}
-        max_collateral = 1.5
+        max_collateral = solidity.to_float(rp.call("rocketDAOProtocolSettingsNode.getMaximumPerMinipoolStake"))
         current_withdrawable_rpl = 0
         for i in range(1, 31):
 
