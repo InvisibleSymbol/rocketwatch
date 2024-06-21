@@ -618,6 +618,8 @@ class QueuedEvents(Cog):
                         if prev_event["args"]["value"] > event["args"]["value"]:
                             events.remove(event)
                             event = prev_event
+                        else:
+                            events.remove(prev_event)
                     tx_aggregates[event_name] = event
                 elif event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
