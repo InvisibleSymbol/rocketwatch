@@ -615,9 +615,7 @@ class QueuedEvents(Cog):
                         events.remove(event)
                 elif event_name == "Transfer":
                     if prev_event := tx_aggregates.get(event_name, None):
-                        # events traversed in reverse, last will be seen first
-                        if prev_event["args"]["from"] == event["args"]["to"]:
-                            prev_event["args"]["from"] = event["args"]["from"]
+                        if prev_event["args"]["value"] > event["args"]["value"]:
                             events.remove(event)
                             event = prev_event
                     tx_aggregates[event_name] = event
