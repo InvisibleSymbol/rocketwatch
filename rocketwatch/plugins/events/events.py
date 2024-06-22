@@ -629,7 +629,7 @@ class QueuedEvents(Cog):
                     if count := tx_aggregates.get(event_name, 0):
                         events.remove(event)
                     tx_aggregates[event_name] = count + 1
-                else:
+                elif event_name != "Transfer":
                     # count, but report as individual events
                     tx_aggregates[event_name] = tx_aggregates.get(event_name, 0) + 1
 
