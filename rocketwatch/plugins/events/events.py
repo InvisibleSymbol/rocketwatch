@@ -621,6 +621,9 @@ class QueuedEvents(Cog):
                     if "rocketDAOProtocol.BootstrapTreasuryUpdateContract":
                         events.remove(event)
                 elif full_event_name == "rocketTokenRETH.Transfer":
+                    if "rocketTokenRETH.TokensBurned" in tx_aggregates:
+                        events.remove(event)
+                        continue
                     if prev_event := tx_aggregates.get(full_event_name, None):
                         contract = rp.get_contract_by_address(event["address"])
                         _event = aDict(contract.events[event_name]().processLog(event))
