@@ -566,7 +566,7 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events: list[w3.types.LogReceipt]) -> list[aDict]:
+    def aggregate_events(self, events):
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
