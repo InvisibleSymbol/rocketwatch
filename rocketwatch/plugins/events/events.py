@@ -581,7 +581,7 @@ class QueuedEvents(Cog):
 
         aggregation_attributes = {
             "rocketDepositPool.DepositAssigned": "assignment_count",
-            "wstETHToken.WithdrawalRequested": "amountOfStETH"
+            "unstETH.WithdrawalRequested": "amountOfStETH"
         }
 
         aggregates = {}
@@ -594,7 +594,7 @@ class QueuedEvents(Cog):
                 event_name = self.topic_mapping[event["topics"][0].hex()]
                 full_event_name = f"{contract_name}.{event_name}"
 
-                if full_event_name == "wstETHToken.WithdrawalRequested":
+                if full_event_name == "unstETH.WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
                     _event = aDict(contract.events[event_name]().processLog(event))
                     # sum up the amount of stETH withdrawn in this transaction
