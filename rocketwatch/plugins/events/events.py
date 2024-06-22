@@ -566,7 +566,7 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events):
+    def aggregate_events(self, events) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
@@ -580,8 +580,8 @@ class QueuedEvents(Cog):
             events_by_tx[tx_hash].append(event)
 
         aggregation_attributes = {
-            "DepositAssigned": "assignment_count",
-            "WithdrawalRequested": "amountOfStETH"
+            "rocketDepositPool.DepositAssigned": "assignment_count",
+            "wstETHToken.WithdrawalRequested": "amountOfStETH"
         }
 
         aggregates = {}
@@ -590,32 +590,39 @@ class QueuedEvents(Cog):
             aggregates[tx_hash] = tx_aggregates
 
             for event in tx_events:
+                contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
                 event_name = self.topic_mapping[event["topics"][0].hex()]
-                if event_name == "WithdrawalRequested":
+                full_event_name = f"{contract_name}.{event_name}"
+
+                if full_event_name == "wstETHToken.WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
-                    contract_event = self.topic_mapping[event.topics[0].hex()]
-                    _event = aDict(contract.events[contract_event]().processLog(event))
+                    _event = aDict(contract.events[event_name]().processLog(event))
                     # sum up the amount of stETH withdrawn in this transaction
-                    if amount := tx_aggregates.get(event_name, 0):
+                    if amount := tx_aggregates.get(full_event_name, 0):
                         events.remove(event)
-                    tx_aggregates[event_name] = amount + _event["args"]["amountOfStETH"]
-                elif "ProposalSetting" in event_name:
-                    bootstrap_eq = event_name.replace("Proposal", "Bootstrap")
-                    if (bootstrap_eq in tx_aggregates) or ("BootstrapSettingMulti" in tx_aggregates):
+                    tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
+                elif "rocketDAOProtocolProposals.ProposalSetting" in full_event_name:
+                    bootstrap_eq = full_event_name.replace(
+                        "rocketDAOProtocolProposals.Proposal",
+                        "rocketDAOProtocol.Bootstrap"
+                    )
+                    if (bootstrap_eq in tx_aggregates) or ("rocketDAOProtocol.BootstrapSettingMulti" in tx_aggregates):
                         events.remove(event)
-                elif event_name == "ActionKick":
-                    if "BootstrapSecurityKick" in tx_aggregates:
+                elif full_event_name == "rocketDAOSecurityActions.ActionKick":
+                    if "rocketDAOProtocol.BootstrapSecurityKick" in tx_aggregates:
                         events.remove(event)
-                elif event_name == "RPLTokensSentByDAOProtocol":
-                    if "BootstrapSpendTreasury" in tx_aggregates:
+                elif full_event_name == "rocketClaimDAO.RPLTokensSentByDAOProtocol":
+                    if "rocketDAOProtocol.BootstrapSpendTreasury" in tx_aggregates:
                         events.remove(event)
-                elif "RPLTreasury" in event_name:
-                    bootstrap_eq = event_name.replace("RPL", "Bootstrap")
-                    if bootstrap_eq in tx_aggregates:
+                elif full_event_name == "rocketClaimDAO.RPLTreasuryContractCreated":
+                    if "rocketDAOProtocol.BootstrapTreasuryNewContract" in tx_aggregates:
                         events.remove(event)
-                elif event_name == "Transfer" and rp.get_name_by_address(event["address"]) == "rocketTokenRETH":
-                    contract = rp.get_contract_by_address(event["address"])
-                    if prev_event := tx_aggregates.get(event_name, None):
+                elif full_event_name == "rocketClaimDAO.RPLTreasuryContractUpdated":
+                    if "rocketDAOProtocol.BootstrapTreasuryUpdateContract":
+                        events.remove(event)
+                elif full_event_name == "rocketTokenRETH.Transfer":
+                    if prev_event := tx_aggregates.get(full_event_name, None):
+                        contract = rp.get_contract_by_address(event["address"])
                         _event = aDict(contract.events[event_name]().processLog(event))
                         _prev_event = aDict(contract.events[event_name]().processLog(event))
                         if _prev_event["args"]["value"] > _event["args"]["value"]:
@@ -623,15 +630,15 @@ class QueuedEvents(Cog):
                             event = prev_event
                         else:
                             events.remove(prev_event)
-                    tx_aggregates[event_name] = event
-                elif event_name in aggregation_attributes:
+                    tx_aggregates[full_event_name] = event
+                elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
-                    if count := tx_aggregates.get(event_name, 0):
+                    if count := tx_aggregates.get(full_event_name, 0):
                         events.remove(event)
-                    tx_aggregates[event_name] = count + 1
-                elif event_name != "Transfer":
+                    tx_aggregates[full_event_name] = count + 1
+                else:
                     # count, but report as individual events
-                    tx_aggregates[event_name] = tx_aggregates.get(event_name, 0) + 1
+                    tx_aggregates[full_event_name] = tx_aggregates.get(full_event_name, 0) + 1
 
         events = [aDict(event) for event in events]
         for event in events:
@@ -639,15 +646,17 @@ class QueuedEvents(Cog):
                 continue
 
             tx_hash = event["transactionHash"]
+            contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
             event_name = self.topic_mapping[event["topics"][0].hex()]
+            full_event_name = f"{contract_name}.{event_name}"
 
-            if event_name not in aggregation_attributes:
+            if full_event_name not in aggregation_attributes:
                 continue
 
-            if aggregated_value := aggregates[tx_hash].get(event_name, None) is None:
+            if aggregated_value := aggregates[tx_hash].get(full_event_name, None) is None:
                 continue
 
-            event[aggregation_attributes[event_name]] = aggregated_value
+            event[aggregation_attributes[full_event_name]] = aggregated_value
 
         return events
 
