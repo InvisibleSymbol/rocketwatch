@@ -616,10 +616,9 @@ class QueuedEvents(Cog):
                 elif event_name == "Transfer":
                     if prev_event := tx_aggregates.get(event_name, None):
                         contract = rp.get_contract_by_address(event["address"])
-                        contract_event = self.topic_mapping[event.topics[0].hex()]
-                        _event = aDict(contract.events[contract_event]().processLog(event))
+                        _event = aDict(contract.events[event_name]().processLog(event))
                         _prev_event = aDict(contract.events[contract_event]().processLog(event))
-                        if _prev_event["args"]["value"] > _event["args"]["value"]:
+                        if _prev_event["args"]["_value"] > _event["args"]["_value"]:
                             events.remove(event)
                             event = prev_event
                         else:
