@@ -613,12 +613,12 @@ class QueuedEvents(Cog):
                     bootstrap_eq = event_name.replace("RPL", "Bootstrap")
                     if bootstrap_eq in tx_aggregates:
                         events.remove(event)
-                elif event_name == "Transfer":
+                elif event_name == "Transfer" and rp.get_name_by_address(event["address"]) == "rocketTokenRETH":
+                    contract = rp.get_contract_by_address(event["address"])
                     if prev_event := tx_aggregates.get(event_name, None):
-                        contract = rp.get_contract_by_address(event["address"])
                         _event = aDict(contract.events[event_name]().processLog(event))
                         _prev_event = aDict(contract.events[event_name]().processLog(event))
-                        if _prev_event["args"]["_value"] > _event["args"]["_value"]:
+                        if _prev_event["args"]["value"] > _event["args"]["value"]:
                             events.remove(event)
                             event = prev_event
                         else:
