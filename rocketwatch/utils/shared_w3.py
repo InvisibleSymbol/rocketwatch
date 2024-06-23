@@ -14,7 +14,7 @@ from utils.cfg import cfg
 log = logging.getLogger("shared_w3")
 log.setLevel(cfg["log_level"])
 
-w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.current']))
+w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.current'], request_kwargs={'timeout': 60}))
 mainnet_w3 = w3
 
 if cfg['rocketpool.chain'] != "mainnet":
