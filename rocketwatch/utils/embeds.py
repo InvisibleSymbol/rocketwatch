@@ -81,6 +81,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         # rocketscan url stuff
         rocketscan_chains = {
             "mainnet": "https://rocketscan.io",
+            "holesky": "https://holesky.rocketscan.io",
         }
 
         if cfg["rocketpool.chain"] in rocketscan_chains:
@@ -97,9 +98,6 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         if not name and (n := _(n_key)) != n_key:
             name = n
 
-        if cfg["rocketpool.chain"] != "mainnet" and not name:
-            name = s_hex(target)
-
         if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
             if prefix != -1:
                 prefix += "🔮"
@@ -112,6 +110,9 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
                 name = member_id
         except NoAddressFound:
             pass
+
+        if cfg["rocketpool.chain"] != "mainnet" and not name:
+            name = s_hex(target)
 
         if not name:
             a = Addresses.get(target)
