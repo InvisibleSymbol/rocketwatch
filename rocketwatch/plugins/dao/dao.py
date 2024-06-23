@@ -86,30 +86,30 @@ class DefaultDAO:
             )
             return graph.get_string()
 
-        e = Embed()
-        e.title = f"{self.display_name} Proposals"
-        e.description = "\n\n".join(
-            [
-                (
-                    f"**Proposal #{proposal['id']}** - Pending\n"
-                    f"```{build_body(proposal)}```"
-                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.Pending]
-            ] + [
-                (
-                    f"**Proposal #{proposal['id']}** - Active\n"
-                    f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Ends <t:{proposal['end']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.Active]
-            ] + [
-                (
-                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                    f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Expires <t:{proposal['expires']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.Succeeded]
-            ]
-        ) or "No active proposals."
-        return e
+        return Embed(
+            title=f"{self.display_name} Proposals",
+            description="\n\n".join(
+                [
+                    (
+                        f"**Proposal #{proposal['id']}** - Pending\n"
+                        f"```{build_body(proposal)}```"
+                        f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.Pending]
+                ] + [
+                    (
+                        f"**Proposal #{proposal['id']}** - Active\n"
+                        f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
+                        f"Ends <t:{proposal['end']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.Active]
+                ] + [
+                    (
+                        f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
+                        f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
+                        f"Expires <t:{proposal['expires']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.Succeeded]
+                ]
+            ) or "No active proposals."
+        )
 
 
 class ProtocolDAO:
@@ -191,36 +191,36 @@ class ProtocolDAO:
                 f"Veto Quorum  {veto_quorum_perc : >{width}}%"
             )
 
-        e = Embed()
-        e.title = f"pDAO Proposals"
-        e.description = "\n\n".join(
-            [
-                (
-                    f"**Proposal #{proposal['id']}** - Pending\n"
-                    f"```{build_body(proposal)}```"
-                    f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.Pending]
-            ] + [
-                (
-                    f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
-                    f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
-            ] + [
-                (
-                    f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
-                    f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Ends <t:{proposal['end_phase2']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
-            ] + [
-                (
-                    f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                    f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
-                    f"Expires <t:{proposal['expires']}:R>"
-                ) for proposal in current_proposals[self.ProposalState.Succeeded]
-            ]
-        ) or "No active proposals."
-        return e
+        return Embed(
+            title="pDAO Proposals",
+            description="\n\n".join(
+                [
+                    (
+                        f"**Proposal #{proposal['id']}** - Pending\n"
+                        f"```{build_body(proposal)}```"
+                        f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.Pending]
+                ] + [
+                    (
+                        f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
+                        f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
+                        f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
+                ] + [
+                    (
+                        f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
+                        f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
+                        f"Ends <t:{proposal['end_phase2']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
+                ] + [
+                    (
+                        f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
+                        f"```{build_body(proposal)}\n\n{build_graph(proposal)}```"
+                        f"Expires <t:{proposal['expires']}:R>"
+                    ) for proposal in current_proposals[self.ProposalState.Succeeded]
+                ]
+            ) or "No active proposals."
+        )
 
 
 class DAO(Cog):
