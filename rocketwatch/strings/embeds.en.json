@@ -83,7 +83,7 @@
         "description": "%{from} has published their submission for Snapshot #%{rewardIndex}"
     },
     "odao_proposal_add_event": {
-        "title": ":bulb: oDAO Proposal Created",
+        "title": ":bulb: New oDAO Proposal",
         "description": "%{proposer} created proposal #%{proposalID}!\n```Description:\n%{message}```"
     },
     "odao_proposal_execute_event": {
@@ -111,7 +111,7 @@
         "description": "%{nodeAddress} was kicked from the oDAO!"
     },
     "sdao_proposal_add_event": {
-        "title": ":bulb: Security Council Proposal Created",
+        "title": ":bulb: New Security Council Proposal",
         "description": "%{proposer} created proposal #%{proposalID}!\n```Description:\n%{message}```"
     },
     "sdao_proposal_execute_event": {
@@ -247,7 +247,7 @@
         "description": "%{description}"
     },
     "pdao_proposal_add_event": {
-        "title": ":bulb: pDAO Proposal Created",
+        "title": ":bulb: New pDAO Proposal",
         "description": "%{proposer} created **proposal #%{proposalID}**!\nThey posted a bond of **%{proposalBond} RPL**!\n```Description:\n%{message}```"
     },
     "pdao_proposal_vote_event": {
@@ -255,7 +255,7 @@
         "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of **%{votingPower}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "pdao_proposal_vote_override_event": {
-        "title": ":writing_hand: pDAO Delegate Override",
+        "title": ":person_gesturing_no: pDAO Delegate Override",
         "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}`!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "pdao_proposal_execute_event": {
