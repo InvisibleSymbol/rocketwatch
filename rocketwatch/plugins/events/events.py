@@ -291,7 +291,7 @@ class QueuedEvents(Cog):
 
         # add proposal message manually if the event contains a proposal
         if "pdao_proposal" in event_name:
-            proposal_id = event.args.proposalID
+            proposal_id = event.args.proposalID if "proposalID" in event.args else event.args.proposalId
             args.message = rp.call("rocketDAOProtocolProposal.getMessage", proposal_id)
 
             if "root" in event_name:
