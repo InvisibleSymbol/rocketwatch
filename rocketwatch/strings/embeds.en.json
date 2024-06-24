@@ -256,7 +256,7 @@
     },
     "pdao_proposal_vote_override_event": {
         "title": ":person_gesturing_no: pDAO Delegate Override",
-        "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}`!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}` with a voting power of **%{votingPower}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "pdao_proposal_execute_event": {
         "title": ":white_check_mark: pDAO Proposal Executed",
