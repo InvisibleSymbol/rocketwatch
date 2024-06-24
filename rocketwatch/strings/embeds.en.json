@@ -248,7 +248,7 @@
     },
     "pdao_proposal_add_event": {
         "title": ":bulb: New pDAO Proposal",
-        "description": "%{proposer} created **proposal #%{proposalID}**!\nThey posted a bond of **%{proposalBond} RPL**!\n```Description:\n%{message}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
     },
     "pdao_proposal_vote_event": {
         "title": ":writing_hand: Major pDAO Vote",
