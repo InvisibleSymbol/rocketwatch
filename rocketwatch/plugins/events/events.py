@@ -297,7 +297,8 @@ class QueuedEvents(Cog):
             if "root" in event_name:
                 # not interesting if the root wasn't submitted in response to a challenge
                 # ChallengeState.Challenged = 1
-                if rp.call("rocketDAOProtocolVerifier.getChallengeState", proposal_id, args.index) != 1:
+                challenge_state = rp.call("rocketDAOProtocolVerifier.getChallengeState", proposal_id, args.index, block=event.blockNumber)
+                if challenge_state != 1:
                     return None
 
             if "add" in event_name:
@@ -314,6 +315,12 @@ class QueuedEvents(Cog):
             if "votingPower" in args:
                 args.votingPower = solidity.to_float(args.votingPower)
                 if args.votingPower < 250:
+                    # not interesting
+                    return None
+            elif "vote_override" in event_name:
+                proposal_block = rp.call("rocketDAOProtocolProposal.getProposalBlock", proposal_id)
+                args.votingPower = solidity.to_float(rp.call("rocketNetworkVoting.getVotingPower", args.voter, proposal_block))
+                if args.votingPower < 100:
                     # not interesting
                     return None
 
