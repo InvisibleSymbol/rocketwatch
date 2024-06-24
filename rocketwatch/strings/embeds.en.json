@@ -84,23 +84,23 @@
     },
     "odao_proposal_add_event": {
         "title": ":bulb: New oDAO Proposal",
-        "description": "%{proposer} created proposal #%{proposalID}!\n```Description:\n%{message}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
     },
     "odao_proposal_execute_event": {
         "title": ":white_check_mark: oDAO Proposal Executed",
-        "description": "%{executer} executed proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{executer} executed **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "odao_proposal_vote_event": {
         "title": ":writing_hand: oDAO Vote",
-        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "odao_proposal_cancel_event": {
         "title": ":no_entry_sign: oDAO Proposal Canceled",
-        "description": "%{canceller} canceled proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{canceller} canceled **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
     "odao_member_join_event": {
         "title": ":new: oDAO Member Joined",
-        "description": "%{nodeAddress} joined the oDAO with a Bond of %{rplBondAmount} RPL!"
+        "description": "%{nodeAddress} joined the oDAO with a bond of **%{rplBondAmount} RPL**!"
     },
     "odao_member_leave_event": {
         "title": ":leaves: oDAO Member Left",

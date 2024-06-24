@@ -1,15 +1,15 @@
 import json
 import logging
-import math
 import warnings
 
 import pymongo
-import termplotlib as tpl
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Cog, Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
+
+from plugins.dao.dao import DefaultDAO, ProtocolDAO
 
 from utils import solidity
 from utils.cfg import cfg
@@ -313,39 +313,21 @@ class QueuedEvents(Cog):
 
             if "votingPower" in args:
                 args.votingPower = solidity.to_float(args.votingPower)
-                if args.votingPower < 200:
+                if args.votingPower < 250:
                     # not interesting
                     return None
 
-            graph = tpl.figure()
-            votes_for = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerFor", proposal_id))
-            votes_against = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerAgainst", proposal_id))
-            votes_veto = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerVeto", proposal_id))
-            votes_abstain = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerAbstained", proposal_id))
+            def get_proposal_info(func: str):
+                return rp.call(f"rocketDAOProtocolProposal.{func}", proposal_id, block=event.blockNumber)
 
-            graph.barh(
-                [
-                    round(votes_for),
-                    round(votes_against),
-                    round(votes_veto),
-                    round(votes_abstain),
-                    round(votes_for + votes_against + votes_abstain)
-                ],
-                ["For", "Against", "Veto", "Abstain", "Total"],
-                max_width=20
-            )
-            quorum = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVotingPowerRequired", proposal_id))
-            veto_quorum = solidity.to_float(rp.call("rocketDAOProtocolProposal.getVetoQuorum", proposal_id))
-
-            quorum_perc = round(100 * (votes_for + votes_against + votes_abstain) / quorum, 2)
-            veto_quorum_perc = round(100 * votes_veto / veto_quorum, 2)
-            width: int = max(len(str(quorum_perc)), len(str(veto_quorum_perc)))
-
-            args.vote_graph = graph.get_string() + (
-                f"\n\n"
-                f"Quorum       {quorum_perc : >{width}}%\n"
-                f"Veto Quorum  {veto_quorum_perc : >{width}}%"
-            )
+            args.vote_graph = ProtocolDAO.build_vote_graph({
+                "votes_for": solidity.to_float(get_proposal_info("getVotingPowerFor")),
+                "votes_against": solidity.to_float(get_proposal_info("getVotingPowerAgainst")),
+                "votes_veto": solidity.to_float(get_proposal_info("getVotingPowerVeto")),
+                "votes_abstain": solidity.to_float(get_proposal_info("getVotingPowerAbstained")),
+                "quorum": solidity.to_float(get_proposal_info("getVotingPowerRequired")),
+                "veto_quorum": solidity.to_float(get_proposal_info("getVetoQuorum")),
+            })
         elif "dao_proposal" in event_name:
             proposal_id = event.args.proposalID
             args.message = rp.call("rocketDAOProposal.getMessage", proposal_id)
@@ -361,15 +343,15 @@ class QueuedEvents(Cog):
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
 
+            def get_proposal_info(func: str):
+                return rp.call(f"rocketDAOProposal.{func}", proposal_id, block=event.blockNumber)
+
             # create bar graph for votes
-            votes = [
-                solidity.to_int(rp.call("rocketDAOProposal.getVotesFor", proposal_id, block=event.blockNumber)),
-                solidity.to_int(rp.call("rocketDAOProposal.getVotesAgainst", proposal_id, block=event.blockNumber)),
-                math.ceil(solidity.to_float(rp.call("rocketDAOProposal.getVotesRequired", proposal_id, block=event.blockNumber - 1)))
-            ]
-            vote_graph = tpl.figure()
-            vote_graph.barh(votes, ["For", "Against", "Required"], max_width=20)
-            args.vote_graph = vote_graph.get_string()
+            args.vote_graph = DefaultDAO.build_vote_graph({
+                "votes_for": solidity.to_int(get_proposal_info("getVotesFor")),
+                "votes_against": solidity.to_int(get_proposal_info("getVotesAgainst")),
+                "votes_required": solidity.to_float(get_proposal_info("getVotesRequired"))
+            })
 
         # store event_name in args
         args.event_name = event_name
