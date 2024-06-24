@@ -353,7 +353,7 @@ class QueuedEvents(Cog):
                 args.decision = "for" if args.supported else "against"
 
             # change prefix for DAO-specific event
-            dao_name = args.get("proposalDAO", None) or rp.call("rocketDAOProposal.getDAO", proposal_id)
+            dao_name = rp.call("rocketDAOProposal.getDAO", proposal_id)
             event_name = event_name.replace("dao", {
                 "rocketDAONodeTrustedProposals": "odao",
                 "rocketDAOSecurityProposals": "sdao"
