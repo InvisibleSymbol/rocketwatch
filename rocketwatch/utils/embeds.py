@@ -222,6 +222,7 @@ def assemble(args):
     if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
 
+    amount = args.get("amount") or args.get("ethAmount", 0)
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
@@ -236,7 +237,6 @@ def assemble(args):
                 arg_value = int(arg_value)
             args[arg_key] = humanize.intcomma(arg_value)
 
-    amount = float(args.get("amount") or args.get("ethAmount", 0))
     has_small = _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small"
     has_large = _(f"embeds.{args.event_name}.description") != f"embeds.{args.event_name}.description"
 
