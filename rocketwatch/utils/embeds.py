@@ -219,13 +219,6 @@ def assemble(args):
     if "price_update_event" in args.event_name:
         e.colour = Color.from_rgb(86, 235, 235)
 
-    do_small = all([
-        _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small",
-        args.get("amount" if "ethAmount" not in args else "ethAmount", 0) < 100])
-
-    if not do_small:
-        e.title = _(f"embeds.{args.event_name}.title")
-
     if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
 
@@ -243,13 +236,24 @@ def assemble(args):
                 arg_value = int(arg_value)
             args[arg_key] = humanize.intcomma(arg_value)
 
-    if do_small:
+    amount = float(args.get("amount") or args.get("ethAmount", 0))
+    has_small = _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small"
+    has_large = _(f"embeds.{args.event_name}.description") != f"embeds.{args.event_name}.description"
+
+    match args.event_name:
+        case "eth_deposit_event":
+            threshold = 32
+        case _:
+            threshold = 100
+
+    if has_small and (not has_large or amount < threshold):
         e.description = _(f"embeds.{args.event_name}.description_small", **args)
         if cfg["rocketpool.chain"] != "mainnet":
             e.description += f" ({cfg['rocketpool.chain'].capitalize()})"
         e.set_footer(text="")
         return e
 
+    e.title = _(f"embeds.{args.event_name}.title")
     e.description = _(f"embeds.{args.event_name}.description", **args)
 
     if "cow_uid" in args:
