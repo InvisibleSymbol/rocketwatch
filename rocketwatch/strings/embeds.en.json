@@ -124,19 +124,19 @@
     },
     "sdao_proposal_add_event": {
         "title": ":bulb: New Security Council Proposal",
-        "description": "%{proposer} created proposal #%{proposalID}!\n```%{proposal_body}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_execute": {
         "title": ":white_check_mark: Security Council Proposal Executed",
-        "description": "%{executer} executed proposal #%{proposalID}!\n```%{proposal_body}```"
+        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_vote_event": {
         "title": ":writing_hand: Security Council Vote",
-        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```%{proposal_body}```"
+        "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_cancel_event": {
         "title": ":no_entry_sign: Security Council Proposal Canceled",
-        "description": "%{canceller} canceled proposal #%{proposalID}!\n```%{proposal_body}```"
+        "description": "%{canceller} canceled **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_member_join_event": {
         "title": ":new: Security Council Induction",
