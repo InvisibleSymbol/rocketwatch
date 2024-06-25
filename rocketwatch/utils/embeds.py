@@ -117,7 +117,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         if not name:
             a = Addresses.get(target)
             # don't apply name if it has  label is one with the id "take-action", as these don't show up on the explorer
-            if (not a.labels or len(a.labels) != 1 or a.labels[0].id != "take-action") and "alert" not in a.name.lower():
+            if (not a.labels or len(a.labels) != 1 or a.labels[0].id != "take-action") and a.name and "alert" not in a.name.lower():
                 name = a.name
         if not name:
             # not an odao member, try to get their ens
