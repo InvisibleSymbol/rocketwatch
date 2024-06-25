@@ -87,10 +87,6 @@
                     "name": "dao_proposal_vote_event"
                 },
                 {
-                    "event_name": "ProposalExecuted",
-                    "name": "dao_proposal_execute_event"
-                },
-                {
                     "event_name": "ProposalCancelled",
                     "name": "dao_proposal_cancel_event"
                 }

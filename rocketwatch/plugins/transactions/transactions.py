@@ -115,6 +115,76 @@ class QueuedTransactions(Cog):
         args = prepare_args(args)
         return assemble(args)
 
+    def process_transaction(self, block, tnx, contract_address, fn_input) -> list[Response]:
+        if contract_address not in self.addresses:
+            return []
+
+        contract_name = rp.get_name_by_address(contract_address)
+        # get receipt and check if the transaction reverted using status attribute
+        receipt = w3.eth.get_transaction_receipt(tnx.hash)
+        if contract_name == "rocketNodeDeposit" and receipt.status:
+            log.info(f"Skipping Successful Node Deposit {tnx.hash.hex()}")
+            return []
+
+        if contract_name != "rocketNodeDeposit" and not receipt.status:
+            log.info(f"Skipping Reverted Transaction {tnx.hash.hex()}")
+            return []
+
+        try:
+            contract = rp.get_contract_by_address(contract_address)
+            decoded = contract.decode_function_input(fn_input)
+        except ValueError:
+            log.error(f"Skipping Transaction {tnx.hash.hex()} as it has invalid input")
+            return []
+        log.debug(decoded)
+
+        function = decoded[0].function_identifier
+        if (event_name := self.internal_function_mapping[contract_name].get(function)) is None:
+            return []
+
+        event = aDict(tnx)
+        event.args = {arg.lstrip("_"): value for arg, value in decoded[1].items()}
+        event.args["timestamp"] = block.timestamp
+        event.args["function_name"] = function
+        if not receipt.status:
+            event.args["reason"] = rp.get_revert_reason(tnx)
+            # if revert reason includes the phrase "insufficient for pre deposit" filter out
+            if "insufficient for pre deposit" in event.args["reason"]:
+                log.info(f"Skipping Insufficient Pre Deposit {tnx.hash.hex()}")
+                return []
+
+        if event_name == "dao_proposal_execute":
+            dao_name = rp.call("rocketDAOProposal.getDAO", event.args["proposalID"])
+            # change prefix for DAO-specific event
+            event_name = event_name.replace("dao", {
+                "rocketDAONodeTrustedProposals": "odao",
+                "rocketDAOSecurityProposals": "sdao"
+            }[dao_name])
+
+        if (embed := self.create_embed(event_name, event)) is None:
+            return []
+
+        response = Response(
+            topic="transactions",
+            embed=embed,
+            event_name=event_name,
+            unique_id=f"{tnx.hash.hex()}:{event_name}",
+            block_number=event.blockNumber,
+            transaction_index=event.transactionIndex
+        )
+        responses = [response]
+
+        # proposal being executed, this will call another function
+        # use proposal payload to generate second event if applicable
+        if "proposal_execute" in event_name:
+            proposal_id = event.args["proposalID"]
+            dao_name = rp.call("rocketDAOProposal.getDAO", proposal_id)
+            payload = rp.call("rocketDAOProposal.getPayload", proposal_id)
+            dao_address = rp.get_address_by_name(dao_name)
+            responses.extend(self.process_transaction(block, tnx, dao_address, payload))
+
+        return responses
+
     def run_loop(self):
         if self.state == "RUNNING":
             log.error("Transaction plugin was interrupted while running. Re-initializing...")
@@ -139,61 +209,17 @@ class QueuedTransactions(Cog):
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
             except web3.exceptions.BlockNotFound:
-                log.error(f"Skipping Block {block_hash} as it can't be found")
+                log.error(f"Skipping block {block_hash} as it can't be found")
                 continue
+
             for tnx in block.transactions:
-                if "to" not in tnx:
+                if "to" in tnx:
+                    payload.extend(self.process_transaction(block, tnx, tnx.to, tnx.input))
+                else:
                     # probably a contract creation transaction
-                    log.debug(
-                        f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
-                    continue
-                if tnx.to in self.addresses:
-                    contract_name = rp.get_name_by_address(tnx.to)
+                    log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
 
-                    # get receipt and check if the transaction reverted using status attribute
-                    receipt = w3.eth.get_transaction_receipt(tnx.hash)
-                    if contract_name == "rocketNodeDeposit" and receipt.status:
-                        log.info(f"Skipping Successful Node Deposit {tnx.hash.hex()}")
-                        continue
-                    if contract_name != "rocketNodeDeposit" and not receipt.status:
-                        log.info(f"Skipping Reverted Transaction {tnx.hash.hex()}")
-                        continue
-
-                    contract = rp.get_contract_by_address(tnx.to)
-
-                    try:
-                        decoded = contract.decode_function_input(tnx.input)
-                    except ValueError:
-                        log.error(f"Skipping Transaction {tnx.hash.hex()} as it has invalid input")
-                        continue
-                    log.debug(decoded)
-
-                    function = decoded[0].function_identifier
-                    if event_name := self.internal_function_mapping[contract_name].get(function, None):
-                        event = aDict(tnx)
-                        event.args = {arg.lstrip("_"): value for arg, value in decoded[1].items()}
-                        event.args["timestamp"] = block.timestamp
-                        event.args["function_name"] = function
-                        if not receipt.status:
-                            event.args["reason"] = rp.get_revert_reason(tnx)
-                            # if revert reason includes the phrase "insufficient for pre deposit" filter out
-                            if "insufficient for pre deposit" in event.args["reason"]:
-                                log.info(f"Skipping Insufficient Pre Deposit {tnx.hash.hex()}")
-                                continue
-
-                        if embed := self.create_embed(event_name, event):
-                            payload.append(Response(
-                                topic="transactions",
-                                embed=embed,
-                                event_name=event_name,
-                                unique_id=f"{tnx.hash.hex()}:{event_name}",
-                                block_number=event.blockNumber,
-                                transaction_index=event.transactionIndex
-                            ))
-
-        log.debug("Finished Checking for new Bootstrap Commands")
         self.state = "OK"
-
         return payload
 
 
