@@ -6,7 +6,18 @@
         "bootstrapUpgrade": "bootstrap_odao_network_upgrade",
         "bootstrapDisable": "bootstrap_odao_disable"
     },
+    "rocketDAOProposal": {
+        "execute": "dao_proposal_execute"
+    },
+    "rocketDAONodeTrustedProposals": {
+        "execute": "odao_proposal_execute",
+        "proposalSettingUint": "odao_setting",
+        "proposalSettingBool": "odao_setting",
+        "proposalUpgrade": "odao_upgrade",
+        "proposalInvite": "odao_member_invite"
+    },
     "rocketDAOSecurityProposals": {
+        "execute": "sdao_proposal_execute",
         "proposalSettingUint": "sdao_setting",
         "proposalSettingBool": "sdao_setting",
         "proposalSettingAddress": "sdao_setting",

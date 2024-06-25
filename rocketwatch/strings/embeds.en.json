@@ -86,7 +86,7 @@
         "title": ":bulb: New oDAO Proposal",
         "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
     },
-    "odao_proposal_execute_event": {
+    "odao_proposal_execute": {
         "title": ":white_check_mark: oDAO Proposal Executed",
         "description": "%{executer} executed **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
@@ -110,11 +110,23 @@
         "title": ":boot: oDAO Member Kicked",
         "description": "%{nodeAddress} was kicked from the oDAO!"
     },
+    "odao_setting": {
+        "title": ":crystal_ball: oDAO Setting Modified",
+        "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
+    },
+    "odao_upgrade": {
+        "title": ":crystal_ball: oDAO Contract Upgrade",
+        "description": "The contract `%{name}` has been upgraded to `%{contractAddress}`!"
+    },
+    "odao_member_invite": {
+        "title": ":crystal_ball: oDAO Invite",
+        "description": "`%{id}` (%{nodeAddress}) has been invited to join the oDAO!"
+    },
     "sdao_proposal_add_event": {
         "title": ":bulb: New Security Council Proposal",
         "description": "%{proposer} created proposal #%{proposalID}!\n```Description:\n%{message}```"
     },
-    "sdao_proposal_execute_event": {
+    "sdao_proposal_execute": {
         "title": ":white_check_mark: Security Council Proposal Executed",
         "description": "%{executer} executed proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
     },
@@ -231,11 +243,11 @@
         "description": "%{memberAddress} has been removed from the security council!"
     },
     "sdao_setting": {
-        "title": ":lock: Security Council: Setting Modified",
+        "title": ":lock: Security Council Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
     },
     "sdao_member_invite": {
-        "title": ":lock: Security Council: New Member Invite",
+        "title": ":lock: Security Council Invite",
         "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
     },
     "pdao_setting_event": {
