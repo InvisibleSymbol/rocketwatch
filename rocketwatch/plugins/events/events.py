@@ -292,7 +292,6 @@ class QueuedEvents(Cog):
         # add proposal message manually if the event contains a proposal
         if "pdao_proposal" in event_name:
             proposal_id = event.args.proposalID if "proposalID" in event.args else event.args.proposalId
-            args.message = rp.call("rocketDAOProtocolProposal.getMessage", proposal_id)
 
             if "root" in event_name:
                 # not interesting if the root wasn't submitted in response to a challenge
@@ -327,17 +326,26 @@ class QueuedEvents(Cog):
             def get_proposal_info(func: str):
                 return rp.call(f"rocketDAOProtocolProposal.{func}", proposal_id, block=event.blockNumber)
 
-            args.vote_graph = ProtocolDAO.build_vote_graph({
+            proposal = {
+                "proposer": get_proposal_info("getProposer"),
+                "message": get_proposal_info("getMessage"),
+                "payload": get_proposal_info("getPayload"),
                 "votes_for": solidity.to_float(get_proposal_info("getVotingPowerFor")),
                 "votes_against": solidity.to_float(get_proposal_info("getVotingPowerAgainst")),
                 "votes_veto": solidity.to_float(get_proposal_info("getVotingPowerVeto")),
                 "votes_abstain": solidity.to_float(get_proposal_info("getVotingPowerAbstained")),
                 "quorum": solidity.to_float(get_proposal_info("getVotingPowerRequired")),
                 "veto_quorum": solidity.to_float(get_proposal_info("getVetoQuorum")),
-            })
+            }
+
+            args.proposal_body = ProtocolDAO().build_proposal_body(
+                proposal,
+                include_proposer=False,
+                include_payload=any(kw in event_name for kw in ("add", "execute")),
+                include_votes=all(kw not in event_name for kw in ("add", "challenge", "root", "destroy")),
+            )
         elif "dao_proposal" in event_name:
             proposal_id = event.args.proposalID
-            args.message = rp.call("rocketDAOProposal.getMessage", proposal_id)
 
             # create human-readable decision for votes
             if "supported" in args:
@@ -349,16 +357,29 @@ class QueuedEvents(Cog):
                 "rocketDAONodeTrustedProposals": "odao",
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
+            dao_literal = {
+                "rocketDAONodeTrustedProposals": "odao",
+                "rocketDAOSecurityProposals": "security council"
+            }[dao_name]
 
             def get_proposal_info(func: str):
                 return rp.call(f"rocketDAOProposal.{func}", proposal_id, block=event.blockNumber)
 
-            # create bar graph for votes
-            args.vote_graph = DefaultDAO.build_vote_graph({
+            proposal = {
+                "proposer": get_proposal_info("getProposer"),
+                "message": get_proposal_info("getMessage"),
+                "payload": get_proposal_info("getPayload"),
                 "votes_for": solidity.to_int(get_proposal_info("getVotesFor")),
                 "votes_against": solidity.to_int(get_proposal_info("getVotesAgainst")),
                 "votes_required": solidity.to_float(get_proposal_info("getVotesRequired"))
-            })
+            }
+
+            args.proposal_body = DefaultDAO(dao_literal).build_proposal_body(
+                proposal,
+                include_proposer=False,
+                include_payload=("add" in event_name or "execute" in event_name),
+                include_votes=("add" not in event_name),
+            )
 
         # store event_name in args
         args.event_name = event_name

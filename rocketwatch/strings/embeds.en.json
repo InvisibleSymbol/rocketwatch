@@ -84,19 +84,19 @@
     },
     "odao_proposal_add_event": {
         "title": ":bulb: New oDAO Proposal",
-        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_execute": {
         "title": ":white_check_mark: oDAO Proposal Executed",
-        "description": "%{executer} executed **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_vote_event": {
         "title": ":writing_hand: oDAO Vote",
-        "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_cancel_event": {
         "title": ":no_entry_sign: oDAO Proposal Canceled",
-        "description": "%{canceller} canceled **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{canceller} canceled **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_member_join_event": {
         "title": ":new: oDAO Member Joined",
@@ -124,19 +124,19 @@
     },
     "sdao_proposal_add_event": {
         "title": ":bulb: New Security Council Proposal",
-        "description": "%{proposer} created proposal #%{proposalID}!\n```Description:\n%{message}```"
+        "description": "%{proposer} created proposal #%{proposalID}!\n```%{proposal_body}```"
     },
     "sdao_proposal_execute": {
         "title": ":white_check_mark: Security Council Proposal Executed",
-        "description": "%{executer} executed proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{executer} executed proposal #%{proposalID}!\n```%{proposal_body}```"
     },
     "sdao_proposal_vote_event": {
         "title": ":writing_hand: Security Council Vote",
-        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{voter} voted %{decision} proposal #%{proposalID}!\n```%{proposal_body}```"
     },
     "sdao_proposal_cancel_event": {
         "title": ":no_entry_sign: Security Council Proposal Canceled",
-        "description": "%{canceller} canceled proposal #%{proposalID}!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{canceller} canceled proposal #%{proposalID}!\n```%{proposal_body}```"
     },
     "sdao_member_join_event": {
         "title": ":new: Security Council Induction",
@@ -260,27 +260,27 @@
     },
     "pdao_proposal_add_event": {
         "title": ":bulb: New pDAO Proposal",
-        "description": "%{proposer} created **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+        "description": "%{proposer} created **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_vote_event": {
         "title": ":writing_hand: Major pDAO Vote",
-        "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of **%{votingPower}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of **%{votingPower}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_vote_override_event": {
         "title": ":person_gesturing_no: pDAO Delegate Override",
-        "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}` with a voting power of **%{votingPower}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}` with a voting power of **%{votingPower}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_execute_event": {
         "title": ":white_check_mark: pDAO Proposal Executed",
-        "description": "%{executer} executed **proposal #%{proposalID}**!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_finalise_event": {
         "title": ":x: pDAO Proposal Finalized",
-        "description": "**Proposal #%{proposalID}** has been finalized after a veto vote!\n```Description:\n%{message}\n\nTotal Votes:\n%{vote_graph}```"
+        "description": "**Proposal #%{proposalID}** has been finalized after a veto vote!\n```%{proposal_body}```"
     },
     "pdao_proposal_destroy_event": {
         "title": ":bomb: pDAO Proposal Destroyed",
-        "description": "**Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```Description:\n%{message}```"
+        "description": "**Proposal #%{proposalID}** has been destroyed after a successful challenge!\n```%{proposal_body}```"
     },
     "pdao_proposal_challenge_event": {
         "title": ":crossed_swords: pDAO Proposal Challenge",
