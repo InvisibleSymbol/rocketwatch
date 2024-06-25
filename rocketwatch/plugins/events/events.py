@@ -300,7 +300,7 @@ class QueuedEvents(Cog):
                 if challenge_state != 1:
                     return None
 
-            if "add" in event_name:
+            if "add" in event_name or "destroy" in event_name:
                 args.proposalBond = solidity.to_int(rp.call("rocketDAOProtocolVerifier.getProposalBond", proposal_id))
             elif "root" in event_name or "challenge" in event_name:
                 args.proposalBond = solidity.to_int(rp.call("rocketDAOProtocolVerifier.getProposalBond", proposal_id))
