@@ -3,6 +3,7 @@ import math
 
 from enum import IntEnum
 from typing import Literal
+from abc import ABC, abstractmethod
 
 import termplotlib as tpl
 from discord.ext.commands import Cog, Context, hybrid_command
@@ -18,14 +19,54 @@ log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
 
 
-class DefaultDAO:
+class AbstractDAO(ABC):
+    def __init__(self, contract_name):
+        self.contract_name = contract_name
+        dao_address = rp.get_address_by_name(contract_name)
+        self.contract = rp.get_contract_by_address(dao_address)
+
+    @abstractmethod
+    def _build_vote_graph(self, proposal: dict) -> str:
+        pass
+
+    def build_proposal_body(
+            self,
+            proposal: dict,
+            include_proposer=True,
+            include_payload=True,
+            include_votes=True
+    ) -> str:
+        body_repr = f"Description:\n{DAOCommand.sanitize(proposal['message'])}"
+
+        if include_proposer:
+            body_repr += f"\n\nProposed by:\n{proposal['proposer']}"
+
+        if include_payload:
+            payload = proposal["payload"]
+            try:
+                decoded = self.contract.decode_function_input(payload)
+                function_name = decoded[0].function_identifier
+                args = [f"  {arg} = {value}" for arg, value in decoded[1].items()]
+                payload_str = f"{function_name}(\n" + "\n".join(args) + "\n)"
+                body_repr += f"\n\nPayload:\n{payload_str}"
+            except ValueError:
+                # if this goes wrong, just use the raw payload
+                body_repr += f"\n\nRaw Payload (failed to decode):\n{payload.hex()}"
+
+        if include_votes:
+            body_repr += f"\n\nVotes:\n{self._build_vote_graph(proposal)}"
+
+        return body_repr
+
+
+class DefaultDAO(AbstractDAO):
     def __init__(self, name: Literal["odao", "security council"]):
         if name == "odao":
             self.display_name = "oDAO"
-            self.contract_name = "rocketDAONodeTrustedProposals"
+            super().__init__("rocketDAONodeTrustedProposals")
         elif name == "security council":
             self.display_name = "Security Council"
-            self.contract_name = "rocketDAOSecurityProposals"
+            super().__init__("rocketDAOSecurityProposals")
         else:
             raise ValueError("Unknown DAO")
 
@@ -38,11 +79,10 @@ class DefaultDAO:
         Expired = 5
         Executed = 6
 
-    @staticmethod
-    def build_vote_graph(_proposal: dict) -> str:
-        votes_for = _proposal["votes_for"]
-        votes_against = _proposal["votes_against"]
-        votes_required = math.ceil(_proposal["votes_required"])
+    def _build_vote_graph(self, proposal: dict) -> str:
+        votes_for = proposal["votes_for"]
+        votes_against = proposal["votes_against"]
+        votes_required = math.ceil(proposal["votes_required"])
 
         graph = tpl.figure()
         graph.barh(
@@ -79,6 +119,7 @@ class DefaultDAO:
                 "id": proposal_id,
                 "proposer": call("getProposer"),
                 "message": call("getMessage"),
+                "payload": call("getPayload"),
                 "created": call("getCreated"),
                 "start": call("getStart"),
                 "end": call("getEnd"),
@@ -88,33 +129,25 @@ class DefaultDAO:
                 "votes_required": solidity.to_float(call("getVotesRequired"))
             })
 
-        def build_body(_proposal: dict) -> str:
-            return (
-                f"Description:\n"
-                f"{DAO.sanitize(_proposal['message'])}\n\n"
-                f"Proposed by:\n"
-                f"{_proposal['proposer']}"
-            )
-
         return Embed(
             title=f"{self.display_name} Proposals",
             description="\n\n".join(
                 [
                     (
                         f"**Proposal #{proposal['id']}** - Pending\n"
-                        f"```{build_body(proposal)}```"
+                        f"```{self.build_proposal_body(proposal, include_votes=False)}```"
                         f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active\n"
-                        f"```{build_body(proposal)}\n\n{self.build_vote_graph(proposal)}```"
+                        f"```{self.build_proposal_body(proposal)}```"
                         f"Ends <t:{proposal['end']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.Active]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{build_body(proposal)}\n\n{self.build_vote_graph(proposal)}```"
+                        f"```{self.build_proposal_body(proposal)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.Succeeded]
                 ]
@@ -122,7 +155,10 @@ class DefaultDAO:
         )
 
 
-class ProtocolDAO:
+class ProtocolDAO(AbstractDAO):
+    def __init__(self):
+        super().__init__("rocketDAOProtocolProposals")
+
     class ProposalState(IntEnum):
         Pending = 0
         ActivePhase1 = 1
@@ -135,17 +171,16 @@ class ProtocolDAO:
         Expired = 8
         Executed = 9
 
-    @staticmethod
-    def build_vote_graph(_proposal: dict) -> str:
-        votes_total = _proposal["votes_for"] + _proposal["votes_against"] + _proposal["votes_abstain"]
+    def _build_vote_graph(self, proposal: dict) -> str:
+        votes_total = proposal["votes_for"] + proposal["votes_against"] + proposal["votes_abstain"]
 
         graph = tpl.figure()
         graph.barh(
             [
-                round(_proposal["votes_for"]),
-                round(_proposal["votes_against"]),
-                round(_proposal["votes_abstain"]),
-                round(max(votes_total, _proposal["quorum"]))
+                round(proposal["votes_for"]),
+                round(proposal["votes_against"]),
+                round(proposal["votes_abstain"]),
+                round(max(votes_total, proposal["quorum"]))
             ],
             ["For", "Against", "Abstain", ""],
             max_width=20
@@ -155,8 +190,8 @@ class ProtocolDAO:
         graph = tpl.figure()
         graph.barh(
             [
-                round(_proposal["votes_veto"]),
-                round(max(_proposal["votes_veto"], _proposal["veto_quorum"]))
+                round(proposal["votes_veto"]),
+                round(max(proposal["votes_veto"], proposal["veto_quorum"]))
             ],
             [f"{'Veto' : <{len('Against')}}", ""],
             max_width=20
@@ -165,9 +200,9 @@ class ProtocolDAO:
         veto_graph_repr = f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏"
         return (
             f"{main_graph_repr}\n"
-            f"Quorum: {round(100 * votes_total / _proposal['quorum'], 2)}%\n\n"
+            f"Quorum: {round(100 * votes_total / proposal['quorum'], 2)}%\n\n"
             f"{veto_graph_repr}\n"
-            f"Quorum: {round(100 * _proposal['votes_veto'] / _proposal['veto_quorum'], 2)}%"
+            f"Quorum: {round(100 * proposal['votes_veto'] / proposal['veto_quorum'], 2)}%"
         )
 
     def get_votes(self):
@@ -190,6 +225,7 @@ class ProtocolDAO:
                 "id": proposal_id,
                 "proposer": call("getProposer"),
                 "message": call("getMessage"),
+                "payload": call("getPayload"),
                 "created": call("getCreated"),
                 "start": call("getStart"),
                 "end_phase1": call("getPhase1End"),
@@ -203,39 +239,31 @@ class ProtocolDAO:
                 "veto_quorum": solidity.to_float(call("getVetoQuorum")),
             })
 
-        def build_body(_proposal: dict) -> str:
-            return (
-                f"Description:\n"
-                f"{DAO.sanitize(_proposal['message'])}\n\n"
-                f"Proposed by:\n"
-                f"{_proposal['proposer']}"
-            )
-
         return Embed(
             title="pDAO Proposals",
             description="\n\n".join(
                 [
                     (
                         f"**Proposal #{proposal['id']}** - Pending\n"
-                        f"```{build_body(proposal)}```"
+                        f"```{self.build_proposal_body(proposal, include_votes=False)}```"
                         f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
-                        f"```{build_body(proposal)}\n\n{self.build_vote_graph(proposal)}```"
+                        f"```{self.build_proposal_body(proposal)}```"
                         f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.ActivePhase1]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
-                        f"```{build_body(proposal)}\n\n{self.build_vote_graph(proposal)}```"
+                        f"```{self.build_proposal_body(proposal)}```"
                         f"Ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.ActivePhase2]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{build_body(proposal)}\n\n{self.build_vote_graph(proposal)}```"
+                        f"```{self.build_proposal_body(proposal)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[self.ProposalState.Succeeded]
                 ]
@@ -243,7 +271,7 @@ class ProtocolDAO:
         )
 
 
-class DAO(Cog):
+class DAOCommand(Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -268,4 +296,4 @@ class DAO(Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(DAO(bot))
+    await bot.add_cog(DAOCommand(bot))

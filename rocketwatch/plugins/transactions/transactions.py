@@ -123,18 +123,18 @@ class QueuedTransactions(Cog):
         # get receipt and check if the transaction reverted using status attribute
         receipt = w3.eth.get_transaction_receipt(tnx.hash)
         if contract_name == "rocketNodeDeposit" and receipt.status:
-            log.info(f"Skipping Successful Node Deposit {tnx.hash.hex()}")
+            log.info(f"Skipping successful node deposit {tnx.hash.hex()}")
             return []
 
         if contract_name != "rocketNodeDeposit" and not receipt.status:
-            log.info(f"Skipping Reverted Transaction {tnx.hash.hex()}")
+            log.info(f"Skipping reverted transaction {tnx.hash.hex()}")
             return []
 
         try:
             contract = rp.get_contract_by_address(contract_address)
             decoded = contract.decode_function_input(fn_input)
         except ValueError:
-            log.error(f"Skipping Transaction {tnx.hash.hex()} as it has invalid input")
+            log.error(f"Skipping transaction {tnx.hash.hex()} as it has invalid input")
             return []
         log.debug(decoded)
 
@@ -205,7 +205,7 @@ class QueuedTransactions(Cog):
             blocks = list(self.block_event.get_new_entries())
 
         for block_hash in blocks:
-            log.debug(f"Checking Block: {block_hash}")
+            log.debug(f"Checking block: {block_hash}")
             try:
                 block = w3.eth.get_block(block_hash, full_transactions=True)
             except web3.exceptions.BlockNotFound:
