@@ -284,11 +284,11 @@
     },
     "pdao_proposal_challenge_event": {
         "title": ":crossed_swords: pDAO Proposal Challenge",
-        "description": "%{challenger} challenged **proposal #%{proposalID}**!\n```Description:\n%{message}```"
+        "description": "%{challenger} challenged **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_root_event": {
         "title": ":shield: pDAO Proposal Defense",
-        "description": "**Proposal #%{proposalID}**:\n%{proposer} responded to a challenge by submitting a new root!\n```Description:\n%{message}```"
+        "description": "**Proposal #%{proposalID}**:\n%{proposer} responded to a challenge by submitting a new root!\n```%{proposal_body}```"
     },
     "pdao_proposal_bond_burn_event": {
         "title": ":fire: pDAO Proposal Bond Burned",
