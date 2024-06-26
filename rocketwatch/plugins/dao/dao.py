@@ -49,8 +49,9 @@ class AbstractDAO(ABC):
                 args = [f"  {arg} = {value}" for arg, value in decoded[1].items()]
                 payload_str = f"{function_name}(\n" + "\n".join(args) + "\n)"
                 body_repr += f"\n\nPayload:\n{payload_str}"
-            except ValueError:
+            except Exception as e:
                 # if this goes wrong, just use the raw payload
+                log.exception("Failed to decode proposal payload")
                 body_repr += f"\n\nRaw Payload (failed to decode):\n{payload.hex()}"
 
         if include_votes:
