@@ -13,6 +13,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
 from utils.reporter import report_error
 from utils.rocketpool import rp
+from utils.get_nearest_block import get_block_by_timestamp
 
 log = logging.getLogger("effective_rpl")
 log.setLevel(cfg["log_level"])
@@ -24,12 +25,18 @@ class PatchesAPI(commands.Cog):
 
     @dataclass
     class RewardEstimate:
+        address: str
         interval: int
         start_time: int
         data_time: int
         end_time: int
         rpl_rewards: float
         eth_rewards: float
+
+        def projection_factor(self) -> float:
+            registration_time = rp.call("rocketNodeManager.getNodeRegistrationTime", self.address)
+            reward_start_time = max(registration_time, self.start_time)
+            return (self.end_time - reward_start_time) / (self.data_time - reward_start_time)
 
     @staticmethod
     async def get_estimated_rewards(ctx: Context, address: str) -> Optional[RewardEstimate]:
@@ -50,6 +57,7 @@ class PatchesAPI(commands.Cog):
         interval_time = rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime")
 
         return PatchesAPI.RewardEstimate(
+            address=address,
             interval=patches_res['interval'],
             start_time=patches_res["startTime"],
             data_time=patches_res['time'],
@@ -82,9 +90,9 @@ class PatchesAPI(commands.Cog):
             return
 
         if extrapolate:
-            extrapolation_factor = (rewards.end_time - rewards.start_time) / (rewards.data_time - rewards.start_time)
-            rewards.rpl_rewards *= extrapolation_factor
-            rewards.eth_rewards *= extrapolation_factor
+            proj_factor = rewards.projection_factor()
+            rewards.rpl_rewards *= proj_factor
+            rewards.eth_rewards *= proj_factor
 
         modifier = "Projected" if extrapolate else "Estimated Ongoing"
         title = f"{modifier} Rewards for {display_name}"
@@ -101,10 +109,10 @@ class PatchesAPI(commands.Cog):
         if rewards is None:
             return
 
-        extrap_factor = (rewards.end_time - rewards.start_time) / (rewards.data_time - rewards.start_time)
-        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-        borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address))
-        current_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address))
+        data_block, _ = get_block_by_timestamp(rewards.data_time)
+        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
+        borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
+        actual_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address, block=data_block))
 
         def rpip_30_weight(staked_rpl: float) -> float:
             rpl_value = staked_rpl * rpl_ratio
@@ -116,9 +124,10 @@ class PatchesAPI(commands.Cog):
             else:
                 return (13.6137 + 2 * math.log(100 * collateral_ratio - 13)) * borrowed_eth
 
-        weight_factor = rpip_30_weight(rpl_stake) / rpip_30_weight(current_rpl_stake)
-        rewards.rpl_rewards *= extrap_factor * weight_factor
-        rewards.eth_rewards *= extrap_factor
+        proj_factor = rewards.projection_factor()
+        weight_factor = rpip_30_weight(rpl_stake) / rpip_30_weight(actual_rpl_stake)
+        rewards.rpl_rewards *= proj_factor * weight_factor
+        rewards.eth_rewards *= proj_factor
 
         title = f"Simulated Rewards for {display_name} ({rpl_stake:,} RPL Staked)"
         await ctx.send(embed=self.create_embed(title, rewards))
