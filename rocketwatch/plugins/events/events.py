@@ -323,21 +323,7 @@ class QueuedEvents(Cog):
                     # not interesting
                     return None
 
-            def get_proposal_info(func: str):
-                return rp.call(f"rocketDAOProtocolProposal.{func}", proposal_id, block=event.blockNumber)
-
-            proposal = {
-                "proposer": get_proposal_info("getProposer"),
-                "message": get_proposal_info("getMessage"),
-                "payload": get_proposal_info("getPayload"),
-                "votes_for": solidity.to_float(get_proposal_info("getVotingPowerFor")),
-                "votes_against": solidity.to_float(get_proposal_info("getVotingPowerAgainst")),
-                "votes_veto": solidity.to_float(get_proposal_info("getVotingPowerVeto")),
-                "votes_abstain": solidity.to_float(get_proposal_info("getVotingPowerAbstained")),
-                "quorum": solidity.to_float(get_proposal_info("getVotingPowerRequired")),
-                "veto_quorum": solidity.to_float(get_proposal_info("getVetoQuorum")),
-            }
-
+            proposal = ProtocolDAO.fetch_proposal(proposal_id)
             args.proposal_body = ProtocolDAO().build_proposal_body(
                 proposal,
                 include_proposer=False,
@@ -362,18 +348,7 @@ class QueuedEvents(Cog):
                 "rocketDAOSecurityProposals": "security council"
             }[dao_name]
 
-            def get_proposal_info(func: str):
-                return rp.call(f"rocketDAOProposal.{func}", proposal_id, block=event.blockNumber)
-
-            proposal = {
-                "proposer": get_proposal_info("getProposer"),
-                "message": get_proposal_info("getMessage"),
-                "payload": get_proposal_info("getPayload"),
-                "votes_for": solidity.to_int(get_proposal_info("getVotesFor")),
-                "votes_against": solidity.to_int(get_proposal_info("getVotesAgainst")),
-                "votes_required": solidity.to_float(get_proposal_info("getVotesRequired"))
-            }
-
+            proposal = DefaultDAO.fetch_proposal(proposal_id)
             args.proposal_body = DefaultDAO(dao_literal).build_proposal_body(
                 proposal,
                 include_proposer=False,
@@ -566,7 +541,7 @@ class QueuedEvents(Cog):
             if solidity.to_float(args.amountOfStETH) < 10_000:
                 return None
             # get the node operator address from minipool contract
-        if "odao_rpl_transfer" in event_name:
+        if "rpl_transfer_event" in event_name:
             if args["from"] not in cfg["dao_multsigs"]:
                 return None
         args = prepare_args(args)

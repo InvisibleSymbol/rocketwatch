@@ -6,9 +6,9 @@ from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
 from multicall import Call, constants
-from multicall import Multicall as Multicall2
+from multicall import Multicall
 from web3.exceptions import ContractLogicError
-from web3_multicall import Multicall
+from web3_multicall import Multicall as Web3Multicall
 
 constants.NUM_PROCESSES = 11
 
@@ -43,11 +43,11 @@ class RocketPool:
         self.addresses = bidict()
         try:
             # add multicall3 address
-            multicall_address = Multicall2([], _w3=w3).multicall_address
+            multicall_address = Multicall([], _w3=w3).multicall_address
             self.addresses["multicall3"] = multicall_address
-            self.multicall = Multicall(w3.eth, multicall_address)
+            self.multicall = Web3Multicall(w3.eth, multicall_address)
         except Exception as err:
-            log.error(f"Failed to initialize Multicall: {err}")
+            log.error(f"Failed to initialize Web3Multicall: {err}")
             self.multicall = None
         for name, address in cfg["rocketpool.manual_addresses"].items():
             self.addresses[name] = address
@@ -69,7 +69,7 @@ class RocketPool:
 
     @timerun
     def multicall2_do_call(self, calls: [Call], require_success=True):
-        multicall = Multicall2(calls, _w3=w3, gas_limit=500_000_000, require_success=require_success)
+        multicall = Multicall(calls, _w3=w3, gas_limit=500_000_000, require_success=require_success)
         return multicall()
 
     @cached(cache=ADDRESS_CACHE)

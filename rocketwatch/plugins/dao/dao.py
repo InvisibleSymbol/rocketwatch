@@ -2,7 +2,7 @@ import logging
 import math
 
 from enum import IntEnum
-from typing import Literal
+from typing import Literal, Union
 from abc import ABC, abstractmethod
 
 import termplotlib as tpl
@@ -22,12 +22,24 @@ log.setLevel(cfg["log_level"])
 class AbstractDAO(ABC):
     def __init__(self, contract_name):
         self.contract_name = contract_name
-        dao_address = rp.get_address_by_name(contract_name)
-        self.contract = rp.get_contract_by_address(dao_address)
+        self.contract = rp.get_contract_by_name(contract_name)
+
+    @staticmethod
+    @abstractmethod
+    def fetch_proposal(proposal_id: int) -> dict:
+        pass
 
     @abstractmethod
     def _build_vote_graph(self, proposal: dict) -> str:
         pass
+
+    @staticmethod
+    def sanitize(message: str) -> str:
+        max_length = 150
+        suffix = "..."
+        if len(message) > max_length:
+            message = message[:max_length - len(suffix)] + suffix
+        return message
 
     def build_proposal_body(
             self,
@@ -36,7 +48,7 @@ class AbstractDAO(ABC):
             include_payload=True,
             include_votes=True
     ) -> str:
-        body_repr = f"Description:\n{DAOCommand.sanitize(proposal['message'])}"
+        body_repr = f"Description:\n{self.sanitize(proposal['message'])}"
 
         if include_proposer:
             body_repr += f"\n\nProposed by:\n{proposal['proposer']}"
@@ -80,6 +92,38 @@ class DefaultDAO(AbstractDAO):
         Expired = 5
         Executed = 6
 
+    @staticmethod
+    def fetch_proposal(proposal_id: int) -> dict:
+        proposal_contract = rp.get_contract_by_name("rocketDAOProposal")
+        # map results of functions calls to function name
+        metadata_calls: dict[str, Union[str, bytes, int]] = {
+            res.function_name: res.results[0] for res in rp.multicall.aggregate([
+                proposal_contract.functions.getProposer(proposal_id),
+                proposal_contract.functions.getMessage(proposal_id),
+                proposal_contract.functions.getPayload(proposal_id),
+                proposal_contract.functions.getCreated(proposal_id),
+                proposal_contract.functions.getStart(proposal_id),
+                proposal_contract.functions.getEnd(proposal_id),
+                proposal_contract.functions.getExpires(proposal_id),
+                proposal_contract.functions.getVotesFor(proposal_id),
+                proposal_contract.functions.getVotesAgainst(proposal_id),
+                proposal_contract.functions.getVotesRequired(proposal_id)
+            ]).results
+        }
+        return {
+            "id": proposal_id,
+            "proposer": metadata_calls["getProposer"],
+            "message": metadata_calls["getMessage"],
+            "payload": metadata_calls["getPayload"],
+            "created": metadata_calls["getCreated"],
+            "start": metadata_calls["getStart"],
+            "end": metadata_calls["getEnd"],
+            "expires": metadata_calls["getExpires"],
+            "votes_for": solidity.to_int(metadata_calls["getVotesFor"]),
+            "votes_against": solidity.to_int(metadata_calls["getVotesAgainst"]),
+            "votes_required": solidity.to_float(metadata_calls["getVotesRequired"])
+        }
+
     def _build_vote_graph(self, proposal: dict) -> str:
         votes_for = proposal["votes_for"]
         votes_against = proposal["votes_against"]
@@ -102,33 +146,21 @@ class DefaultDAO(AbstractDAO):
         current_proposals: dict[DefaultDAO.ProposalState, list[dict]] = {
             self.ProposalState.Pending: [],
             self.ProposalState.Active: [],
-            self.ProposalState.Succeeded: [],
+            self.ProposalState.Executed: [],
         }
 
         num_proposals = rp.call("rocketDAOProposal.getTotal")
         for proposal_id in range(1, num_proposals + 1):
-            def call(func: str):
-                return rp.call(f"rocketDAOProposal.{func}", proposal_id)
-
-            if call("getDAO") != self.contract_name:
+            state = rp.call("rocketDAOProposal.getState", proposal_id)
+            if state not in current_proposals:
                 continue
 
-            if (state := call("getState")) not in current_proposals:
+            dao = rp.call("rocketDAOProposal.getDAO", proposal_id)
+            if dao != self.contract_name:
                 continue
 
-            current_proposals[state].append({
-                "id": proposal_id,
-                "proposer": call("getProposer"),
-                "message": call("getMessage"),
-                "payload": call("getPayload"),
-                "created": call("getCreated"),
-                "start": call("getStart"),
-                "end": call("getEnd"),
-                "expires": call("getExpires"),
-                "votes_for": solidity.to_int(call("getVotesFor")),
-                "votes_against": solidity.to_int(call("getVotesAgainst")),
-                "votes_required": solidity.to_float(call("getVotesRequired"))
-            })
+            proposal = self.fetch_proposal(proposal_id)
+            current_proposals[state].append(proposal)
 
         return Embed(
             title=f"{self.display_name} Proposals",
@@ -150,7 +182,7 @@ class DefaultDAO(AbstractDAO):
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
                         f"```{self.build_proposal_body(proposal)}```"
                         f"Expires <t:{proposal['expires']}:R>"
-                    ) for proposal in current_proposals[self.ProposalState.Succeeded]
+                    ) for proposal in current_proposals[self.ProposalState.Executed]
                 ]
             ) or "No active proposals."
         )
@@ -171,6 +203,46 @@ class ProtocolDAO(AbstractDAO):
         Succeeded = 7
         Expired = 8
         Executed = 9
+
+    @staticmethod
+    def fetch_proposal(proposal_id: int) -> dict:
+        proposal_contract = rp.get_contract_by_name("rocketDAOProtocolProposal")
+        # map results of functions calls to function name
+        metadata_calls: dict[str, Union[str, bytes, int]] = {
+            res.function_name: res.results[0] for res in rp.multicall.aggregate([
+                proposal_contract.functions.getProposer(proposal_id),
+                proposal_contract.functions.getMessage(proposal_id),
+                proposal_contract.functions.getPayload(proposal_id),
+                proposal_contract.functions.getCreated(proposal_id),
+                proposal_contract.functions.getStart(proposal_id),
+                proposal_contract.functions.getPhase1End(proposal_id),
+                proposal_contract.functions.getPhase2End(proposal_id),
+                proposal_contract.functions.getExpires(proposal_id),
+                proposal_contract.functions.getVotingPowerFor(proposal_id),
+                proposal_contract.functions.getVotingPowerAgainst(proposal_id),
+                proposal_contract.functions.getVotingPowerVeto(proposal_id),
+                proposal_contract.functions.getVotingPowerAbstained(proposal_id),
+                proposal_contract.functions.getVotingPowerRequired(proposal_id),
+                proposal_contract.functions.getVetoQuorum(proposal_id)
+            ]).results
+        }
+        return {
+            "id": proposal_id,
+            "proposer": metadata_calls["getProposer"],
+            "message": metadata_calls["getMessage"],
+            "payload": metadata_calls["getPayload"],
+            "created": metadata_calls["getCreated"],
+            "start": metadata_calls["getStart"],
+            "end_phase1": metadata_calls["getPhase1End"],
+            "end_phase2": metadata_calls["getPhase2End"],
+            "expires": metadata_calls["getExpires"],
+            "votes_for": solidity.to_float(metadata_calls["getVotingPowerFor"]),
+            "votes_against": solidity.to_float(metadata_calls["getVotingPowerAgainst"]),
+            "votes_veto": solidity.to_float(metadata_calls["getVotingPowerVeto"]),
+            "votes_abstain": solidity.to_float(metadata_calls["getVotingPowerAbstained"]),
+            "quorum": solidity.to_float(metadata_calls["getVotingPowerRequired"]),
+            "veto_quorum": solidity.to_float(metadata_calls["getVetoQuorum"])
+        }
 
     def _build_vote_graph(self, proposal: dict) -> str:
         votes_total = proposal["votes_for"] + proposal["votes_against"] + proposal["votes_abstain"]
@@ -216,29 +288,12 @@ class ProtocolDAO(AbstractDAO):
 
         num_proposals = rp.call("rocketDAOProtocolProposal.getTotal")
         for proposal_id in range(1, num_proposals + 1):
-            def call(func: str):
-                return rp.call(f"rocketDAOProtocolProposal.{func}", proposal_id)
-
-            if (state := call("getState")) not in current_proposals:
+            state = rp.call("rocketDAOProtocolProposal.getState", proposal_id)
+            if state not in current_proposals:
                 continue
 
-            current_proposals[state].append({
-                "id": proposal_id,
-                "proposer": call("getProposer"),
-                "message": call("getMessage"),
-                "payload": call("getPayload"),
-                "created": call("getCreated"),
-                "start": call("getStart"),
-                "end_phase1": call("getPhase1End"),
-                "end_phase2": call("getPhase2End"),
-                "expires": call("getExpires"),
-                "votes_for": solidity.to_float(call("getVotingPowerFor")),
-                "votes_against": solidity.to_float(call("getVotingPowerAgainst")),
-                "votes_veto": solidity.to_float(call("getVotingPowerVeto")),
-                "votes_abstain": solidity.to_float(call("getVotingPowerAbstained")),
-                "quorum": solidity.to_float(call("getVotingPowerRequired")),
-                "veto_quorum": solidity.to_float(call("getVetoQuorum")),
-            })
+            proposal = self.fetch_proposal(proposal_id)
+            current_proposals[state].append(proposal)
 
         return Embed(
             title="pDAO Proposals",
@@ -275,14 +330,6 @@ class ProtocolDAO(AbstractDAO):
 class DAOCommand(Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @staticmethod
-    def sanitize(message: str) -> str:
-        max_length = 150
-        suffix = "..."
-        if len(message) > max_length:
-            message = message[:max_length - len(suffix)] + suffix
-        return message
 
     @hybrid_command()
     async def dao_votes(
