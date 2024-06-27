@@ -53,7 +53,7 @@ class QueuedTransactions(Cog):
             json_args: str = "{}",
             block_number: int = 0
     ):
-        await ctx.defer(ephemeral=True)
+        await ctx.defer()
         try:
             event_obj = aDict({
                 "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
@@ -69,7 +69,20 @@ class QueuedTransactions(Cog):
         else:
             await ctx.send(content="<empty>")
 
-    def create_embed(self, event_name, event):
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def replay_tx(self, ctx: Context, tx_hash: str):
+        await ctx.defer()
+        tnx = w3.eth.get_transaction(tx_hash)
+        block = w3.eth.get_block(tnx.blockHash)
+
+        responses: list[Response] = self.process_transaction(block, tnx, tnx.to, tnx.input)
+        for response in responses:
+            await ctx.send(embed=response.embed)
+
+    @staticmethod
+    def create_embed(event_name, event):
         # prepare args
         args = aDict(event.args)
 
@@ -207,6 +220,7 @@ class QueuedTransactions(Cog):
                 dao = DefaultDAO(rp.call("rocketDAOProposal.getDAO", proposal_id))
                 payload = rp.call("rocketDAOProposal.getPayload", proposal_id)
 
+            event.args["executor"] = event["from"]
             proposal = dao.fetch_proposal(proposal_id)
             event.args["proposal_body"] = dao.build_proposal_body(proposal, include_proposer=False)
 
