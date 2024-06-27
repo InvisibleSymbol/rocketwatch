@@ -42,7 +42,7 @@
         "title": ":rocket: Deposit Assigned To Minipool",
         "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
-    "odao_rpl_transfer": {
+    "rpl_transfer_event": {
         "description_small": ":moneybag: %{from} transferred %{value} RPL to %{to}! %{transactionHash_small}"
     },
     "reth_transfer_event": {
@@ -88,7 +88,7 @@
     },
     "odao_proposal_execute": {
         "title": ":white_check_mark: oDAO Proposal Executed",
-        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_vote_event": {
         "title": ":writing_hand: oDAO Vote",
@@ -128,7 +128,7 @@
     },
     "sdao_proposal_execute": {
         "title": ":white_check_mark: Security Council Proposal Executed",
-        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_vote_event": {
         "title": ":writing_hand: Security Council Vote",
