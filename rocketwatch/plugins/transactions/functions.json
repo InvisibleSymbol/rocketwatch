@@ -20,8 +20,23 @@
         "execute": "sdao_proposal_execute",
         "proposalSettingUint": "sdao_setting",
         "proposalSettingBool": "sdao_setting",
-        "proposalSettingAddress": "sdao_setting",
-        "proposalInvite": "sdao_member_invite"
+        "proposalSettingAddress": "sdao_setting"
+    },
+    "rocketDAOProtocolProposal": {
+        "execute": "pdao_proposal_execute"
+    },
+    "rocketDAOProtocolProposals": {
+        "proposalSettingUint": "pdao_setting",
+        "proposalSettingBool": "pdao_setting",
+        "proposalSettingAddress": "pdao_setting",
+        "proposalSettingRewardsClaimers": "pdao_claimer",
+        "proposalTreasuryOneTimeSpend": "pdao_spend_treasury",
+        "proposalTreasuryNewContract": "pdao_spend_treasury_recurring_new",
+        "proposalTreasuryUpdateContract": "pdao_spend_treasury_recurring_update",
+        "proposalSecurityInvite": "sdao_member_invite",
+        "proposalSecurityKick": "sdao_member_kick",
+        "proposalSecurityKickMulti": "sdao_member_kick_multi",
+        "proposalSecurityReplace": "sdao_member_replace"
     },
     "rocketNodeDeposit": {
         "deposit": "minipool_failed_deposit",

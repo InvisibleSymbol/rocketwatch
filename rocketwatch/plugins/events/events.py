@@ -9,8 +9,6 @@ from discord.ext.commands import Cog, Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 
-from plugins.dao.dao import DefaultDAO, ProtocolDAO
-
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
@@ -18,6 +16,7 @@ from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
+from utils.dao import DefaultDAO, ProtocolDAO
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
@@ -198,9 +197,6 @@ class QueuedEvents(Cog):
             if earliest_next_update < next_period:
                 return None
 
-        if "SettingBool" in event.event:
-            args.value = bool(args.value)
-
         if "dao_setting_multi" in event_name:
             description_parts = []
             for i in range(len(args.settingContractNames)):
@@ -221,27 +217,24 @@ class QueuedEvents(Cog):
                 )
             args.description = "\n".join(description_parts)
 
-        if "pdao_claimer" in event_name:
+        if event_name == "bootstrap_pdao_claimer_event":
             def share_repr(percentage: float) -> str:
                 max_width = 35
                 num_points = round(max_width * percentage / 100)
                 return '*' * num_points
-                # num_dots = round(2 * percentage)
-                # num_double, num_single = divmod(round(percentage), 2)
-                # return ':' * num_double + '.' * num_single
 
             node_share = args.nodePercent / 10 ** 16
             pdao_share = args.protocolPercent / 10 ** 16
             odao_share = args.trustedNodePercent / 10 ** 16
 
-            args.description = "```" + '\n'.join([
+            args.description = '\n'.join([
                 f"Node Operator Share",
                 f"{share_repr(node_share)} {node_share:.1f}%",
                 f"Protocol DAO Share",
                 f"{share_repr(pdao_share)} {pdao_share:.1f}%",
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
-            ]) + "```"
+            ])
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
@@ -327,7 +320,7 @@ class QueuedEvents(Cog):
             args.proposal_body = ProtocolDAO().build_proposal_body(
                 proposal,
                 include_proposer=False,
-                include_payload=any(kw in event_name for kw in ("add", "execute")),
+                include_payload=("add" in event_name),
                 include_votes=all(kw not in event_name for kw in ("add", "challenge", "root", "destroy")),
             )
         elif "dao_proposal" in event_name:
@@ -343,16 +336,12 @@ class QueuedEvents(Cog):
                 "rocketDAONodeTrustedProposals": "odao",
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
-            dao_literal = {
-                "rocketDAONodeTrustedProposals": "odao",
-                "rocketDAOSecurityProposals": "security council"
-            }[dao_name]
 
             proposal = DefaultDAO.fetch_proposal(proposal_id)
-            args.proposal_body = DefaultDAO(dao_literal).build_proposal_body(
+            args.proposal_body = DefaultDAO(dao_name).build_proposal_body(
                 proposal,
                 include_proposer=False,
-                include_payload=("add" in event_name or "execute" in event_name),
+                include_payload=("add" in event_name),
                 include_votes=("add" not in event_name),
             )
 
@@ -588,25 +577,6 @@ class QueuedEvents(Cog):
                     if amount := tx_aggregates.get(full_event_name, 0):
                         events.remove(event)
                     tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
-                elif "rocketDAOProtocolProposals.ProposalSetting" in full_event_name:
-                    bootstrap_eq = full_event_name.replace(
-                        "rocketDAOProtocolProposals.Proposal",
-                        "rocketDAOProtocol.Bootstrap"
-                    )
-                    if (bootstrap_eq in tx_aggregates) or ("rocketDAOProtocol.BootstrapSettingMulti" in tx_aggregates):
-                        events.remove(event)
-                elif full_event_name == "rocketDAOSecurityActions.ActionKick":
-                    if "rocketDAOProtocol.BootstrapSecurityKick" in tx_aggregates:
-                        events.remove(event)
-                elif full_event_name == "rocketClaimDAO.RPLTokensSentByDAOProtocol":
-                    if "rocketDAOProtocol.BootstrapSpendTreasury" in tx_aggregates:
-                        events.remove(event)
-                elif full_event_name == "rocketClaimDAO.RPLTreasuryContractCreated":
-                    if "rocketDAOProtocol.BootstrapTreasuryNewContract" in tx_aggregates:
-                        events.remove(event)
-                elif full_event_name == "rocketClaimDAO.RPLTreasuryContractUpdated":
-                    if "rocketDAOProtocol.BootstrapTreasuryUpdateContract":
-                        events.remove(event)
                 elif full_event_name == "rocketTokenRETH.Transfer":
                     if "rocketTokenRETH.TokensBurned" in tx_aggregates:
                         events.remove(event)
