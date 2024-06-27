@@ -103,13 +103,10 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
                 prefix += "🔮"
             name = member_id
 
-        try:
-            if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target)):
-                if prefix != -1:
-                    prefix += "🔒"
-                name = member_id
-        except NoAddressFound:
-            pass
+        if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target)):
+            if prefix != -1:
+                prefix += "🔒"
+            name = member_id
 
         if cfg["rocketpool.chain"] != "mainnet" and not name:
             name = s_hex(target)

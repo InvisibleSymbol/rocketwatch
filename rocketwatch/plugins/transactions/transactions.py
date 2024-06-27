@@ -14,6 +14,7 @@ from utils.containers import Response
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.dao import DefaultDAO, ProtocolDAO
 
 log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
@@ -100,6 +101,38 @@ class QueuedTransactions(Cog):
         if "SettingBool" in args.function_name:
             args.value = bool(args.value)
 
+        # this is duplicated for now because boostrap events are in events.py
+        # and there is no good spot in utils for it
+        if event_name == "pdao_claimer":
+            def share_repr(percentage: float) -> str:
+                max_width = 35
+                num_points = round(max_width * percentage / 100)
+                return '*' * num_points
+
+            node_share = args.nodePercent / 10 ** 16
+            pdao_share = args.protocolPercent / 10 ** 16
+            odao_share = args.trustedNodePercent / 10 ** 16
+
+            args.description = '\n'.join([
+                f"Node Operator Share",
+                f"{share_repr(node_share)} {node_share:.1f}%",
+                f"Protocol DAO Share",
+                f"{share_repr(pdao_share)} {pdao_share:.1f}%",
+                f"Oracle DAO Share",
+                f"{share_repr(odao_share)} {odao_share:.1f}%",
+            ])
+
+        if event_name == "sdao_member_kick":
+            args.id = rp.call("rocketDAOSecurity.getMemberID", args.memberAddress, block=event.blockNumber - 1)
+        elif event_name == "sdao_member_replace":
+            args.existing_id = rp.call("rocketDAOSecurity.getMemberID", args.existingMemberAddress, block=event.blockNumber - 1)
+        elif event_name == "sdao_member_kick_multi":
+            member_list = []
+            for member_address in args.memberAddresses:
+                member_id = rp.call("rocketDAOSecurity.getMemberID", member_address, block=event.blockNumber - 1)
+                member_list.append(f"**{member_id}** (`{member_address}`)")
+            args.member_list = "\n".join(member_list)
+
         if event_name == "bootstrap_odao_network_upgrade":
             if args.type == "addContract":
                 args.description = f"Contract `{args.name}` has been added!"
@@ -161,8 +194,27 @@ class QueuedTransactions(Cog):
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
 
+        responses = []
+
+        # proposal being executed, this will call another function
+        # use proposal payload to generate second event if applicable
+        if "dao_proposal_execute" in event_name:
+            proposal_id = event.args["proposalID"]
+            if "pdao" in event_name:
+                dao = ProtocolDAO()
+                payload = rp.call("rocketDAOProtocolProposal.getPayload", proposal_id)
+            else:
+                dao = DefaultDAO(rp.call("rocketDAOProposal.getDAO", proposal_id))
+                payload = rp.call("rocketDAOProposal.getPayload", proposal_id)
+
+            proposal = dao.fetch_proposal(proposal_id)
+            event.args["proposal_body"] = dao.build_proposal_body(proposal, include_proposer=False)
+
+            dao_address = dao.contract.address
+            responses = self.process_transaction(block, tnx, dao_address, payload)
+
         if (embed := self.create_embed(event_name, event)) is None:
-            return []
+            return responses
 
         response = Response(
             topic="transactions",
@@ -172,18 +224,8 @@ class QueuedTransactions(Cog):
             block_number=event.blockNumber,
             transaction_index=event.transactionIndex
         )
-        responses = [response]
 
-        # proposal being executed, this will call another function
-        # use proposal payload to generate second event if applicable
-        if "proposal_execute" in event_name:
-            proposal_id = event.args["proposalID"]
-            dao_name = rp.call("rocketDAOProposal.getDAO", proposal_id)
-            payload = rp.call("rocketDAOProposal.getPayload", proposal_id)
-            dao_address = rp.get_address_by_name(dao_name)
-            responses.extend(self.process_transaction(block, tnx, dao_address, payload))
-
-        return responses
+        return [response] + responses
 
     def run_loop(self):
         if self.state == "RUNNING":

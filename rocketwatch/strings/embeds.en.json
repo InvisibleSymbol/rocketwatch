@@ -120,7 +120,7 @@
     },
     "odao_member_invite": {
         "title": ":crystal_ball: oDAO Invite",
-        "description": "`%{id}` (%{nodeAddress}) has been invited to join the oDAO!"
+        "description": "**%{id}** (%{nodeAddress}) has been invited to join the oDAO!"
     },
     "sdao_proposal_add_event": {
         "title": ":bulb: New Security Council Proposal",
@@ -150,9 +150,21 @@
         "title": ":leaves: Security Council Resignation Request",
         "description": "%{nodeAddress} has requested to leave the security council!"
     },
-    "sdao_member_kick_event": {
+   "sdao_member_invite": {
+        "title": ":lock: Security Council Invite",
+        "description": "**%{id}** (%{memberAddress}) has been invited to join the security council!"
+    },
+    "sdao_member_kick": {
         "title": ":boot: Security Council Expulsion",
-        "description": "%{nodeAddress} has been kicked from the security council!"
+        "description": "**%{id}** (%{memberAddress}) has been kicked from the security council!"
+    },
+    "sdao_member_kick_multi": {
+        "title": ":boot: Security Council Mass Expulsion",
+        "description": "Multiple members have been kicked from the security council!\n%{member_list}"
+    },
+    "sdao_member_replace": {
+        "title": ":recycle: Security Council Replacement",
+        "description": "**%{existing_id}** (%{existingMemberAddress}) has been replaced by %{newMemberAddress}!"
     },
     "node_register_event": {
         "title": ":mailbox_with_mail: Node Registered",
@@ -212,17 +224,17 @@
     },
     "bootstrap_pdao_claimer_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Changed Reward Distribution",
-        "description": "%{description}"
+        "description": "```%{description}```"
     },
-    "bootstrap_pdao_spend_treasury_event": {
+    "bootstrap_pdao_spend_treasury": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Spent Treasury",
         "description": "**%{amount} RPL** from treasury sent to %{recipientAddress}!"
     },
-    "bootstrap_pdao_spend_treasury_recurring_new_event": {
+    "bootstrap_pdao_spend_treasury_recurring_new": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: New Recurring Treasury Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
-    "bootstrap_pdao_spend_treasury_recurring_update_event": {
+    "bootstrap_pdao_spend_treasury_recurring_update": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Updated Recurring Treasury Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
@@ -236,7 +248,7 @@
     },
     "bootstrap_sdao_member_invite_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Security Council Invite",
-        "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
+        "description": "**%{id}** (%{memberAddress}) has been invited to join the security council!"
     },
     "bootstrap_sdao_member_kick_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Kicked Security Council Member",
@@ -246,17 +258,13 @@
         "title": ":lock: Security Council Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
     },
-    "sdao_member_invite": {
-        "title": ":lock: Security Council Invite",
-        "description": "`%{id}` (%{memberAddress}) has been invited to join the security council!"
-    },
-    "pdao_setting_event": {
+    "pdao_setting": {
         "title": ":classical_building: Protocol DAO: Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
     },
-    "pdao_claimer_event": {
+    "pdao_claimer": {
         "title": ":classical_building: Protocol DAO: Changed Reward Distribution",
-        "description": "%{description}"
+        "description": "```%{description}```"
     },
     "pdao_proposal_add_event": {
         "title": ":bulb: New pDAO Proposal",
@@ -270,9 +278,9 @@
         "title": ":person_gesturing_no: pDAO Delegate Override",
         "description": "**Proposal #%{proposalID}**:\n%{voter} overrode their delegate %{delegate} to vote `%{decision}` with a voting power of **%{votingPower}**!\n```%{proposal_body}```"
     },
-    "pdao_proposal_execute_event": {
+    "pdao_proposal_execute": {
         "title": ":white_check_mark: pDAO Proposal Executed",
-        "description": "%{executer} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_finalise_event": {
         "title": ":x: pDAO Proposal Finalized",
@@ -294,20 +302,20 @@
         "title": ":fire: pDAO Proposal Bond Burned",
         "description": "**Proposal #%{proposalID}**:\nThe **%{amount} RPL** bond posted by %{proposer} has been burned!"
     },
-    "pdao_spend_treasury_event": {
+    "pdao_spend_treasury": {
         "title": ":bank: DAO Treasury Spend",
         "description": "**%{amount} RPL** from treasury sent to %{to}!"
     },
-    "pdao_spend_treasury_recurring_new_event": {
+    "pdao_spend_treasury_recurring_new": {
         "title": ":bank: DAO Treasury: New Recurring Spend",
         "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
-    "pdao_spend_treasury_recurring_update_event": {
+    "pdao_spend_treasury_recurring_update": {
         "title": ":bank: DAO Treasury: Updated Recurring Spend",
         "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "pdao_spend_treasury_recurring_claim_event": {
-        "title": ":bank: DAO Treasury Claim",
+        "title": ":bank: DAO Treasury Contract Claim",
         "description": "%{recipient} has claimed **%{amount} RPL** for this period!"
     },
     "minipool_scrub_event": {
