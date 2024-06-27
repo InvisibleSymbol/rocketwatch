@@ -88,7 +88,7 @@
     },
     "odao_proposal_execute": {
         "title": ":white_check_mark: oDAO Proposal Executed",
-        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{executor} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_vote_event": {
         "title": ":writing_hand: oDAO Vote",
@@ -128,7 +128,7 @@
     },
     "sdao_proposal_execute": {
         "title": ":white_check_mark: Security Council Proposal Executed",
-        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{executor} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_vote_event": {
         "title": ":writing_hand: Security Council Vote",
@@ -280,7 +280,7 @@
     },
     "pdao_proposal_execute": {
         "title": ":white_check_mark: pDAO Proposal Executed",
-        "description": "%{from} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
+        "description": "%{executor} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_finalise_event": {
         "title": ":x: pDAO Proposal Finalized",
