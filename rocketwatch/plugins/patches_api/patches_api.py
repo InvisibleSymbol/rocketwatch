@@ -123,6 +123,10 @@ class PatchesAPI(commands.Cog):
         if rewards is None:
             return
 
+        rpl_stake = max(0, rpl_stake)
+        num_leb8 = max(0, num_leb8)
+        num_eb16 = max(0, num_eb16)
+
         data_block: int = rewards.data_block
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
         actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
@@ -140,7 +144,7 @@ class PatchesAPI(commands.Cog):
 
         def rpip_30_weight(_stake: float, _borrowed_eth: float) -> float:
             rpl_value = _stake * rpl_ratio
-            collateral_ratio = rpl_value / _borrowed_eth
+            collateral_ratio = (rpl_value / _borrowed_eth) if _borrowed_eth > 0 else 0
             if collateral_ratio < 0.1:
                 return 0.0
             elif collateral_ratio <= 0.15:
