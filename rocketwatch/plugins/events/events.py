@@ -569,6 +569,7 @@ class QueuedEvents(Cog):
                 contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
                 event_name = self.topic_mapping[event["topics"][0].hex()]
                 full_event_name = f"{contract_name}.{event_name}"
+                event["full_name"] = full_event_name
 
                 if full_event_name == "unstETH.WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
@@ -591,6 +592,12 @@ class QueuedEvents(Cog):
                         else:
                             events.remove(prev_event)
                     tx_aggregates[full_event_name] = event
+                elif full_event_name == "rocketDAOProtocolProposal.ProposalVoteOverridden":
+                    # override is emitted first, thus only seen here after the main vote event
+                    # go through list to remove
+                    for other_event in tx_events:
+                        if getattr(other_event, "full_name", "") == "rocketDAOProtocolProposal.ProposalVoted":
+                            events.remove(other_event)
                 elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(full_event_name, 0):
