@@ -10,7 +10,7 @@ from utils.rocketpool import rp
 from utils.dao import DefaultDAO, ProtocolDAO
 
 
-log = logging.getLogger("dao_votes")
+log = logging.getLogger("dao")
 log.setLevel(cfg["log_level"])
 
 
