@@ -116,7 +116,7 @@
     },
     "odao_upgrade": {
         "title": ":crystal_ball: oDAO Contract Upgrade",
-        "description": "The contract `%{name}` has been upgraded to `%{contractAddress}`!"
+        "description": "The contract `%{name}` has been upgraded to %{contractAddress}!"
     },
     "odao_member_invite": {
         "title": ":crystal_ball: oDAO Invite",
