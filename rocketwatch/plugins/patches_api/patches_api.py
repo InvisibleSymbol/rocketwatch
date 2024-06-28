@@ -17,6 +17,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
 from utils.reporter import report_error
 from utils.rocketpool import rp
+from utils.get_nearest_block import get_block_by_timestamp
 
 
 log = logging.getLogger("effective_rpl")
@@ -33,6 +34,7 @@ class PatchesAPI(commands.Cog):
         interval: int
         start_time: int
         data_time: int
+        data_block: int
         end_time: int
         rpl_rewards: float
         eth_rewards: float
@@ -51,19 +53,21 @@ class PatchesAPI(commands.Cog):
             await ctx.send("Error fetching node data from SprocketPool API. Blame Patches.")
             return None
 
-        rpl_rewards: int = patches_res[address].get('collateralRpl', 0)
-        eth_rewards: int = patches_res[address].get('smoothingPoolEth', 0)
-        interval_time = rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime")
+        data_block, _ = get_block_by_timestamp(patches_res["time"])
+        rpl_rewards: int = patches_res[address].get("collateralRpl", 0)
+        eth_rewards: int = patches_res[address].get("smoothingPoolEth", 0)
+        interval_time = rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime", block=data_block)
 
         return PatchesAPI.RewardEstimate(
             address=address,
-            interval=patches_res['interval'],
+            interval=patches_res["interval"],
             start_time=patches_res["startTime"],
-            data_time=patches_res['time'],
+            data_time=patches_res["time"],
+            data_block=data_block,
             end_time=patches_res["startTime"] + interval_time,
             rpl_rewards=solidity.to_float(rpl_rewards),
             eth_rewards=solidity.to_float(eth_rewards),
-            system_weight=solidity.to_float(patches_res['totalNodeWeight'])
+            system_weight=solidity.to_float(patches_res["totalNodeWeight"])
         )
 
     @staticmethod
@@ -119,14 +123,15 @@ class PatchesAPI(commands.Cog):
         if rewards is None:
             return
 
-        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-        actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address))
-        actual_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address))
+        data_block: int = rewards.data_block
+        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
+        actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
+        actual_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address, block=data_block))
 
-        inflation_rate: int = rp.call("rocketTokenRPL.getInflationIntervalRate")
-        inflation_interval: int = rp.call("rocketTokenRPL.getInflationIntervalTime")
+        inflation_rate: int = rp.call("rocketTokenRPL.getInflationIntervalRate", block=data_block)
+        inflation_interval: int = rp.call("rocketTokenRPL.getInflationIntervalTime", block=data_block)
         num_inflation_intervals: int = (rewards.end_time - rewards.start_time) // inflation_interval
-        total_supply: int = rp.call("rocketTokenRPL.totalSupply")
+        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=data_block)
 
         period_inflation: int = total_supply
         for i in range(num_inflation_intervals):
@@ -164,7 +169,7 @@ class PatchesAPI(commands.Cog):
             projected_rewards = rewards_at(actual_rpl_stake, _borrowed_eth)
             simulated_rewards = rewards_at(rpl_stake, _borrowed_eth)
 
-            ax.plot(actual_rpl_stake, projected_rewards, 'o', color="#eb8e55", label="current")
+            ax.plot(actual_rpl_stake, projected_rewards, "o", color="#eb8e55", label="current")
             ax.annotate(
                 f"{projected_rewards:.2f}",
                 (actual_rpl_stake, projected_rewards),
@@ -173,7 +178,7 @@ class PatchesAPI(commands.Cog):
                 ha="left"
             )
 
-            ax.plot(rpl_stake, simulated_rewards, 'o', color="darkred", label="simulated")
+            ax.plot(rpl_stake, simulated_rewards, "o", color="darkred", label="simulated")
             ax.annotate(
                 f"{simulated_rewards:.2f}",
                 (rpl_stake, simulated_rewards),
@@ -204,11 +209,11 @@ class PatchesAPI(commands.Cog):
 
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
-        plt.legend(by_label.values(), by_label.keys(), loc='lower right')
+        plt.legend(by_label.values(), by_label.keys(), loc="lower right")
         fig.tight_layout()
 
         img = BytesIO()
-        fig.savefig(img, format='png')
+        fig.savefig(img, format="png")
         img.seek(0)
         plt.close()
 
