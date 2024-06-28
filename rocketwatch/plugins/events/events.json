@@ -139,7 +139,7 @@
                 },
                 {
                     "event_name": "Transfer",
-                    "name": "rpl_transfer_event"
+                    "name": "pdao_rpl_transfer_event"
                 }
             ]
         },
