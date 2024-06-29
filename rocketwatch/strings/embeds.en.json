@@ -211,8 +211,8 @@
         "description": "%{description}"
     },
     "bootstrap_odao_disable": {
-        "title": ":satellite_orbital: oDAO Bootstrap Mode: Disabled Bootstrap Mode",
-        "description": "Bootstrap mode for the oDAO has been disabled!"
+        "title": ":satellite_orbital: oDAO Bootstrap Disabled",
+        "description": "Bootstrap mode for the oDAO is now disabled! The guardian has handed off full control over the Oracle DAO to its members!"
     },
     "bootstrap_pdao_multi_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Multiple Settings Modified",
@@ -239,8 +239,8 @@
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "bootstrap_pdao_disable_event": {
-        "title": ":satellite_orbital: pDAO Bootstrap Mode: Disabled Bootstrap Mode",
-        "description": "Bootstrap mode for the pDAO has been disabled!"
+        "title": ":satellite_orbital: pDAO Bootstrap Mode Disabled",
+        "description": "Bootstrap mode for the pDAO is now disabled! The guardian has handed off full control over the Protocol DAO to on-chain governance!"
     },
     "bootstrap_pdao_enable_governance_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Enable Governance",
