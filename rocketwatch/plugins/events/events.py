@@ -6,7 +6,7 @@ import pymongo
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Cog, Context, is_owner, hybrid_command
-from web3.datastructures import MutableAttributeDict as aDict
+from web3.datastructures import MutableAttributeDict as aDict, AttributeDict as immutableADict
 from web3.exceptions import ABIEventFunctionNotFound
 
 from utils import solidity
@@ -542,7 +542,7 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events) -> list[aDict]:
+    def aggregate_events(self, events: list[immutableADict]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
@@ -564,12 +564,16 @@ class QueuedEvents(Cog):
         for tx_hash, tx_events in events_by_tx.items():
             tx_aggregates = {}
             aggregates[tx_hash] = tx_aggregates
+            events_by_name: dict[str, list[immutableADict]] = {}
 
             for event in tx_events:
                 contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
                 event_name = self.topic_mapping[event["topics"][0].hex()]
                 full_event_name = f"{contract_name}.{event_name}"
-                event["full_name"] = full_event_name
+
+                if full_event_name not in events_by_name:
+                    events_by_name[full_event_name] = []
+                events_by_name[full_event_name].append(event)
 
                 if full_event_name == "unstETH.WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
@@ -594,10 +598,10 @@ class QueuedEvents(Cog):
                     tx_aggregates[full_event_name] = event
                 elif full_event_name == "rocketDAOProtocolProposal.ProposalVoteOverridden":
                     # override is emitted first, thus only seen here after the main vote event
-                    # go through list to remove
-                    for other_event in tx_events:
-                        if getattr(other_event, "full_name", "") == "rocketDAOProtocolProposal.ProposalVoted":
-                            events.remove(other_event)
+                    # remove last seen vote event
+                    vote_event = events_by_name.get("rocketDAOProtocolProposal.ProposalVoted", [None]).pop()
+                    if vote_event is not None:
+                        events.remove(vote_event)
                 elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(full_event_name, 0):
