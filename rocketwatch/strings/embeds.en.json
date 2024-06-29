@@ -211,7 +211,7 @@
         "description": "%{description}"
     },
     "bootstrap_odao_disable": {
-        "title": ":satellite_orbital: oDAO Bootstrap Disabled",
+        "title": ":satellite_orbital: oDAO Bootstrap Mode Disabled",
         "description": "Bootstrap mode for the oDAO is now disabled! The guardian has handed off full control over the Oracle DAO to its members!"
     },
     "bootstrap_pdao_multi_event": {
