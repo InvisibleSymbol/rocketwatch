@@ -12,7 +12,7 @@ from web3.exceptions import ABIEventFunctionNotFound
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args, el_explorer_url
+from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
@@ -174,7 +174,7 @@ class QueuedEvents(Cog):
         else:
             await ctx.send(content="<empty>")
 
-    def create_embed(self, event_name, event):
+    def create_embed(self, event_name, event, _events=None):
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -235,16 +235,6 @@ class QueuedEvents(Cog):
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
-
-        if event_name == "bootstrap_sdao_member_kick_event":
-            args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
-        elif event_name in [
-            "odao_member_leave_event",
-            "odao_member_kick_event",
-            "sdao_member_leave_event",
-            "sdao_member_request_leave_event"
-        ]:
-            args.nodeAddress = el_explorer_url(args.nodeAddress, block=(event.blockNumber - 1))
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
@@ -483,19 +473,25 @@ class QueuedEvents(Cog):
             # get the previousBondAmount from the minipool contract
             args.previousBondAmount = solidity.to_float(
                 rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber - 1))
-        elif event_name == "minipool_withdrawal_processed_event":
+        if event_name == "minipool_withdrawal_processed_event":
             args.totalAmount = args.nodeAmount + args.userAmount
-        elif event_name == "pool_deposit_assigned_event":
-            if event["assignment_count"] == 1:
-                args.event_name = "pool_deposit_assigned_single_event"
-            elif event["assignment_count"] > 1:
+        if event_name == "pool_deposit_assigned_event" and _events:
+            if "assignment_count" in event and event["assignment_count"] > 1:
                 args.assignmentCount = event["assignment_count"]
             else:
-                return None
-        elif "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
+                args.event_name = "pool_deposit_assigned_single_event"
+            # check if we have a prestake event for this minipool
+            for ev in _events:
+                if "topics" in ev:
+                    t = self.topic_mapping.get(ev["topics"][0].hex())
+                else:
+                    t = ev.get("event")
+                if t == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
+                    return None
+        if "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
             args.event_name = f"vacant_{event_name}"
             if args.event_name == "vacant_minipool_scrub_event":
-                # let's try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
+                # lets try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
                 # 1. the validator does not have the withdrawal credentials set to the minipool address, but to some other address
                 # 2. the validator balance on the beacon chain is lower than configured in the minipool contract
                 # 3. the validator does not have the active_ongoing validator status
@@ -571,9 +567,9 @@ class QueuedEvents(Cog):
             events_by_name: dict[str, list[immutableADict]] = {}
 
             for event in tx_events:
-                contract_name = rp.get_name_by_address(event["address"])
+                contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
                 event_name = self.topic_mapping[event["topics"][0].hex()]
-                full_event_name = f"{contract_name}.{event_name}" if contract_name else event_name
+                full_event_name = f"{contract_name}.{event_name}"
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
@@ -606,11 +602,6 @@ class QueuedEvents(Cog):
                     vote_event = events_by_name.get("rocketDAOProtocolProposal.ProposalVoted", [None]).pop()
                     if vote_event is not None:
                         events.remove(vote_event)
-                elif full_event_name == "MinipoolPrestaked":
-                    assign_event = events_by_name.get("rocketDepositPool.DepositAssigned", [None]).pop()
-                    if assign_event is not None:
-                        events.remove(assign_event)
-                        tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
                 elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(full_event_name, 0):
@@ -659,8 +650,7 @@ class QueuedEvents(Cog):
                 pending_events += events.get_new_entries()
         log.debug(f"Found {len(pending_events)} pending events")
         # sort events by block number
-        pending_events.sort(key=lambda e: e.blockNumber)
-
+        pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
         for event in self.aggregate_events(pending_events):
             tnx_hash = event.transactionHash.hex()
             embed = None
@@ -688,7 +678,7 @@ class QueuedEvents(Cog):
                 event = _event
 
                 if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
-                    embed = self.create_embed(event_name, event)
+                    embed = self.create_embed(event_name, event, _events=pending_events)
                 else:
                     log.debug(f"Skipping unknown event {n}.{event.event}")
 

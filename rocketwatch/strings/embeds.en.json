@@ -103,7 +103,7 @@
         "description": "%{nodeAddress} joined the oDAO with a bond of **%{rplBondAmount} RPL**!"
     },
     "odao_member_leave_event": {
-        "title": ":door: oDAO Member Left",
+        "title": ":leaves: oDAO Member Left",
         "description": "%{nodeAddress} left the oDAO!"
     },
     "odao_member_kick_event": {
@@ -143,28 +143,28 @@
         "description": "%{nodeAddress} has joined the security council!"
     },
     "sdao_member_leave_event": {
-        "title": ":door: Security Council Resignation",
+        "title": ":leaves: Security Council Resignation",
         "description": "%{nodeAddress} has left the security council!"
     },
     "sdao_member_request_leave_event": {
-        "title": ":door: Security Council Resignation Request",
+        "title": ":leaves: Security Council Resignation Request",
         "description": "%{nodeAddress} has requested to leave the security council!"
     },
    "sdao_member_invite": {
         "title": ":lock: Security Council Invite",
-        "description": "%{memberAddress} has been invited to join the security council!"
+        "description": "**%{id}** (%{memberAddress}) has been invited to join the security council!"
     },
     "sdao_member_kick": {
         "title": ":boot: Security Council Expulsion",
-        "description": "%{memberAddress} has been kicked from the security council!"
+        "description": "**%{id}** (%{memberAddress}) has been kicked from the security council!"
     },
     "sdao_member_kick_multi": {
         "title": ":boot: Security Council Mass Expulsion",
         "description": "Multiple members have been kicked from the security council!\n%{member_list}"
     },
     "sdao_member_replace": {
-        "title": ":repeat: Security Council Replacement",
-        "description": "%{existingMemberAddress} has been replaced by %{newMemberAddress}!"
+        "title": ":recycle: Security Council Replacement",
+        "description": "**%{existing_id}** (%{existingMemberAddress}) has been replaced by %{newMemberAddress}!"
     },
     "node_register_event": {
         "title": ":mailbox_with_mail: Node Registered",
