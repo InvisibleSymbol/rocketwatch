@@ -659,7 +659,8 @@ class QueuedEvents(Cog):
                 pending_events += events.get_new_entries()
         log.debug(f"Found {len(pending_events)} pending events")
         # sort events by block number
-        pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
+        pending_events.sort(key=lambda e: e.blockNumber)
+
         for event in self.aggregate_events(pending_events):
             tnx_hash = event.transactionHash.hex()
             embed = None
@@ -687,7 +688,7 @@ class QueuedEvents(Cog):
                 event = _event
 
                 if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
-                    embed = self.create_embed(event_name, event, _events=pending_events)
+                    embed = self.create_embed(event_name, event)
                 else:
                     log.debug(f"Skipping unknown event {n}.{event.event}")
 
