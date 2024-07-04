@@ -72,7 +72,7 @@ async def resolve_ens(ctx, node_address):
         return None, None
 
 
-def el_explorer_url(target, name="", prefix="", make_code=False):
+def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
     url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
         # sanitize address
@@ -87,10 +87,10 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         if cfg["rocketpool.chain"] in rocketscan_chains:
             rocketscan_url = rocketscan_chains[cfg["rocketpool.chain"]]
 
-            if rp.call("rocketMinipoolManager.getMinipoolExists", target):
+            if rp.call("rocketMinipoolManager.getMinipoolExists", target, block=block):
                 url = f"{rocketscan_url}/minipool/{target}"
-            if rp.call("rocketNodeManager.getNodeExists", target):
-                if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target) and prefix != -1:
+            if rp.call("rocketNodeManager.getNodeExists", target, block=block):
+                if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target, block=block) and prefix != -1:
                     prefix += ":cup_with_straw:"
                 url = f"{rocketscan_url}/node/{target}"
 
@@ -98,12 +98,12 @@ def el_explorer_url(target, name="", prefix="", make_code=False):
         if not name and (n := _(n_key)) != n_key:
             name = n
 
-        if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target)):
+        if not name and (member_id := rp.call("rocketDAONodeTrusted.getMemberID", target, block=block)):
             if prefix != -1:
                 prefix += "🔮"
             name = member_id
 
-        if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target)):
+        if not name and (member_id := rp.call("rocketDAOSecurity.getMemberID", target, block=block)):
             if prefix != -1:
                 prefix += "🔒"
             name = member_id
@@ -215,9 +215,6 @@ def assemble(args):
         e.colour = Color.from_rgb(86, 235, 86)
     if "price_update_event" in args.event_name:
         e.colour = Color.from_rgb(86, 235, 235)
-
-    if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
-        e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
 
     amount = args.get("amount") or args.get("ethAmount", 0)
     # make numbers look nice
@@ -436,6 +433,12 @@ def assemble(args):
 
     if "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")
+
+    if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
+        e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
+
+    if "sdao_member_kick_multi" in args.event_name:
+        e.set_image(url="https://media1.tenor.com/m/Xuv3IEoH1a4AAAAC/youre-fired-donald-trump.gif")
 
     match args.event_name:
         case "redstone_upgrade_triggered":
