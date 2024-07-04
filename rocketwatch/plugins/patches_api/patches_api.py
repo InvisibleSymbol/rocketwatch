@@ -110,7 +110,7 @@ class PatchesAPI(commands.Cog):
             self,
             ctx: Context,
             node_address: str,
-            rpl_stake: int = 0,
+            rpl_stake: int,
             num_leb8: int = 0,
             num_eb16: int = 0
     ):
@@ -182,15 +182,14 @@ class PatchesAPI(commands.Cog):
                 ha="left"
             )
 
-            if rpl_stake > 0:
-                ax.plot(rpl_stake, simulated_rewards, "o", color="darkred", label="simulated")
-                ax.annotate(
-                    f"{simulated_rewards:.2f}",
-                    (rpl_stake, simulated_rewards),
-                    textcoords="offset points",
-                    xytext=(5, -10 if simulated_rewards > 0 else 5),
-                    ha="left"
-                )
+            ax.plot(rpl_stake, simulated_rewards, "o", color="darkred", label="simulated")
+            ax.annotate(
+                f"{simulated_rewards:.2f}",
+                (rpl_stake, simulated_rewards),
+                textcoords="offset points",
+                xytext=(5, -10 if simulated_rewards > 0 else 5),
+                ha="left"
+            )
 
         draw_reward_curve("#eb8e55", "solid", actual_borrowed_eth)
 
@@ -222,17 +221,13 @@ class PatchesAPI(commands.Cog):
         img.seek(0)
         plt.close()
 
-        sim_info = []
-        if rpl_stake > 0:
-            sim_info.append(f"{rpl_stake:,} RPL")
+        sim_info = f"{rpl_stake:,} RPL"
         if num_leb8 > 0:
-            sim_info.append(f"{num_leb8} x 8 ETH")
+            sim_info += f", {num_leb8} x 8 ETH"
         if num_eb16 > 0:
-            sim_info.append(f"{num_eb16} x 16 ETH")
+            sim_info += f", {num_eb16} x 16 ETH"
 
-        sim_info_txt = f"({', '.join(sim_info)})" if sim_info else ""
-
-        title = f"Simulated RPL Rewards for {display_name} {sim_info_txt}".strip()
+        title = f"Simulated RPL Rewards for {display_name} ({sim_info})"
         embed = self.create_embed(title, rewards)
         embed.set_image(url="attachment://graph.png")
 
