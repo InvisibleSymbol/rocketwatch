@@ -3,16 +3,18 @@ import logging
 import warnings
 
 import pymongo
+from typing import Union
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Cog, Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict, AttributeDict as immutableADict
 from web3.exceptions import ABIEventFunctionNotFound
+from web3.types import LogReceipt, EventData
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args
+from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
@@ -172,9 +174,45 @@ class QueuedEvents(Cog):
         if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)
         else:
-            await ctx.send(content="<empty>")
+            await ctx.send(content="No events triggered.")
 
-    def create_embed(self, event_name, event, _events=None):
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def replay_events(self, ctx: Context, tx_hash: str):
+        await ctx.defer()
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+        logs: list[LogReceipt] = receipt.logs
+
+        filtered_events: list[Union[LogReceipt, EventData]] = []
+
+        # get direct events
+        for event_log in logs:
+            if ("topics" in event_log) and (event_log["topics"][0].hex() in self.topic_mapping):
+                filtered_events.append(event_log)
+
+        # get global events
+        with open("./plugins/events/events.json") as f:
+            global_events = json.load(f)["global"]
+
+        for group in global_events:
+            contract = rp.assemble_contract(name=group["contract_name"])
+            for event in group["events"]:
+                try:
+                    event = contract.events[event["event_name"]]()
+                    rich_logs = event.process_receipt(receipt)
+                    filtered_events.extend(rich_logs)
+                except ABIEventFunctionNotFound:
+                    continue
+
+        _, responses = self.process_events(filtered_events)
+        if not responses:
+            await ctx.send(content="No events found.")
+
+        for response in responses:
+            await ctx.send(embed=response.embed)
+
+    def create_embed(self, event_name, event):
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -235,6 +273,16 @@ class QueuedEvents(Cog):
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
+
+        if event_name == "bootstrap_sdao_member_kick_event":
+            args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
+        elif event_name in [
+            "odao_member_leave_event",
+            "odao_member_kick_event",
+            "sdao_member_leave_event",
+            "sdao_member_request_leave_event"
+        ]:
+            args.nodeAddress = el_explorer_url(args.nodeAddress, block=(event.blockNumber - 1))
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
@@ -473,25 +521,19 @@ class QueuedEvents(Cog):
             # get the previousBondAmount from the minipool contract
             args.previousBondAmount = solidity.to_float(
                 rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber - 1))
-        if event_name == "minipool_withdrawal_processed_event":
+        elif event_name == "minipool_withdrawal_processed_event":
             args.totalAmount = args.nodeAmount + args.userAmount
-        if event_name == "pool_deposit_assigned_event" and _events:
-            if "assignment_count" in event and event["assignment_count"] > 1:
+        elif event_name == "pool_deposit_assigned_event":
+            if event["assignment_count"] == 1:
+                args.event_name = "pool_deposit_assigned_single_event"
+            elif event["assignment_count"] > 1:
                 args.assignmentCount = event["assignment_count"]
             else:
-                args.event_name = "pool_deposit_assigned_single_event"
-            # check if we have a prestake event for this minipool
-            for ev in _events:
-                if "topics" in ev:
-                    t = self.topic_mapping.get(ev["topics"][0].hex())
-                else:
-                    t = ev.get("event")
-                if t == "MinipoolPrestaked" and ev.get("transactionHash") == event.transactionHash and ev.get("address") == args.minipool:
-                    return None
-        if "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
+                return None
+        elif "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
             args.event_name = f"vacant_{event_name}"
             if args.event_name == "vacant_minipool_scrub_event":
-                # lets try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
+                # let's try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
                 # 1. the validator does not have the withdrawal credentials set to the minipool address, but to some other address
                 # 2. the validator balance on the beacon chain is lower than configured in the minipool contract
                 # 3. the validator does not have the active_ongoing validator status
@@ -542,13 +584,10 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events: list[immutableADict]) -> list[aDict]:
+    def aggregate_events(self, events: list[EventData]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
-            if "topics" not in event:
-                continue
-
             tx_hash = event["transactionHash"]
             if tx_hash not in events_by_tx:
                 events_by_tx[tx_hash] = []
@@ -567,9 +606,14 @@ class QueuedEvents(Cog):
             events_by_name: dict[str, list[immutableADict]] = {}
 
             for event in tx_events:
-                contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
-                event_name = self.topic_mapping[event["topics"][0].hex()]
-                full_event_name = f"{contract_name}.{event_name}"
+                if "topics" in event:
+                    contract_name = rp.get_name_by_address(event["address"])
+                    event_name = self.topic_mapping[event["topics"][0].hex()]
+                else:
+                    contract_name = None
+                    event_name = event.get("event")
+
+                full_event_name = f"{contract_name}.{event_name}" if contract_name else event_name
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
@@ -602,6 +646,12 @@ class QueuedEvents(Cog):
                     vote_event = events_by_name.get("rocketDAOProtocolProposal.ProposalVoted", [None]).pop()
                     if vote_event is not None:
                         events.remove(vote_event)
+                elif full_event_name == "MinipoolPrestaked":
+                    log.debug(f"{events_by_name = }")
+                    assign_event = events_by_name.get("rocketDepositPool.DepositAssigned", [None]).pop()
+                    if assign_event is not None:
+                        events.remove(assign_event)
+                        tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
                 elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(full_event_name, 0):
@@ -624,7 +674,7 @@ class QueuedEvents(Cog):
             if full_event_name not in aggregation_attributes:
                 continue
 
-            if aggregated_value := aggregates[tx_hash].get(full_event_name, None) is None:
+            if (aggregated_value := aggregates[tx_hash].get(full_event_name, None)) is None:
                 continue
 
             event[aggregation_attributes[full_event_name]] = aggregated_value
@@ -632,14 +682,12 @@ class QueuedEvents(Cog):
         return events
 
     def check_for_new_events(self):
-        log.info("Checking for new Events")
+        log.info("Checking for new events")
 
-        messages = []
         do_full_check = self.state == "INIT"
         if do_full_check:
             log.info("Doing full check")
         self.state = "RUNNING"
-        should_reinit = False
 
         pending_events = []
 
@@ -649,9 +697,24 @@ class QueuedEvents(Cog):
             else:
                 pending_events += events.get_new_entries()
         log.debug(f"Found {len(pending_events)} pending events")
-        # sort events by block number
-        pending_events = sorted(pending_events, key=lambda e: e.blockNumber)
-        for event in self.aggregate_events(pending_events):
+
+        should_reinit, messages = self.process_events(pending_events)
+        log.debug("Finished checking for new events")
+        # store last checked block in db if it's bigger than the one we have stored
+        self.state = "OK"
+        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block},
+                                               upsert=True)
+        if should_reinit:
+            log.info("Detected update, triggering reinit")
+            self.state = "RUNNING"
+        return messages
+
+    def process_events(self, events: list[EventData]) -> tuple[bool, list[Response]]:
+        events.sort(key=lambda e: (e.blockNumber, e.logIndex))
+        messages = []
+        should_reinit = False
+
+        for event in self.aggregate_events(events):
             tnx_hash = event.transactionHash.hex()
             embed = None
             event_name = None
@@ -678,9 +741,9 @@ class QueuedEvents(Cog):
                 event = _event
 
                 if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
-                    embed = self.create_embed(event_name, event, _events=pending_events)
+                    embed = self.create_embed(event_name, event)
                 else:
-                    log.debug(f"Skipping unknown event {n}.{event.event}")
+                    log.warning(f"Skipping unknown event {n}.{event.event}")
 
             elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
@@ -699,7 +762,7 @@ class QueuedEvents(Cog):
                         unique_id += f":{arg_k}:{arg_v}"
 
                 # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
-                log_index_offset = min(e.logIndex for e in pending_events if e.transactionHash == event.transactionHash and e.blockHash == event.blockHash)
+                log_index_offset = min(e.logIndex for e in events if e.transactionHash == event.transactionHash and e.blockHash == event.blockHash)
                 unique_id += f":{event.logIndex - log_index_offset}"
                 messages.append(Response(
                     embed=embed,
@@ -713,15 +776,7 @@ class QueuedEvents(Cog):
             if event.blockNumber > self.start_block and not should_reinit:
                 self.start_block = event.blockNumber
 
-        log.debug("Finished Checking for new Events")
-        # store last checked block in db if its bigger than the one we have stored
-        self.state = "OK"
-        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block},
-                                               upsert=True)
-        if should_reinit:
-            log.info("detected update, triggering reinit")
-            self.state = "RUNNING"
-        return messages
+        return should_reinit, messages
 
 
 async def setup(bot):

@@ -183,6 +183,10 @@
                 {
                     "event_name": "RPLWithdrawn",
                     "name": "rpl_withdraw_event"
+                },
+                {
+                    "event_name": "RPLSlashed",
+                    "name": "node_rpl_slash_event"
                 }
             ]
         },
@@ -379,15 +383,6 @@
                 {
                     "event_name": "EtherWithdrawalProcessed",
                     "name": "minipool_withdrawal_processed_event"
-                }
-            ]
-        },
-        {
-            "contract_name": "rocketNodeStaking",
-            "events": [
-                {
-                    "event_name": "RPLSlashed",
-                    "name": "node_rpl_slash_event"
                 }
             ]
         },
