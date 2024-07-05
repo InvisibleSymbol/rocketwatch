@@ -11,7 +11,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import assemble, prepare_args
+from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.dao import DefaultDAO, ProtocolDAO
@@ -67,7 +67,7 @@ class QueuedTransactions(Cog):
         if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)
         else:
-            await ctx.send(content="<empty>")
+            await ctx.send(content="No events triggered.")
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -78,6 +78,9 @@ class QueuedTransactions(Cog):
         block = w3.eth.get_block(tnx.blockHash)
 
         responses: list[Response] = self.process_transaction(block, tnx, tnx.to, tnx.input)
+        if not responses:
+            await ctx.send(content="No events found.")
+
         for response in responses:
             await ctx.send(embed=response.embed)
 
@@ -134,19 +137,16 @@ class QueuedTransactions(Cog):
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
-
-        if event_name == "sdao_member_kick":
-            args.id = rp.call("rocketDAOSecurity.getMemberID", args.memberAddress, block=event.blockNumber - 1)
+        elif event_name == "sdao_member_kick":
+            args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
         elif event_name == "sdao_member_replace":
-            args.existing_id = rp.call("rocketDAOSecurity.getMemberID", args.existingMemberAddress, block=event.blockNumber - 1)
+            args.existingMemberAddress = el_explorer_url(args.existingMemberAddress, block=(event.blockNumber - 1))
         elif event_name == "sdao_member_kick_multi":
-            member_list = []
-            for member_address in args.memberAddresses:
-                member_id = rp.call("rocketDAOSecurity.getMemberID", member_address, block=event.blockNumber - 1)
-                member_list.append(f"**{member_id}** (`{member_address}`)")
-            args.member_list = "\n".join(member_list)
-
-        if event_name == "bootstrap_odao_network_upgrade":
+            args.member_list = ", ".join([
+                el_explorer_url(member_address, block=(event.blockNumber - 1))
+                for member_address in args.memberAddresses
+            ])
+        elif event_name == "bootstrap_odao_network_upgrade":
             if args.type == "addContract":
                 args.description = f"Contract `{args.name}` has been added!"
             elif args.type == "upgradeContract":
