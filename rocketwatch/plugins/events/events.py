@@ -584,7 +584,7 @@ class QueuedEvents(Cog):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events: list[EventData]) -> list[aDict]:
+    def aggregate_events(self, events: list[Union[LogReceipt, EventData]]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
@@ -599,21 +599,25 @@ class QueuedEvents(Cog):
             "unstETH.WithdrawalRequested": "amountOfStETH"
         }
 
+        def get_event_name(_event: Union[LogReceipt, EventData]) -> tuple[str, str]:
+            if "topics" in _event:
+                contract_name = rp.get_name_by_address(_event["address"])
+                name = self.topic_mapping[_event["topics"][0].hex()]
+            else:
+                contract_name = None
+                name = _event.get("event")
+
+            full_name = f"{contract_name}.{name}" if contract_name else name
+            return name, full_name
+
         aggregates = {}
         for tx_hash, tx_events in events_by_tx.items():
             tx_aggregates = {}
             aggregates[tx_hash] = tx_aggregates
-            events_by_name: dict[str, list[immutableADict]] = {}
+            events_by_name: dict[str, list[Union[LogReceipt, EventData]]] = {}
 
             for event in tx_events:
-                if "topics" in event:
-                    contract_name = rp.get_name_by_address(event["address"])
-                    event_name = self.topic_mapping[event["topics"][0].hex()]
-                else:
-                    contract_name = None
-                    event_name = event.get("event")
-
-                full_event_name = f"{contract_name}.{event_name}" if contract_name else event_name
+                event_name, full_event_name = get_event_name(event)
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
@@ -647,7 +651,6 @@ class QueuedEvents(Cog):
                     if vote_event is not None:
                         events.remove(vote_event)
                 elif full_event_name == "MinipoolPrestaked":
-                    log.debug(f"{events_by_name = }")
                     assign_event = events_by_name.get("rocketDepositPool.DepositAssigned", [None]).pop()
                     if assign_event is not None:
                         events.remove(assign_event)
@@ -663,17 +666,11 @@ class QueuedEvents(Cog):
 
         events = [aDict(event) for event in events]
         for event in events:
-            if "topics" not in event:
-                continue
-
-            tx_hash = event["transactionHash"]
-            contract_name = rp.get_name_by_address(event["address"]) or str(event["address"])
-            event_name = self.topic_mapping[event["topics"][0].hex()]
-            full_event_name = f"{contract_name}.{event_name}"
-
+            _, full_event_name = get_event_name(event)
             if full_event_name not in aggregation_attributes:
                 continue
 
+            tx_hash = event["transactionHash"]
             if (aggregated_value := aggregates[tx_hash].get(full_event_name, None)) is None:
                 continue
 
