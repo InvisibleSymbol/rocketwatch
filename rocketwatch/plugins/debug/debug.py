@@ -62,7 +62,7 @@ class Debug(Cog):
             log.info("Commands updated!")
         log.info("Indexing Rocket Pool contracts...")
         # generate list of all file names with the .sol extension from the rocketpool submodule
-        for path in Path("contracts/rocketpool/contracts/contract").glob('**/*.sol'):
+        for path in Path("contracts/rocketpool/contracts/contract").rglob('*.sol'):
             # append to list but ensure that the first character is lowercase
             file_name = path.stem
             contract = file_name[0].lower() + file_name[1:]
