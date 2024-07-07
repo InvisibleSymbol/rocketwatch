@@ -27,6 +27,7 @@
     },
     "rocketDAOProtocolProposals": {
         "execute": "pdao_proposal_execute",
+        "proposalSettingMulti": "pdao_setting_multi",
         "proposalSettingUint": "pdao_setting",
         "proposalSettingBool": "pdao_setting",
         "proposalSettingAddress": "pdao_setting",

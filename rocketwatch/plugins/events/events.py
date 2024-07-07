@@ -235,27 +235,27 @@ class QueuedEvents(Cog):
             if earliest_next_update < next_period:
                 return None
 
-        if "dao_setting_multi" in event_name:
+        if event_name == "bootstrap_pdao_setting_multi_event":
             description_parts = []
             for i in range(len(args.settingContractNames)):
-                # these are the only types rocketDAOProtocolProposals checks, so fine to hard code until further changes
-                # SettingType.UINT256
-                if args.types[i] == 0:
-                    value = w3.toInt(args.values[i])
-                # SettingType.BOOL
-                elif args.types[i] == 1:
-                    value = bool(args.values[i])
-                # SettingType.ADDRESS
-                elif args.types[i] == 3:
-                    value = w3.toChecksumAddress(args.values[i])
-                else:
-                    value = "???"
+                value_raw = args.values[i]
+                match args.types[i]:
+                    case 0:
+                        # SettingType.UINT256
+                        value = w3.toInt(value_raw)
+                    case 1:
+                        # SettingType.BOOL
+                        value = bool(value_raw)
+                    case 2:
+                        # SettingType.ADDRESS
+                        value = w3.toChecksumAddress(value_raw)
+                    case _:
+                        value = "???"
                 description_parts.append(
-                    f"`{args.settingPaths[i]} set to {value}`"
+                    f"`{args.settingPaths[i]}` set to `{value}`"
                 )
             args.description = "\n".join(description_parts)
-
-        if event_name == "bootstrap_pdao_claimer_event":
+        elif event_name == "bootstrap_pdao_claimer_event":
             def share_repr(percentage: float) -> str:
                 max_width = 35
                 num_points = round(max_width * percentage / 100)
@@ -273,8 +273,7 @@ class QueuedEvents(Cog):
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
-
-        if event_name == "bootstrap_sdao_member_kick_event":
+        elif event_name == "bootstrap_sdao_member_kick_event":
             args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
         elif event_name in [
             "odao_member_leave_event",

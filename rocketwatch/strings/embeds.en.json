@@ -214,7 +214,7 @@
         "title": ":satellite_orbital: oDAO Bootstrap Mode Disabled",
         "description": "Bootstrap mode for the oDAO is now disabled! The guardian has handed off full control over the Oracle DAO to its members!"
     },
-    "bootstrap_pdao_multi_event": {
+    "bootstrap_pdao_setting_multi_event": {
         "title": ":satellite_orbital: pDAO Bootstrap Mode: Multiple Settings Modified",
         "description": "%{description}"
     },
@@ -257,6 +257,10 @@
     "sdao_setting": {
         "title": ":lock: Security Council Setting Modified",
         "description": "Setting `%{settingPath}` set to `%{value_raw}`!"
+    },
+    "pdao_setting_multi": {
+        "title": ":classical_building: Protocol DAO: Multiple Settings Modified",
+        "description": "%{description}"
     },
     "pdao_setting": {
         "title": ":classical_building: Protocol DAO: Setting Modified",
