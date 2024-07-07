@@ -230,7 +230,7 @@
             "events": [
                 {
                     "event_name": "BootstrapSettingMulti",
-                    "name": "bootstrap_pdao_multi_event"
+                    "name": "bootstrap_pdao_setting_multi_event"
                 },
                 {
                     "event_name": "BootstrapSettingUint",

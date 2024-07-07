@@ -137,6 +137,26 @@ class QueuedTransactions(Cog):
                 f"Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
+        elif event_name == "pdao_setting_multi":
+            description_parts = []
+            for i in range(len(args.settingContractNames)):
+                value_raw = args.data[i]
+                match args.types[i]:
+                    case 0:
+                        # SettingType.UINT256
+                        value = w3.toInt(value_raw)
+                    case 1:
+                        # SettingType.BOOL
+                        value = bool(value_raw)
+                    case 2:
+                        # SettingType.ADDRESS
+                        value = w3.toChecksumAddress(value_raw)
+                    case _:
+                        value = "???"
+                description_parts.append(
+                    f"`{args.settingPaths[i]}` set to `{value}`"
+                )
+            args.description = "\n".join(description_parts)
         elif event_name == "sdao_member_kick":
             args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
         elif event_name == "sdao_member_replace":

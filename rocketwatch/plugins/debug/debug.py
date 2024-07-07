@@ -75,8 +75,8 @@ class Debug(Cog):
             for function in rp.get_contract_by_name(contract).functions:
                 self.function_list.append(f"{contract}.{function}")
             await asyncio.sleep(0.1)
-        self.contract_files.extend(list(cfg["rocketpool.manual_addresses"].keys()))
 
+        self.contract_files.extend(list(cfg["rocketpool.manual_addresses"].keys()))
         # enable calls to non-RocketStorage contracts
         for manual_name in ["rocketSignerRegistry"]:
             contract = rp.assemble_contract(manual_name, cfg[f"rocketpool.manual_addresses.{manual_name}"])
