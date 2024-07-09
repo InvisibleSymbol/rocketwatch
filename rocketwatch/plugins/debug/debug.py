@@ -371,6 +371,25 @@ class Debug(Cog):
                 pass
         await ctx.send("Done")
 
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def fix_fuckup_5(self, ctx: Context, message_id: str, amount: float, recipient: str):
+        """
+        Fix fuckup #5: missing translation for bootstrap treasury spend
+        """
+        await ctx.defer(ephemeral=True)
+        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.bootstrap"])
+        msg = await channel.fetch_message(message_id)
+        e = msg.embeds[0]
+        e.title = _("embeds.bootstrap_pdao_spend_treasury_event.title")
+        e.description = _(
+            "embeds.bootstrap_pdao_spend_treasury_event.description",
+            amount=humanize.intcomma(amount),
+            recipientAddress=el_explorer_url(recipient)
+        )
+        await msg.edit(embed=e)
+        await ctx.send("Done")
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
