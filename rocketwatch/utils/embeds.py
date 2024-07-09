@@ -5,6 +5,9 @@ import math
 
 import discord
 import humanize
+import requests
+from retry import retry
+from functools import cache
 from discord import Color
 from ens import InvalidName
 from etherscan_labels import Addresses
@@ -72,6 +75,21 @@ async def resolve_ens(ctx, node_address):
         return None, None
 
 
+@cache
+@retry(tries=3, delay=1)
+def __get_pdao_delegates() -> dict[str, str]:
+    response = requests.get("https://delegates.rocketpool.net/api/delegates")
+    return {delegate["nodeAddress"]: delegate["name"] for delegate in response.json()}
+
+
+def get_pdao_delegates() -> dict[str, str]:
+    try:
+        return __get_pdao_delegates()
+    except Exception:
+        log.warning("Failed to fetch pDAO delegates.")
+        return {}
+
+
 def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
     url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
@@ -108,7 +126,12 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
                 prefix += "🔒"
             name = member_id
 
-        if cfg["rocketpool.chain"] != "mainnet" and not name:
+        if not name and (delegate_name := get_pdao_delegates().get(target)):
+            if prefix != -1:
+                prefix += "🏛️"
+            name = delegate_name
+
+        if not name and cfg["rocketpool.chain"] != "mainnet":
             name = s_hex(target)
 
         if not name:
