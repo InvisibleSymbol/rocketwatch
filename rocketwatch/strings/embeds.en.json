@@ -227,15 +227,15 @@
         "description": "```%{description}```"
     },
     "bootstrap_pdao_spend_treasury_event": {
-        "title": ":satellite_orbital: pDAO Bootstrap Mode: Spent Treasury",
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Treasury Spend",
         "description": "**%{amount} RPL** from treasury sent to %{recipientAddress}!"
     },
     "bootstrap_pdao_spend_treasury_recurring_new_event": {
-        "title": ":satellite_orbital: pDAO Bootstrap Mode: New Recurring Treasury Spend",
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: New Recurring Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "bootstrap_pdao_spend_treasury_recurring_update_event": {
-        "title": ":satellite_orbital: pDAO Bootstrap Mode: Updated Recurring Treasury Spend",
+        "title": ":satellite_orbital: pDAO Bootstrap Mode: Updated Recurring Spend",
         "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "bootstrap_pdao_disable_event": {
