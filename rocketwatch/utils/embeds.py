@@ -7,7 +7,7 @@ import discord
 import humanize
 import requests
 from retry import retry
-from functools import cache
+from cachetools.func import ttl_cache
 from discord import Color
 from ens import InvalidName
 from etherscan_labels import Addresses
@@ -75,16 +75,15 @@ async def resolve_ens(ctx, node_address):
         return None, None
 
 
-@cache
-@retry(tries=3, delay=1)
-def __get_pdao_delegates() -> dict[str, str]:
-    response = requests.get("https://delegates.rocketpool.net/api/delegates")
-    return {delegate["nodeAddress"]: delegate["name"] for delegate in response.json()}
-
-
+@ttl_cache(ttl=900)
 def get_pdao_delegates() -> dict[str, str]:
+    @retry(tries=3, delay=1)
+    def _get_delegates() -> dict[str, str]:
+        response = requests.get("https://delegates.rocketpool.net/api/delegates")
+        return {delegate["nodeAddress"]: delegate["name"] for delegate in response.json()}
+
     try:
-        return __get_pdao_delegates()
+        return _get_delegates()
     except Exception:
         log.warning("Failed to fetch pDAO delegates.")
         return {}
