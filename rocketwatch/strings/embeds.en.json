@@ -43,7 +43,7 @@
         "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
     },
     "pdao_rpl_transfer_event": {
-        "description_small": ":moneybag: %{from} transferred %{value} RPL to %{to}! %{transactionHash_small}"
+        "description_small": ":moneybag: %{from} transferred **%{value} RPL** to %{to}! %{transactionHash_small}"
     },
     "reth_transfer_event": {
         "title": ":whale: Large rETH Transfer",
@@ -305,6 +305,11 @@
     "pdao_proposal_bond_burn_event": {
         "title": ":fire: pDAO Proposal Bond Burned",
         "description": "**Proposal #%{proposalID}**:\nThe **%{amount} RPL** bond posted by %{proposer} has been burned!"
+    },
+    "pdao_set_delegate": {
+        "title": ":handshake: Large pDAO Delegation",
+        "description": "%{delegator} has delegated their voting power of **%{votingPower}** to %{delegate}!",
+        "description_small": ":handshake: %{delegator} has delegated their voting power of **%{votingPower}** to %{delegate}!"
     },
     "pdao_spend_treasury": {
         "title": ":bank: DAO Treasury Spend",

@@ -260,6 +260,14 @@ def assemble(args):
             e.set_image(url="https://i.imgur.com/XT5qPWf.png")
 
     amount = args.get("amount") or args.get("ethAmount", 0)
+    match args.event_name:
+        case "pdao_set_delegate":
+            use_large = (args.votingPower >= 250)
+        case "eth_deposit_event":
+            use_large = (amount >= 32)
+        case _:
+            use_large = (amount >= 100)
+
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
@@ -277,13 +285,7 @@ def assemble(args):
     has_small = _(f"embeds.{args.event_name}.description_small") != f"embeds.{args.event_name}.description_small"
     has_large = _(f"embeds.{args.event_name}.description") != f"embeds.{args.event_name}.description"
 
-    match args.event_name:
-        case "eth_deposit_event":
-            threshold = 32
-        case _:
-            threshold = 100
-
-    if has_small and (not has_large or amount < threshold):
+    if has_small and not (has_large and use_large):
         e.description = _(f"embeds.{args.event_name}.description_small", **args)
         if cfg["rocketpool.chain"] != "mainnet":
             e.description += f" ({cfg['rocketpool.chain'].capitalize()})"
