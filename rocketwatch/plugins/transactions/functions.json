@@ -40,6 +40,10 @@
         "proposalSecurityKickMulti": "sdao_member_kick_multi",
         "proposalSecurityReplace": "sdao_member_replace"
     },
+    "rocketNetworkVoting": {
+        "initialiseVotingWithDelegate": "pdao_set_delegate",
+        "setDelegate": "pdao_set_delegate"
+    },
     "rocketNodeDeposit": {
         "deposit": "minipool_failed_deposit",
         "depositWithCredit": "minipool_failed_deposit"

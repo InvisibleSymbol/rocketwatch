@@ -96,16 +96,21 @@ class QueuedTransactions(Cog):
         args.transactionHash = event.hash.hex()
         args.blockNumber = event.blockNumber
 
+        receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+
         # oDAO bootstrap doesn't emit an event
         if "odao_disable" in event_name and not args.confirmDisableBootstrapMode:
             return None
-
-        if "failed_deposit" in event_name:
-            receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+        elif event_name == "pdao_set_delegate":
+            args.delegator = receipt["from"]
+            args.delegate = args.get("delegate") or args.get("newDelegate")
+            args.votingPower = solidity.to_float(rp.call("rocketNetworkVoting.getVotingPower", args.delegator, args.blockNumber))
+            if (args.votingPower < 100) or (args.delegate == args.delegator):
+                return None
+        elif "failed_deposit" in event_name:
             args.node = receipt["from"]
             args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
         elif "deposit_pool_queue" in event_name:
-            receipt = w3.eth.get_transaction_receipt(args.transactionHash)
             args.node = receipt["from"]
             event = rp.get_contract_by_name("rocketMinipoolQueue").events.MinipoolDequeued()
             # get the amount of dequeues that happened in this transaction using the event logs
@@ -113,13 +118,11 @@ class QueuedTransactions(Cog):
                 warnings.simplefilter("ignore")
                 processed_logs = event.processReceipt(receipt)
             args.count = len(processed_logs)
-
-        if "SettingBool" in args.function_name:
+        elif "SettingBool" in args.function_name:
             args.value = bool(args.value)
-
         # this is duplicated for now because boostrap events are in events.py
         # and there is no good spot in utils for it
-        if event_name == "pdao_claimer":
+        elif event_name == "pdao_claimer":
             def share_repr(percentage: float) -> str:
                 max_width = 35
                 num_points = round(max_width * percentage / 100)
