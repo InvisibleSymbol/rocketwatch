@@ -287,6 +287,7 @@ def assemble(args):
 
     if has_small and not (has_large and use_large):
         e.description = _(f"embeds.{args.event_name}.description_small", **args)
+        e.description += f" {args.transactionHash_small}"
         if cfg["rocketpool.chain"] != "mainnet":
             e.description += f" ({cfg['rocketpool.chain'].capitalize()})"
         e.set_footer(text="")
