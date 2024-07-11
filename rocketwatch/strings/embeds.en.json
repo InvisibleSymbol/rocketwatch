@@ -10,7 +10,7 @@
     "reth_burn_event": {
         "title": ":fire: rETH Burn",
         "description": "Burned **%{amount} rETH** for %{ethAmount} ETH!",
-        "description_small": ":fire: %{fancy_from} burned **%{amount} rETH** for %{ethAmount} ETH! %{transactionHash_small}"
+        "description_small": ":fire: %{fancy_from} burned **%{amount} rETH** for %{ethAmount} ETH!"
     },
     "node_merkle_rewards_claimed_rpl": {
         "title": ":moneybag: Major RPL Rewards Claim",
@@ -40,10 +40,10 @@
     },
     "pool_deposit_assigned_single_event": {
         "title": ":rocket: Deposit Assigned To Minipool",
-        "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue! %{transactionHash_small}"
+        "description_small": ":handshake: Minipool %{minipool_clean} owned by Operator %{node} has been matched and left the queue!"
     },
     "pdao_rpl_transfer_event": {
-        "description_small": ":moneybag: %{from} transferred **%{value} RPL** to %{to}! %{transactionHash_small}"
+        "description_small": ":moneybag: %{from} transferred **%{value} RPL** to %{to}!"
     },
     "reth_transfer_event": {
         "title": ":whale: Large rETH Transfer",
@@ -55,11 +55,11 @@
     },
     "pool_deposit_assigned_event": {
         "title": ":rocket: Deposit Assigned To Minipools",
-        "description_small": ":handshake: %{assignmentCount} Minipools have been matched and left the queue! %{transactionHash_small}"
+        "description_small": ":handshake: %{assignmentCount} Minipools have been matched and left the queue!"
     },
     "pool_deposit_recycled_event": {
         "title": ":recycle: Pool Deposit By Protocol Contract",
-        "description_small": ":recycle: A Protocol Contract deposited **%{amount} ETH** into the Deposit Pool! %{transactionHash_small}"
+        "description_small": ":recycle: A Protocol Contract deposited **%{amount} ETH** into the Deposit Pool!"
     },
     "minipool_exit_event": {
         "title": ":leaves: Minipool Closed",
@@ -67,12 +67,12 @@
     },
     "minipool_withdrawal_processed_event": {
         "title": ":moneybag: Minipool Withdrawal",
-        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Operator %{node}! %{transactionHash_small}"
+        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Operator %{node}!"
     },
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",
         "description": "**%{amount} ETH** deposited into the Deposit Pool!",
-        "description_small": ":rocket: %{fancy_from} deposited **%{amount} ETH** into the Deposit Pool! %{transactionHash_small}"
+        "description_small": ":rocket: %{fancy_from} deposited **%{amount} ETH** into the Deposit Pool!"
     },
     "odao_rewards_snapshot_event": {
         "title": ":camera_with_flash: Reward Snapshot Published",
@@ -309,7 +309,7 @@
     "pdao_set_delegate": {
         "title": ":handshake: Large pDAO Delegation",
         "description": "%{delegator} has delegated their voting power of **%{votingPower}** to %{delegate}!",
-        "description_small": ":handshake: %{delegator} has delegated their voting power of **%{votingPower}** to %{delegate}!"
+        "description_small": ":handshake: %{delegator_clean} has delegated their voting power of **%{votingPower}** to %{delegate_clean}!"
     },
     "pdao_spend_treasury": {
         "title": ":bank: DAO Treasury Spend",
@@ -337,11 +337,11 @@
     },
     "minipool_scrub_vote_event": {
         "title": ":warning: Minipool Voted For Scrub",
-        "description_small": ":warning: %{member} has voted to scrub Minipool %{minipool}! %{transactionHash_small}"
+        "description_small": ":warning: %{member} has voted to scrub Minipool %{minipool}!"
     },
     "vacant_minipool_scrub_vote_event": {
         "title": ":warning: Vacant Minipool Voted For Scrub",
-        "description_small": ":warning: %{member} has voted to scrub Vacant Minipool %{minipool}! %{transactionHash_small}"
+        "description_small": ":warning: %{member} has voted to scrub Vacant Minipool %{minipool}!"
     },
     "node_rpl_slash_event": {
         "title": ":rotating_light: Node Operator Slashed",
@@ -389,11 +389,11 @@
     },
     "minipool_bond_reduction_started_event": {
         "title": ":magic_wand: Minipool Bond Reduction Initiated",
-        "description_small": ":compression: %{node} initiated a bond reduction for their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
+        "description_small": ":compression: %{node} initiated a bond reduction for their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**!"
     },
     "minipool_bond_reduce_event": {
         "title": ":magic_wand: Minipool Bond Reduced",
-        "description_small": ":magic_wand: %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**! %{transactionHash_small}"
+        "description_small": ":magic_wand: %{node} reduced the bond of their minipool %{minipool_clean} from **%{previousBondAmount} ETH** to **%{newBondAmount} ETH**!"
     },
     "minipool_vote_against_bond_reduction_event": {
         "title": ":warning: Voted Against Bond Reduction",
