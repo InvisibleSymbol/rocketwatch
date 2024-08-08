@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 
 import pymongo
@@ -37,11 +37,10 @@ class QueuedSnapshot(commands.Cog):
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.ratelimit = 60
-        self.last_ran = datetime.now()
-        self.version = 2
+        self.last_ran = datetime.now() - timedelta(seconds=self.ratelimit)
+        self.version = 3
 
     def run_loop(self):
-        return []
         # ratelimit
         if (datetime.now() - self.last_ran).seconds < self.ratelimit:
             return []
@@ -66,14 +65,19 @@ class QueuedSnapshot(commands.Cog):
                 # skip the vote entirely if the voting power is too low
                 # check if the vote is already in the db and if it is old enough
                 prev_vote = next((v for v in previous_votes if v["voter"] == vote["voter"]), None)
-                # skip if the vote choice isnt an array for now
-                if not isinstance(vote["choice"], list):
-                    continue
                 if prev_vote and (now - prev_vote["timestamp"]).total_seconds() < 300:
                     continue
                 # make sure the vote actually changed
                 if prev_vote and prev_vote["choice"] == vote["choice"]:
                     continue
+                match vote["choice"]:
+                    case list():
+                        e, uuid = self.handle_multiple_choice_vote(proposal, vote, prev_vote)
+                    case int():
+                        e, uuid = self.handle_single_choice_vote(proposal, vote, prev_vote)
+                    case _:
+                        log.error(f"Unknown vote type: {vote['choice']}")
+                        continue
                 # update the db
                 updates.append({
                     "proposal_id": proposal["id"],
@@ -85,30 +89,19 @@ class QueuedSnapshot(commands.Cog):
                     continue
                 # create change embed
                 # important: choices are indexes, use the proposal.choices array to get the actual choice
-                new_choices = [proposal["choices"][c - 1] for c in vote["choice"]]
-                e = Embed(
-                    title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}",
-                )
-                nl = "\n- "
-                if prev_vote:
-                    e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from\n"
-                    old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
-                    e.description += f"**- {nl.join(old_choices)}**\nto\n**- {nl.join(new_choices)}**"
-                else:
-                    e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**- {nl.join(new_choices)}**"
-                e.description += f"\n\n**Voting Power:** {vote['vp']:.2f}"
-                e.description += f"\n\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
-                if len(e.description) > 2000:
-                    e.description = f"{e.description[:1999]}…"
                 # add the proposal link
                 e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
+                event_name = "snapshot_vote_changed"
+                if vote['vp'] > 200:
+                    event_name = "pdao_snapshot_vote_changed"
                 events.append(Response(
                     embed=e,
                     topic="snapshot",
                     block_number=w3.eth.getBlock("latest").number,
-                    event_name="snapshot_vote_changed",
-                    unique_id=f"{proposal['id']}_{vote['voter']}_{'_'.join(new_choices)}_{now.timestamp()}",
+                    event_name=event_name,
+                    unique_id=uuid,
                 ))
+
         if updates:
             # update or insert the votes
             self.db.snapshot_votes.bulk_write([
@@ -119,6 +112,39 @@ class QueuedSnapshot(commands.Cog):
                 ) for u in updates
             ])
         return events
+
+    def handle_multiple_choice_vote(self, proposal, vote, prev_vote):
+        new_choices = [proposal["choices"][c - 1] for c in vote["choice"]]
+        e = Embed(
+            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}",
+        )
+        nl = "\n- "
+        if prev_vote:
+            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from\n"
+            old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
+            e.description += f"**- {nl.join(old_choices)}**\nto\n**- {nl.join(new_choices)}**"
+        else:
+            e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**- {nl.join(new_choices)}**"
+        e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
+        e.description += f"\n\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
+        if len(e.description) > 2000:
+            e.description = f"{e.description[:1999]}…```"
+        return e, f"{proposal['id']}_{vote['voter']}_{new_choices}_{datetime.now().timestamp()}"
+
+    def handle_single_choice_vote(self, proposal, vote, prev_vote):
+        new_choice = proposal["choices"][vote["choice"] - 1]
+        e = Embed(
+            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}: {proposal['title']}",
+        )
+        if prev_vote:
+            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from **`{proposal['choices'][prev_vote['choice'] - 1]}`** to **`{new_choice}`**"
+        else:
+            e.description = f"**{el_explorer_url(vote['voter'])}** voted **`{new_choice}`**"
+        e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
+        e.description += f"\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
+        if len(e.description) > 2000:
+            e.description = f"{e.description[:1999]}…```"
+        return e, f"{proposal['id']}_{vote['voter']}_{new_choice}_{datetime.now().timestamp()}"
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
