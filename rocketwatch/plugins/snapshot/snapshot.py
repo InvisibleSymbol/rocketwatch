@@ -136,10 +136,20 @@ class QueuedSnapshot(commands.Cog):
         e = Embed(
             title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}: {proposal['title']}",
         )
+        def fancy_choice(choice):
+            match choice.lower():
+                case "for":
+                    return "✅ For"
+                case "against":
+                    return "❌ Against"
+                case "abstain":
+                    return "⚪ Abstain"
+            return choice
+        
         if prev_vote:
-            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from **`{proposal['choices'][prev_vote['choice'] - 1]}`** to **`{new_choice}`**"
+            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from **`{fancy_choice(proposal['choices'][prev_vote['choice'] - 1])}`** to **`{fancy_choice(new_choice)}`**"
         else:
-            e.description = f"**{el_explorer_url(vote['voter'])}** voted **`{new_choice}`**"
+            e.description = f"**{el_explorer_url(vote['voter'])}** voted **`{fancy_choice(new_choice)}`**"
         e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
         e.description += f"\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
         if len(e.description) > 2000:
@@ -179,6 +189,7 @@ class QueuedSnapshot(commands.Cog):
             y_offset += 40
             # order (choice, score) pairs by score
             choices = sorted(zip(proposal["choices"], proposal["scores"]), key=lambda x: x[1], reverse=True)
+            max_scores = max(scores)
             for i, (choice, scores) in enumerate(choices):
                 draw.dynamic_text(
                     (x_offset + 10, y_offset),
@@ -200,7 +211,7 @@ class QueuedSnapshot(commands.Cog):
                 draw.progress_bar(
                     (x_offset + 10 + 50, y_offset),
                     (10, p_width - 30 - 50),
-                    scores / proposal["scores_total"],
+                    scores / max_scores,
                     primary=color,
                 )
                 # show percentage next to progress bar (max 40 pixels)
