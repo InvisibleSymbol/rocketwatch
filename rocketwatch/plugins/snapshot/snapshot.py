@@ -189,7 +189,7 @@ class QueuedSnapshot(commands.Cog):
             y_offset += 40
             # order (choice, score) pairs by score
             choices = sorted(zip(proposal["choices"], proposal["scores"]), key=lambda x: x[1], reverse=True)
-            max_scores = max(scores)
+            max_scores = max(proposal["scores"])
             for i, (choice, scores) in enumerate(choices):
                 draw.dynamic_text(
                     (x_offset + 10, y_offset),
