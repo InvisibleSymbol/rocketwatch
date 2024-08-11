@@ -91,7 +91,7 @@ class Oura(commands.Cog):
         e = Embed(title="Invis's Sleep Schedule")
         current_date = datetime.datetime.now()
         tz = pytz.timezone("Europe/Vienna")
-        start_date = current_date - datetime.timedelta(days=90)
+        start_date = current_date - datetime.timedelta(days=150)
         # make start date timezone aware
         start_date = tz.localize(start_date)
         end_date = current_date
@@ -135,6 +135,9 @@ class Oura(commands.Cog):
             if sleep["total_sleep_duration"] < 30 * 60:
                 continue
             score = score_mapping.get(sleep["day"])
+            hr = sleep["lowest_heart_rate"]
+            hrv = sleep["average_hrv"]
+            temperature = sleep["readiness"]["temperature_trend_deviation"]
             sd = datetime.datetime.fromisoformat(sleep["bedtime_start"])
             log.info(f"start date: {sd}")
             # the start day is the next day if we are past 12pm, otherwise it is the current day
@@ -169,29 +172,30 @@ class Oura(commands.Cog):
                 stats_second = stats[int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds())):]
                 daily_sleep[start_day].append(
                     {"relative_start": sd - (thresh - datetime.timedelta(days=1)), "duration": dur_first,
-                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": score})
+                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
                 if end_day not in daily_sleep:
                     daily_sleep[end_day] = []
                 daily_sleep[end_day].append(
                     {"relative_start": datetime.timedelta(), "duration": dur_second, "weekday": weekday,
-                     "sleep_stats"   : stats_second, "readiness": score})
+                     "sleep_stats"   : stats_second, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
             else:
                 relative_start = sd - (thresh - datetime.timedelta(days=1))
                 if relative_start >= datetime.timedelta(hours=24):
                     relative_start -= datetime.timedelta(hours=24)
                 daily_sleep[start_day].append(
                     {"relative_start": relative_start, "duration": ed - sd, "weekday": weekday,
-                     "sleep_stats"   : stats, "readiness": score})
+                     "sleep_stats"   : stats, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
-        # plot
-        fig, ax = plt.subplots()
+        # plot, one large plot that has the sleep data and a small thin plot that shows the hr&hrv data below
+        fig, ax = plt.subplots(3, 1, figsize=(15, 10), gridspec_kw={'height_ratios': [6, 1, 1]}, sharex=True)
+        # dark mode
         # create horizontal dark gray line at midnight and noon
-        ax.axhline(y=18, color="#808080", linewidth=1)
-        ax.axhline(y=18 - 12, color="#808080", linewidth=1)
+        ax[0].axhline(y=18, color="#808080", linewidth=1)
+        ax[0].axhline(y=18 - 12, color="#808080", linewidth=1)
         calendar_data = await self.get_calendar_data()
         # render calendar data if they are within the last 180 days
-        if calendar_data is not None:
+        if calendar_data is None:
             for day, data in calendar_data.items():
                 for d in data:
                     bottom = ((24 * 60 * 60) - d[
@@ -201,7 +205,7 @@ class Oura(commands.Cog):
                         i = list(daily_sleep.keys()).index(day)
                     except ValueError:
                         continue
-                    ax.bar(i, width, bottom=bottom, color="#AAAAAA", width=1, alpha=0.25)
+                    ax[0].bar(i, width, bottom=bottom, color="#AAAAAA", width=1, alpha=0.25)
         for i, (day, sleeps) in reversed(list(enumerate(daily_sleep.items()))):
             for sleep in sleeps:
                 color = "gray"
@@ -223,23 +227,51 @@ class Oura(commands.Cog):
                             w = 0.9
                         case 1:
                             w = 0.9
-                    ax.bar(i, width / len(sleep["sleep_stats"]), bottom=current_bottom, color=color,
+                    ax[0].bar(i, width / len(sleep["sleep_stats"]), bottom=current_bottom, color=color,
                            alpha=0.2 if state == "4" else 1, width=w)
         # set x axis labels, only every 7th day
-        ax.set_xticks(range(len(daily_sleep) - 1, 0, -14))
-        ax.set_xticklabels([day[2:] for i, (day, _) in enumerate(reversed(daily_sleep.items())) if i % 14 == 0])
+        ax[0].set_xticks(range(len(daily_sleep) - 1, 0, -14))
+        ax[0].set_xticklabels([day[2:] for i, (day, _) in enumerate(reversed(daily_sleep.items())) if i % 14 == 0])
         # set y axis labels
-        ax.set_yticks(range(0, 25, 2))
-        ax.set_yticklabels([f"{i}:00" if i >= 0 else f"{24 + i}:00" for i in range(18, -7, -2)])
+        ax[0].set_yticks(range(0, 25, 2))
+        ax[0].set_yticklabels([f"{i}:00" if i >= 0 else f"{24 + i}:00" for i in range(18, -7, -2)])
         # set y limit
-        ax.set_ylim(0, 24)
+        ax[0].set_ylim(0, 24)
         # set x limit
-        ax.set_xlim(-1, len(daily_sleep))
+        ax[0].set_xlim(-1, len(daily_sleep))
         # grid
-        ax.grid(True)
-        ax.set_axisbelow(True)
+        ax[0].grid(True)
+        ax[0].set_axisbelow(True)
         # set title
-        ax.set_title("Invis's Sleep Schedule")
+        ax[0].set_title("Invis's Sleep Schedule")
+
+        x = []
+        y_hr = []
+        y_hrv = []
+        y_temperature = []
+        for i, (day, sleeps) in reversed(list(enumerate(daily_sleep.items()))):
+            if len(sleeps) == 0:
+                continue
+            min_hr = min(sleep["hr"] for sleep in sleeps)
+            min_hrv = min(sleep["hrv"] for sleep in sleeps)
+            max_temperature = max(sleep["temperature"] for sleep in sleeps if sleep["temperature"] is not None)
+            x.append(i)
+            y_hr.append(min_hr)
+            y_hrv.append(min_hrv)
+            y_temperature.append(max_temperature)
+        # fill the area between the the line and zero
+        ax[1].plot(x, y_temperature, color="gray", alpha=0.7)
+        # blue area, negative
+        ax[1].fill_between(x, y_temperature, color="blue", alpha=0.25, where=[i <= 0 for i in y_temperature], interpolate=True)
+        # red area, positive
+        ax[1].fill_between(x, y_temperature, color="red", alpha=0.25, where=[i >= 0 for i in y_temperature], interpolate=True)
+        ax[2].plot(x, y_hr, color="black", alpha=0.7)
+        ax3 = ax[2].twinx()
+        ax3.plot(x, y_hrv, color="green", alpha=0.7)
+        ax[2].legend(["HR"], loc="lower left")
+        ax3.legend(["HRV"], loc="upper left")
+        ax[1].legend(["Temperature"], loc="upper left")
+        # unit °C on y axis
 
         # reduce padding
         plt.tight_layout()
