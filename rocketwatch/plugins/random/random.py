@@ -52,7 +52,7 @@ class Random(commands.Cog):
             return
         e = Embed()
         e.title = f"🎲 {dice_string}"
-        if len(str(result)) <= 2000:
+        if len(str(result)) >= 2000:
             e.description = "Result too long to display, attaching as file."
             file = File(io.StringIO(str(result)), filename="dice_result.txt")
             await ctx.send(embed=e, file=file)
