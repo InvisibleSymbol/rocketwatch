@@ -11,6 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 from icalendar import Calendar
 import matplotlib.colors as mcolors
+from homeassistant_api import Client
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -285,6 +286,15 @@ class Oura(commands.Cog):
         buf = File(img, filename="sleep.png")
         # send image
         await ctx.send(file=buf, embed=e)
+
+    @hybrid_command()
+    async def temperature(self, ctx: Context):
+        await ctx.defer(ephemeral=is_hidden(ctx))
+        client = Client(cfg["homeassistant.url"], cfg["homeassistant.token"], use_async=True)
+        temp = await client.async_get_entity(entity_id="sensor.aranet_4_home_temperature")
+        e = Embed(title="Current Indoor Temperature")
+        e.description = f"{temp.state.state} °C (as of <t:{temp.state.last_updated.timestamp():.0f}:R>)"
+        await ctx.send(embed=e)
 
 
 async def setup(bot):
