@@ -11,7 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 from icalendar import Calendar
 import matplotlib.colors as mcolors
-from homeassistant_api import Client
+from homeassistant_api import Client, Entity
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -38,53 +38,6 @@ class Oura(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.calendar_url = cfg["oura.calendar_url"]
-
-    async def get_calendar_data(self):
-        d = {}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.calendar_url) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.text()
-        cal = Calendar.from_ical(data)
-        for event in cal.walk("VEVENT"):
-            if not isinstance(event["DTSTART"].dt, datetime.datetime):
-                continue
-            sd = event["DTSTART"].dt.replace(tzinfo=pytz.UTC).astimezone(
-                    pytz.timezone("Europe/Vienna"))
-            sd_r = sd + datetime.timedelta(days=1) if sd > sd.replace(hour=18, minute=0, second=0) else sd
-            start_day = sd_r.strftime("%Y-%m-%d")
-            ed = event["DTEND"].dt.replace(tzinfo=pytz.UTC).astimezone(
-                    pytz.timezone("Europe/Vienna"))
-            ed_r = ed + datetime.timedelta(days=1) if ed > ed.replace(hour=18, minute=0, second=0) else ed
-            end_day = ed_r.strftime("%Y-%m-%d")
-            if start_day not in d:
-                d[start_day] = []
-            if end_day not in d:
-                d[end_day] = []
-            thresh = datetime.datetime(year=ed.year, month=ed.month, day=ed.day, hour=18,
-                                       tzinfo=ed.tzinfo)
-            if start_day != end_day:
-                dur_first = thresh - sd
-                if dur_first >= datetime.timedelta(hours=24):
-                    dur_first -= datetime.timedelta(hours=24)
-                dur_second = ed - thresh
-                if dur_second <= datetime.timedelta(hours=0):
-                    dur_second += datetime.timedelta(hours=24)
-                total_dur = dur_first + dur_second
-                # split stats into two parts based on duration of each part
-                d[start_day].append(
-                    {"relative_start": sd - (thresh - datetime.timedelta(days=1)), "duration": dur_first})
-                d[end_day].append(
-                    {"relative_start": datetime.timedelta(), "duration": dur_second})
-            else:
-                relative_start = sd - (thresh - datetime.timedelta(days=1))
-                if relative_start >= datetime.timedelta(hours=24):
-                    relative_start -= datetime.timedelta(hours=24)
-                d[start_day].append(
-                    {"relative_start": relative_start, "duration": ed - sd})
-        return d
-
 
     @hybrid_command()
     async def sleep_schedule(self, ctx: Context):
@@ -196,7 +149,7 @@ class Oura(commands.Cog):
         ax[0].axhline(y=18 - 12, color="#808080", linewidth=1)
         calendar_data = await self.get_calendar_data()
         # render calendar data if they are within the last 180 days
-        if calendar_data is None:
+        if calendar_data is not None:
             for day, data in calendar_data.items():
                 for d in data:
                     bottom = ((24 * 60 * 60) - d[
@@ -239,7 +192,7 @@ class Oura(commands.Cog):
         # set y limit
         ax[0].set_ylim(0, 24)
         # set x limit
-        ax[0].set_xlim(-1, len(daily_sleep))
+        ax[0].set_xlim(0, len(daily_sleep))
         # grid
         ax[0].grid(True)
         ax[0].set_axisbelow(True)
@@ -296,6 +249,75 @@ class Oura(commands.Cog):
         e.description = f"{temp.state.state} °C (as of <t:{temp.state.last_updated.timestamp():.0f}:R>)"
         await ctx.send(embed=e)
 
+    # replace get_calendar_data with home assistant variant
+    async def get_calendar_data(self):
+        client = Client(cfg["homeassistant.url"], cfg["homeassistant.token"], use_async=True)
+        work_periods = []
+        last_state = None
+        async for zone in client.async_get_logbook_entries(
+            filter_entities="device_tracker.pixel_8_pro_2",
+            start_timestamp=datetime.datetime.now() - datetime.timedelta(days=150),
+            end_timestamp=datetime.datetime.now(),
+        ):
+            state = zone.state
+            when = round_minute(zone.when, 10).astimezone(pytz.timezone("Europe/Vienna"))
+            if state == "work" and last_state != "work":
+                    if work_periods and when - work_periods[-1]["end"] < datetime.timedelta(minutes=30):
+                        work_periods[-1]["end"] = when
+                    else:
+                        work_periods.append({"start": when, "end": when})
+            elif last_state == "work":
+                work_periods[-1]["end"] = when
+            last_state = state
+            print(f"zone changed to {last_state} at {when}")
+        # it has to have the same format as the old get_calendar_data
+        d  = {}
+        for period in work_periods:
+            sd = period["start"].astimezone(
+                pytz.timezone("Europe/Vienna"))
+            sd_r = sd + datetime.timedelta(days=1) if sd > sd.replace(hour=18, minute=0, second=0) else sd
+            start_day = sd_r.strftime("%Y-%m-%d")
+            ed = period["end"].astimezone(
+                pytz.timezone("Europe/Vienna"))
+            ed_r = ed + datetime.timedelta(days=1) if ed > ed.replace(hour=18, minute=0, second=0) else ed
+            end_day = ed_r.strftime("%Y-%m-%d")
+
+            if start_day not in d:
+                d[start_day] = []
+            if end_day not in d:
+                d[end_day] = []
+            thresh = datetime.datetime(year=period["end"].year, month=period["end"].month, day=period["end"].day, hour=18,
+                                       tzinfo=period["end"].tzinfo)
+            if start_day != end_day:
+                dur_first = thresh - period["start"]
+                if dur_first >= datetime.timedelta(hours=24):
+                    dur_first -= datetime.timedelta(hours=24)
+                dur_second = period["end"] - thresh
+                if dur_second <= datetime.timedelta(hours=0):
+                    dur_second += datetime.timedelta(hours=24)
+                total_dur = dur_first + dur_second
+                # split stats into two parts based on duration of each part
+                d[start_day].append(
+                    {"relative_start": period["start"] - (thresh - datetime.timedelta(days=1)), "duration": dur_first})
+                d[end_day].append(
+                    {"relative_start": datetime.timedelta(), "duration": dur_second})
+            else:
+                relative_start = period["start"] - (thresh - datetime.timedelta(days=1))
+                if relative_start >= datetime.timedelta(hours=24):
+                    relative_start -= datetime.timedelta(hours=24)
+                d[start_day].append(
+                    {"relative_start": relative_start, "duration": period["end"] - period["start"]})
+        return d
+
+def round_minute(date: datetime = None, round_to: int = 1):
+    """
+    round datetime object to minutes
+    """
+    if not date:
+        date = datetime.datetime.now()
+    minute = round(date.minute / round_to) * round_to
+    date = date.replace(minute=0, second=0, microsecond=0)
+    return date + datetime.timedelta(minutes=minute)
 
 async def setup(bot):
     await bot.add_cog(Oura(bot))
