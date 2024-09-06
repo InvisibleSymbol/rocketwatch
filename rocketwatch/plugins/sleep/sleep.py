@@ -12,6 +12,7 @@ from discord.ext.commands import Context, hybrid_command
 from icalendar import Calendar
 import matplotlib.colors as mcolors
 from homeassistant_api import Client, Entity
+from matplotlib import dates
 
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -244,10 +245,52 @@ class Oura(commands.Cog):
     async def temperature(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden(ctx))
         client = Client(cfg["homeassistant.url"], cfg["homeassistant.token"], use_async=True)
-        temp = await client.async_get_entity(entity_id="sensor.aranet_4_home_temperature")
-        e = Embed(title="Current Indoor Temperature")
-        e.description = f"{temp.state.state} °C (as of <t:{temp.state.last_updated.timestamp():.0f}:R>)"
-        await ctx.send(embed=e)
+        entity = await client.async_get_entity(entity_id="sensor.aranet_4_home_temperature")
+        temp = client.async_get_entity_histories(
+            entities=[entity],
+            start_timestamp=datetime.datetime.now() - datetime.timedelta(days=7),
+            end_timestamp=datetime.datetime.now(),
+        )
+        e = Embed(title="Indoor Temperature Chart")
+        # plot
+        with plt.rc_context({'font.size': 24}):
+            fig, ax = plt.subplots(figsize=(15, 10))
+            x = []
+            y = []
+            async for entity in temp:
+                for state in entity.states:
+                    try:
+                        f = float(state.state)
+                    except ValueError:
+                        continue
+                    x.append(state.last_updated)
+                    y.append(f)
+            # make line thicker
+            ax.plot(x, y, linewidth=4)
+            #ax.set_ylabel("Temperature")
+            #ax.set_xlabel("Time")
+            # temp range 15-35°C
+            ax.set_ylim(15, 35)
+            ax.grid()
+            # set x_axis min to x[0] but leave max to None
+            ax.set_xlim(x[0], None)
+            # format x axis as DD.MM HH:MM
+            ax.xaxis.set_major_formatter(
+                dates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
+            # format y axis as °C
+            ax.yaxis.set_major_formatter('{x:.0f}°C')
+            # reduce padding
+            plt.tight_layout()
+            img = BytesIO()
+            fig.savefig(img, format='png', dpi=100)
+            img.seek(0)
+            plt.close()
+        e.set_image(url="attachment://temperature.png")
+        buf = File(img, filename="temperature.png")
+        e.description = f"{y[-1]} °C (as of <t:{x[-1].timestamp():.0f}:R>)"
+        # send image
+        await ctx.send(file=buf, embed=e)
+
 
     # replace get_calendar_data with home assistant variant
     async def get_calendar_data(self):
