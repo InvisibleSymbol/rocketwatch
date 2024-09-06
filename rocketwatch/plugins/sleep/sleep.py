@@ -248,8 +248,8 @@ class Oura(commands.Cog):
         entity = await client.async_get_entity(entity_id="sensor.aranet_4_home_temperature")
         temp = client.async_get_entity_histories(
             entities=[entity],
-            start_timestamp=datetime.datetime.now() - datetime.timedelta(days=7),
-            end_timestamp=datetime.datetime.now(),
+            start_timestamp=datetime.datetime.now(tz=pytz.timezone("Europe/Vienna")).replace(tzinfo=None) - datetime.timedelta(days=7),
+            end_timestamp=datetime.datetime.now(tz=pytz.timezone("Europe/Vienna")).replace(tzinfo=None)
         )
         e = Embed(title="Indoor Temperature Chart")
         # plot
@@ -299,8 +299,8 @@ class Oura(commands.Cog):
         last_state = None
         async for zone in client.async_get_logbook_entries(
             filter_entities="device_tracker.pixel_8_pro_2",
-            start_timestamp=datetime.datetime.now() - datetime.timedelta(days=150),
-            end_timestamp=datetime.datetime.now(),
+            start_timestamp=datetime.datetime.now(tz=pytz.timezone("Europe/Vienna")).replace(tzinfo=None) - datetime.timedelta(days=150),
+            end_timestamp=datetime.datetime.now(tz=pytz.timezone("Europe/Vienna")).replace(tzinfo=None)
         ):
             state = zone.state
             when = round_minute(zone.when, 10).astimezone(pytz.timezone("Europe/Vienna"))
