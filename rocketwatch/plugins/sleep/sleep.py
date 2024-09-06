@@ -263,7 +263,7 @@ class Oura(commands.Cog):
                         f = float(state.state)
                     except ValueError:
                         continue
-                    x.append(state.last_updated)
+                    x.append(state.last_updated.astimezone(pytz.timezone("Europe/Vienna")))
                     y.append(f)
             # make line thicker
             ax.plot(x, y, linewidth=4)
