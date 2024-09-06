@@ -282,9 +282,9 @@ class Oura(commands.Cog):
             # get the color that was used to plot the line
             color = ax.get_lines()[0].get_color()
             # add a big hollow point at the latest point
-            ax.scatter(x[-1], y[-1], s=320, facecolor='none', edgecolor=color, linewidth=3)
+            ax.scatter(x[-1], y[-1], s=1000, facecolor='none', edgecolor="black", linewidth=4, alpha=0.3)
             # add a vertical line at the latest point
-            ax.axvline(x[-1], color=color)
+            ax.axvline(x[-1], color="black", linewidth=2, linestyle="--", alpha=0.3)
             # reduce padding
             plt.tight_layout()
             img = BytesIO()
