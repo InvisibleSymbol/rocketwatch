@@ -279,6 +279,12 @@ class Oura(commands.Cog):
                 dates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
             # format y axis as °C
             ax.yaxis.set_major_formatter('{x:.0f}°C')
+            # get the color that was used to plot the line
+            color = ax.get_lines()[0].get_color()
+            # add a big hollow point at the latest point
+            ax.scatter(x[-1], y[-1], s=320, facecolor='none', edgecolor=color, linewidth=3)
+            # add a vertical line at the latest point
+            ax.axvline(x[-1], color=color)
             # reduce padding
             plt.tight_layout()
             img = BytesIO()
