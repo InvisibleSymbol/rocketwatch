@@ -26,7 +26,7 @@ class RPIPs(commands.Cog):
     @rpip.autocomplete("name")
     async def get_rpip_names(self, ctx: Context, current: str):
         names = self.get_rpips().keys()
-        return [Choice(name=name, value=name) for name in names if current.lower() in name.lower()][:-10:-1]
+        return [Choice(name=name, value=name) for name in names if current.lower() in name.lower()][:-26:-1]
 
     @ttl_cache(ttl=300)
     def get_rpips(self) -> dict[str, str]:
