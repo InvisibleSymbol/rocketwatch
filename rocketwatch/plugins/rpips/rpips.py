@@ -34,8 +34,7 @@ class RPIPs(commands.Cog):
         soup = BeautifulSoup(html_doc, "html.parser")
         rpips: dict[str, str] = {}
 
-        # skip header
-        for row in soup.table.find_all("tr")[1:]:
+        for row in soup.table.find_all("tr", recursive=False):
             rpip_num = int(row.find("td", {"class": "rpipnum"}).text)
             rpip_title = row.find("td", {"class": "title"}).text.strip()
             title = f"RPIP-{rpip_num}: {rpip_title}"
