@@ -106,7 +106,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
 
             if rp.call("rocketMinipoolManager.getMinipoolExists", target, block=block):
                 url = f"{rocketscan_url}/minipool/{target}"
-            if rp.call("rocketNodeManager.getNodeExists", target, block=block):
+            elif rp.call("rocketNodeManager.getNodeExists", target, block=block):
                 if rp.call("rocketNodeManager.getSmoothingPoolRegistrationState", target, block=block) and prefix != -1:
                     prefix += ":cup_with_straw:"
                 url = f"{rocketscan_url}/node/{target}"

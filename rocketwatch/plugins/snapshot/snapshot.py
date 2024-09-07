@@ -17,6 +17,7 @@ from utils.readable import uptime
 from utils.shared_w3 import w3
 from utils.thegraph import get_active_snapshot_proposals, get_votes_of_snapshot
 from utils.visibility import is_hidden_weak
+from utils.rocketpool import rp
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -70,6 +71,9 @@ class QueuedSnapshot(commands.Cog):
                 # make sure the vote actually changed
                 if prev_vote and prev_vote["choice"] == vote["choice"]:
                     continue
+
+                vote["node"] = rp.call("rocketSignerRegistry.signerToNode")
+
                 match vote["choice"]:
                     case list():
                         e, uuid = self.handle_multiple_choice_vote(proposal, vote, prev_vote)
@@ -92,7 +96,7 @@ class QueuedSnapshot(commands.Cog):
                 # add the proposal link
                 e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
                 event_name = "snapshot_vote_changed"
-                if vote['vp'] > 200:
+                if vote['vp'] >= 250:
                     event_name = "pdao_snapshot_vote_changed"
                 events.append(Response(
                     embed=e,
@@ -119,12 +123,13 @@ class QueuedSnapshot(commands.Cog):
             title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}",
         )
         nl = "\n- "
+        voter = f"{el_explorer_url(vote['node'])} ({el_explorer_url(vote['voter'])})"
         if prev_vote:
-            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from\n"
+            e.description = f"{voter} changed their vote from\n"
             old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
             e.description += f"**- {nl.join(old_choices)}**\nto\n**- {nl.join(new_choices)}**"
         else:
-            e.description = f"**{el_explorer_url(vote['voter'])}** voted for\n**- {nl.join(new_choices)}**"
+            e.description = f"{voter} voted for\n**- {nl.join(new_choices)}**"
         e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
         e.description += f"\n\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
         if len(e.description) > 2000:
@@ -145,11 +150,12 @@ class QueuedSnapshot(commands.Cog):
                 case "abstain":
                     return "⚪ Abstain"
             return choice
-        
+
+        voter = f"{el_explorer_url(vote['node'])} ({el_explorer_url(vote['voter'])})"
         if prev_vote:
-            e.description = f"**{el_explorer_url(vote['voter'])}** changed their vote from **`{fancy_choice(proposal['choices'][prev_vote['choice'] - 1])}`** to **`{fancy_choice(new_choice)}`**"
+            e.description = f"{voter} changed their vote from **`{fancy_choice(proposal['choices'][prev_vote['choice'] - 1])}`** to **`{fancy_choice(new_choice)}`**"
         else:
-            e.description = f"**{el_explorer_url(vote['voter'])}** voted **`{fancy_choice(new_choice)}`**"
+            e.description = f"{voter} voted **`{fancy_choice(new_choice)}`**"
         e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
         e.description += f"\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
         if len(e.description) > 2000:
