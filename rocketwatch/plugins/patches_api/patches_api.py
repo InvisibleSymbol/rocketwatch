@@ -20,7 +20,7 @@ from utils.rocketpool import rp
 from utils.get_nearest_block import get_block_by_timestamp
 
 
-log = logging.getLogger("effective_rpl")
+log = logging.getLogger("rewards")
 log.setLevel(cfg["log_level"])
 
 
