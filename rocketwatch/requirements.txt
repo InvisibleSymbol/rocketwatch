@@ -35,3 +35,4 @@ regex==2023.8.8
 tiktoken==0.5.2
 anthropic==0.18.1
 HomeAssistant-API==v4.2.2.post1
+bs4==0.0.2
