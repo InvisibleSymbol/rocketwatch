@@ -182,6 +182,10 @@ class QueuedSnapshot(commands.Cog):
         # pillow draw
         draw = BetterImageDraw(img)
         # visualize the proposals
+
+        def safe_div(x, y):
+            return (x / y) if y != 0 else 0
+
         for i, proposal in enumerate(proposals):
             x_offset = i * p_width
             y_offset = 20
@@ -217,13 +221,13 @@ class QueuedSnapshot(commands.Cog):
                 draw.progress_bar(
                     (x_offset + 10 + 50, y_offset),
                     (10, p_width - 30 - 50),
-                    scores / max_scores,
+                    safe_div(scores, max_scores),
                     primary=color,
                 )
                 # show percentage next to progress bar (max 40 pixels)
                 draw.dynamic_text(
                     (x_offset + 50, y_offset),
-                    f"{scores / proposal['scores_total']:.0%}",
+                    f"{safe_div(scores, proposal['scores_total']):.0%}",
                     15,
                     max_width=45,
                     anchor="rt"
