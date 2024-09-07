@@ -23,23 +23,25 @@ class RPIPS(commands.Cog):
     @hybrid_command()
     async def rpip(self, ctx: Context, name: str):
         await ctx.defer()
-        if not (rpip := self.get_rpips().get(name)):
-            await ctx.send("No matching RPIPs.")
-            return
+        embed = Embed()
+        embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
 
-        embed = Embed(title=name)
-        embed.set_author(name="🔗 Data from rpips.rocketpool.net", url=rpip.url)
-        embed.url = rpip.url
-        embed.description = rpip.description
+        if rpip := self.get_rpips().get(name):
+            embed.title = name
+            embed.url = rpip.url
+            embed.description = rpip.description
 
-        if len(rpip.authors) == 1:
-            embed.add_field(name="Author", value=rpip.authors[0])
+            if len(rpip.authors) == 1:
+                embed.add_field(name="Author", value=rpip.authors[0])
+            else:
+                embed.add_field(name="Authors", value=", ".join(rpip.authors))
+
+            embed.add_field(name="Status", value=rpip.status)
+            embed.add_field(name="Created", value=rpip.created)
+            embed.add_field(name="Discussion Link", value=rpip.discussion, inline=False)
         else:
-            embed.add_field(name="Authors", value=", ".join(rpip.authors))
+            embed.description = "No matching RPIPs."
 
-        embed.add_field(name="Status", value=rpip.status)
-        embed.add_field(name="Created", value=rpip.created)
-        embed.add_field(name="Discussion Link", value=rpip.discussion, inline=False)
         await ctx.send(embed=embed)
 
     class RPIP:
