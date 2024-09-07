@@ -8,7 +8,7 @@ bidict==0.22.1
 tinydb==4.7.1
 requests==2.32.3
 uptime==3.0.1
-discord.py==2.3.2
+discord.py==2.4.0
 config==0.5.1
 pytz==2022.7.1
 matplotlib==3.7.1
@@ -36,3 +36,5 @@ tiktoken==0.5.2
 anthropic==0.18.1
 HomeAssistant-API==v4.2.2.post1
 bs4==0.0.2
+pydantic==2.8.2
+pydantic_core==2.20.1
