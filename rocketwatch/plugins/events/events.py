@@ -620,7 +620,6 @@ class QueuedEvents(Cog):
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
-                events_by_name[full_event_name].append(event)
 
                 if full_event_name == "unstETH.WithdrawalRequested":
                     contract = rp.get_contract_by_address(event["address"])
@@ -662,6 +661,9 @@ class QueuedEvents(Cog):
                 else:
                     # count, but report as individual events
                     tx_aggregates[full_event_name] = tx_aggregates.get(full_event_name, 0) + 1
+
+                if event in events:
+                    events_by_name[full_event_name].append(event)
 
         events = [aDict(event) for event in events]
         for event in events:
