@@ -49,7 +49,7 @@ class RPIPS(commands.Cog):
             self.url = url
 
         @ttl_cache(ttl=900)
-        def __fetch_data(self) -> dict[str, Union[str, list[str]]]:
+        def __fetch_data(self) -> dict[str, Union[None, str, list[str]]]:
             soup = BeautifulSoup(requests.get(self.url).text, "html.parser")
             metadata = {}
 
@@ -63,16 +63,19 @@ class RPIPS(commands.Cog):
                         metadata[field_name] = field.td.text
 
             return {
-                "type": metadata["Type"],
-                "status": metadata["Status"],
-                "authors": metadata["Author"],
-                "created": metadata["Created"],
-                "discussion": metadata["Discussion"],
+                "type": metadata.get("Type"),
+                "status": metadata.get("Status"),
+                "authors": metadata.get("Author"),
+                "created": metadata.get("Created"),
+                "discussion": metadata.get("Discussion"),
                 "description": soup.find("big", {"class": "rpip-description"}).text
             }
 
         def __getattr__(self, item):
-            return self.__fetch_data()[item]
+            try:
+                return self.__fetch_data()[item] or "N/A"
+            except KeyError:
+                raise AttributeError(f"RPIP has no attribute '{item}'")
 
     @rpip.autocomplete("name")
     async def get_rpip_names(self, ctx: Context, current: str):
