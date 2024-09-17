@@ -93,13 +93,13 @@ class Oura(commands.Cog):
             hr = sleep["lowest_heart_rate"]
             hrv = sleep["average_hrv"]
             temperature = sleep["readiness"]["temperature_trend_deviation"]
-            sd = datetime.datetime.fromisoformat(sleep["bedtime_start"])
+            sd = datetime.datetime.fromisoformat(sleep["bedtime_start"]).as_timezone(tz=tz)
             log.info(f"start date: {sd}")
             # the start day is the next day if we are past 12pm, otherwise it is the current day
             start_day_r = sd + datetime.timedelta(days=1) if sd.hour >= 18 else sd
             # format to string
             start_day = start_day_r.strftime("%Y-%m-%d")
-            ed = datetime.datetime.fromisoformat(sleep["bedtime_end"])
+            ed = datetime.datetime.fromisoformat(sleep["bedtime_end"]).as_timezone(tz=tz)
             log.info(f"end date: {ed}")
             # the end day is the next day if we are past 12pm, otherwise it is the current day
             ed_r = ed + datetime.timedelta(days=1) if ed.hour >= 18 else ed
