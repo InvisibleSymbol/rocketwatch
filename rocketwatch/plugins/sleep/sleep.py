@@ -107,6 +107,12 @@ class Oura(commands.Cog):
             end_day = ed_r.strftime("%Y-%m-%d")
             thresh = datetime.datetime(year=ed.year, month=ed.month, day=ed.day, hour=18,
                                        tzinfo=ed.tzinfo)
+            # Define virtual day start at 18:00
+            virtual_day_start = datetime.datetime.combine(sd.date(), datetime.time(18, 0), tz=tz)
+            if sd < virtual_day_start:
+                virtual_day_start -= datetime.timedelta(days=1)
+           virtual_day_end = virtual_day_start + datetime.timedelta(days=1)
+           start_day = virtual_day_start.strftime("%Y-%m-%d")
             if start_day not in daily_sleep:
                 daily_sleep[start_day] = []
             if end_day not in daily_sleep:
@@ -114,32 +120,75 @@ class Oura(commands.Cog):
             # weekday based on start date
             weekday = datetime.datetime.fromisoformat(start_day).weekday()
             stats = sleep["sleep_phase_5_min"]
-            if start_day != end_day:
-                dur_first = thresh - sd
-                if dur_first >= datetime.timedelta(hours=24):
-                    dur_first -= datetime.timedelta(hours=24)
-                dur_second = ed - thresh
-                if dur_second <= datetime.timedelta(hours=0):
-                    dur_second += datetime.timedelta(hours=24)
-                total_dur = dur_first + dur_second
-                # split stats into two parts based on duration of each part
-                stats_first = stats[:int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds()))]
-                stats_second = stats[int(len(stats) * (dur_first.total_seconds() / total_dur.total_seconds())):]
-                daily_sleep[start_day].append(
-                    {"relative_start": sd - (thresh - datetime.timedelta(days=1)), "duration": dur_first,
-                     "weekday"       : weekday, "sleep_stats": stats_first, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
-                if end_day not in daily_sleep:
-                    daily_sleep[end_day] = []
-                daily_sleep[end_day].append(
-                    {"relative_start": datetime.timedelta(), "duration": dur_second, "weekday": weekday,
-                     "sleep_stats"   : stats_second, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
-            else:
-                relative_start = sd - (thresh - datetime.timedelta(days=1))
-                if relative_start >= datetime.timedelta(hours=24):
-                    relative_start -= datetime.timedelta(hours=24)
-                daily_sleep[start_day].append(
-                    {"relative_start": relative_start, "duration": ed - sd, "weekday": weekday,
-                     "sleep_stats"   : stats, "readiness": score, "hr": hr, "hrv": hrv, "temperature": temperature})
+            # Initialize sleep segments
+            sleep_segments = []
+
+            total_duration = ed - sd
+            total_seconds = total_duration.total_seconds()
+            cumulative_seconds = 0
+
+            # Check for overflow into previous virtual day
+            if sd < virtual_day_start:
+                dur_prev = virtual_day_start - sd
+                if dur_prev.total_seconds() > 0:
+                    stats_prev_len = int(len(stats) * (dur_prev.total_seconds() / total_seconds))
+                    stats_prev = stats[:stats_prev_len]
+                    prev_day = (virtual_day_start - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                    if prev_day not in daily_sleep:
+                        daily_sleep[prev_day] = []
+                    daily_sleep[prev_day].append({
+                        "relative_start": sd - (virtual_day_start - datetime.timedelta(days=1)),
+                        "duration": dur_prev,
+                        "weekday": weekday,
+                        "sleep_stats": stats_prev,
+                        "readiness": score,
+                        "hr": hr,
+                        "hrv": hrv,
+                        "temperature": temperature
+                    })
+                    stats = stats[stats_prev_len:]  # Remove used stats
+                    cumulative_seconds += dur_prev.total_seconds()
+                    sd = virtual_day_start  # Adjust start time
+
+            # Now compute duration in current virtual day
+            dur_current = min(ed, virtual_day_end) - sd
+            if dur_current.total_seconds() > 0:
+                stats_current_len = int(len(stats) * (dur_current.total_seconds() / (total_seconds - cumulative_seconds)))
+                stats_current = stats[:stats_current_len]
+                if start_day not in daily_sleep:
+                    daily_sleep[start_day] = []
+                daily_sleep[start_day].append({
+                    "relative_start": sd - virtual_day_start,
+                    "duration": dur_current,
+                    "weekday": weekday,
+                    "sleep_stats": stats_current,
+                    "readiness": score,
+                    "hr": hr,
+                    "hrv": hrv,
+                    "temperature": temperature
+                })
+                stats = stats[stats_current_len:]
+                cumulative_seconds += dur_current.total_seconds()
+                sd = virtual_day_end  # Adjust start time
+
+# Check for overflow into next virtual day
+            if ed > virtual_day_end:
+                dur_next = ed - virtual_day_end
+                if dur_next.total_seconds() > 0:
+                    stats_next = stats  # Remaining stats
+                    next_day = virtual_day_end.strftime("%Y-%m-%d")
+                    if next_day not in daily_sleep:
+                        daily_sleep[next_day] = []
+                    daily_sleep[next_day].append({
+                        "relative_start": datetime.timedelta(),
+                        "duration": dur_next,
+                        "weekday": weekday,
+                        "sleep_stats": stats_next,
+                        "readiness": score,
+                        "hr": hr,
+                        "hrv": hrv,
+                        "temperature": temperature
+                    })
         # sort by date
         daily_sleep = dict(sorted(daily_sleep.items(), key=lambda x: x[0]))
         # plot, one large plot that has the sleep data and a small thin plot that shows the hr&hrv data below
