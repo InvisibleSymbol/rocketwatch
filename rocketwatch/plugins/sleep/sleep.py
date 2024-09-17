@@ -108,7 +108,8 @@ class Oura(commands.Cog):
             thresh = datetime.datetime(year=ed.year, month=ed.month, day=ed.day, hour=18,
                                        tzinfo=ed.tzinfo)
             # Define virtual day start at 18:00
-            virtual_day_start = datetime.datetime.combine(sd.date(), datetime.time(18, 0), tz=tz)
+            virtual_day_start = datetime.datetime.combine(sd.date(), datetime.time(18, 0))
+            virtual_day_start = tz.localize(virtual_day_start)
             if sd < virtual_day_start:
                 virtual_day_start -= datetime.timedelta(days=1)
             virtual_day_end = virtual_day_start + datetime.timedelta(days=1)
