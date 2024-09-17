@@ -111,8 +111,8 @@ class Oura(commands.Cog):
             virtual_day_start = datetime.datetime.combine(sd.date(), datetime.time(18, 0), tz=tz)
             if sd < virtual_day_start:
                 virtual_day_start -= datetime.timedelta(days=1)
-           virtual_day_end = virtual_day_start + datetime.timedelta(days=1)
-           start_day = virtual_day_start.strftime("%Y-%m-%d")
+            virtual_day_end = virtual_day_start + datetime.timedelta(days=1)
+            start_day = virtual_day_start.strftime("%Y-%m-%d")
             if start_day not in daily_sleep:
                 daily_sleep[start_day] = []
             if end_day not in daily_sleep:
