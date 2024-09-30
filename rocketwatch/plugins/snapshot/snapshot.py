@@ -72,7 +72,7 @@ class QueuedSnapshot(commands.Cog):
                 if prev_vote and prev_vote["choice"] == vote["choice"]:
                     continue
 
-                vote["node"] = rp.call("rocketSignerRegistry.signerToNode")
+                vote["node"] = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
 
                 match vote["choice"]:
                     case list():
