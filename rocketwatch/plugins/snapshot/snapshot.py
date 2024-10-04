@@ -37,7 +37,7 @@ class QueuedSnapshot(commands.Cog):
         self.bot = bot
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
-        self.ratelimit = 60
+        self.ratelimit = 300
         self.last_ran = datetime.now() - timedelta(seconds=self.ratelimit)
         self.version = 3
 
