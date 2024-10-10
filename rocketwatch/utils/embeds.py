@@ -258,6 +258,8 @@ def assemble(args):
             e.set_image(url="https://cdn.discordapp.com/attachments/912434217118498876/1097528472567558227/DALLE_2023-04-17_16.25.46_-_an_expresive_oil_painting_of_the_atlas_2_rocket_taking_off_moon_colorfull.png")
         case "houston_upgrade_triggered":
             e.set_image(url="https://i.imgur.com/XT5qPWf.png")
+        case "houston_hotfix_upgrade_triggered":
+            e.set_image(url="https://i.imgur.com/JcQS3Sh.png")
 
     amount = args.get("amount") or args.get("ethAmount", 0)
     match args.event_name:

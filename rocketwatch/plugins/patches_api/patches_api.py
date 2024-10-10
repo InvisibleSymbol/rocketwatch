@@ -129,6 +129,8 @@ class PatchesAPI(commands.Cog):
         borrowed_eth = (24 * num_leb8) + (16 * num_eb16)
 
         data_block: int = rewards.data_block
+        reward_start_block, _ = get_block_by_timestamp(rewards.start_time)
+
         rpl_min: float = solidity.to_float(rp.call("rocketDAOProtocolSettingsNode.getMinimumPerMinipoolStake", block=data_block))
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
         actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
@@ -137,7 +139,7 @@ class PatchesAPI(commands.Cog):
         inflation_rate: int = rp.call("rocketTokenRPL.getInflationIntervalRate", block=data_block)
         inflation_interval: int = rp.call("rocketTokenRPL.getInflationIntervalTime", block=data_block)
         num_inflation_intervals: int = (rewards.end_time - rewards.start_time) // inflation_interval
-        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=get_block_by_timestamp(rewards.start_time))
+        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=reward_start_block)
 
         period_inflation: int = total_supply
         for i in range(num_inflation_intervals):
