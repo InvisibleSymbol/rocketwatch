@@ -144,7 +144,7 @@ class PatchesAPI(commands.Cog):
             period_inflation = solidity.to_int(period_inflation * inflation_rate)
         period_inflation -= total_supply
 
-        def rpip_30_weight(_stake: float, _borrowed_eth: float) -> float:
+        def node_weight(_stake: float, _borrowed_eth: float) -> float:
             rpl_value = _stake * rpl_ratio
             collateral_ratio = (rpl_value / _borrowed_eth) if _borrowed_eth > 0 else 0
             if collateral_ratio < rpl_min:
@@ -155,8 +155,8 @@ class PatchesAPI(commands.Cog):
                 return (13.6137 + 2 * np.log(100 * collateral_ratio - 13)) * _borrowed_eth
 
         def rewards_at(_stake: float, _borrowed_eth: float) -> float:
-            weight = rpip_30_weight(_stake, _borrowed_eth)
-            base_weight = rpip_30_weight(actual_rpl_stake, _borrowed_eth)
+            weight = node_weight(_stake, _borrowed_eth)
+            base_weight = node_weight(actual_rpl_stake, _borrowed_eth)
             new_system_weight = rewards.system_weight + weight - base_weight
             return solidity.to_float(0.7 * period_inflation * weight / new_system_weight)
 
