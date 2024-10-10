@@ -126,8 +126,10 @@ class PatchesAPI(commands.Cog):
         rpl_stake = max(0, rpl_stake)
         num_leb8 = max(0, num_leb8)
         num_eb16 = max(0, num_eb16)
+        borrowed_eth = (24 * num_leb8) + (16 * num_eb16)
 
         data_block: int = rewards.data_block
+        rpl_min: float = solidity.to_float(rp.call("rocketDAOProtocolSettingsNode.getMinimumPerMinipoolStake", block=data_block))
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
         actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
         actual_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address, block=data_block))
@@ -135,7 +137,7 @@ class PatchesAPI(commands.Cog):
         inflation_rate: int = rp.call("rocketTokenRPL.getInflationIntervalRate", block=data_block)
         inflation_interval: int = rp.call("rocketTokenRPL.getInflationIntervalTime", block=data_block)
         num_inflation_intervals: int = (rewards.end_time - rewards.start_time) // inflation_interval
-        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=data_block)
+        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=get_block_by_timestamp(rewards.start_time))
 
         period_inflation: int = total_supply
         for i in range(num_inflation_intervals):
@@ -145,7 +147,7 @@ class PatchesAPI(commands.Cog):
         def rpip_30_weight(_stake: float, _borrowed_eth: float) -> float:
             rpl_value = _stake * rpl_ratio
             collateral_ratio = (rpl_value / _borrowed_eth) if _borrowed_eth > 0 else 0
-            if collateral_ratio < 0.1:
+            if collateral_ratio < rpl_min:
                 return 0.0
             elif collateral_ratio <= 0.15:
                 return 100 * rpl_value
@@ -165,38 +167,39 @@ class PatchesAPI(commands.Cog):
         x_max = max(rpl_stake * 2, actual_rpl_stake * 5)
         ax.set_xlim((x_min, x_max))
 
-        def draw_reward_curve(_color: str, _line_style: str, _borrowed_eth: float) -> None:
+        y_min = min(rewards_at(x_max, actual_borrowed_eth), rewards_at(x_min, borrowed_eth))
+        y_max = max(rewards_at(x_max, actual_borrowed_eth), rewards_at(x_min, borrowed_eth))
+        ax.set_ylim((y_min, y_max))
+
+        cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
+        sim_color, sim_label, sim_ls = "darkred", "simulated", "dashed"
+
+        def draw_reward_curve(_color: str, _label: Optional[str], _line_style: str, _borrowed_eth: float) -> None:
             x = np.arange(x_min, x_max, 10, dtype=int)
             y = np.array([rewards_at(x, _borrowed_eth) for x in x])
-            ax.plot(x, y, color=_color, linestyle=_line_style)
+            ax.plot(x, y, color=_color, linestyle=_line_style, label=_label)
 
-            projected_rewards = rewards_at(actual_rpl_stake, _borrowed_eth)
-            simulated_rewards = rewards_at(rpl_stake, _borrowed_eth)
-
-            ax.plot(actual_rpl_stake, projected_rewards, "o", color="#eb8e55", label="current")
-            ax.annotate(
-                f"{projected_rewards:.2f}",
-                (actual_rpl_stake, projected_rewards),
-                textcoords="offset points",
-                xytext=(5, -10 if projected_rewards > 0 else 5),
-                ha="left"
-            )
-
-            if rpl_stake > 0:
-                ax.plot(rpl_stake, simulated_rewards, "o", color="darkred", label="simulated")
+            def plot_point(_pt_color: str, _pt_label: str, _x: int) -> None:
+                label = _pt_label if _label is None else None
+                _y = rewards_at(_x, _borrowed_eth)
+                ax.plot(_x, _y, "o", color=_pt_color, label=label)
                 ax.annotate(
-                    f"{simulated_rewards:.2f}",
-                    (rpl_stake, simulated_rewards),
+                    f"{_y:.2f}",
+                    (_x, _y),
                     textcoords="offset points",
-                    xytext=(5, -10 if simulated_rewards > 0 else 5),
+                    xytext=(5, -10 if _y > 0 else 5),
                     ha="left"
                 )
 
-        draw_reward_curve("#eb8e55", "solid", actual_borrowed_eth)
+            plot_point(cur_color, cur_label, actual_rpl_stake)
+            if rpl_stake > 0:
+                plot_point(sim_color, sim_label, rpl_stake)
 
-        borrowed_eth = (24 * num_leb8) + (16 * num_eb16)
         if borrowed_eth > 0:
-            draw_reward_curve("darkred", "dashed", borrowed_eth)
+            draw_reward_curve(cur_color, cur_label, cur_ls, actual_borrowed_eth)
+            draw_reward_curve(sim_color, sim_label, sim_ls, borrowed_eth)
+        else:
+            draw_reward_curve(cur_color, None, cur_ls, actual_borrowed_eth)
 
         def formatter(_x, _pos) -> str:
             if _x < 1000:
