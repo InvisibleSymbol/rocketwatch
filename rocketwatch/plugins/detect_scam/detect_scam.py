@@ -40,6 +40,7 @@ class DetectScam(commands.Cog):
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
         self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
+        self.__invite_pattern = re.compile(r"discordapp\.com\/invite\\(?P<code>[a-zA-Z0-9]+)")
 
     async def report_suspicious_message(self, msg, reason):
         # check if the message has been deleted
@@ -94,7 +95,8 @@ class DetectScam(commands.Cog):
             self.markdown_link_trick(message),
             self.ticket_with_link(message),
             self.paperhands(message),
-            self.mention_everyone(message)
+            self.mention_everyone(message),
+            self.discord_invite(message)
         ]
         await asyncio.gather(*checks)
 
@@ -112,8 +114,18 @@ class DetectScam(commands.Cog):
         txt = get_text_of_message(message)
         for m in self.__markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
-                await self.report_suspicious_message(message,
-                                                     "Markdown link with possible domain in visible portion that does not match the actual domain")
+                await self.report_suspicious_message(
+                    message,
+                    "Markdown link with possible domain in visible portion that does not match the actual domain."
+                )
+
+    async def discord_invite(self, message):
+        txt = get_text_of_message(message)
+        if self.__invite_pattern.search(txt):
+            await self.report_suspicious_message(
+                message,
+                "Invite to external server"
+            )
 
     async def ticket_with_link(self, message):
         # message contains the word "ticket" and a link
