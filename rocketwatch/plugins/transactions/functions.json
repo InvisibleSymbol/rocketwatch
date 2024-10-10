@@ -61,5 +61,8 @@
     },
     "rocketUpgradeOneDotThree": {
         "execute": "houston_upgrade_triggered"
+    },
+    "rocketUpgradeOneDotThreeDotOne": {
+        "execute": "houston_hotfix_upgrade_triggered"
     }
 }

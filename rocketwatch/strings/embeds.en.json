@@ -463,6 +463,10 @@
         "title": ":tada: Houston Upgrade Complete!",
         "description": ""
     },
+    "houston_hotfix_upgrade_triggered": {
+        "title": ":tada: Houston Hotfix Upgrade Complete!",
+        "description": ""
+    },
     "unsteth_withdrawal_requested_event": {
         "title": ":money_with_wings: Large stETH Withdrawal Requested",
         "description": "%{owner} has requested a withdrawal of **%{amountOfStETH} stETH**!"
