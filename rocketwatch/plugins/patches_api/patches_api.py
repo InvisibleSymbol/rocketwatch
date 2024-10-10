@@ -175,7 +175,8 @@ class PatchesAPI(commands.Cog):
         sim_color, sim_label, sim_ls = "darkred", "simulated", "dashed"
 
         def draw_reward_curve(_color: str, _label: Optional[str], _line_style: str, _borrowed_eth: float) -> None:
-            x = np.arange(x_min, x_max, 10, dtype=int)
+            step_size = max(1, (x_max - x_min) // 1000)
+            x = np.arange(x_min, x_max, step_size, dtype=int)
             y = np.array([rewards_at(x, _borrowed_eth) for x in x])
             ax.plot(x, y, color=_color, linestyle=_line_style, label=_label)
 
