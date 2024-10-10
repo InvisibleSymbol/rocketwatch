@@ -163,12 +163,12 @@ class PatchesAPI(commands.Cog):
         fig, ax = plt.subplots(figsize=(5, 2.5))
         ax.grid()
 
-        x_min = min(rpl_stake / 2, actual_rpl_stake / 2)
+        x_min = 0
         x_max = max(rpl_stake * 2, actual_rpl_stake * 5)
         ax.set_xlim((x_min, x_max))
 
-        y_min = min(rewards_at(x_max, actual_borrowed_eth), rewards_at(x_min, borrowed_eth))
-        y_max = max(rewards_at(x_max, actual_borrowed_eth), rewards_at(x_min, borrowed_eth))
+        y_min = min(rewards_at(x_min, borrowed_eth), rewards_at(x_min, actual_borrowed_eth))
+        y_max = max(rewards_at(x_max, borrowed_eth), rewards_at(x_max, actual_borrowed_eth))
         ax.set_ylim((y_min, y_max))
 
         cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
