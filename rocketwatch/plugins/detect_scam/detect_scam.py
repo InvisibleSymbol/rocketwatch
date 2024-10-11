@@ -135,9 +135,14 @@ class DetectScam(commands.Cog):
             return
 
         keywords = (
-            [("open", "create"), "ticket"],
-            [("contact", "reach out", "talk"), "admin"],
-            [("contact", "reach out", "talk"), "mod"],
+            [
+                ("open", "create"),
+                "ticket"
+            ],
+            [
+                ("contact", "reach out", [("talk", "speak"), ("to", "with")]),
+                ("admin", "mod")
+            ],
             "support team",
             "assistance",
             "help"
