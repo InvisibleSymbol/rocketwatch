@@ -3,6 +3,7 @@ import contextlib
 import io
 import logging
 from datetime import datetime
+from typing import Union
 
 import regex as re
 from datetime import timezone
@@ -128,10 +129,30 @@ class DetectScam(commands.Cog):
             )
 
     async def ticket_with_link(self, message):
-        # message contains the word "ticket" and a link
+        # message contains one of the relevant keyword combinations and a link
         txt = get_text_of_message(message)
-        has_url = self.__basic_url_pattern.search(txt)
-        if has_url and any(x in txt for x in ["ticket", "support team", "admin", "mod team", "moderator"]):
+        if not self.__basic_url_pattern.search(txt):
+            return
+
+        keywords = (
+            [("open", "create"), "ticket"],
+            [("contact", "reach out", "talk"), "admin"],
+            [("contact", "reach out", "talk"), "mod"],
+            "support team",
+            "assistance",
+            "help"
+        )
+
+        def txt_contains(_x: Union[list, tuple, str]) -> bool:
+            match _x:
+                case str():
+                    return _x in txt
+                case tuple():
+                    return any(map(txt_contains, _x))
+                case list():
+                    return all(map(txt_contains, _x))
+
+        if txt_contains(keywords):
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
     async def paperhands(self, message):
