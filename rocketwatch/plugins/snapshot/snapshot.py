@@ -37,13 +37,13 @@ class QueuedSnapshot(commands.Cog):
         self.bot = bot
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
-        self.ratelimit = 300
-        self.last_ran = datetime.now() - timedelta(seconds=self.ratelimit)
+        self.ratelimit = timedelta(seconds=10)
+        self.last_ran = datetime.now() - self.ratelimit
         self.version = 3
 
     def run_loop(self):
         # ratelimit
-        if (datetime.now() - self.last_ran).seconds < self.ratelimit:
+        if (datetime.now() - self.last_ran) < self.ratelimit:
             return []
         # nuke db if version changed or not present
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
@@ -120,7 +120,7 @@ class QueuedSnapshot(commands.Cog):
     def handle_multiple_choice_vote(self, proposal, vote, prev_vote):
         new_choices = [proposal["choices"][c - 1] for c in vote["choice"]]
         e = Embed(
-            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}",
+            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}: {proposal['title']}",
         )
         nl = "\n- "
         voter = f"{el_explorer_url(vote['node'])} ({el_explorer_url(vote['voter'])})"
