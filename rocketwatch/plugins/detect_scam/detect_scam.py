@@ -140,12 +140,14 @@ class DetectScam(commands.Cog):
                 "ticket"
             ],
             [
-                ("contact", "reach out", [("talk", "speak"), ("to", "with")]),
-                ("admin", "mod")
+                ("contact", "reach out", "report", [("talk", "speak"), ("to", "with")]),
+                ("admin", "mod", "m0d")
             ],
-            "support team",
-            "assistance",
-            "help"
+            ("support team", "supp0rt"),
+            [
+                ("ask", "seek", "request", "contact"),
+                ("help", "assistance")
+            ]
         )
 
         def txt_contains(_x: Union[list, tuple, str]) -> bool:
