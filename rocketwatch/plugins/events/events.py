@@ -482,26 +482,35 @@ class QueuedEvents(Cog):
             contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
             args.commission = solidity.to_float(contract.functions.getNodeFee().call())
             # get the transaction receipt
-            tx = w3.eth.get_transaction(args.transactionHash)
             args.depositAmount = rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber)
-
-            if tx["value"] < args.depositAmount and tx["to"] == rp.get_address_by_name("rocketNodeDeposit"):
-                receipt = w3.eth.get_transaction_receipt(args.transactionHash)
-                args.node = receipt["from"]
-                args.creditAmount = args.depositAmount - tx["value"]
+            user_deposit = args.depositAmount
+            receipt = w3.eth.get_transaction_receipt(args.transactionHash)
+            args.node = receipt["from"]
+            ee = rp.get_contract_by_name("rocketNodeDeposit").events.DepositReceived()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                processed_logs = ee.processReceipt(receipt)
+            for deposit_event in processed_logs:
+                # needs to be within 5 before the event
+                if event.logIndex - 6 < deposit_event.logIndex < event.logIndex:
+                    user_deposit = deposit_event.args["amount"]
+            if user_deposit < args.depositAmount:
+                args.creditAmount = args.depositAmount - user_deposit
                 args.balanceAmount = 0
-
-                event = rp.get_contract_by_name("rocketVault").events.EtherWithdrawn()
+                e = rp.get_contract_by_name("rocketVault").events.EtherWithdrawn()
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    processed_logs = event.processReceipt(receipt)
+                    processed_logs = e.processReceipt(receipt)
 
                 deposit_contract = bytes(w3.soliditySha3(["string"], ["rocketNodeDeposit"]))
                 for withdraw_event in processed_logs:
-                    if withdraw_event.args["by"] == deposit_contract:
-                        args.balanceAmount = withdraw_event.args["amount"]
-                        args.creditAmount -= args.balanceAmount
-                        break
+                    # event.logindex 44, withdraw_event.logindex 50, rough distance like that
+                    # reminder order is different than the previous example
+                    if event.logIndex - 7 < withdraw_event.logIndex < event.logIndex:
+                        if withdraw_event.args["by"] == deposit_contract:
+                            args.balanceAmount = withdraw_event.args["amount"]
+                            args.creditAmount -= args.balanceAmount
+                            break
 
                 if args.balanceAmount == 0:
                     args.event_name += "_credit"
