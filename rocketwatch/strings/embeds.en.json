@@ -22,7 +22,8 @@
     },
     "rpl_stake_event": {
         "title": ":moneybag: RPL Stake",
-        "description": "%{from} staked **%{amount} RPL** (worth %{ethAmount} ETH)!"
+        "description": "%{from} staked **%{amount} RPL** (worth %{ethAmount} ETH)!",
+        "description_small": ":moneybag: %{fancy_from} staked **%{amount} RPL** (worth %{ethAmount} ETH)!"
     },
     "rpl_withdraw_event": {
         "title": ":leaves: RPL Withdrawal",

@@ -13,6 +13,7 @@ from ens import InvalidName
 from etherscan_labels import Addresses
 
 from strings import _
+from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
@@ -267,6 +268,8 @@ def assemble(args):
             use_large = (args.votingPower >= 250)
         case "eth_deposit_event":
             use_large = (amount >= 32)
+        case "rpl_stake_event":
+            use_large = (amount >= ((3* 2.4) / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))))
         case _:
             use_large = (amount >= 100)
 

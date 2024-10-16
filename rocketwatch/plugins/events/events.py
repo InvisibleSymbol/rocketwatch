@@ -103,7 +103,9 @@ class QueuedEvents(Cog):
         event_name = self.internal_event_mapping[event["event"]]
 
         if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
-                    rp.get_address_by_name("rocketNodeDeposit") == receipt.to]):
+                    rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
+                    rp.get_name_by_address(receipt.to),
+                    rp.get_name_by_address(event.address)]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
             return None, None
@@ -132,6 +134,9 @@ class QueuedEvents(Cog):
 
         # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]
+        if rp.get_name_by_address(receipt["to"]) is None:
+            event.args["from"] = receipt["to"]
+            event.args["caller"] = receipt["from"]
 
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
@@ -478,14 +483,9 @@ class QueuedEvents(Cog):
             args.commission = solidity.to_float(contract.functions.getNodeFee().call())
             # get the transaction receipt
             tx = w3.eth.get_transaction(args.transactionHash)
-            # get the transaction input
-            contract = rp.get_contract_by_address(tx["to"])
+            args.depositAmount = rp.call("rocketMinipool.getNodeDepositBalance", address=args.minipool, block=args.blockNumber)
 
-            tx_input = tx["input"]
-            decoded = contract.decode_function_input(tx_input)
-            args.depositAmount = decoded[1].get("_bondAmount", w3.toWei(16, "ether"))
-
-            if tx["value"] < args.depositAmount:
+            if tx["value"] < args.depositAmount and tx["to"] == rp.get_address_by_name("rocketNodeDeposit"):
                 receipt = w3.eth.get_transaction_receipt(args.transactionHash)
                 args.node = receipt["from"]
                 args.creditAmount = args.depositAmount - tx["value"]
