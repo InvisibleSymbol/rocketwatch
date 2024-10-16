@@ -259,7 +259,7 @@ class Oura(commands.Cog):
                 continue
             min_hr = min(sleep["hr"] for sleep in sleeps)
             min_hrv = min(sleep["hrv"] for sleep in sleeps)
-            max_temperature = max(sleep["temperature"] for sleep in sleeps if (sleep["temperature"] is not [] and sleep["temperature"] is not None))
+            max_temperature = max(sleep["temperature"] for sleep in sleeps if (sleep["temperature"] != [] and sleep["temperature"] is not None))
             x.append(i)
             y_hr.append(min_hr)
             y_hrv.append(min_hrv)
