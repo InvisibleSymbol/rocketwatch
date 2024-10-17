@@ -5,7 +5,7 @@ from discord.ext.commands import Cog, Context, hybrid_command
 
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.visibility import is_hidden_weak
+from utils.visibility import is_hidden, is_hidden_weak
 from utils.rocketpool import rp
 from utils.dao import DefaultDAO, ProtocolDAO
 
@@ -19,7 +19,7 @@ class DAOCommand(Cog):
         self.bot = bot
 
     @staticmethod
-    def get_dao_votes_embed(dao: DefaultDAO) -> Embed:
+    def get_dao_votes_embed(dao: DefaultDAO, full: bool) -> Embed:
         current_proposals: dict[DefaultDAO.ProposalState, list[dict]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.Active: [],
@@ -44,19 +44,19 @@ class DAOCommand(Cog):
                 [
                     (
                         f"**Proposal #{proposal['id']}** - Pending\n"
-                        f"```{dao.build_proposal_body(proposal, include_votes=False)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full, include_votes=False)}```"
                         f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active\n"
-                        f"```{dao.build_proposal_body(proposal)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
                         f"Ends <t:{proposal['end']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Active]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{dao.build_proposal_body(proposal)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]
@@ -64,7 +64,7 @@ class DAOCommand(Cog):
         )
 
     @staticmethod
-    def get_pdao_votes_embed(dao: ProtocolDAO) -> Embed:
+    def get_pdao_votes_embed(dao: ProtocolDAO, full: bool) -> Embed:
         current_proposals: dict[ProtocolDAO.ProposalState, list[dict]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.ActivePhase1: [],
@@ -87,25 +87,25 @@ class DAOCommand(Cog):
                 [
                     (
                         f"**Proposal #{proposal['id']}** - Pending\n"
-                        f"```{dao.build_proposal_body(proposal, include_votes=False)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full, include_votes=False)}```"
                         f"Starts <t:{proposal['start']}:R>, ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
-                        f"```{dao.build_proposal_body(proposal)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
                         f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase1]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
-                        f"```{dao.build_proposal_body(proposal)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
                         f"Ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase2]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{dao.build_proposal_body(proposal)}```"
+                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]
@@ -116,19 +116,20 @@ class DAOCommand(Cog):
     async def dao_votes(
             self,
             ctx: Context,
-            dao_name: Literal["odao", "pdao", "security council"] = "pdao"
+            dao_name: Literal["odao", "pdao", "security council"] = "pdao",
+            full: bool = False
     ):
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 
         if dao_name == "pdao":
             dao = ProtocolDAO()
-            embed = self.get_pdao_votes_embed(dao)
+            embed = self.get_pdao_votes_embed(dao, full)
         else:
             dao = DefaultDAO({
                 "odao": "rocketDAONodeTrustedProposals",
                 "security council": "rocketDAOSecurityProposals"
             }[dao_name])
-            embed = self.get_dao_votes_embed(dao)
+            embed = self.get_dao_votes_embed(dao, full)
 
         await ctx.send(embed=embed)
 
