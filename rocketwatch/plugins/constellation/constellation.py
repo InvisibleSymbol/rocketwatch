@@ -106,9 +106,9 @@ class Constellation(Cog):
         embed.add_field(name="", value="", inline=False)
         embed.add_field(name="Protocol TVL", value="", inline=False)
         embed.add_field(name="", value=el_explorer_url(xreth_address, name=" xrETH"))
-        embed.add_field(name="", value=el_explorer_url(xrpl_address, name=" xRPL"))
-        embed.add_field(name="", value="")
         embed.add_field(name="", value=f"{tvl_eth:,.2f} ETH")
+        embed.add_field(name="", value="")
+        embed.add_field(name="", value=el_explorer_url(xrpl_address, name=" xRPL"))
         embed.add_field(name="", value=f"{tvl_rpl:,.2f} RPL")
         embed.add_field(name="", value="")
 
