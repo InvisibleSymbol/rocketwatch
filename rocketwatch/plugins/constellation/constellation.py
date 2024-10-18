@@ -3,14 +3,13 @@ import datetime
 import humanize
 
 from discord.ext.commands import Cog, Context, hybrid_command
-from motor.motor_asyncio import AsyncIOMotorClient
 
-from utils.cfg import cfg
-from utils.embeds import Embed, el_explorer_url
-from utils.visibility import is_hidden_weak
-from utils.rocketpool import rp
 from utils import solidity
+from utils.cfg import cfg
 from utils.shared_w3 import w3
+from utils.rocketpool import rp
+from utils.visibility import is_hidden_weak
+from utils.embeds import Embed, el_explorer_url
 
 
 log = logging.getLogger("constellation")
@@ -20,7 +19,6 @@ log.setLevel(cfg["log_level"])
 class Constellation(Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def constellation(self, ctx: Context):
