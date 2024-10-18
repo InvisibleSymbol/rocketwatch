@@ -49,8 +49,21 @@ class RocketPool:
         except Exception as err:
             log.error(f"Failed to initialize Web3Multicall: {err}")
             self.multicall = None
-        for name, address in cfg["rocketpool.manual_addresses"].items():
+        self._init_contract_addresses()
+
+    def _init_contract_addresses(self) -> None:
+        manual_addresses = cfg["rocketpool.manual_addresses"]
+        for name, address in manual_addresses.items():
             self.addresses[name] = address
+
+        cs_dir, cs_prefix = "ConstellationDirectory", "Constellation"
+        self.addresses |= {
+            f"{cs_prefix}.SuperNodeAccount": self.call(f"{cs_dir}.getSuperNodeAddress"),
+            f"{cs_prefix}.OperatorDistributor": self.call(f"{cs_dir}.getOperatorDistributorAddress"),
+            f"{cs_prefix}.Whitelist": self.call(f"{cs_dir}.getWhitelistAddress"),
+            f"{cs_prefix}.xrETH": self.call(f"{cs_dir}.getWETHVaultAddress"),
+            f"{cs_prefix}.xRPL": self.call(f"{cs_dir}.getRPLVaultAddress")
+        }
 
     def seth_sig(self, abi, function_name):
         # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
@@ -129,13 +142,18 @@ class RocketPool:
 
     @cached(cache=CONTRACT_CACHE)
     def assemble_contract(self, name, address=None, historical=False, mainnet=False):
-        abi = None
+        if name.startswith("Constellation."):
+            short_name = name.removeprefix("Constellation.")
+            abi_path = f"./contracts/constellation/{short_name}.abi.json"
+        else:
+            abi_path = f"./contracts/{name}.abi.json"
 
-        if os.path.exists(f"./contracts/{name}.abi.json"):
-            with open(f"./contracts/{name}.abi.json", "r") as f:
+        if os.path.exists(abi_path):
+            with open(abi_path, "r") as f:
                 abi = f.read()
-        if not abi:
+        else:
             abi = self.get_abi_by_name(name)
+
         if mainnet:
             return mainnet_w3.eth.contract(address=address, abi=abi)
         if historical:
@@ -158,19 +176,13 @@ class RocketPool:
 
     def estimate_gas_for_call(self, path, *args, block="latest"):
         log.debug(f"Estimating gas for {path} (block={block})")
-        parts = path.split(".")
-        if len(parts) != 2:
-            raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
-        name, function = parts
+        name, function = path.rsplit(".", 1)
         contract = self.get_contract_by_name(name)
         return contract.functions[function](*args).estimateGas({"gas": 2 ** 32},
                                                                block_identifier=block)
 
     def get_function(self, path, *args, historical=False, address=None, mainnet=False):
-        parts = path.split(".")
-        if len(parts) != 2:
-            raise Exception(f"Invalid contract path: Invalid part count: have {len(parts)}, want 2")
-        name, function = parts
+        name, function = path.rsplit(".", 1)
         if not address:
             address = self.get_address_by_name(name)
         contract = self.assemble_contract(name, address, historical, mainnet)

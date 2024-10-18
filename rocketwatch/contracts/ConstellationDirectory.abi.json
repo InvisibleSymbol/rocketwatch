@@ -1,0 +1,1313 @@
+[
+    {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "previousAdmin",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAdmin",
+                "type": "address"
+            }
+        ],
+        "name": "AdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "whitelist",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "wethVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rplVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "operatorDistributor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "merkleClaimStreamer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "oracle",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFetcher",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "superNode",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rocketStorage",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "weth",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sanctions",
+                        "type": "address"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct Protocol",
+                "name": "oldProtocol",
+                "type": "tuple"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "whitelist",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "wethVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rplVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "operatorDistributor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "merkleClaimStreamer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "oracle",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFetcher",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "superNode",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rocketStorage",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "weth",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sanctions",
+                        "type": "address"
+                    }
+                ],
+                "indexed": false,
+                "internalType": "struct Protocol",
+                "name": "newProtocol",
+                "type": "tuple"
+            }
+        ],
+        "name": "AllContractAddressesChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "beacon",
+                "type": "address"
+            }
+        ],
+        "name": "BeaconUpgraded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint8",
+                "name": "version",
+                "type": "uint8"
+            }
+        ],
+        "name": "Initialized",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAddress",
+                "type": "address"
+            }
+        ],
+        "name": "OperatorRewardAddressChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAddress",
+                "type": "address"
+            }
+        ],
+        "name": "OracleAddressChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "previousAdminRole",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "newAdminRole",
+                "type": "bytes32"
+            }
+        ],
+        "name": "RoleAdminChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleGranted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "sender",
+                "type": "address"
+            }
+        ],
+        "name": "RoleRevoked",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "eoa_origin",
+                "type": "address"
+            }
+        ],
+        "name": "SanctionViolation",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "eoa_origin",
+                "type": "address"
+            }
+        ],
+        "name": "SanctionViolationSingleOrigin",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "oldValue",
+                "type": "bool"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "newValue",
+                "type": "bool"
+            }
+        ],
+        "name": "SanctionsEnabledChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newAddress",
+                "type": "address"
+            }
+        ],
+        "name": "TreasuryAddressChanged",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "implementation",
+                "type": "address"
+            }
+        ],
+        "name": "Upgraded",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "DEFAULT_ADMIN_ROLE",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getImplementation",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getMerkleClaimStreamerAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getOperatorDistributorAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getOperatorRewardAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getOracleAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getPriceFetcherAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getProtocol",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "whitelist",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "wethVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rplVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "operatorDistributor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "merkleClaimStreamer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "oracle",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFetcher",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "superNode",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rocketStorage",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "weth",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sanctions",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct Protocol",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRPLAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRPLVaultAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketDAOProtocolProposalAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketDAOProtocolSettingsMinipool",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketDAOProtocolSettingsRewardsAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketDepositPoolAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketMerkleDistributorMainnetAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketMinipoolManagerAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNetworkPenalties",
+        "outputs": [
+            {
+                "internalType": "contract IRocketNetworkPenalties",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNetworkPrices",
+        "outputs": [
+            {
+                "internalType": "contract IRocketNetworkPrices",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNetworkVotingAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNodeDepositAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNodeManagerAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketNodeStakingAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "_tag",
+                "type": "string"
+            }
+        ],
+        "name": "getRocketPoolAddressByTag",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRocketStorageAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRoleAdmin",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getSanctionsAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getSanctionsEnabled",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getSuperNodeAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getTreasuryAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getWETHAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getWETHVaultAddress",
+        "outputs": [
+            {
+                "internalType": "address payable",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getWhitelistAddress",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "grantRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "hasRole",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "whitelist",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "wethVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rplVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "operatorDistributor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "merkleClaimStreamer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "oracle",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFetcher",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "superNode",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rocketStorage",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "weth",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sanctions",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct Protocol",
+                "name": "newProtocol",
+                "type": "tuple"
+            },
+            {
+                "internalType": "address payable",
+                "name": "operatorReward",
+                "type": "address"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "admin",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "treasurer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "treasury",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "timelockShort",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "timelockMed",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "timelockLong",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "adminServer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "adminOracle",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct Governance",
+                "name": "governance",
+                "type": "tuple"
+            }
+        ],
+        "name": "initialize",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_account1",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_account2",
+                "type": "address"
+            }
+        ],
+        "name": "isSanctioned",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "_accounts",
+                "type": "address[]"
+            }
+        ],
+        "name": "isSanctioned",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_account",
+                "type": "address"
+            }
+        ],
+        "name": "isSanctioned",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "proxiableUUID",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "renounceRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "role",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "revokeRole",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "whitelist",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "wethVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rplVault",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "operatorDistributor",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "merkleClaimStreamer",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "oracle",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "priceFetcher",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "superNode",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "rocketStorage",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address payable",
+                        "name": "weth",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "sanctions",
+                        "type": "address"
+                    }
+                ],
+                "internalType": "struct Protocol",
+                "name": "newProtocol",
+                "type": "tuple"
+            }
+        ],
+        "name": "setAll",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address payable",
+                "name": "newOperatorRewards",
+                "type": "address"
+            }
+        ],
+        "name": "setOperatorRewards",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "contract IConstellationOracle",
+                "name": "newOracle",
+                "type": "address"
+            }
+        ],
+        "name": "setOracle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bool",
+                "name": "newValue",
+                "type": "bool"
+            }
+        ],
+        "name": "setSanctionsEnabled",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address payable",
+                "name": "newTreasury",
+                "type": "address"
+            }
+        ],
+        "name": "setTreasury",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes4",
+                "name": "interfaceId",
+                "type": "bytes4"
+            }
+        ],
+        "name": "supportsInterface",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newImplementation",
+                "type": "address"
+            }
+        ],
+        "name": "upgradeTo",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newImplementation",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "data",
+                "type": "bytes"
+            }
+        ],
+        "name": "upgradeToAndCall",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+]
