@@ -19,6 +19,8 @@ log.setLevel(cfg["log_level"])
 class Constellation(Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.num_operators = 0
+        self.last_block = 0
 
     @hybrid_command()
     async def constellation(self, ctx: Context):
@@ -36,6 +38,7 @@ class Constellation(Cog):
                 supernode_contract.functions.getEthMatched(),
                 supernode_contract.functions.getRplStaked(),
                 supernode_contract.functions.bond(),
+                supernode_contract.functions.maxValidators(),
                 distributor_contract.functions.getTvlEth(),
                 distributor_contract.functions.getTvlRpl(),
                 distributor_contract.functions.minimumStakeRatio()
@@ -47,6 +50,18 @@ class Constellation(Cog):
         eth_matched: int = solidity.to_int(info_calls["getEthMatched"])
         rpl_staked: float = solidity.to_float(info_calls["getRplStaked"])
         eth_bond: int = solidity.to_int(info_calls["bond"])
+        max_validators: int = info_calls["maxValidators"]
+
+        # update operator count
+        from_b, to_b = self.last_block, w3.eth.get_block('latest').number
+        whitelist_contract = rp.get_contract_by_name("Constellation.Whitelist")
+        self.num_operators += len(whitelist_contract.events.OperatorAdded().getLogs(fromBlock=from_b, toBlock=to_b))
+        self.num_operators -= len(whitelist_contract.events.OperatorRemoved().getLogs(fromBlock=from_b, toBlock=to_b))
+        for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=from_b, toBlock=to_b):
+            self.num_operators += len(event_log.args.operators)
+        for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=from_b, toBlock=to_b):
+            self.num_operators -= len(event_log.args.operators)
+        self.last_block = to_b + 1
 
         tvl_eth: float = solidity.to_float(info_calls["getTvlEth"])
         tvl_rpl: float = solidity.to_float(info_calls["getTvlRpl"])
@@ -77,40 +92,39 @@ class Constellation(Cog):
         embed.add_field(name="", value=el_explorer_url(supernode_contract.address, name=" Supernode"), inline=False)
 
         embed.add_field(name="Minipools", value=num_minipools)
-        embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:.2f}%")
-        embed.add_field(name="", value="")
-
+        embed.add_field(name="Operators", value=self.num_operators)
+        embed.add_field(name="MP Limit", value=max_validators)
         embed.add_field(name="ETH Stake", value=f"{eth_staked:,}")
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
-        embed.add_field(name="", value="")
+        embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:.2f}%")
 
-        embed.add_field(name="", value="", inline=False)
-        embed.add_field(name="Distributor Balances", value="", inline=False)
-        embed.add_field(name="", value=f"{balance_eth:,.2f} ETH")
-        embed.add_field(name="", value=f"{balance_rpl:,.2f} RPL")
-        embed.add_field(name="", value="")
-
-        if max_new_minipools > 0:
-            embed.add_field(name="", value=f"{max_new_minipools} new minipools can be created!", inline=False)
+        # yes, this is really unnecessary
+        if max_new_minipools == 1:
+            mp_creation_status = f"A new minipool can be created!"
+        elif max_new_minipools > 0:
+            mp_creation_status = f"`{max_new_minipools}` new minipools can be created!"
         elif max_minipools_eth > 0:
-            embed.add_field(name="", value="Insufficient RPL for new minipools.", inline=False)
+            mp_creation_status = "Not enough RPL for new minipools."
         elif max_minipools_rpl > 0:
-            embed.add_field(name="", value="Insufficient ETH for new minipools.", inline=False)
+            mp_creation_status = "Not enough ETH for new minipools."
         else:
-            embed.add_field(name="", value="Insufficient ETH and RPL for new minipools.", inline=False)
+            mp_creation_status = "Not enough ETH and RPL for new minipools."
 
+        embed.add_field(
+            name="Distributor Balances",
+            value=f"`{balance_eth:,.2f}` ETH\n"
+                  f"`{balance_rpl:,.2f}` RPL\n"
+                  f"{mp_creation_status}",
+            inline=False
+        )
         embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):.2f} gwei")
         embed.add_field(name="Break-Even", value=humanize.naturaldelta(break_even_time))
-        embed.add_field(name="", value="")
-
-        embed.add_field(name="", value="", inline=False)
-        embed.add_field(name="Protocol TVL", value="", inline=False)
-        embed.add_field(name="", value=el_explorer_url(xreth_address, name=" xrETH"))
-        embed.add_field(name="", value=f"{tvl_eth:,.2f} ETH")
-        embed.add_field(name="", value="")
-        embed.add_field(name="", value=el_explorer_url(xrpl_address, name=" xRPL"))
-        embed.add_field(name="", value=f"{tvl_rpl:,.2f} RPL")
-        embed.add_field(name="", value="")
+        embed.add_field(
+            name="Protocol TVL",
+            value=f"{el_explorer_url(xreth_address, name=' xrETH')}:\t`{tvl_eth:,.2f}` ETH\n"
+                  f"{el_explorer_url(xrpl_address, name=' xRPL')}:\t`{tvl_rpl:,.2f}` RPL",
+            inline=False
+        )
 
         await ctx.send(embed=embed)
 
