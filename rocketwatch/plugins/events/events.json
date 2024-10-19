@@ -430,6 +430,19 @@
                     "name": "cs_operators_removed_event"
                 }
             ]
+        },
+        {
+            "contract_name": "Constellation.OperatorDistributor",
+            "events": [
+                {
+                    "event_name": "MinStakeRatioUpdated",
+                    "name": "cs_rpl_min_ratio_change_event"
+                },
+                {
+                    "event_name": "TargetStakeRatioUpdated",
+                    "name": "cs_rpl_target_ratio_change_event"
+                }
+            ]
         }
     ],
     "global": [

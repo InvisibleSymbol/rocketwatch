@@ -310,6 +310,9 @@ class QueuedEvents(Cog):
             args.newFee = 100 * solidity.to_float(args.newValue)
         elif event_name.startswith("cs_operators"):
             args.operatorList = "\n".join([el_explorer_url(address) for address in args.operators])
+        elif event_name in ["cs_rpl_min_ratio_change_event", "cs_rpl_target_ratio_change_event"]:
+            args.oldRatio = 100 * solidity.to_float(args.oldValue)
+            args.newRatio = 100 * solidity.to_float(args.newValue)
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
