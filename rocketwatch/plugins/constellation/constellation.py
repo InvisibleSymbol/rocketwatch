@@ -121,8 +121,8 @@ class Constellation(Cog):
         embed.add_field(name="Break-Even", value=humanize.naturaldelta(break_even_time))
         embed.add_field(
             name="Protocol TVL",
-            value=f"{el_explorer_url(xreth_address, name=' xrETH')}:\t`{tvl_eth:,.2f}` ETH\n"
-                  f"{el_explorer_url(xrpl_address, name=' xRPL')}:\t`{tvl_rpl:,.2f}` RPL",
+            value=f"{el_explorer_url(xreth_address, name=' xrETH')}: `{tvl_eth:,.2f}` ETH\n"
+                  f"{el_explorer_url(xrpl_address, name=' xRPL')}: `{tvl_rpl:,.2f}` RPL",
             inline=False
         )
 
