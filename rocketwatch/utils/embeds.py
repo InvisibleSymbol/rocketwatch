@@ -240,16 +240,19 @@ def assemble(args):
         e.colour = Color.from_rgb(86, 235, 235)
 
     # do this here before the amounts are converted to a string
-    if "pool_deposit" in args.event_name and args.get("amount" if "ethAmount" not in args else "ethAmount", 0) >= 1000:
+    amount = args.get("amount") or args.get("ethAmount", 0)
+    # raise Exception(str((args, args.assets, args.event_name)))
+    if (
+            ("pool_deposit" in args.event_name and amount >= 1000) or
+            (args.event_name == "eth_deposit_event" and amount >= 500) or
+            (args.event_name == "cs_deposit_eth_event" and args.assets >= 500)
+    ):
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
-
-    if "_slash_" in args.event_name or "finality_delay_event" in args.event_name:
+    elif "_slash_" in args.event_name or "finality_delay_event" in args.event_name:
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
-
-    if "_proposal_smoothie_" in args.event_name:
+    elif "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")
-
-    if "sdao_member_kick_multi" in args.event_name:
+    elif "sdao_member_kick_multi" in args.event_name:
         e.set_image(url="https://media1.tenor.com/m/Xuv3IEoH1a4AAAAC/youre-fired-donald-trump.gif")
 
     match args.event_name:
@@ -262,7 +265,6 @@ def assemble(args):
         case "houston_hotfix_upgrade_triggered":
             e.set_image(url="https://i.imgur.com/JcQS3Sh.png")
 
-    amount = args.get("amount") or args.get("ethAmount", 0)
     match args.event_name:
         case "pdao_set_delegate":
             use_large = (args.votingPower >= 250)
@@ -271,9 +273,9 @@ def assemble(args):
         case "rpl_stake_event":
             use_large = (amount >= ((3 * 2.4) / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))))
         case "cs_deposit_eth_event" | "cs_withdraw_eth_event":
-            use_large = (args["assets"] >= 8)
+            use_large = (args["assets"] >= 32)
         case "cs_deposit_rpl_event" | "cs_withdraw_rpl_event":
-            use_large = (args["assets"] >= 4 / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
+            use_large = (args["assets"] >= 16 / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         case _:
             use_large = (amount >= 100)
 
