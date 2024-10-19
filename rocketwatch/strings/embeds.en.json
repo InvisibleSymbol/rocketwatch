@@ -495,5 +495,53 @@
     "finality_delay_recover_event": {
         "title": ":tada: Finality Recovered",
         "description": "Finality has been recovered on the Beacon Chain!"
+    },
+    "cs_max_validator_increase_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: Validator Limit Increased",
+        "description": "The minipool limit per operator increased from **%{oldValue}** to **%{newValue}**!"
+    },
+    "cs_max_validator_decrease_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: Validator Limit Decreased",
+        "description": "The minipool limit per operator decreased from **%{oldValue}** to **%{newValue}**!"
+    },
+    "cs_eth_treasury_fee_change_event": {
+        "title": "<:nodeset:1079540216370569226> xrETH Treasury Fee Changed",
+        "description": "xrETH treasury fee changed from **%{oldValue}%** to **%{oldValue}%**!"
+    },
+    "cs_eth_no_fee_change_event": {
+        "title": "<:nodeset:1079540216370569226> xrETH Operator Fee Changed",
+        "description": "xrETH node operator fee changed from **%{oldValue}%** to **%{oldValue}%**!"
+    },
+    "cs_deposit_eth_event": {
+        "title": "<:nodeset:1079540216370569226> xrETH Deposit",
+        "description": "**%{shares} xrETH** minted from **%{assets} ETH**!",
+        "description_small": "<:nodeset:1079540216370569226> %{sender} minted **%{shares} xrETH** from **%{assets} ETH**!"
+    },
+    "cs_withdraw_eth_event": {
+        "title": "<:nodeset:1079540216370569226> xrETH Withdrawal",
+        "description": "**%{shares} xrETH** burned for **%{assets} ETH**!",
+        "description_small": "<:nodeset:1079540216370569226> %{sender} burned **%{shares} xrETH** for **%{assets} ETH**!"
+    },
+    "cs_rpl_treasury_fee_change_event": {
+        "title": "<:nodeset:1079540216370569226> xRPL Treasury Fee Changed",
+        "description": "xRPL treasury fee changed from **%{oldFee}%** to **%{newFee}%**!"
+    },
+    "cs_deposit_rpl_event": {
+        "title": "<:nodeset:1079540216370569226> xRPL Deposit",
+        "description": "**%{shares} xRPL** minted from **%{assets} RPL**!",
+        "description_small": "<:nodeset:1079540216370569226> %{sender} minted **%{shares} xRPL** from **%{assets} RPL**!"
+    },
+    "cs_withdraw_rpl_event": {
+        "title": "<:nodeset:1079540216370569226> xRPL Withdrawal",
+        "description": "**%{shares} xRPL** burned for **%{assets} RPL**!",
+        "description_small": "<:nodeset:1079540216370569226> %{sender} burned **%{shares} xRPL** for **%{assets} RPL**!"
+    },
+    "cs_operator_added_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: New Operator",
+        "description": "%{address} registered as a node operator for Constellation!"
+    },
+    "cs_operator_removed_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: Operator Removed",
+        "description": "%{address} has been removed from Constellation as a node operator!"
     }
 }

@@ -24,8 +24,8 @@ class Constellation(Cog):
     async def constellation(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
-        xreth_address: str = rp.get_address_by_name("Constellation.xrETH")
-        xrpl_address: str = rp.get_address_by_name("Constellation.xRPL")
+        xreth_address: str = rp.get_address_by_name("Constellation.ETHVault")
+        xrpl_address: str = rp.get_address_by_name("Constellation.RPLVault")
 
         supernode_contract = rp.get_contract_by_name("Constellation.SuperNodeAccount")
         distributor_contract = rp.get_contract_by_name("Constellation.OperatorDistributor")

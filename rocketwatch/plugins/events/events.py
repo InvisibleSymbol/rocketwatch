@@ -287,6 +287,22 @@ class QueuedEvents(Cog):
             "sdao_member_request_leave_event"
         ]:
             args.nodeAddress = el_explorer_url(args.nodeAddress, block=(event.blockNumber - 1))
+        elif event_name.startswith("cs_deposit") or event_name.startswith("cs_withdraw"):
+            args.assets = solidity.to_float(args.assets)
+            args.shares = solidity.to_float(args.shares)
+        elif event_name == "cs_max_validator_change_event":
+            if args.newValue > args.oldValue:
+                event_name = event_name.replace("change", "increase")
+            elif args.newValue < args.oldValue:
+                event_name = event_name.replace("change", "decrease")
+        elif event_name == "cs_operator_added_event":
+            args.address = w3.eth.get_transaction_receipt(event.transactionHash)["from"]
+        elif event_name == "cs_rpl_treasury_fee_change_event":
+            args.oldFee = solidity.to_float(args.oldFee)
+            args.newFee = solidity.to_float(args.newFee)
+        elif event_name in ["cs_eth_treasury_fee_change_event", "cs_eth_no_fee_change_event"]:
+            args.oldValue = solidity.to_float(args.oldValue)
+            args.newValue = solidity.to_float(args.newValue)
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))
