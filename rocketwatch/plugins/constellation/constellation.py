@@ -89,8 +89,11 @@ class Constellation(Cog):
         break_even_time = datetime.timedelta(days=round(deployment_cost_wei / daily_income_wei))
 
         embed = Embed(title="Gravita Constellation")
-        embed.add_field(name="", value=el_explorer_url(supernode_contract.address, name=" Supernode"), inline=False)
-
+        embed.add_field(
+            name="Node Address",
+            value=el_explorer_url(supernode_contract.address, name=" Supernode"),
+            inline=False
+        )
         embed.add_field(name="Minipools", value=num_minipools)
         embed.add_field(name="Operators", value=self.num_operators)
         embed.add_field(name="MP Limit", value=max_validators)
