@@ -242,11 +242,11 @@ def assemble(args):
     # do this here before the amounts are converted to a string
     amount = args.get("amount") or args.get("ethAmount", 0)
     # raise Exception(str((args, args.assets, args.event_name)))
-    if (
-            ("pool_deposit" in args.event_name and amount >= 1000) or
-            (args.event_name == "eth_deposit_event" and amount >= 500) or
+    if any((
+            ("pool_deposit" in args.event_name and amount >= 1000),
+            (args.event_name == "eth_deposit_event" and amount >= 500),
             (args.event_name == "cs_deposit_eth_event" and args.assets >= 500)
-    ):
+    )):
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
     elif "_slash_" in args.event_name or "finality_delay_event" in args.event_name:
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
