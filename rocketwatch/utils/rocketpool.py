@@ -61,8 +61,8 @@ class RocketPool:
             f"{cs_prefix}.SuperNodeAccount": self.call(f"{cs_dir}.getSuperNodeAddress"),
             f"{cs_prefix}.OperatorDistributor": self.call(f"{cs_dir}.getOperatorDistributorAddress"),
             f"{cs_prefix}.Whitelist": self.call(f"{cs_dir}.getWhitelistAddress"),
-            f"{cs_prefix}.xrETH": self.call(f"{cs_dir}.getWETHVaultAddress"),
-            f"{cs_prefix}.xRPL": self.call(f"{cs_dir}.getRPLVaultAddress")
+            f"{cs_prefix}.ETHVault": self.call(f"{cs_dir}.getWETHVaultAddress"),
+            f"{cs_prefix}.RPLVault": self.call(f"{cs_dir}.getRPLVaultAddress")
         }
 
     def seth_sig(self, abi, function_name):

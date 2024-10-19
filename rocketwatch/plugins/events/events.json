@@ -358,6 +358,78 @@
                     "name": "pdao_spend_treasury_recurring_claim_event"
                 }
             ]
+        },
+        {
+            "contract_name": "Constellation.SuperNodeAccount",
+            "events": [
+                {
+                    "event_name": "MaxValidatorsChanged",
+                    "name": "cs_max_validator_change_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "Constellation.ETHVault",
+            "events": [
+                {
+                    "event_name": "TreasuryFeeChanged",
+                    "name": "cs_eth_treasury_fee_change_event"
+                },
+                {
+                    "event_name": "NodeOperatorFeeChanged",
+                    "name": "cs_eth_no_fee_change_event"
+                },
+                {
+                    "event_name": "MintFeeChanged",
+                    "name": "cs_eth_mint_fee_change_event"
+                },
+                {
+                    "event_name": "Deposit",
+                    "name": "cs_deposit_eth_event"
+                },
+                {
+                    "event_name": "Withdraw",
+                    "name": "cs_withdraw_eth_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "Constellation.RPLVault",
+            "events": [
+                {
+                    "event_name": "TreasuryFeeChanged",
+                    "name": "cs_rpl_treasury_fee_change_event"
+                },
+                {
+                    "event_name": "Deposit",
+                    "name": "cs_deposit_rpl_event"
+                },
+                {
+                    "event_name": "Withdraw",
+                    "name": "cs_withdraw_rpl_event"
+                }
+            ]
+        },
+        {
+            "contract_name": "Constellation.Whitelist",
+            "events": [
+                {
+                    "event_name": "OperatorAdded",
+                    "name": "cs_operator_added_event"
+                },
+                {
+                    "event_name": "OperatorsAdded",
+                    "name": "cs_operators_added_event"
+                },
+                {
+                    "event_name": "OperatorRemoved",
+                    "name": "cs_operator_removed_event"
+                },
+                {
+                    "event_name": "OperatorsRemoved",
+                    "name": "cs_operators_removed_event"
+                }
+            ]
         }
     ],
     "global": [

@@ -169,10 +169,6 @@ class PatchesAPI(commands.Cog):
         x_max = max(rpl_stake * 2, actual_rpl_stake * 5)
         ax.set_xlim((x_min, x_max))
 
-        y_min = min(rewards_at(x_min, borrowed_eth), rewards_at(x_min, actual_borrowed_eth))
-        y_max = max(rewards_at(x_max, borrowed_eth), rewards_at(x_max, actual_borrowed_eth))
-        ax.set_ylim((y_min, y_max))
-
         cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
         sim_color, sim_label, sim_ls = "darkred", "simulated", "dashed"
 
@@ -217,6 +213,10 @@ class PatchesAPI(commands.Cog):
         ax.set_xlabel("rpl stake")
         ax.set_ylabel("rewards")
         ax.xaxis.set_major_formatter(formatter)
+
+        y_min = min(rewards_at(x_min, borrowed_eth), rewards_at(x_min, actual_borrowed_eth))
+        _, y_max = ax.get_ylim()
+        ax.set_ylim((y_min, y_max))
 
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))

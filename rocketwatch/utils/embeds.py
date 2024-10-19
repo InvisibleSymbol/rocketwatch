@@ -269,14 +269,18 @@ def assemble(args):
         case "eth_deposit_event":
             use_large = (amount >= 32)
         case "rpl_stake_event":
-            use_large = (amount >= ((3* 2.4) / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))))
+            use_large = (amount >= ((3 * 2.4) / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))))
+        case "cs_deposit_eth_event" | "cs_withdraw_eth_event":
+            use_large = (args["assets"] >= 8)
+        case "cs_deposit_rpl_event" | "cs_withdraw_rpl_event":
+            use_large = (args["assets"] >= 4 / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
         case _:
             use_large = (amount >= 100)
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
-               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate", "votingpower"]):
+               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate", "votingpower", "assets", "shares"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
