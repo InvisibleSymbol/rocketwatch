@@ -98,11 +98,9 @@ class Constellation(Cog):
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
         embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:.2f}%")
 
-        # yes, this is really unnecessary
-        if max_new_minipools == 1:
-            mp_creation_status = f"A new minipool can be created!"
-        elif max_new_minipools > 0:
-            mp_creation_status = f"`{max_new_minipools}` new minipools can be created!"
+        # yes, it's really unnecessary to be this specific
+        if max_new_minipools > 0:
+            mp_creation_status = f"`{max_new_minipools}` new minipool(s) can be created!"
         elif max_minipools_eth > 0:
             mp_creation_status = "Not enough RPL for new minipools."
         elif max_minipools_rpl > 0:
