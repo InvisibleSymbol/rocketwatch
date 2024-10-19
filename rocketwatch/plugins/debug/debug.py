@@ -394,6 +394,21 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
+    async def fix_fuckup_6(self, ctx: Context, message_id: str):
+        """
+        Fix fuckup #6: inaccessible emote for Constellation events
+        """
+        await ctx.defer(ephemeral=True)
+        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
+        msg = await channel.fetch_message(message_id)
+        e = msg.embeds[0]
+        e.title = e.title.replace(":nodeset:", "<:nodeset:1297235812278341653>")
+        await msg.edit(embed=e)
+        await ctx.send("Done")
+
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
     async def talk(self, ctx: Context, channel: str, message: str):
         """
         Send a message to a channel.
