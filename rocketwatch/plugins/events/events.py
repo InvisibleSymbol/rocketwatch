@@ -291,18 +291,25 @@ class QueuedEvents(Cog):
             args.assets = solidity.to_float(args.assets)
             args.shares = solidity.to_float(args.shares)
         elif event_name == "cs_max_validator_change_event":
-            if args.newValue > args.oldValue:
+            args.oldLimit, args.newLimit = args.oldValue, args.newValue
+            if args.newLimit > args.oldLimit:
                 event_name = event_name.replace("change", "increase")
-            elif args.newValue < args.oldValue:
+            elif args.newLimit < args.oldLimit:
                 event_name = event_name.replace("change", "decrease")
         elif event_name == "cs_operator_added_event":
             args.address = w3.eth.get_transaction_receipt(event.transactionHash)["from"]
         elif event_name == "cs_rpl_treasury_fee_change_event":
-            args.oldFee = solidity.to_float(args.oldFee)
-            args.newFee = solidity.to_float(args.newFee)
-        elif event_name in ["cs_eth_treasury_fee_change_event", "cs_eth_no_fee_change_event"]:
-            args.oldValue = solidity.to_float(args.oldValue)
-            args.newValue = solidity.to_float(args.newValue)
+            args.oldFee = 100 * solidity.to_float(args.oldFee)
+            args.newFee = 100 * solidity.to_float(args.newFee)
+        elif "event_name" in [
+            "cs_eth_treasury_fee_change_event",
+            "cs_eth_no_fee_change_event",
+            "cs_eth_mint_fee_change_event"
+        ]:
+            args.oldFee = 100 * solidity.to_float(args.oldValue)
+            args.newFee = 100 * solidity.to_float(args.newValue)
+        elif event_name.startswith("cs_operators"):
+            args.operatorList = "\n".join([el_explorer_url(address) for address in args.operators])
 
         if "submission" in args:
             args.submission = aDict(dict(zip(SUBMISSION_KEYS, args.submission)))

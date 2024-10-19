@@ -498,19 +498,23 @@
     },
     "cs_max_validator_increase_event": {
         "title": "<:nodeset:1079540216370569226> Constellation: Validator Limit Increased",
-        "description": "The minipool limit per operator increased from **%{oldValue}** to **%{newValue}**!"
+        "description": "The minipool limit per operator increased from **%{oldLimit}** to **%{newLimit}**!"
     },
     "cs_max_validator_decrease_event": {
         "title": "<:nodeset:1079540216370569226> Constellation: Validator Limit Decreased",
-        "description": "The minipool limit per operator decreased from **%{oldValue}** to **%{newValue}**!"
+        "description": "The minipool limit per operator decreased from **%{oldLimit}** to **%{newLimit}**!"
     },
     "cs_eth_treasury_fee_change_event": {
         "title": "<:nodeset:1079540216370569226> xrETH Treasury Fee Changed",
-        "description": "xrETH treasury fee changed from **%{oldValue}%** to **%{oldValue}%**!"
+        "description": "The xrETH treasury fee has been changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_eth_no_fee_change_event": {
         "title": "<:nodeset:1079540216370569226> xrETH Operator Fee Changed",
-        "description": "xrETH node operator fee changed from **%{oldValue}%** to **%{oldValue}%**!"
+        "description": "The xrETH node operator fee has changed from **%{oldFee}%** to **%{newFee}%**!"
+    },
+    "cs_eth_mint_fee_change_event": {
+        "title": "<:nodeset:1079540216370569226> xrETH Mint Fee Changed",
+        "description": "The xrETH mint fee has changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_deposit_eth_event": {
         "title": "<:nodeset:1079540216370569226> xrETH Deposit",
@@ -524,7 +528,7 @@
     },
     "cs_rpl_treasury_fee_change_event": {
         "title": "<:nodeset:1079540216370569226> xRPL Treasury Fee Changed",
-        "description": "xRPL treasury fee changed from **%{oldFee}%** to **%{newFee}%**!"
+        "description": "The xRPL treasury fee has been changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_deposit_rpl_event": {
         "title": "<:nodeset:1079540216370569226> xRPL Deposit",
@@ -540,8 +544,16 @@
         "title": "<:nodeset:1079540216370569226> Constellation: New Operator",
         "description": "%{address} registered as a node operator for Constellation!"
     },
+    "cs_operators_added_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: New Operators",
+        "description": "%{operatorList}"
+    },
     "cs_operator_removed_event": {
         "title": "<:nodeset:1079540216370569226> Constellation: Operator Removed",
-        "description": "%{address} has been removed from Constellation as a node operator!"
+        "description": "%{address} has been removed as a node operator!"
+    },
+    "cs_operators_removed_event": {
+        "title": "<:nodeset:1079540216370569226> Constellation: Operators Removed",
+        "description": "%{operatorList}"
     }
 }
