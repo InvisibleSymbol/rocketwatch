@@ -1,6 +1,4 @@
 import logging
-import datetime
-import humanize
 
 from discord.ext.commands import Cog, Context, hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -123,7 +121,7 @@ class Constellation(Cog):
         gas_price_wei: int = w3.eth.gas_price
         deployment_cost_wei: int = deployment_gas * max(0, gas_price_wei - 5_000_000_000)
         daily_income_wei: int = round((32 - eth_bond) * 1e18 * solo_apr * operator_commission / 365)
-        break_even_time = datetime.timedelta(days=round(deployment_cost_wei / daily_income_wei))
+        break_even_days: int = round(deployment_cost_wei / daily_income_wei)
 
         embed = Embed(title="Gravita Constellation")
         embed.add_field(
@@ -136,7 +134,7 @@ class Constellation(Cog):
         embed.add_field(name="MP Limit", value=max_validators)
         embed.add_field(name="ETH Stake", value=f"{eth_staked:,}")
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
-        embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:.2f}%")
+        embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:,.2f}%")
 
         # yes, it's really unnecessary to be this specific
         if max_new_minipools > 0:
@@ -155,8 +153,8 @@ class Constellation(Cog):
                   f"{mp_creation_status}",
             inline=False
         )
-        embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):.2f} gwei")
-        embed.add_field(name="Break-Even", value=humanize.naturaldelta(break_even_time))
+        embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):,.2f} gwei")
+        embed.add_field(name="Break-Even", value=f"{break_even_days:,} days")
         embed.add_field(
             name="Protocol TVL",
             value=f"{el_explorer_url(xreth_address, name=' xrETH')}: `{tvl_eth:,.2f}` ETH\n"
