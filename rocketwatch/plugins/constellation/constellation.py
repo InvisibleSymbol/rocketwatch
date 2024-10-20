@@ -20,7 +20,7 @@ class Constellation(Cog):
     def __init__(self, bot):
         self.bot = bot
         self.num_operators = 0
-        self.last_block = 0
+        self.last_block = 20946651  # contract deployment
 
     @hybrid_command()
     async def constellation(self, ctx: Context):
