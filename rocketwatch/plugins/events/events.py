@@ -134,7 +134,7 @@ class QueuedEvents(Cog):
 
         # while we are at it add the sender address, so it shows up
         event.args["from"] = receipt["from"]
-        if rp.get_name_by_address(receipt["to"]) is None:
+        if (n := rp.get_name_by_address(receipt["to"])) is None or not n.startswith("rocket"):
             event.args["from"] = receipt["to"]
             event.args["caller"] = receipt["from"]
 
