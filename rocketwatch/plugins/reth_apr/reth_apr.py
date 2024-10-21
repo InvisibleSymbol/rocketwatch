@@ -236,8 +236,8 @@ class RETHAPR(commands.Cog):
         old_formatter = plt.gca().xaxis.get_major_formatter()
         plt.gca().xaxis.set_major_formatter(DateFormatter("%b %d"))
 
-        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
-        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.1%}".format(x)))
+        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.1%}".format(x)))
         ax1.set_ylabel("Effectiveness")
         ax2.set_ylabel("APR")
         ax1.set_ylim(top=1)
@@ -415,7 +415,7 @@ class RETHAPR(commands.Cog):
         old_formatter = plt.gca().xaxis.get_major_formatter()
         plt.gca().xaxis.set_major_formatter(DateFormatter("%m.%d"))
 
-        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.0%}".format(x)))
+        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: "{:.1%}".format(x)))
         ax1.legend(loc="lower left")
 
         img = BytesIO()
