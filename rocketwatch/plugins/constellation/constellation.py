@@ -115,11 +115,11 @@ class Constellation(Cog):
         max_new_minipools: int = max(0, int(min(max_minipools_eth, max_minipools_rpl)))
 
         # break-even time for new minipools
-        operator_commission: float = 0.07
         solo_apr: float = 0.033
         deployment_gas: int = 2_300_000
         gas_price_wei: int = w3.eth.gas_price
         deployment_cost_wei: int = deployment_gas * max(0, gas_price_wei - 5_000_000_000)
+        operator_commission: float = (0.1 + 0.04 * min(1.0, rpl_stake_pct / 10)) / 2
         daily_income_wei: int = round((32 - eth_bond) * 1e18 * solo_apr * operator_commission / 365)
         break_even_days: int = round(deployment_cost_wei / daily_income_wei)
 
@@ -136,23 +136,21 @@ class Constellation(Cog):
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
         embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:,.2f}%")
 
-        # yes, it's really unnecessary to be this specific
+        balances_fmt: list[str] = [f"`{balance_eth:,.2f}` ETH", f"`{balance_rpl:,.2f}` RPL"]
         if max_new_minipools > 0:
-            mp_creation_status = f"`{max_new_minipools}` new minipool(s) can be created!"
-        elif max_minipools_eth > 0:
-            mp_creation_status = "Not enough RPL for new minipools."
-        elif max_minipools_rpl > 0:
-            mp_creation_status = "Not enough ETH for new minipools."
+            balances_fmt.append(f"`{max_new_minipools}` new minipool(s) can be created!")
         else:
-            mp_creation_status = "Not enough ETH and RPL for new minipools."
+            if max_minipools_eth <= 0:
+                shortfall_eth: float = eth_bond - (balance_eth % eth_bond)
+                balances_fmt[0] += f" (`{shortfall_eth:,.2f}` short)"
+            if max_minipools_rpl <= 0:
+                new_eth_matched = eth_matched + 32 - eth_bond
+                new_rpl_required = new_eth_matched * min_rpl_stake_ratio / rpl_ratio
+                shortfall_rpl: float = new_rpl_required - rpl_staked - balance_rpl
+                balances_fmt[1] += f" (`{shortfall_rpl:,.2f}` short)"
+            balances_fmt.append("No new minipools can be created.")
 
-        embed.add_field(
-            name="Distributor Balances",
-            value=f"`{balance_eth:,.2f}` ETH\n"
-                  f"`{balance_rpl:,.2f}` RPL\n"
-                  f"{mp_creation_status}",
-            inline=False
-        )
+        embed.add_field(name="Distributor Balances", value="\n".join(balances_fmt), inline=False)
         embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):,.2f} gwei")
         embed.add_field(name="Break-Even", value=f"{break_even_days:,} days")
         embed.add_field(
