@@ -256,6 +256,8 @@ def assemble(args):
         e.set_image(url="https://media1.tenor.com/m/Xuv3IEoH1a4AAAAC/youre-fired-donald-trump.gif")
 
     match args.event_name:
+        case "cs_max_validator_increase_event":
+            e.set_image(url="https://media1.tenor.com/m/Yp6Yeiufb04AAAAd/piranhas-feeding.gif")
         case "redstone_upgrade_triggered":
             e.set_image(url="https://cdn.dribbble.com/users/187497/screenshots/2284528/media/123903807d334c15aa105b44f2bd9252.gif")
         case "atlas_upgrade_triggered":

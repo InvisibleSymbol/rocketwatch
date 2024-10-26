@@ -498,15 +498,15 @@
     },
     "cs_max_validator_increase_event": {
         "title": "<:nodeset:1297235812278341653> Constellation Validator Limit Increased",
-        "description": "The minipool limit for Constellation operators increased from **%{oldLimit}** to **%{newLimit}**!"
+        "description": "Constellation operators can now run **%{newLimit}** minipools!\n This is up from the previous limit of **%{oldLimit}**."
     },
     "cs_max_validator_decrease_event": {
         "title": "<:nodeset:1297235812278341653> Constellation Validator Limit Decreased",
-        "description": "The minipool limit for Constellation operators decreased from **%{oldLimit}** to **%{newLimit}**!"
+        "description": "Constellation operators are now limited to **%{newLimit}** minipools!\n This is down from the previous limit of **%{oldLimit}**."
     },
     "cs_eth_treasury_fee_change_event": {
         "title": "<:nodeset:1297235812278341653> xrETH Treasury Fee Changed",
-        "description": "The xrETH treasury fee has been changed from **%{oldFee}%** to **%{newFee}%**!"
+        "description": "The xrETH treasury fee has changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_eth_no_fee_change_event": {
         "title": "<:nodeset:1297235812278341653> xrETH Operator Fee Changed",
