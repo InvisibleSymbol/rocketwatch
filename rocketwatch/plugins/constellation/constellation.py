@@ -138,7 +138,7 @@ class Constellation(Cog):
         )
         embed.add_field(name="Minipools", value=num_minipools)
         embed.add_field(name="Operators", value=num_operators)
-        embed.add_field(name="MP Limit", value=max_validators)
+        embed.add_field(name="MP Limit", value=f"{max_validators} ({max_validators * num_operators:,})")
         embed.add_field(name="ETH Stake", value=f"{eth_staked:,}")
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
         embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:,.2f}%")
