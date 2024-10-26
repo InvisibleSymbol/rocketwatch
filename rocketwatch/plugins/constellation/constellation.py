@@ -1,4 +1,5 @@
 import logging
+import math
 
 from discord.ext.commands import Cog, Context, hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -69,9 +70,6 @@ class Constellation(Cog):
     async def constellation(self, ctx: Context):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
-        xreth_address: str = rp.get_address_by_name("Constellation.ETHVault")
-        xrpl_address: str = rp.get_address_by_name("Constellation.RPLVault")
-
         supernode_contract = rp.get_contract_by_name("Constellation.SuperNodeAccount")
         distributor_contract = rp.get_contract_by_name("Constellation.OperatorDistributor")
         info_calls: dict[str, int] = {
@@ -98,10 +96,15 @@ class Constellation(Cog):
         # update operator count
         num_operators: int = await self._fetch_num_operators()
 
-        tvl_eth: float = solidity.to_float(info_calls["getTvlEth"])
-        tvl_rpl: float = solidity.to_float(info_calls["getTvlRpl"])
-        min_rpl_stake_ratio: float = solidity.to_float(info_calls["minimumStakeRatio"])
+        vault_address_eth: str = rp.get_address_by_name("Constellation.ETHVault")
+        vault_balance_eth = rp.call("WETH.balanceOf", vault_address_eth)
+        tvl_eth: float = solidity.to_float(info_calls["getTvlEth"] + vault_balance_eth)
 
+        vault_address_rpl: str = rp.get_address_by_name("Constellation.RPLVault")
+        vault_balance_rpl = rp.call("rocketTokenRPL.balanceOf", vault_address_rpl)
+        tvl_rpl: float = solidity.to_float(info_calls["getTvlRpl"] + vault_balance_rpl)
+
+        min_rpl_stake_ratio: float = solidity.to_float(info_calls["minimumStakeRatio"])
         rpl_ratio: float = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_stake_pct: float = 100 * rpl_staked * rpl_ratio / eth_matched
 
@@ -109,10 +112,14 @@ class Constellation(Cog):
         balance_rpl: float = solidity.to_float(rp.call("rocketTokenRPL.balanceOf", distributor_contract.address))
 
         # number of new minipools that can be created with available liquidity
-        max_minipools_eth = int(balance_eth // eth_bond)
-        max_eth_matched: float = (rpl_staked + balance_rpl) * rpl_ratio / min_rpl_stake_ratio
-        max_minipools_rpl = int((max_eth_matched - eth_matched) // (32 - eth_bond))
-        max_new_minipools: int = max(0, min(max_minipools_eth, max_minipools_rpl))
+        if min_rpl_stake_ratio > 0:
+            max_eth_matched: float = (rpl_staked + balance_rpl) * rpl_ratio / min_rpl_stake_ratio
+            max_minipools_rpl: float = (max_eth_matched - eth_matched) // (32 - eth_bond)
+        else:
+            max_minipools_rpl: float = math.inf
+
+        max_minipools_eth: float = balance_eth // eth_bond
+        max_new_minipools = min(max_minipools_eth, max_minipools_rpl)
 
         # break-even time for new minipools
         solo_apr: float = 0.033
@@ -137,13 +144,14 @@ class Constellation(Cog):
         embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:,.2f}%")
 
         if max_minipools_eth > 0:
-            balance_status_eth = f"`{max_minipools_eth:,}` pools"
+            balance_status_eth = f"`{max_minipools_eth:,.0f}` pools"
         else:
             shortfall_eth: float = eth_bond - (balance_eth % eth_bond)
             balance_status_eth = f"`-{shortfall_eth:,.2f}`"
 
         if max_minipools_rpl > 0:
-            balance_status_rpl = f"`{max_minipools_rpl:,}` pools"
+            count_fmt: str = "∞" if math.isinf(max_minipools_rpl) else f"{max_minipools_rpl:,.0f}"
+            balance_status_rpl = f"`{count_fmt}` pools"
         else:
             new_eth_matched = eth_matched + 32 - eth_bond
             new_rpl_required = new_eth_matched * min_rpl_stake_ratio / rpl_ratio
@@ -166,8 +174,8 @@ class Constellation(Cog):
         embed.add_field(name="Break-Even", value=f"{break_even_days:,} days")
         embed.add_field(
             name="Protocol TVL",
-            value=f"{el_explorer_url(xreth_address, name=' xrETH')}: `{tvl_eth:,.2f}` ETH\n"
-                  f"{el_explorer_url(xrpl_address, name=' xRPL')}: `{tvl_rpl:,.2f}` RPL",
+            value=f"{el_explorer_url(vault_address_eth, name=' xrETH')}: `{tvl_eth:,.2f}` ETH\n"
+                  f"{el_explorer_url(vault_address_rpl, name=' xRPL')}: `{tvl_rpl:,.2f}` RPL",
             inline=False
         )
 
