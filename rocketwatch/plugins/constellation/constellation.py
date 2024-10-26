@@ -123,12 +123,11 @@ class Constellation(Cog):
 
         # break-even time for new minipools
         solo_apr: float = 0.033
-        deployment_gas: int = 2_300_000
+        deployment_gas: int = 2_250_000
         gas_price_wei: int = w3.eth.gas_price
-        deployment_cost_wei: int = deployment_gas * max(0, gas_price_wei - 5_000_000_000)
         operator_commission: float = (0.1 + 0.04 * min(1.0, rpl_stake_pct / 10)) / 2
         daily_income_wei: int = round((32 - eth_bond) * 1e18 * solo_apr * operator_commission / 365)
-        break_even_days: int = round(deployment_cost_wei / daily_income_wei)
+        break_even_days: int = round(deployment_gas * gas_price_wei / daily_income_wei)
 
         embed = Embed(title="Gravita Constellation")
         embed.add_field(
