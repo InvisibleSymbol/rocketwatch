@@ -5,7 +5,7 @@ from typing import Union
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from discord.app_commands import Choice
+from discord.app_commands import Choice, describe
 from cachetools.func import ttl_cache
 from bs4 import BeautifulSoup
 
@@ -21,7 +21,11 @@ class RPIPS(commands.Cog):
         self.bot = bot
 
     @hybrid_command()
+    @describe(name="RPIP name")
     async def rpip(self, ctx: Context, name: str):
+        """
+        Show information about a specific RPIP.
+        """
         await ctx.defer()
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
