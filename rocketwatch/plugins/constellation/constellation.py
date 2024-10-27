@@ -161,7 +161,7 @@ class Constellation(Cog):
             balance_status_rpl = f"`-{shortfall_rpl:,.2f}`"
 
         if max_new_minipools > 0:
-            balance_status = f"`{max_new_minipools}` new minipool(s) can be created!"
+            balance_status = f"`{max_new_minipools:,.0f}` new minipool(s) can be created!"
         else:
             balance_status = "No new minipools can be created."
 
