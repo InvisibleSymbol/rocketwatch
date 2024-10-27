@@ -164,6 +164,9 @@ class QueuedSnapshot(commands.Cog):
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
+        """
+        Show currently active Snapshot votes.
+        """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")

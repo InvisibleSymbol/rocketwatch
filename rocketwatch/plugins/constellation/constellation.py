@@ -68,6 +68,9 @@ class Constellation(Cog):
 
     @hybrid_command()
     async def constellation(self, ctx: Context):
+        """
+        Summary of Gravita Constellation protocol stats.
+        """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         supernode_contract = rp.get_contract_by_name("Constellation.SuperNodeAccount")

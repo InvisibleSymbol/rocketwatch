@@ -1,23 +1,27 @@
-import asyncio
 import logging
-from statistics import median
+import requests
+import numpy as np
+import matplotlib.pyplot as plt
 
-import humanize
+from io import BytesIO
+from discord import File
+from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from typing import Optional
+from dataclasses import dataclass
+
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import Embed
-from utils.embeds import el_explorer_url
-from utils.readable import uptime
+from utils.embeds import Embed, resolve_ens
+from utils.reporter import report_error
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
-from utils.thegraph import get_unclaimed_rpl_reward_nodes, get_unclaimed_rpl_reward_odao, get_claims_current_period
-from utils.visibility import is_hidden
+from utils.get_nearest_block import get_block_by_timestamp
 
-log = logging.getLogger("Rewards")
+
+log = logging.getLogger("rewards")
 log.setLevel(cfg["log_level"])
 
 
@@ -25,197 +29,236 @@ class Rewards(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @dataclass
+    class RewardEstimate:
+        address: str
+        interval: int
+        start_time: int
+        data_time: int
+        data_block: int
+        end_time: int
+        rpl_rewards: float
+        eth_rewards: float
+        system_weight: float
+
+    @staticmethod
+    async def get_estimated_rewards(ctx: Context, address: str) -> Optional[RewardEstimate]:
+        if not rp.call("rocketNodeManager.getNodeExists", address):
+            await ctx.send(f"{address} is not a registered node.")
+            return None
+
+        try:
+            patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
+        except Exception as e:
+            await report_error(ctx, e)
+            await ctx.send("Error fetching node data from SprocketPool API. Blame Patches.")
+            return None
+
+        data_block, _ = get_block_by_timestamp(patches_res["time"])
+        rpl_rewards: int = patches_res[address].get("collateralRpl", 0)
+        eth_rewards: int = patches_res[address].get("smoothingPoolEth", 0)
+        interval_time = rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime", block=data_block)
+
+        return Rewards.RewardEstimate(
+            address=address,
+            interval=patches_res["interval"],
+            start_time=patches_res["startTime"],
+            data_time=patches_res["time"],
+            data_block=data_block,
+            end_time=patches_res["startTime"] + interval_time,
+            rpl_rewards=solidity.to_float(rpl_rewards),
+            eth_rewards=solidity.to_float(eth_rewards),
+            system_weight=solidity.to_float(patches_res["totalNodeWeight"])
+        )
+
+    @staticmethod
+    def create_embed(title: str, rewards: RewardEstimate) -> Embed:
+        embed = Embed()
+        embed.title = title
+        embed.description = (
+            f"Values based on data from <t:{rewards.data_time}:R> (<t:{rewards.data_time}>).\n"
+            f"This is for interval {rewards.interval}, which ends <t:{rewards.end_time}:R> (<t:{rewards.end_time}>)."
+        )
+        return embed
+
     @hybrid_command()
-    async def rewards(self, ctx: Context):
+    @describe(node_address="address of node to show rewards for")
+    @describe(extrapolate="whether to extrapolate partial rewards for the entire period")
+    async def upcoming_rewards(self, ctx: Context, node_address: str, extrapolate: bool = True):
         """
-        Show the rewards for the current period.
+        Show estimated RPL and smoothing pool rewards for this period.
         """
-        await ctx.defer(ephemeral=is_hidden(ctx))
-        await ctx.send("broken till invis upgrades it to support redstone")
-        return  
-        e = Embed()
-        e.title = "Reward Period Stats"
-        # get rpl price in dai
-        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-        rpl_price = rpl_ratio * rp.get_dai_eth_price()
+        await ctx.defer(ephemeral=True)
+        display_name, address = await resolve_ens(ctx, node_address)
+        if display_name is None:
+            return
 
-        # get reward period amount
-        total_reward_pool = solidity.to_float(rp.call("rocketRewardsPool.getClaimIntervalRewardsTotal"))
-        total_reward_pool_eth = humanize.intcomma(total_reward_pool * rpl_ratio, 2)
-        total_reward_pool_dai = humanize.intword(total_reward_pool * rpl_price)
-        total_reward_pool_formatted = humanize.intcomma(total_reward_pool, 2)
-        e.add_field(name="Allocated RPL:",
-                    value=f"{total_reward_pool_formatted} RPL "
-                          f"(worth {total_reward_pool_dai} DAI or {total_reward_pool_eth} ETH)",
-                    inline=False)
+        rewards = await self.get_estimated_rewards(ctx, address)
+        if rewards is None:
+            return
 
-        # get reward period start
-        reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
-        e.add_field(name="Period Start:", value=f"<t:{reward_start}>")
+        if extrapolate:
+            registration_time = rp.call("rocketNodeManager.getNodeRegistrationTime", address)
+            reward_start_time = max(registration_time, rewards.start_time)
+            proj_factor = (rewards.end_time - reward_start_time) / (rewards.data_time - reward_start_time)
+            rewards.rpl_rewards *= proj_factor
+            rewards.eth_rewards *= proj_factor
 
-        # show duration left
-        reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
-        reward_end = reward_start + reward_duration
-        left_over_duration = max(reward_end - w3.eth.getBlock('latest').timestamp, 0)
-        e.add_field(name="Duration Left:", value=f"{uptime(left_over_duration)}")
+        modifier = "Projected" if extrapolate else "Estimated Ongoing"
+        title = f"{modifier} Rewards for {display_name}"
+        embed = self.create_embed(title, rewards)
+        embed.add_field(name="RPL Staking:", value=f"{rewards.rpl_rewards:,.3f} RPL")
+        embed.add_field(name="Smoothing Pool:", value=f"{rewards.eth_rewards:,.3f} ETH")
+        await ctx.send(embed=embed)
 
-        claiming_contracts = [
-            ["rocketClaimNode", "Node Operator Rewards"],
-            ["rocketClaimTrustedNode", "oDAO Member Rewards"],
-            ["rocketClaimDAO", "pDAO Rewards"]
-        ]
+    @hybrid_command()
+    @describe(node_address="address of node to simulate rewards for")
+    @describe(rpl_stake="amount of staked RPL to simulate")
+    @describe(num_leb8="number of 8 ETH minipools to simulate")
+    @describe(num_eb16="number of 16 ETH minipools to simulate")
+    async def simulate_rewards(
+            self,
+            ctx: Context,
+            node_address: str,
+            rpl_stake: int = 0,
+            num_leb8: int = 0,
+            num_eb16: int = 0
+    ):
+        """
+        Simulate RPL rewards for this period.
+        """
+        await ctx.defer(ephemeral=True)
+        display_name, address = await resolve_ens(ctx, node_address)
+        if display_name is None:
+            return
 
-        parts = []
-        for contract, name in claiming_contracts:
-            distribution = ""
-            await asyncio.sleep(0.01)
-            percentage = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractPerc", contract))
-            amount = solidity.to_float(rp.call("rocketRewardsPool.getClaimingContractAllowance", contract))
-            amount_formatted = humanize.intcomma(amount, 2)
-            distribution += f"{name} ({percentage:.0%}):\n\tAllocated: {amount_formatted:>14} RPL\n"
+        rewards = await self.get_estimated_rewards(ctx, address)
+        if rewards is None:
+            return
 
-            # show how much was already claimed
-            claimed = solidity.to_float(
-                rp.call(
-                    'rocketRewardsPool.getClaimingContractTotalClaimed', contract
+        rpl_stake = max(0, rpl_stake)
+        num_leb8 = max(0, num_leb8)
+        num_eb16 = max(0, num_eb16)
+        borrowed_eth = (24 * num_leb8) + (16 * num_eb16)
+
+        data_block: int = rewards.data_block
+        reward_start_block, _ = get_block_by_timestamp(rewards.start_time)
+
+        rpl_min: float = solidity.to_float(rp.call("rocketDAOProtocolSettingsNode.getMinimumPerMinipoolStake", block=data_block))
+        rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
+        actual_borrowed_eth = solidity.to_float(rp.call("rocketNodeStaking.getNodeETHMatched", address, block=data_block))
+        actual_rpl_stake = solidity.to_float(rp.call("rocketNodeStaking.getNodeRPLStake", address, block=data_block))
+
+        inflation_rate: int = rp.call("rocketTokenRPL.getInflationIntervalRate", block=data_block)
+        inflation_interval: int = rp.call("rocketTokenRPL.getInflationIntervalTime", block=data_block)
+        num_inflation_intervals: int = (rewards.end_time - rewards.start_time) // inflation_interval
+        total_supply: int = rp.call("rocketTokenRPL.totalSupply", block=reward_start_block)
+
+        period_inflation: int = total_supply
+        for i in range(num_inflation_intervals):
+            period_inflation = solidity.to_int(period_inflation * inflation_rate)
+        period_inflation -= total_supply
+
+        def node_weight(_stake: float, _borrowed_eth: float) -> float:
+            rpl_value = _stake * rpl_ratio
+            collateral_ratio = (rpl_value / _borrowed_eth) if _borrowed_eth > 0 else 0
+            if collateral_ratio < rpl_min:
+                return 0.0
+            elif collateral_ratio <= 0.15:
+                return 100 * rpl_value
+            else:
+                return (13.6137 + 2 * np.log(100 * collateral_ratio - 13)) * _borrowed_eth
+
+        def rewards_at(_stake: float, _borrowed_eth: float) -> float:
+            weight = node_weight(_stake, _borrowed_eth)
+            base_weight = node_weight(actual_rpl_stake, _borrowed_eth)
+            new_system_weight = rewards.system_weight + weight - base_weight
+            return solidity.to_float(0.7 * period_inflation * weight / new_system_weight)
+
+        fig, ax = plt.subplots(figsize=(5, 2.5))
+        ax.grid()
+
+        x_min = 0
+        x_max = max(rpl_stake * 2, actual_rpl_stake * 5)
+        ax.set_xlim((x_min, x_max))
+
+        cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
+        sim_color, sim_label, sim_ls = "darkred", "simulated", "dashed"
+
+        def draw_reward_curve(_color: str, _label: Optional[str], _line_style: str, _borrowed_eth: float) -> None:
+            step_size = max(1, (x_max - x_min) // 1000)
+            x = np.arange(x_min, x_max, step_size, dtype=int)
+            y = np.array([rewards_at(x, _borrowed_eth) for x in x])
+            ax.plot(x, y, color=_color, linestyle=_line_style, label=_label)
+
+            def plot_point(_pt_color: str, _pt_label: str, _x: int) -> None:
+                label = _pt_label if _label is None else None
+                _y = rewards_at(_x, _borrowed_eth)
+                ax.plot(_x, _y, "o", color=_pt_color, label=label)
+                ax.annotate(
+                    f"{_y:.2f}",
+                    (_x, _y),
+                    textcoords="offset points",
+                    xytext=(5, -10 if _y > 0 else 5),
+                    ha="left"
                 )
-            )
 
-            claimed_formatted = humanize.intcomma(claimed, 2)
+            plot_point(cur_color, cur_label, actual_rpl_stake)
+            if rpl_stake > 0:
+                plot_point(sim_color, sim_label, rpl_stake)
 
-            # percentage already claimed
-            claimed_percentage = claimed / amount
-            distribution += f"\t├Claimed: {claimed_formatted:>15} RPL ({claimed_percentage:.0%})\n"
-            available = amount - claimed
-            rollover = 0
+        if borrowed_eth > 0:
+            draw_reward_curve(cur_color, cur_label, cur_ls, actual_borrowed_eth)
+            draw_reward_curve(sim_color, sim_label, sim_ls, borrowed_eth)
+        else:
+            draw_reward_curve(cur_color, None, cur_ls, actual_borrowed_eth)
 
-            if "Node" in contract:
-                waiting_for_claims, impossible_amount, rollover = None, None, None
-                try:
-                    if "oDAO Member" in name:
-                        waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_odao()
-                    else:
-                        waiting_for_claims, impossible_amount, rollover = get_unclaimed_rpl_reward_nodes()
-                except Exception as err:
-                    log.error(f"Failed to get unclaimed rewards for {contract}")
-                    log.exception(err)
+        def formatter(_x, _pos) -> str:
+            if _x < 1000:
+                return f"{_x:.0f}"
+            elif _x < 10_000:
+                return f"{(_x / 1000):.1f}k"
+            elif _x < 1_000_000:
+                return f"{(_x / 1000):.0f}k"
+            else:
+                return f"{(_x / 1_000_000):.1f}m"
 
-                if waiting_for_claims:
-                    waiting_percentage = waiting_for_claims / amount
-                    waiting_for_claims_fmt = humanize.intcomma(waiting_for_claims, 2)
-                    distribution += f"\t├Eligible: {waiting_for_claims_fmt:>14} RPL ({waiting_percentage:.0%})\n"
+        ax.set_xlabel("rpl stake")
+        ax.set_ylabel("rewards")
+        ax.xaxis.set_major_formatter(formatter)
 
-                if impossible_amount:
-                    impossible_amount_formatted = humanize.intcomma(impossible_amount, 2)
-                    impossible_percentage = impossible_amount / waiting_for_claims
-                    distribution += f"\t│├Not Claimable: {impossible_amount_formatted:>8} RPL ({impossible_percentage:.0%})\n"
-                if waiting_for_claims and impossible_amount and (
-                        possible_amount := waiting_for_claims - impossible_amount):
-                    possible_amount_formatted = humanize.intcomma(possible_amount, 2)
-                    possible_percentage = possible_amount / waiting_for_claims
-                    distribution += f"\t│├Claimable: {possible_amount_formatted:>12} RPL ({possible_percentage:.0%})\n"
-            # possible amount
-            available_percentage = available / amount
-            available_formatted = humanize.intcomma(available, 2)
-            distribution += f"\t├Available: {available_formatted:>13} RPL ({available_percentage:.0%})\n"
-            if rollover:
-                rollover_formatted = humanize.intcomma(rollover, 2)
-                rollover_percentage = rollover / available
-                distribution += f"\t └est. Rollover: {rollover_formatted:>8} RPL ({rollover_percentage:.0%})\n"
+        y_min = min(rewards_at(x_min, borrowed_eth), rewards_at(x_min, actual_borrowed_eth))
+        _, y_max = ax.get_ylim()
+        ax.set_ylim((y_min, y_max))
 
-            # reverse distribution string
-            distribution = distribution[::-1]
-            # replace (now first) last occurrence of ├ with └
-            distribution = distribution.replace("├\t\n", "└\t\n", 1)
-            distribution = distribution.replace("├│\t\n", "└│\t\n", 1)
-            # reverse again
-            distribution = distribution[::-1]
-            parts.append(distribution)
+        handles, labels = ax.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys(), loc="lower right")
+        fig.tight_layout()
 
-        text = "\n".join(parts)
-        text = "```\n" + text + "```"
-        if "Rollover" in text:
-            text += "* Rollover is the estimated amount of RPL that will be carried over into the next period based on the currently pending claims."
-        e.add_field(name="Distribution", value=text, inline=False)
+        img = BytesIO()
+        fig.savefig(img, format="png")
+        img.seek(0)
+        plt.close()
 
-        # show how much a node operator can claim with 10% (1.6 ETH) collateral and 150% (24 ETH) collateral
-        node_operator_rewards = solidity.to_float(
-            rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimNode"))
-        total_rpl_staked = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
-        reward_per_staked_rpl = node_operator_rewards / total_rpl_staked
+        sim_info = []
+        if rpl_stake > 0:
+            sim_info.append(f"{rpl_stake:,} RPL")
+        if num_leb8 > 0:
+            sim_info.append(f"{num_leb8} x 8 ETH")
+        if num_eb16 > 0:
+            sim_info.append(f"{num_eb16} x 16 ETH")
 
-        # get minimum collateralized minipool
-        reward_10_percent = reward_per_staked_rpl * (1.6 / rpl_ratio)
-        reward_10_percent_eth = humanize.intcomma(reward_10_percent * rpl_ratio, 2)
-        reward_10_percent_dai = humanize.intcomma(reward_10_percent * rpl_price, 2)
+        sim_info_txt = f"({', '.join(sim_info)})" if sim_info else ""
 
-        # get maximum collateralized minipool
-        reward_150_percent = reward_per_staked_rpl * (24 / rpl_ratio)
-        reward_150_percent_eth = humanize.intcomma(reward_150_percent * rpl_ratio, 2)
-        reward_150_percent_dai = humanize.intcomma(reward_150_percent * rpl_price, 2)
+        title = f"Simulated RPL Rewards for {display_name} {sim_info_txt}".strip()
+        embed = self.create_embed(title, rewards)
+        embed.set_image(url="attachment://graph.png")
 
-        # calculate current APR for node operators
-        apr = reward_per_staked_rpl / (reward_duration / 60 / 60 / 24) * 365
-        e.add_field(name="Node Operator RPL Rewards APR:", value=f"{apr:.2%}")
-
-        e.add_field(name="Current Rewards per Minipool:",
-                    value=f"```\n"
-                          f"10% collateralized Minipool:\n\t{humanize.intcomma(reward_10_percent, 2):>6} RPL"
-                          f" (worth {reward_10_percent_eth} ETH or"
-                          f" {reward_10_percent_dai} DAI)\n"
-                          f"150% collateralized Minipool:\n\t{humanize.intcomma(reward_150_percent, 2):>6} RPL"
-                          f" (worth {reward_150_percent_eth} ETH or"
-                          f" {reward_150_percent_dai} DAI)\n"
-                          f"```",
-                    inline=False)
-
-        # show Rewards per oDAO Member
-        total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
-        odao_members_rewards = solidity.to_float(
-            rp.call("rocketRewardsPool.getClaimingContractAllowance", "rocketClaimTrustedNode"))
-        rewards_per_odao_member = odao_members_rewards / total_odao_members
-        rewards_per_odao_member_eth = humanize.intcomma(rewards_per_odao_member * rpl_ratio, 2)
-        rewards_per_odao_member_dai = humanize.intcomma(rewards_per_odao_member * rpl_price, 2)
-
-        e.add_field(name="Current Rewards per oDAO Member:",
-                    value=f"```\n"
-                          f"{humanize.intcomma(rewards_per_odao_member, 2):>6} RPL"
-                          f" (worth {rewards_per_odao_member_eth} ETH or"
-                          f" {rewards_per_odao_member_dai} DAI)\n"
-                          f"```",
-                    inline=False)
-        # send embed
-        await ctx.send(embed=e)
-
-    @hybrid_command()
-    async def median_claim(self, ctx: Context):
-        """
-        Show the median claim amount for the current period.
-        """
-        await ctx.defer(ephemeral=is_hidden(ctx))
-        e = Embed()
-        e.title = "Median Claim for this Period"
-        counts = get_claims_current_period()
-        # top 5 claims
-        top_claims = sorted(counts, key=lambda x: int(x["amount"]), reverse=True)[:5]
-        top_claims_str = [
-            f"{i + 1}. {el_explorer_url(w3.toChecksumAddress(claim['claimer']))}:"
-            f" {solidity.to_float(claim['amount']):.2f} RPL"
-            f" (worth {solidity.to_float(claim['ethAmount']):.2f} ETH)"
-            for i, claim in enumerate(top_claims)
-        ]
-
-        e.add_field(name="Top 5 Claims", value="\n".join(top_claims_str), inline=False)
-        # show median claim
-        rpl_amounts = sorted([solidity.to_float(claim["amount"]) for claim in counts])
-        median_claim = humanize.intcomma(median(rpl_amounts), 2)
-        eth_amounts = sorted([solidity.to_float(claim["ethAmount"]) for claim in counts])
-        median_claim_eth = humanize.intcomma(median(eth_amounts), 2)
-        e.add_field(name="Median Claim:", value=f"{median_claim} RPL (worth {median_claim_eth} ETH)", inline=False)
-
-        await ctx.send(embed=e)
+        f = File(img, filename="graph.png")
+        await ctx.send(embed=embed, files=[f])
+        img.close()
 
 
 async def setup(bot):
-    return
     await bot.add_cog(Rewards(bot))

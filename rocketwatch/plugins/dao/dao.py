@@ -1,6 +1,8 @@
 import logging
 
 from typing import Literal
+
+from discord.app_commands import describe
 from discord.ext.commands import Cog, Context, hybrid_command
 
 from utils.cfg import cfg
@@ -113,21 +115,26 @@ class DAOCommand(Cog):
         )
 
     @hybrid_command()
+    @describe(dao_name="DAO to show votes for")
+    @describe(full="show all information (e.g. payload)")
     async def dao_votes(
             self,
             ctx: Context,
-            dao_name: Literal["odao", "pdao", "security council"] = "pdao",
+            dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pdao",
             full: bool = False
     ):
+        """
+        Show currently active onchain votes.
+        """
         await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 
-        if dao_name == "pdao":
+        if dao_name == "pDAO":
             dao = ProtocolDAO()
             embed = self.get_pdao_votes_embed(dao, full)
         else:
             dao = DefaultDAO({
-                "odao": "rocketDAONodeTrustedProposals",
-                "security council": "rocketDAOSecurityProposals"
+                "oDAO": "rocketDAONodeTrustedProposals",
+                "Security Council": "rocketDAOSecurityProposals"
             }[dao_name])
             embed = self.get_dao_votes_embed(dao, full)
 
