@@ -220,6 +220,9 @@ class Task:
                     continue
                 amount = solidity.to_float(e[0]["args"]["amount"])
                 data[mp] = {"deposit_amount": amount}
+        if len(data) == 0:
+            log.debug("No minipools need to be updated with static deposit data")
+            return
         log.debug(f"Updating {len(data)} minipools with static deposit data")
         # update minipools in db
         bulk = [
