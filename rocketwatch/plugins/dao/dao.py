@@ -120,7 +120,7 @@ class DAOCommand(Cog):
     async def dao_votes(
             self,
             ctx: Context,
-            dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pdao",
+            dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pDAO",
             full: bool = False
     ):
         """
