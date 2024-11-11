@@ -260,6 +260,9 @@ class RETHAPR(commands.Cog):
                     value=f"{node_fee:.2%} (Observed pETH Share: {peth_share:.2%})",
                     inline=False)
 
+        e.add_field(name="Effectiveness:",
+                    value=f"{y_effectiveness[-1]:.2%}",
+                    inline=False)
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
     @hybrid_command()
