@@ -63,6 +63,7 @@ class ScamWarning(commands.Cog):
             "conversation yourself. This minimizes the risk of interacting with scammers that may impersonate "
             "other members of the server.\n"
             "\n"
+            "To avoid unwanted interactions, consider restricting who can message you directly in Discord settings. "
             "This message may be re-sent as a reminder after long periods of inactivity."
         )
         await user.send(embed=embed)
