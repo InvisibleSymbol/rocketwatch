@@ -19,6 +19,7 @@ class ScamWarning(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.cooldown_time = timedelta(days=90)
 
     @cached_property
     async def _support_channel(self):
@@ -75,30 +76,29 @@ class ScamWarning(commands.Cog):
         )
         await user.send(embed=embed)
 
-    async def maybe_send_warning(self, message) -> None:
+    @commands.Cog.listener()
+    async def on_message(self, message) -> None:
         # don't let the bot try to DM itself
         msg_author = message.author
         if msg_author == self.bot.user:
             return
 
-        # only send if it's the first interaction in at least 90 days
         msg_time = message.created_at.replace(tzinfo=None)
         db_entry = await self.db.scam_warning.find_one({"_id": msg_author.id})
-        if (db_entry is None) or (msg_time - db_entry["last_message"]) >= timedelta(days=90):
-            await self.send_warning(msg_author)
+
+        # only send if user's last interaction is not within cooldown time
+        if (db_entry is None) or (msg_time - db_entry["last_message"]) > self.cooldown_time:
+            try:
+                await self.send_warning(msg_author)
+            except errors.Forbidden:
+                log.info(f"Unable to DM {message.author}, no need to warn them.")
+                return
 
         await self.db.scam_warning.replace_one(
             {"_id": msg_author.id},
             {"_id": msg_author.id, "last_message": message.created_at},
             upsert=True
         )
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        try:
-            await self.maybe_send_warning(message)
-        except errors.Forbidden:
-            log.info(f"Unable to DM {message.author}, no need to warn them.")
 
 
 async def setup(bot):
