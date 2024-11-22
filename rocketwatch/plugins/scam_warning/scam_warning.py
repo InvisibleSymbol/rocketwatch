@@ -21,22 +21,10 @@ class ScamWarning(commands.Cog):
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.cooldown_time = timedelta(days=90)
 
-    @cached_property
-    async def _support_channel(self):
-        return await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
-
-    @cached_property
-    async def _report_channel(self):
-        return await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
-
-    @cached_property
-    async def _resource_channel(self):
-        return await get_or_fetch_channel(self.bot, cfg["discord.channels.resources"])
-
     async def send_warning(self, user) -> None:
-        report_channel = await self._report_channel
-        support_channel = await self._support_channel
-        resource_channel = await self._resource_channel
+        report_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
+        support_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
+        resource_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.resources"])
 
         embed = Embed()
         embed.title = "**Stay Safe on Rocket Pool Discord**"
