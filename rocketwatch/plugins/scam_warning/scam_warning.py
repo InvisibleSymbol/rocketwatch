@@ -71,6 +71,10 @@ class ScamWarning(commands.Cog):
         if msg_author == self.bot.user:
             return
 
+        if msg_author.guild_permissions.moderate_members:
+            log.info(f"{message.author} is a moderator, skipping warning.")
+            return
+
         msg_time = message.created_at.replace(tzinfo=None)
         db_entry = await self.db.scam_warning.find_one({"_id": msg_author.id})
 
@@ -79,7 +83,7 @@ class ScamWarning(commands.Cog):
             try:
                 await self.send_warning(msg_author)
             except errors.Forbidden:
-                log.info(f"Unable to DM {message.author}, no need to warn them.")
+                log.info(f"Unable to DM {message.author}, skipping warning.")
                 return
 
         await self.db.scam_warning.replace_one(
