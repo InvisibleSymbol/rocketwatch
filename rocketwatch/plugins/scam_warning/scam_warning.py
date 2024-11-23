@@ -20,6 +20,7 @@ class ScamWarning(commands.Cog):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.cooldown_time = timedelta(days=90)
+        self.channel_ids = set(cfg["rocketpool.dm_warning.channels"])
 
     async def send_warning(self, user) -> None:
         report_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
@@ -66,29 +67,32 @@ class ScamWarning(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message) -> None:
-        # don't let the bot try to DM itself
-        msg_author = message.author
-        if msg_author == self.bot.user:
+        # message not in relevant channel
+        if message.channel.id not in self.channel_ids:
             return
 
-        if msg_author.guild_permissions.moderate_members:
+        # don't let the bot try to DM itself
+        if message.author == self.bot.user:
+            return
+
+        if message.author.guild_permissions.moderate_members:
             log.info(f"{message.author} is a moderator, skipping warning.")
             return
 
         msg_time = message.created_at.replace(tzinfo=None)
-        db_entry = await self.db.scam_warning.find_one({"_id": msg_author.id})
+        db_entry = await self.db.scam_warning.find_one({"_id": message.author.id})
 
         # only send if user's last interaction is not within cooldown time
         if (db_entry is None) or (msg_time - db_entry["last_message"]) > self.cooldown_time:
             try:
-                await self.send_warning(msg_author)
+                await self.send_warning(message.author)
             except errors.Forbidden:
                 log.info(f"Unable to DM {message.author}, skipping warning.")
                 return
 
         await self.db.scam_warning.replace_one(
-            {"_id": msg_author.id},
-            {"_id": msg_author.id, "last_message": message.created_at},
+            {"_id": message.author.id},
+            {"_id": message.author.id, "last_message": message.created_at},
             upsert=True
         )
 
