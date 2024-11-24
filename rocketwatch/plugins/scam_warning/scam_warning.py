@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta, datetime
-from functools import cached_property
 
 from discord import errors
 from discord.ext import commands
@@ -19,8 +18,9 @@ class ScamWarning(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-        self.cooldown_time = timedelta(days=90)
         self.channel_ids = set(cfg["rocketpool.dm_warning.channels"])
+        self.inactivity_cooldown = timedelta(days=90)
+        self.failure_cooldown = timedelta(days=1)
 
     async def send_warning(self, user) -> None:
         report_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
@@ -80,19 +80,26 @@ class ScamWarning(commands.Cog):
             return
 
         msg_time = message.created_at.replace(tzinfo=None)
-        db_entry = await self.db.scam_warning.find_one({"_id": message.author.id})
+        db_entry = (await self.db.scam_warning.find_one({"_id": message.author.id})) or {}
 
-        # only send if user's last interaction is not within cooldown time
-        if (db_entry is None) or (msg_time - db_entry["last_message"]) > self.cooldown_time:
+        cooldown_end = datetime.fromtimestamp(0)
+        if last_failure_time := db_entry.get("last_failure"):
+            cooldown_end = last_failure_time + self.failure_cooldown
+        elif last_msg_time := db_entry.get("last_message"):
+            cooldown_end = last_msg_time + self.inactivity_cooldown
+
+        # only send if message is not within cooldown window
+        if msg_time > cooldown_end:
             try:
                 await self.send_warning(message.author)
+                last_failure_time = None
             except errors.Forbidden:
                 log.info(f"Unable to DM {message.author}, skipping warning.")
-                return
+                last_failure_time = msg_time
 
         await self.db.scam_warning.replace_one(
             {"_id": message.author.id},
-            {"_id": message.author.id, "last_message": message.created_at},
+            {"_id": message.author.id, "last_message": msg_time, "last_failure": last_failure_time},
             upsert=True
         )
 
