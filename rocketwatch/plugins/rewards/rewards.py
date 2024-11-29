@@ -51,7 +51,7 @@ class Rewards(commands.Cog):
             patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
         except Exception as e:
             await report_error(ctx, e)
-            await ctx.send("Error fetching node data from SprocketPool API. Blame Patches.")
+            await ctx.send("Error fetching node data from Sprocket Pool API. Blame Patches.")
             return None
 
         data_block, _ = get_block_by_timestamp(patches_res["time"])
@@ -178,8 +178,10 @@ class Rewards(commands.Cog):
         fig, ax = plt.subplots(figsize=(5, 2.5))
         ax.grid()
 
+        one_pct_borrowed = max(actual_borrowed_eth, borrowed_eth) / (rpl_ratio * 100)
+
         x_min = 0
-        x_max = max(rpl_stake * 2, actual_rpl_stake * 5)
+        x_max = max(rpl_stake * 2, actual_rpl_stake * 5, one_pct_borrowed * 20)
         ax.set_xlim((x_min, x_max))
 
         cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
@@ -207,11 +209,16 @@ class Rewards(commands.Cog):
             if rpl_stake > 0:
                 plot_point(sim_color, sim_label, rpl_stake)
 
-        if borrowed_eth > 0:
+        if (actual_borrowed_eth > 0) and (borrowed_eth > 0):
             draw_reward_curve(cur_color, cur_label, cur_ls, actual_borrowed_eth)
             draw_reward_curve(sim_color, sim_label, sim_ls, borrowed_eth)
-        else:
+        elif actual_borrowed_eth > 0:
             draw_reward_curve(cur_color, None, cur_ls, actual_borrowed_eth)
+        elif borrowed_eth > 0:
+            draw_reward_curve(sim_color, None, sim_ls, borrowed_eth)
+        else:
+            await ctx.send("Empty node. Choose another one or specify the minipool count.")
+            return
 
         def formatter(_x, _pos) -> str:
             if _x < 1000:
