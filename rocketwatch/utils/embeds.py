@@ -378,6 +378,12 @@ def assemble(args):
             value=humanize.naturaldelta(datetime.timedelta(seconds=args.periodLength)),
             inline=False
         )
+        if "startTime" in args:
+            e.add_field(
+                name="First Payment",
+                value=f"<t:{args.startTime + args.periodLength}>",
+                inline=False
+            )
 
     if "index" in args:
         e.add_field(
@@ -405,13 +411,6 @@ def assemble(args):
             name="Challenge Bond",
             value=f"{args.challengeBond} RPL",
             inline=True
-        )
-
-    if "startTime" in args:
-        e.add_field(
-            name="Start Time",
-            value=f"<t:{args.startTime}>",
-            inline=False
         )
 
     if "contractAddress" in args and "Contract" in args.type:
