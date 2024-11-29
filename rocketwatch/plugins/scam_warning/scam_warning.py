@@ -23,8 +23,8 @@ class ScamWarning(commands.Cog):
         self.failure_cooldown = timedelta(days=1)
 
     async def send_warning(self, user) -> None:
-        report_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
-        support_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
+        support_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
+        report_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"] )
         resource_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.resources"])
 
         embed = Embed()
