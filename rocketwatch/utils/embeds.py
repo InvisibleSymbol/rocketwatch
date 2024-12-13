@@ -228,7 +228,7 @@ def prepare_args(args):
     return args
 
 
-def assemble(args):
+def assemble(args) -> Embed:
     e = Embed()
     if args.event_name in ["service_interrupted", "finality_delay_event"]:
         e.colour = Color.from_rgb(235, 86, 86)
