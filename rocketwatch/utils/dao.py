@@ -132,10 +132,11 @@ class DefaultDAO(DAO):
             max_width=20
         )
         graph_bars = graph.get_string().split("\n")
+        quorum_pct = round(100 * max(votes_for, votes_against) / votes_required)
         return (
             f"{graph_bars[0] : <{len(graph_bars[2])}}{'▏' if votes_for >= votes_against else ''}\n"
             f"{graph_bars[1] : <{len(graph_bars[2])}}{'▏' if votes_against >= votes_for else ''}\n"
-            f"Quorum: {round(100 * max(votes_for, votes_against) / votes_required)}%"
+            f"Quorum: {quorum_pct}%{' ✔' if quorum_pct >= 100 else ''}"
         )
 
 
@@ -222,9 +223,11 @@ class ProtocolDAO(DAO):
         )
         veto_graph_bars = graph.get_string().split("\n")
         veto_graph_repr = f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏"
+        main_quorum_pct = round(100 * votes_total / proposal["quorum"], 2)
+        veto_quorum_pct = round(100 * proposal["votes_veto"] / proposal["veto_quorum"], 2)
         return (
             f"{main_graph_repr}\n"
-            f"Quorum: {round(100 * votes_total / proposal['quorum'], 2)}%\n\n"
+            f"Quorum: {main_quorum_pct}%{' ✔' if main_quorum_pct >= 100 else ''}\n\n"
             f"{veto_graph_repr}\n"
-            f"Quorum: {round(100 * proposal['votes_veto'] / proposal['veto_quorum'], 2)}%"
+            f"Quorum: {veto_quorum_pct}%{' ✔' if veto_quorum_pct >= 100 else ''}"
         )

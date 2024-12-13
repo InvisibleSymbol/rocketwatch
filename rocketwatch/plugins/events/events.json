@@ -10,6 +10,15 @@
             ]
         },
         {
+            "contract_name": "LUSD",
+            "events": [
+                {
+                    "event_name": "Transfer",
+                    "name": "lusd_transfer_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketNetworkBalances",
             "events": [
                 {
@@ -139,7 +148,7 @@
                 },
                 {
                     "event_name": "Transfer",
-                    "name": "pdao_rpl_transfer_event"
+                    "name": "rpl_transfer_event"
                 }
             ]
         },

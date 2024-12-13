@@ -65,8 +65,7 @@ class QueuedEvents(Cog):
                     topic = contract.events[event_name].build_filter().topics[0]
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
-                    log.warning(
-                        f"Skipping {event_name} ({event['name']}) as it can't be found in the contract")
+                    log.warning(f"Skipping {event_name} ({event['name']}) as it can't be found in the contract")
                     continue
 
                 self.internal_event_mapping[f"{contract_name}.{event_name}"] = event["name"]
@@ -423,9 +422,6 @@ class QueuedEvents(Cog):
                 include_votes=("add" not in event_name),
             )
 
-        # store event_name in args
-        args.event_name = event_name
-
         # add inflation and new supply if inflation occurred
         if "rpl_inflation" in event_name:
             args.total_supply = int(solidity.to_float(rp.call("rocketTokenRPL.totalSupply")))
@@ -447,17 +443,20 @@ class QueuedEvents(Cog):
             args.amountRPL = sum(solidity.to_float(r) for r in args.amountRPL)
             args.amountETH = sum(solidity.to_float(e) for e in args.amountETH)
             args.ethAmount = args.amountRPL * rpl_ratio
-        if event_name in ["reth_transfer_event"]:
-            args.amount = args.value / 10 ** 18
+        if "transfer_event" in event_name:
+            args.amount = args.value / 10**18
+            if args["from"] in cfg["dao_multsigs"]:
+                event_name = f"pdao_{event_name}"
+            elif event_name.split("_", 1)[0] not in ["rpl", "reth"]:
+                return None
 
         # reject if the amount is not major
-        if any(["reth_transfer_event" in event_name and args.amount < 1000,
-                "rpl_stake_event" in event_name and args.amount < 1000,
-                "rpl_stake_event" in event_name and args.amount < 1000,
-                "node_merkle_rewards_claimed" in event_name and args.ethAmount < 5 and args.amountETH < 5,
-                "rpl_withdraw_event" in event_name and args.ethAmount < 16]):
-            # "eth_deposit_event" in event_name and args.amount < 32,
-            # "eth_withdraw_event" in event_name and args.amount < 32
+        if any([event_name == "reth_transfer_event" and args.amount < 1000,
+                event_name == "rpl_transfer_event" and args.amount < 50_000,
+                event_name == "rpl_stake_event" and args.amount < 1000,
+                event_name == "rpl_stake_event" and args.amount < 1000,
+                event_name == "node_merkle_rewards_claimed" and args.ethAmount < 5 and args.amountETH < 5,
+                event_name == "rpl_withdraw_event" and args.ethAmount < 16]):
             amounts = {}
             for arg in ["ethAmount", "amount", "amountETH"]:
                 if arg in args:
@@ -476,6 +475,9 @@ class QueuedEvents(Cog):
             for contract in possible_contracts:
                 if rp.get_address_by_name(contract) == args.claimingContract:
                     return None
+
+        # store event_name in args
+        args.event_name = event_name
 
         if "node_register_event" in event_name:
             args.timezone = rp.call("rocketNodeManager.getNodeTimezoneLocation", args.node)
@@ -606,9 +608,7 @@ class QueuedEvents(Cog):
             if solidity.to_float(args.amountOfStETH) < 10_000:
                 return None
             # get the node operator address from minipool contract
-        if "rpl_transfer_event" in event_name:
-            if args["from"] not in cfg["dao_multsigs"]:
-                return None
+
         args = prepare_args(args)
         return assemble(args)
 
