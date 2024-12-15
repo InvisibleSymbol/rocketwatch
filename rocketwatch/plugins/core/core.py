@@ -198,6 +198,7 @@ class Core(commands.Cog):
                     msg = await target_channel.fetch_message(state_message["message_id"])
                     await msg.delete()
                     await self.db.state_messages.delete_one({"_id": "state"})
+
             for i, event in enumerate(events):
                 e = Response.get_embed(event)
                 msg = await target_channel.send(embed=e,silent="debug" in event["event_name"])
