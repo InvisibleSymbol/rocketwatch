@@ -3,7 +3,7 @@ import logging
 import warnings
 
 import pymongo
-from typing import Union, Optional
+from typing import Union
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Cog, Context, is_owner, hybrid_command
@@ -14,7 +14,7 @@ from web3.types import LogReceipt, EventData
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Response
-from utils.embeds import Embed, assemble, prepare_args, el_explorer_url
+from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
@@ -97,7 +97,7 @@ class QueuedEvents(Cog):
                     continue
                 self.internal_event_mapping[event["event_name"]] = event["name"]
 
-    def handle_global_event(self, event) -> tuple[Optional[Embed], Optional[str]]:
+    def handle_global_event(self, event):
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         event_name = self.internal_event_mapping[event["event"]]
 
@@ -106,7 +106,7 @@ class QueuedEvents(Cog):
                     rp.get_name_by_address(receipt.to),
                     rp.get_name_by_address(event.address)]):
             # some random contract we don't care about
-            log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
+            log.warning(f"Skipping {event.transactionHash.hex()} because the called Contract is not a Minipool")
             return None, None
 
         # first need to make the container mutable
@@ -124,7 +124,7 @@ class QueuedEvents(Cog):
         if not pubkey:
             pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", event.address).hex()
 
-        # maybe it's in the transaction?
+        # maybe its in the transaction?
         if not pubkey:
             pubkey = rp.get_pubkey_using_transaction(receipt)
 
@@ -144,7 +144,7 @@ class QueuedEvents(Cog):
         event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
         event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
-        return self.handle_event(event_name, event)
+        return self.create_embed(event_name, event), event_name
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -175,7 +175,7 @@ class QueuedEvents(Cog):
         if not (event_name := self.internal_event_mapping.get(event, None)):
             event_name = self.internal_event_mapping[f"{contract}.{event}"]
 
-        if embed := self.handle_event(event_name, event_obj)[0]:
+        if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)
         else:
             await ctx.send(content="No events triggered.")
@@ -216,7 +216,7 @@ class QueuedEvents(Cog):
         for response in responses:
             await ctx.send(embed=response.embed)
 
-    def handle_event(self, event_name, event) -> tuple[Optional[Embed], Optional[str]]:
+    def create_embed(self, event_name, event):
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -224,7 +224,7 @@ class QueuedEvents(Cog):
             args.prevRETHRate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=event.blockNumber - 1))
             d = args.currRETHRate - args.prevRETHRate
             if d > 0 or abs(d) < 0.00001:
-                return None, None
+                return None
 
         if "price_update_event" in event_name:
             args.value = args.rplPrice
@@ -237,7 +237,7 @@ class QueuedEvents(Cog):
             earliest_next_update = ts + update_rate
             # if it will update before the next period, skip
             if earliest_next_update < next_period:
-                return None, None
+                return None
 
         if event_name == "bootstrap_pdao_setting_multi_event":
             description_parts = []
@@ -322,7 +322,7 @@ class QueuedEvents(Cog):
             # either the selling or buying token has to be the RPL token
             rpl = rp.get_address_by_name("rocketTokenRPL")
             if args.signerToken != rpl and args.senderToken != rpl:
-                return None, None
+                return None
             args.seller = w3.toChecksumAddress(f"0x{event.topics[2][-40:]}")
             args.buyer = w3.toChecksumAddress(f"0x{event.topics[3][-40:]}")
             # token names
@@ -368,7 +368,7 @@ class QueuedEvents(Cog):
                 # ChallengeState.Challenged = 1
                 challenge_state = rp.call("rocketDAOProtocolVerifier.getChallengeState", proposal_id, args.index, block=event.blockNumber)
                 if challenge_state != 1:
-                    return None, None
+                    return None
 
             if "add" in event_name or "destroy" in event_name:
                 args.proposalBond = solidity.to_int(rp.call("rocketDAOProtocolVerifier.getProposalBond", proposal_id))
@@ -385,13 +385,13 @@ class QueuedEvents(Cog):
                 args.votingPower = solidity.to_float(args.votingPower)
                 if args.votingPower < 250:
                     # not interesting
-                    return None, None
+                    return None
             elif "vote_override" in event_name:
                 proposal_block = rp.call("rocketDAOProtocolProposal.getProposalBlock", proposal_id)
                 args.votingPower = solidity.to_float(rp.call("rocketNetworkVoting.getVotingPower", args.voter, proposal_block))
                 if args.votingPower < 100:
                     # not interesting
-                    return None, None
+                    return None
 
             proposal = ProtocolDAO.fetch_proposal(proposal_id)
             args.proposal_body = ProtocolDAO().build_proposal_body(
@@ -448,7 +448,7 @@ class QueuedEvents(Cog):
             if args["from"] in cfg["dao_multsigs"]:
                 event_name = f"pdao_{event_name}"
             elif event_name.split("_", 1)[0] not in ["rpl", "reth"]:
-                return None, None
+                return None
 
         # reject if the amount is not major
         if any([event_name == "reth_transfer_event" and args.amount < 1000,
@@ -462,7 +462,7 @@ class QueuedEvents(Cog):
                 if arg in args:
                     amounts[arg] = args[arg]
             log.debug(f"Skipping {event_name} because the event ({amounts}) is too small to be interesting")
-            return None, None
+            return None
 
         if "claimingContract" in args and args.claimingAddress == args.claimingContract:
             possible_contracts = [
@@ -474,7 +474,7 @@ class QueuedEvents(Cog):
             # loop over all possible contracts if we get a match return empty response
             for contract in possible_contracts:
                 if rp.get_address_by_name(contract) == args.claimingContract:
-                    return None, None
+                    return None
 
         # store event_name in args
         args.event_name = event_name
@@ -565,7 +565,7 @@ class QueuedEvents(Cog):
             elif event["assignment_count"] > 1:
                 args.assignmentCount = event["assignment_count"]
             else:
-                return None, None
+                return None
         elif "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
             args.event_name = f"vacant_{event_name}"
             if args.event_name == "vacant_minipool_scrub_event":
@@ -606,11 +606,11 @@ class QueuedEvents(Cog):
             if receipt:
                 args.timestamp = w3.eth.getBlock(receipt["blockNumber"])["timestamp"]
             if solidity.to_float(args.amountOfStETH) < 10_000:
-                return None, None
+                return None
             # get the node operator address from minipool contract
 
         args = prepare_args(args)
-        return assemble(args), args.event_name
+        return assemble(args)
 
     def run_loop(self):
         if self.state == "RUNNING":
@@ -774,11 +774,11 @@ class QueuedEvents(Cog):
                 event = _event
 
                 if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
-                    embed, event_name = self.handle_event(event_name, event)
+                    embed = self.create_embed(event_name, event)
                 else:
                     log.warning(f"Skipping unknown event {n}.{event.event}")
 
-            elif event.get("event") in self.internal_event_mapping:
+            elif event.get("event", None) in self.internal_event_mapping:
                 if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:
                         log.info("detected update, setting reinit flag")
