@@ -78,12 +78,12 @@
     },
     "minipool_withdrawal_processed_event": {
         "title": ":moneybag: Minipool Withdrawal",
-        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from minipool %{minipool}, owned by operator %{node}!"
+        "description_small": ":moneybag: **%{totalAmount} ETH** has been distributed from Minipool %{minipool}, owned by Operator %{node}!"
     },
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",
         "description": "**%{amount} ETH** deposited into the Deposit Pool!",
-        "description_small": ":rocket: %{fancy_from} deposited **%{amount} ETH** into the deposit pool!"
+        "description_small": ":rocket: %{fancy_from} deposited **%{amount} ETH** into the Deposit Pool!"
     },
     "odao_rewards_snapshot_event": {
         "title": ":camera_with_flash: Reward Snapshot Published",
@@ -91,7 +91,7 @@
     },
     "odao_rewards_snapshot_submission_event": {
         "title": ":writing_hand: Reward Snapshot Submission Submitted",
-        "description": "%{from} has published their submission for snapshot #%{rewardIndex}"
+        "description": "%{from} has published their submission for Snapshot #%{rewardIndex}"
     },
     "odao_proposal_add_event": {
         "title": ":bulb: New oDAO Proposal",
@@ -179,15 +179,15 @@
     },
     "node_register_event": {
         "title": ":mailbox_with_mail: Node Registered",
-        "description": "%{node} registered as a node operator!"
+        "description": "%{node} registered as a Node Operator!"
     },
     "rpl_inflation_event": {
         "title": ":chart_with_upwards_trend: RPL Inflation Occurred",
-        "description": "%{value} new RPL minted! The new total supply is %{total_supply} RPL."
+        "description": "%{value} new RPL minted! The new Total Supply is %{total_supply} RPL."
     },
     "milestone_rpl_stake": {
         "title": ":tada: Milestone Reached",
-        "description": "%{result_value} RPL has been staked by node operators!"
+        "description": "%{result_value} RPL has been staked by Node Operators!"
     },
     "milestone_max_deposit_size": {
         "title": ":tada: Milestone Reached",
@@ -348,15 +348,15 @@
     },
     "minipool_scrub_vote_event": {
         "title": ":warning: Minipool Voted For Scrub",
-        "description_small": ":warning: %{member} has voted to scrub minipool %{minipool}!"
+        "description_small": ":warning: %{member} has voted to scrub Minipool %{minipool}!"
     },
     "vacant_minipool_scrub_vote_event": {
         "title": ":warning: Vacant Minipool Voted For Scrub",
-        "description_small": ":warning: %{member} has voted to scrub vacant minipool %{minipool}!"
+        "description_small": ":warning: %{member} has voted to scrub Vacant Minipool %{minipool}!"
     },
     "node_rpl_slash_event": {
         "title": ":rotating_light: Node Operator Slashed",
-        "description": "Node operator %{node} has been slashed for **%{amount} RPL** (%{ethValue} ETH)!"
+        "description": "Node Operator %{node} has been slashed for **%{amount} RPL** (%{ethValue} ETH)!"
     },
     "minipool_penalty_updated": {
         "title": ":rotating_light: Minipool Penalty Updated",
@@ -364,11 +364,11 @@
     },
     "node_smoothing_pool_joined": {
         "title": ":cup_with_straw: Node Operator Joined Smoothing Pool",
-        "description": "Node operator %{node} joined the smoothing pool with their %{minipoolCount} minipools!"
+        "description": "Node Operator %{node} joined the Smoothing Pool with their %{minipoolCount} Minipools!"
     },
     "node_smoothing_pool_left": {
         "title": ":leaves: Node Operator Left Smoothing Pool",
-        "description": "Node operator %{node} has left the smoothing pool with their %{minipoolCount} minipools!"
+        "description": "Node Operator %{node} has left the Smoothing Pool with their %{minipoolCount} Minipools!"
     },
     "auction_lot_create_event": {
         "title": ":scales: Lot Created",
@@ -408,7 +408,7 @@
     },
     "minipool_vote_against_bond_reduction_event": {
         "title": ":warning: Voted Against Bond Reduction",
-        "description_small": "%{member} has voted against the bond reduction of minipool %{minipool}!"
+        "description_small": "%{member} has voted against the bond reduction of Minipool %{minipool}!"
     },
     "minipool_bond_reduction_cancelled_event": {
         "title": ":rotating_light: Bond Reduction Cancelled",
@@ -424,7 +424,7 @@
     },
     "minipool_vacancy_prepared_event": {
         "title": ":link: Solo Migration Initiated",
-        "description": "Migration of solo validator %{pubkey} to minipool %{minipool} with a bond of **%{bondAmount} ETH** was initiated!"
+        "description": "Migration of solo validator %{pubkey} to Minipool %{minipool} with a bond of **%{bondAmount} ETH** was initiated!"
     },
     "minipool_failed_deposit": {
         "title": ":fire: Failed Minipool Deposit",
