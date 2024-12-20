@@ -1,13 +1,14 @@
 import json
 import logging
 import warnings
+from enum import Enum
 
 import pymongo
 from typing import Union, Optional
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Cog, Context, is_owner, hybrid_command
-from web3.datastructures import MutableAttributeDict as aDict, AttributeDict as immutableADict
+from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 from web3.types import LogReceipt, EventData
 
@@ -27,10 +28,15 @@ log.setLevel(cfg["log_level"])
 class QueuedEvents(Cog):
     update_block = 0
 
+    class State(Enum):
+        INIT = 0
+        RUNNING = 1
+        OK = 2
+
     def __init__(self, bot):
         rp.flush()
         self.bot = bot
-        self.state = "INIT"
+        self.state = self.State.INIT
         self.events = []
         self.internal_event_mapping = {}
         self.topic_mapping = {}
@@ -86,62 +92,18 @@ class QueuedEvents(Cog):
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
                 try:
-                    f = event.get("filter", {})
-                    self.events.append(contract.events[event["event_name"]].createFilter(fromBlock=self.start_block,
-                                                                                         toBlock="latest",
-                                                                                         argument_filters=f))
+                    self.events.append(
+                        contract.events[event["event_name"]].createFilter(
+                            fromBlock=self.start_block,
+                            toBlock="latest",
+                            argument_filters=event.get("filter", {})
+                        )
+                    )
+                    self.internal_event_mapping[event["event_name"]] = event["name"]
                 except ABIEventFunctionNotFound as err:
                     log.exception(err)
                     log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
 
-    def handle_global_event(self, event) -> Response:
-        receipt = w3.eth.get_transaction_receipt(event.transactionHash)
-        event_name = self.internal_event_mapping[event["event"]]
-
-        if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
-                    rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
-                    rp.get_name_by_address(receipt.to),
-                    rp.get_name_by_address(event.address)]):
-            # some random contract we don't care about
-            log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
-            return None
-
-        # first need to make the container mutable
-        event = aDict(event)
-        # so we can make the args mutable
-        event.args = aDict(event.args)
-
-        pubkey = None
-
-        # is the pubkey in the event arguments?
-        if "validatorPubkey" in event.args:
-            pubkey = event.args.validatorPubkey.hex()
-
-        # maybe the contract has it stored?
-        if not pubkey:
-            pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", event.address).hex()
-
-        # maybe it's in the transaction?
-        if not pubkey:
-            pubkey = rp.get_pubkey_using_transaction(receipt)
-
-        if pubkey:
-            event.args.pubkey = "0x" + pubkey
-
-        # while we are at it add the sender address, so it shows up
-        event.args["from"] = receipt["from"]
-        if (n := rp.get_name_by_address(receipt["to"])) is None or not n.startswith("rocket"):
-            event.args["from"] = receipt["to"]
-            event.args["caller"] = receipt["from"]
-
-        # and add the minipool address, which is the origin of the event
-        event.args.minipool = event.address
-
-        # and add the transaction fee
-        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
-
-        return self.handle_event(event_name, event)
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -213,7 +175,56 @@ class QueuedEvents(Cog):
         for response in responses:
             await ctx.send(embed=response.embed)
 
-    def handle_event(self, event_name, event) -> Response:
+    def handle_global_event(self, event_name, event) -> Optional[Response]:
+        receipt = w3.eth.get_transaction_receipt(event.transactionHash)
+        if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
+                    rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
+                    rp.get_name_by_address(receipt.to),
+                    rp.get_name_by_address(event.address)]):
+            # some random contract we don't care about
+            log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
+            return None
+
+        # first need to make the container mutable
+        event = aDict(event)
+        # so we can make the args mutable
+        event.args = aDict(event.args)
+
+        pubkey = None
+
+        # is the pubkey in the event arguments?
+        if "validatorPubkey" in event.args:
+            pubkey = event.args.validatorPubkey.hex()
+
+        # maybe the contract has it stored?
+        if not pubkey:
+            pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", event.address).hex()
+
+        # maybe it's in the transaction?
+        if not pubkey:
+            pubkey = rp.get_pubkey_using_transaction(receipt)
+
+        if pubkey:
+            event.args.pubkey = "0x" + pubkey
+
+        # while we are at it add the sender address, so it shows up
+        event.args["from"] = receipt["from"]
+        if (n := rp.get_name_by_address(receipt["to"])) is None or not n.startswith("rocket"):
+            event.args["from"] = receipt["to"]
+            event.args["caller"] = receipt["from"]
+
+        # and add the minipool address, which is the origin of the event
+        event.args.minipool = event.address
+
+        # and add the transaction fee
+        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
+        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
+
+        return self.handle_event(event_name, event)
+
+
+    @staticmethod
+    def handle_event(event_name, event) -> Optional[Response]:
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -441,15 +452,17 @@ class QueuedEvents(Cog):
             args.amountETH = sum(solidity.to_float(e) for e in args.amountETH)
             args.ethAmount = args.amountRPL * rpl_ratio
         if "transfer_event" in event_name:
+            token_prefix = event_name.split("_", 1)[0]
             args.amount = args.value / 10**18
             if args["from"] in cfg["dao_multsigs"]:
-                event_name = f"pdao_{event_name}"
-            elif event_name.split("_", 1)[0] not in ["rpl", "reth"]:
+                event_name = "pdao_erc20_transfer_event"
+                token_contract = rp.assemble_contract(name="ERC20", address=event["address"])
+                args.symbol = token_contract.functions.symbol().call()
+            elif token_prefix != "reth":
                 return None
 
         # reject if the amount is not major
         if any([event_name == "reth_transfer_event" and args.amount < 1000,
-                event_name == "rpl_transfer_event" and args.amount < 50_000,
                 event_name == "rpl_stake_event" and args.amount < 1000,
                 event_name == "rpl_stake_event" and args.amount < 1000,
                 event_name == "node_merkle_rewards_claimed" and args.ethAmount < 5 and args.amountETH < 5,
@@ -473,35 +486,36 @@ class QueuedEvents(Cog):
                 if rp.get_address_by_name(contract) == args.claimingContract:
                     return None
 
-        # store event_name in args
-        args.event_name = event_name
-
         if "node_register_event" in event_name:
             args.timezone = rp.call("rocketNodeManager.getNodeTimezoneLocation", args.node)
         if "odao_member_challenge_event" in event_name:
             args.challengeDeadline = args.time + rp.call("rocketDAONodeTrustedSettingsMembers.getChallengeWindow")
         if "odao_member_challenge_decision_event" in event_name:
             if args.success:
-                args.event_name = "odao_member_challenge_accepted_event"
+                event_name = "odao_member_challenge_accepted_event"
                 # get their RPL bond that was burned by querying the previous block
-                args.rplBondAmount = solidity.to_float(rp.call("rocketDAONodeTrusted.getMemberRPLBondAmount",
-                                                               args.nodeChallengedAddress,
-                                                               block=args.blockNumber - 1))
+                args.rplBondAmount = solidity.to_float(
+                    rp.call(
+                        "rocketDAONodeTrusted.getMemberRPLBondAmount",
+                        args.nodeChallengedAddress,
+                        block=args.blockNumber - 1
+                    )
+                )
                 args.sender = args.nodeChallengeDeciderAddress
             else:
-                args.event_name = "odao_member_challenge_rejected_event"
+                event_name = "odao_member_challenge_rejected_event"
         if "node_smoothing_pool_state_changed" in event_name:
             # geet minipool count
             args.minipoolCount = rp.call("rocketMinipoolManager.getNodeMinipoolCount", args.node)
             if args.state:
-                args.event_name = "node_smoothing_pool_joined"
+                event_name = "node_smoothing_pool_joined"
             else:
-                args.event_name = "node_smoothing_pool_left"
+                event_name = "node_smoothing_pool_left"
         if "node_merkle_rewards_claimed" in event_name:
             if args.amountETH > 0:
-                args.event_name = "node_merkle_rewards_claimed_both"
+                event_name = "node_merkle_rewards_claimed_both"
             else:
-                args.event_name = "node_merkle_rewards_claimed_rpl"
+                event_name = "node_merkle_rewards_claimed_rpl"
 
         if "minipool_deposit_received_event" in event_name:
             contract = rp.assemble_contract("rocketMinipoolDelegate", args.minipool)
@@ -538,11 +552,11 @@ class QueuedEvents(Cog):
                             break
 
                 if args.balanceAmount == 0:
-                    args.event_name += "_credit"
+                    event_name += "_credit"
                 elif args.creditAmount == 0:
-                    args.event_name += "_balance"
+                    event_name += "_balance"
                 else:
-                    args.event_name += "_shared"
+                    event_name += "_shared"
 
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
                           "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event",
@@ -558,14 +572,14 @@ class QueuedEvents(Cog):
             args.totalAmount = args.nodeAmount + args.userAmount
         elif event_name == "pool_deposit_assigned_event":
             if event["assignment_count"] == 1:
-                args.event_name = "pool_deposit_assigned_single_event"
+                event_name = "pool_deposit_assigned_single_event"
             elif event["assignment_count"] > 1:
                 args.assignmentCount = event["assignment_count"]
             else:
                 return None
         elif "minipool_scrub" in event_name and rp.call("rocketMinipoolDelegate.getVacant", address=args.minipool):
-            args.event_name = f"vacant_{event_name}"
-            if args.event_name == "vacant_minipool_scrub_event":
+            event_name = f"vacant_{event_name}"
+            if event_name == "vacant_minipool_scrub_event":
                 # let's try to determine the reason. there are 4 reasons a vacant minipool can get scrubbed:
                 # 1. the validator does not have the withdrawal credentials set to the minipool address, but to some other address
                 # 2. the validator balance on the beacon chain is lower than configured in the minipool contract
@@ -600,12 +614,12 @@ class QueuedEvents(Cog):
                 args.scrub_reason = reason
 
         if "unsteth_withdrawal_requested_event" in event_name:
-            if receipt:
-                args.timestamp = w3.eth.getBlock(receipt["blockNumber"])["timestamp"]
             if solidity.to_float(args.amountOfStETH) < 10_000:
                 return None
-            # get the node operator address from minipool contract
+            if receipt:
+                args.timestamp = w3.eth.getBlock(receipt["blockNumber"])["timestamp"]
 
+        args.event_name = event_name
         args = prepare_args(args)
         embed = assemble(args)
 
@@ -625,8 +639,8 @@ class QueuedEvents(Cog):
         )
 
     def run_loop(self):
-        if self.state == "RUNNING":
-            log.error("Boostrap plugin was interrupted while running. Re-initializing...")
+        if self.state == self.State.RUNNING:
+            log.error("Bootstrap plugin was interrupted while running. Reinitializing...")
             self.__init__(self.bot)
         return self.check_for_new_events()
 
@@ -729,13 +743,11 @@ class QueuedEvents(Cog):
     def check_for_new_events(self):
         log.info("Checking for new events")
 
-        do_full_check = self.state == "INIT"
-        if do_full_check:
+        if do_full_check := (self.state == self.State.INIT):
             log.info("Doing full check")
-        self.state = "RUNNING"
+        self.state = self.state.RUNNING
 
         pending_events = []
-
         for events in self.events:
             if do_full_check:
                 pending_events += events.get_all_entries()
@@ -746,12 +758,15 @@ class QueuedEvents(Cog):
         should_reinit, messages = self.process_events(pending_events)
         log.debug("Finished checking for new events")
         # store last checked block in db if it's bigger than the one we have stored
-        self.state = "OK"
-        self.db.last_checked_block.replace_one({"_id": "events"}, {"_id": "events", "block": self.start_block},
-                                               upsert=True)
+        self.state = self.State.OK
+        self.db.last_checked_block.replace_one(
+            {"_id": "events"},
+            {"_id": "events", "block": self.start_block},
+            upsert=True
+        )
         if should_reinit:
             log.info("Detected update, triggering reinit")
-            self.state = "RUNNING"
+            self.state = self.State.RUNNING
         return messages
 
     def process_events(self, events: list[EventData]) -> tuple[bool, list[Response]]:
@@ -759,11 +774,15 @@ class QueuedEvents(Cog):
         messages = []
         should_reinit = False
 
-        for event in self.aggregate_events(events):
+        log.debug(f"Aggregating {len(events)} events")
+        events = self.aggregate_events(events)
+        log.debug(f"Processing {len(events)} events")
+
+        for event in events:
             if event.get("removed", False):
                 continue
 
-            log.debug(f"Checking Event {event}")
+            log.debug(f"Checking event {event}")
 
             response = None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
@@ -781,20 +800,21 @@ class QueuedEvents(Cog):
                     _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
 
-                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}", None):
+                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}"):
                     response = self.handle_event(event_name, event)
                 else:
                     log.warning(f"Skipping unknown event {n}.{event.event}")
 
             elif event.get("event") in self.internal_event_mapping:
-                if self.internal_event_mapping[event.event] in ["contract_upgraded", "contract_added"]:
+                event_name = self.internal_event_mapping[event.event]
+                if event_name in ["contract_upgraded", "contract_added"]:
                     if event.blockNumber > self.update_block:
                         log.info("detected update, setting reinit flag")
                         should_reinit = True
                         self.update_block = event.blockNumber
                 else:
                     # deposit/exit event path
-                    response = self.handle_global_event(event)
+                    response = self.handle_global_event(event_name, event)
 
             if response is not None:
                 # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes

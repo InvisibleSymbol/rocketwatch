@@ -43,26 +43,16 @@
         "title": ":rocket: Deposit Assigned To Minipool",
         "description_small": ":handshake: Minipool %{minipool_clean} owned by operator %{node} has been matched and left the queue!"
     },
-    "rpl_transfer_event": {
-        "title": ":whale: Large RPL Transfer",
-        "description": "**%{value} RPL** transferred from %{from} to %{to}!"
-    },
     "reth_transfer_event": {
         "title": ":whale: Large rETH Transfer",
         "description": "**%{value} rETH** transferred from %{from} to %{to}!"
     },
-    "pdao_rpl_transfer_event": {
-        "description_small": ":moneybag: %{from} transferred **%{value} RPL** to %{to}!"
-    },
-    "pdao_reth_transfer_event": {
-        "description_small": ":moneybag: %{from} transferred **%{value} rETH** to %{to}!"
-    },
-    "pdao_lusd_transfer_event": {
-        "description_small": ":moneybag: %{from} transferred **%{value} LUSD** to %{to}!"
+    "pdao_erc20_transfer_event": {
+        "description_small": ":moneybag: %{from} transferred **%{amount} %{symbol}** to %{to}!"
     },
     "price_update_event": {
         "title": ":moneybag: RPL Price Update",
-        "description": "The RPL Price has been updated to **`%{value} RPL/ETH`!**\n\n**This will be the last update before the current Reward Period ends!**\nYou have until <t:%{rewardPeriodEnd}> (<t:%{rewardPeriodEnd}:R>) to ensure that you qualify for RPL rewards!"
+        "description": "The RPL price has been updated to **`%{value} RPL/ETH`!**\n\n**This will be the last update before the current reward period ends!**\nYou have until <t:%{rewardPeriodEnd}> (<t:%{rewardPeriodEnd}:R>) to increase your RPL stake!"
     },
     "pool_deposit_assigned_event": {
         "title": ":rocket: Deposit Assigned To Minipools",
