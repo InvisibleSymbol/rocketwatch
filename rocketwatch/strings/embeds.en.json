@@ -72,7 +72,7 @@
     },
     "pool_deposit_event": {
         "title": ":rocket: Pool Deposit",
-        "description": "**%{amount} ETH** deposited into the Deposit Pool!",
+        "description": "**%{amount} ETH** deposited into the deposit pool!",
         "description_small": ":rocket: %{fancy_from} deposited **%{amount} ETH** into the deposit pool!"
     },
     "odao_rewards_snapshot_event": {
@@ -442,11 +442,11 @@
     },
     "deposit_pool_queue_clear_full": {
         "title": ":tada: Deposit Pool Queue Clear",
-        "description": "%{node} cleared %{count} minipools from the Deposit Pool Queue!"
+        "description": "%{node} cleared %{count} minipools from the deposit pool queue!"
     },
     "deposit_pool_queue_clear_partial": {
         "title": ":tada: Partial Deposit Pool Queue Clear",
-        "description": "%{node} cleared %{count} minipools from the Deposit Pool Queue!"
+        "description": "%{node} cleared %{count} minipools from the deposit pool queue!"
     },
     "odao_minipool_penalty_updated": {
         "title": ":rotating_light: Minipool Penalty",
