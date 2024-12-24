@@ -106,7 +106,7 @@ class MinipoolDistribution(commands.Cog):
         e.set_image(url="attachment://graph.png")
         f = File(img, filename="graph.png")
         percentile_strings = [f"{x[0]}th percentile: {p.no('minipool', x[1])} per node" for x in
-                              get_percentiles([50, 75, 90, 99], counts)]
+                              get_percentiles([50, 75, 90, 99], counts) if x[1]]
         percentile_strings.append(f"Max: {distribution[-1][0]} minipools per node")
         percentile_strings.append(f"Total: {p.no('minipool', sum(counts))}")
         e.set_footer(text="\n".join(percentile_strings))
