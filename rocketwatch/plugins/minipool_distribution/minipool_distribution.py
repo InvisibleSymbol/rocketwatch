@@ -1,4 +1,5 @@
 import logging
+import re
 from io import BytesIO
 
 import inflect
@@ -51,10 +52,27 @@ class MinipoolDistribution(commands.Cog):
         # 1 node has 2 minipools
         # 3 nodes have 3 minipools
         pipeline = [
-            {"$group": {"_id": "$node_operator", "count": {"$sum": 1}}},
-            {"$sort": {"count": 1}}
+            {
+                '$match': {
+                    'beacon.status': {
+                        '$not': re.compile(r"(?:withdraw|exit|init)")
+                    },
+                    'status': 'staking'
+                }
+            }, {
+                '$group': {
+                    '_id': '$node_operator',
+                    'count': {
+                        '$sum': 1
+                    }
+                }
+            }, {
+                '$sort': {
+                    'count': 1
+                }
+            }
         ]
-        return [x["count"] for x in self.db.minipools.aggregate(pipeline)]
+        return [x["count"] for x in self.db.minipools_new.aggregate(pipeline)]
 
     @hybrid_command()
     @describe(raw="Show the raw Distribution Data")
