@@ -189,7 +189,7 @@ def prepare_args(args):
         args[f"{arg_key}_raw"] = arg_value
 
         # handle numbers
-        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate", "totaleth", "stakingeth", "rethsupply", "rplprice"]) and isinstance(arg_value, int):
+        if any(keyword in arg_key.lower() for keyword in ["amount", "value", "rate", "totaleth", "stakingeth", "rethsupply", "rplprice", "profit"]) and isinstance(arg_value, int):
             args[arg_key] = arg_value / 10 ** 18
 
         # handle timestamps
@@ -278,13 +278,15 @@ def assemble(args) -> Embed:
             use_large = (args["assets"] >= 32)
         case "cs_deposit_rpl_event" | "cs_withdraw_rpl_event":
             use_large = (args["assets"] >= 16 / solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice")))
+        case "exit_arbitrage_event":
+            use_large = args["amount"] >= 100
         case _:
             use_large = (amount >= 100)
 
     # make numbers look nice
     for arg_key, arg_value in list(args.items()):
         if any(keyword in arg_key.lower() for keyword in
-               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate", "votingpower", "assets", "shares"]):
+               ["amount", "value", "total_supply", "perc", "tnx_fee", "rate", "votingpower", "assets", "shares", "profit"]):
             if not isinstance(arg_value, (int, float)) or "raw" in arg_key:
                 continue
             if arg_value:
