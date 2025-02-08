@@ -244,7 +244,7 @@ class QueuedEvents(Cog):
             # check if the next update is after the next period ts
             earliest_next_update = ts + update_rate
             # if it will update before the next period, skip
-            if earliest_next_update < next_period:
+            if not (ts < next_period < earliest_next_update):
                 return None
 
         if event_name == "bootstrap_pdao_setting_multi_event":
