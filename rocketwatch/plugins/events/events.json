@@ -19,6 +19,15 @@
             ]
         },
         {
+            "contract_name": "rocketExitArbitrage",
+            "events": [
+                {
+                    "event_name": "Arbitrage",
+                    "name": "exit_arbitrage_event"
+                }
+            ]
+        },
+        {
             "contract_name": "rocketNetworkBalances",
             "events": [
                 {

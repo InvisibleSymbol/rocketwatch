@@ -563,5 +563,10 @@
     "cs_rpl_target_ratio_change_event": {
         "title": "<:nodeset:1297235812278341653> Constellation RPL Target Changed",
         "description": "The supernode's RPL bond target changed from **%{oldRatio}%** to **%{newRatio}%**!"
+    },
+    "exit_arbitrage_event": {
+        "title": ":moneybag: Large Exit Arbitrage",
+        "description": "%{caller} earned **%{profit} ETH** with a %{amount} ETH flash loan!",
+        "description_small": "%{caller} earned **%{profit} ETH** from an exit arbitrage with %{amount} ETH!"
     }
 }
