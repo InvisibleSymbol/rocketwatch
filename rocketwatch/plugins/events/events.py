@@ -678,6 +678,7 @@ class QueuedEvents(Cog):
 
             for event in tx_events:
                 event_name, full_event_name = get_event_name(event)
+                log.info(f"Processing event {full_event_name}")
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
@@ -712,10 +713,11 @@ class QueuedEvents(Cog):
                     if vote_event is not None:
                         events.remove(vote_event)
                 elif full_event_name == "MinipoolPrestaked":
-                    assign_event = events_by_name.get("rocketDepositPool.DepositAssigned", [None]).pop()
-                    if assign_event is not None:
-                        events.remove(assign_event)
-                        tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
+                    for assign_event in events_by_name.get("rocketDepositPool.DepositAssigned", []).copy():
+                        if event["address"] == assign_event["address"]:
+                            events_by_name["rocketDepositPool.DepositAssigned"].remove(assign_event)
+                            events.remove(assign_event)
+                            tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
                 elif full_event_name in aggregation_attributes:
                     # there is a special aggregated event, remove duplicates
                     if count := tx_aggregates.get(full_event_name, 0):
