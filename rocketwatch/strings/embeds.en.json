@@ -565,8 +565,8 @@
         "description": "The supernode's RPL bond target changed from **%{oldRatio}%** to **%{newRatio}%**!"
     },
     "exit_arbitrage_event": {
-        "title": ":moneybag: Large Exit Arbitrage",
-        "description": "%{caller} earned **%{profit} ETH** with a %{amount} ETH flash loan!",
-        "description_small": "%{caller} earned **%{profit} ETH** from an exit arbitrage with %{amount} ETH!"
+        "title": ":money_mouth: Large Exit Arbitrage",
+        "description": "%{caller} earned **%{profit} ETH** using a %{amount} ETH flash loan!",
+        "description_small": ":money_mouth: %{caller} earned **%{profit} ETH** from an exit arbitrage!"
     }
 }
