@@ -690,10 +690,12 @@ class QueuedEvents(Cog):
                         events.remove(event)
                     tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
                 elif full_event_name == "rocketTokenRETH.Transfer":
-                    if "rocketTokenRETH.TokensBurned" in tx_aggregates:
+                    conflicting_events = ["rocketTokenRETH.TokensBurned", "rocketDepositPool.DepositReceived"]
+                    if any((event in tx_aggregates for event in conflicting_events)):
                         events.remove(event)
                         continue
                     if prev_event := tx_aggregates.get(full_event_name, None):
+                        # only keep largest rETH transfer
                         contract = rp.get_contract_by_address(event["address"])
                         _event = aDict(contract.events[event_name]().processLog(event))
                         _prev_event = aDict(contract.events[event_name]().processLog(event))
