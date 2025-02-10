@@ -714,7 +714,8 @@ class QueuedEvents(Cog):
                         events.remove(vote_event)
                 elif full_event_name == "MinipoolPrestaked":
                     for assign_event in events_by_name.get("rocketDepositPool.DepositAssigned", []).copy():
-                        if event["address"] == assign_event["address"]:
+                        assigned_minipool = w3.to_checksum_address(assign_event["topics"][1][-20:])
+                        if event["address"] == assigned_minipool:
                             events_by_name["rocketDepositPool.DepositAssigned"].remove(assign_event)
                             events.remove(assign_event)
                             tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
