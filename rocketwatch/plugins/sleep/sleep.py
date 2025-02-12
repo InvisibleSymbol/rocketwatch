@@ -92,7 +92,7 @@ class Oura(commands.Cog):
             score = score_mapping.get(sleep["day"])
             hr = sleep["lowest_heart_rate"]
             hrv = sleep["average_hrv"]
-            temperature = sleep["readiness"]["temperature_trend_deviation"]
+            temperature = sleep["readiness"]["temperature_deviation"]
             sd = datetime.datetime.fromisoformat(sleep["bedtime_start"]).astimezone(tz=tz)
             log.info(f"start date: {sd}")
             # the start day is the next day if we are past 12pm, otherwise it is the current day
@@ -266,17 +266,32 @@ class Oura(commands.Cog):
             y_hrv.append(min_hrv)
             y_temperature.append(max_temperature)
         # fill the area between the the line and zero
-        ax[1].plot(x, y_temperature, color="gray", alpha=0.7)
+        #ax[1].plot(x, y_temperature, color="gray", alpha=0.7)
+        # draw as bars instead of line, red if positive, blue if negative
+        ax[1].bar(x, y_temperature, color=["red" if i >= 0 else "blue" for i in y_temperature], alpha=0.5)
+        # show x.5 ticks on y axis for axis 1
+        min_t, max_t = min(y_temperature), max(y_temperature)
+        # we want 4 ticks evenly spaecd between min and max
+        ax[1].set_yticks([round(min_t + (max_t - min_t) / 3 * i,2) for i in range(4)])
         # blue area, negative
-        ax[1].fill_between(x, y_temperature, color="blue", alpha=0.25, where=[i <= 0 for i in y_temperature], interpolate=True)
+        #ax[1].fill_between(x, y_temperature, color="blue", alpha=0.25, where=[i <= 0 for i in y_temperature], interpolate=True)
         # red area, positive
-        ax[1].fill_between(x, y_temperature, color="red", alpha=0.25, where=[i >= 0 for i in y_temperature], interpolate=True)
+        #ax[1].fill_between(x, y_temperature, color="red", alpha=0.25, where=[i >= 0 for i in y_temperature], interpolate=True)
         ax[2].plot(x, y_hr, color="black", alpha=0.7)
+        min_hr, max_hr = min(y_hr), max(y_hr)
+        ax[2].set_yticks([round(min_hr + (max_hr - min_hr) / 3 * i,0) for i in range(4)])
+        # add y axis label
+        ax[2].set_ylabel("HR")
         ax3 = ax[2].twinx()
+        # add y axis label
+        ax3.set_ylabel("HRV")
         ax3.plot(x, y_hrv, color="green", alpha=0.7)
+        min_hrv, max_hrv = min(y_hrv), max(y_hrv)
+        ax3.set_yticks([round(min_hrv + (max_hrv - min_hrv) / 3 * i,0) for i in range(4)])
         ax[2].legend(["HR"], loc="lower left")
         ax3.legend(["HRV"], loc="upper left")
         ax[1].legend(["Temperature"], loc="upper left")
+        # make axis 2 right side axis color green with 0.7 alpha
         # unit °C on y axis
 
         # reduce padding
@@ -351,6 +366,7 @@ class Oura(commands.Cog):
 
     # replace get_calendar_data with home assistant variant
     async def get_calendar_data(self):
+        return None
         client = Client(cfg["homeassistant.url"], cfg["homeassistant.token"], use_async=True)
         work_periods = []
         last_state = None
