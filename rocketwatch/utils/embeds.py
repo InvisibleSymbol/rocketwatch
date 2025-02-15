@@ -248,7 +248,7 @@ def assemble(args) -> Embed:
             (args.event_name == "cs_deposit_eth_event" and args.assets >= 500)
     )):
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
-    elif "_slash_" in args.event_name or "finality_delay_event" in args.event_name:
+    elif any(kw in args.event_name for kw in ["_scrub_", "_dissolve_", "_slash_", "finality_delay_event"]):
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
     elif "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")

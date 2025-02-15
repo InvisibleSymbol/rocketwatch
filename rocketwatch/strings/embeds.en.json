@@ -330,7 +330,11 @@
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",
-        "description": "Minipool %{minipool} has been scrubbed likely due to having invalid withdrawal credentials on the beacon chain!"
+        "description": "Minipool %{minipool} has been scrubbed, likely due to having invalid withdrawal credentials on the beacon chain!"
+    },
+    "minipool_dissolve_event": {
+        "title": ":rotating_light: Minipool Dissolved",
+        "description": "Minipool %{minipool} failed to stake its assigned ETH and has been dissolved!"
     },
     "vacant_minipool_scrub_event": {
         "title": ":rotating_light: Vacant Minipool Scrubbed",
