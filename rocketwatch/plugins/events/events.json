@@ -486,6 +486,10 @@
                 {
                     "event_name": "EtherWithdrawalProcessed",
                     "name": "minipool_withdrawal_processed_event"
+                },
+                {
+                    "event_name": "StatusUpdated",
+                    "name": "minipool_status_updated_event"
                 }
             ]
         },

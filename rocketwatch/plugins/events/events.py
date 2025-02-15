@@ -177,10 +177,12 @@ class QueuedEvents(Cog):
 
     def handle_global_event(self, event_name, event) -> Optional[Response]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
-        if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
-                    rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
-                    rp.get_name_by_address(receipt.to),
-                    rp.get_name_by_address(event.address)]):
+        if not any([
+            rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
+            rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
+            rp.get_name_by_address(receipt.to),
+            rp.get_name_by_address(event.address)
+        ]):
             # some random contract we don't care about
             log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
             return None
@@ -557,6 +559,12 @@ class QueuedEvents(Cog):
                     event_name += "_balance"
                 else:
                     event_name += "_shared"
+        elif "minipool_status_updated_event" in event_name:
+            match args.status:
+                case 4:
+                    event_name = "minipool_dissolve_event"
+                case _:
+                    return None
 
         if event_name in ["minipool_bond_reduce_event", "minipool_vacancy_prepared_event",
                           "minipool_withdrawal_processed_event", "minipool_bond_reduction_started_event",
