@@ -39,3 +39,4 @@ bs4==0.0.2
 pydantic==2.8.2
 pydantic_core==2.20.1
 pymongo==4.8.0
+graphql_query==1.4.0
