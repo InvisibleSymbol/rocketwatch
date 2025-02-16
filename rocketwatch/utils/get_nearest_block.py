@@ -2,10 +2,7 @@ import logging
 import math
 
 from utils.cfg import cfg
-from utils.shared_w3 import w3
-
-# TODO change to merge timestamp once known
-MERGE_TIMESTAMP = math.inf
+from utils.shared_w3 import w
 
 log = logging.getLogger("get_nearest_block")
 log.setLevel(cfg["log_level"])

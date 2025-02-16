@@ -1,13 +1,17 @@
 import logging
-from datetime import datetime, timedelta
+import requests
+
 from io import BytesIO
+from typing import Optional
+from datetime import datetime, timedelta
 
 import pymongo
+import termplotlib as tpl
 from PIL import Image
 from discord import File
 from discord.ext import commands
-from discord.ext.commands import Context
-from discord.ext.commands import hybrid_command
+from web3.constants import ADDRESS_ZERO
+from discord.ext.commands import Context, hybrid_command
 
 from utils.cfg import cfg
 from utils.containers import Response
@@ -15,7 +19,6 @@ from utils.draw import BetterImageDraw
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import uptime
 from utils.shared_w3 import w3
-from utils.thegraph import get_active_snapshot_proposals, get_votes_of_snapshot
 from utils.visibility import is_hidden_weak
 from utils.rocketpool import rp
 
@@ -35,133 +38,270 @@ RANK_COLORS = {
 class QueuedSnapshot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
-        self.ratelimit = timedelta(minutes=5)
-        self.last_ran = datetime.now() - self.ratelimit
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.version = 3
+        self.__rate_limit = timedelta(minutes=5)
+        self.__last_ran = datetime.now() - self.__rate_limit
 
-    def run_loop(self):
-        # ratelimit
-        if (datetime.now() - self.last_ran) < self.ratelimit:
+    @staticmethod
+    def get_active_proposals():
+        query = """
+        {
+          proposals(
+            first: 20,
+            skip: 0,
+            where: {
+                space_in: ["rocketpool-dao.eth"],
+                state: "active"
+            },
+            orderBy: "created",
+            orderDirection: desc
+          ) {
+            id
+            title
+            choices
+            state
+            scores
+            scores_total
+            scores_updated
+            end
+            quorum
+          }
+        }
+        """
+        response = requests.post("https://hub.snapshot.org/graphql", json={"query": query}).json()
+        if "errors" in response:
+            raise Exception(response["errors"])
+
+        return response["data"]["votes"], response["data"]["proposal"]
+
+    @staticmethod
+    def get_votes(snapshot_id: int):
+        query = f"""
+        {{
+          votes (
+            first: 1000
+            skip: 0
+            where: {{
+              proposal: "{snapshot_id}"
+            }}
+            orderBy: "created",
+            orderDirection: desc
+          ) {{
+            id
+            voter
+            created
+            vp
+            choice
+            reason
+          }}
+          proposal(
+            id:"{snapshot_id}"
+          ) {{
+            choices
+            title
+          }}
+        }}
+        """
+        response = requests.post("https://hub.snapshot.org/graphql", json={"query": query}).json()
+        if "errors" in response:
+            raise Exception(response["errors"])
+
+        return response["data"]["votes"], response["data"]["proposal"]
+
+    def __should_run_loop(self) -> bool:
+        if (datetime.now() - self.__last_ran) < self.__rate_limit:
+            return False
+
+        self.__last_ran = datetime.now()
+        return True
+
+    def run_loop(self) -> list[Response]:
+        if not self.__should_run_loop():
             return []
-        # nuke db if version changed or not present
+
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
             log.warning("Snapshot version changed, nuking db")
             self.db.snapshot_votes.drop()
             self.db.snapshot_votes.insert_one({"_id": "version", "version": self.version})
-        self.last_ran = datetime.now()
-        current_proposals = get_active_snapshot_proposals()
 
         now = datetime.now()
-        updates = []
         events = []
-        for proposal in current_proposals:
-            # get the current votes for this proposal
-            current_votes, _ = get_votes_of_snapshot(proposal["id"])
-            # get the previous votes for this proposal
-            previous_votes = list(self.db.snapshot_votes.find({"proposal_id": proposal["id"]}))
+        db_updates = []
+
+        proposals = self.get_active_proposals()
+
+        for proposal in proposals:
+            log.debug(f"Processing proposal {proposal}")
+
+            proposal_id = proposal["id"]
+            current_votes, _ = self.get_votes(proposal_id)
+            if proposal_id not in ["0x129eaa1779916b96fa1a34c7f9e24f87abad820c8fbe8ea2663f170891295e2e"]:
+                continue
+
+            previous_votes = {}
+            for stored_vote in self.db.snapshot_votes.find({"proposal_id":proposal_id}):
+                previous_votes[stored_vote["voter"]] = stored_vote
+
             # compare the two
-            for vote in current_votes:
-                # skip the vote entirely if the voting power is too low
-                # check if the vote is already in the db and if it is old enough
-                prev_vote = next((v for v in previous_votes if v["voter"] == vote["voter"]), None)
-                if prev_vote and (now - prev_vote["timestamp"]).total_seconds() < 300:
-                    continue
-                # make sure the vote actually changed
+            for vote in current_votes[:25]:
+                log.debug(f"Processing vote {vote}")
+
+                prev_vote = previous_votes.get(vote["voter"])
                 if prev_vote and prev_vote["choice"] == vote["choice"]:
+                    log.debug(f"Same vote choice as before, skipping event")
+                    continue
+                else:
+                    previous_votes[vote["voter"]] = vote
+
+                embed = self.handle_vote(proposal, vote, prev_vote)
+                if embed is None:
                     continue
 
-                vote["node"] = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
+                embed.set_author(
+                    name="🔗 Data from snapshot.org",
+                    url=f"https://vote.rocketpool.net/#/proposal/{proposal_id}"
+                )
 
-                match vote["choice"]:
-                    case list():
-                        e, uuid = self.handle_multiple_choice_vote(proposal, vote, prev_vote)
-                    case int():
-                        e, uuid = self.handle_single_choice_vote(proposal, vote, prev_vote)
-                    case _:
-                        log.error(f"Unknown vote type: {vote['choice']}")
-                        continue
-                # update the db
-                updates.append({
-                    "proposal_id": proposal["id"],
+                db_update = {
+                    "proposal_id": proposal_id,
                     "voter"      : vote["voter"],
                     "choice"     : vote["choice"],
-                    "timestamp"  : now,
-                })
-                if not previous_votes:
-                    continue
-                # create change embed
-                # important: choices are indexes, use the proposal.choices array to get the actual choice
-                # add the proposal link
-                e.set_author(name="🔗 Data from snapshot.org", url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}")
-                event_name = "snapshot_vote_changed"
-                if vote['vp'] >= 250:
-                    event_name = "pdao_snapshot_vote_changed"
-                events.append(Response(
-                    embed=e,
+                    "timestamp"  : now
+                }
+                db_updates.append(db_update)
+
+                event = Response(
+                    embed=embed,
                     topic="snapshot",
                     block_number=w3.eth.getBlock("latest").number,
-                    event_name=event_name,
-                    unique_id=uuid,
-                ))
+                    event_name="pdao_snapshot_vote_changed" if (vote['vp'] >= 250) else "snapshot_vote_changed",
+                    unique_id="_".join((str(v) for v in db_update.values()))
+                )
+                events.append(event)
 
-        if updates:
-            # update or insert the votes
+        if db_updates:
             self.db.snapshot_votes.bulk_write([
                 pymongo.UpdateOne(
-                    {"proposal_id": u["proposal_id"], "voter": u["voter"]},
-                    {"$set": u},
-                    upsert=True,
-                ) for u in updates
+                    {"proposal_id": update["proposal_id"], "voter": update["voter"]},
+                    {"$set": update},
+                    upsert=True
+                ) for update in db_updates
             ])
+
         return events
 
-    def handle_multiple_choice_vote(self, proposal, vote, prev_vote):
-        new_choices = [proposal["choices"][c - 1] for c in vote["choice"]]
-        e = Embed(
-            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}: {proposal['title']}",
-        )
-        nl = "\n- "
-        voter = f"{el_explorer_url(vote['node'])} ({el_explorer_url(vote['voter'])})"
-        if prev_vote:
-            e.description = f"{voter} changed their vote from\n"
-            old_choices = [proposal["choices"][c - 1] for c in prev_vote["choice"]] if prev_vote else []
-            e.description += f"**- {nl.join(old_choices)}**\nto\n**- {nl.join(new_choices)}**"
-        else:
-            e.description = f"{voter} voted for\n**- {nl.join(new_choices)}**"
-        e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
-        e.description += f"\n\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
-        if len(e.description) > 2000:
-            e.description = f"{e.description[:1999]}…```"
-        return e, f"{proposal['id']}_{vote['voter']}_{new_choices}_{datetime.now().timestamp()}"
+    def handle_vote(self, proposal: dict, vote: dict, prev_vote: Optional[dict]) -> Optional[Embed]:
+        def label_vote(_raw_vote: int) -> str:
+            # vote choice represented as 1-based index
+            return proposal["choices"][_raw_vote - 1]
 
-    def handle_single_choice_vote(self, proposal, vote, prev_vote):
-        new_choice = proposal["choices"][vote["choice"] - 1]
-        e = Embed(
-            title=f"Snapshot Vote {'Changed' if prev_vote else 'Added'}: {proposal['title']}",
-        )
-        def fancy_choice(choice):
-            match choice.lower():
+        match (raw_choice := vote["choice"]):
+            case int():
+                label_fn = label_vote
+                handle_fn = self.handle_single_choice_vote
+            case list():
+                label_fn = lambda v: [label_vote(c) for c in v]
+                handle_fn = self.handle_multiple_choice_vote
+            case dict():
+                # weighted votes use strings as keys for some reason
+                label_fn = lambda v: {label_vote(int(c)): w for c,w in v.items()}
+                handle_fn = self.handle_weighted_vote
+            case _:
+                log.error(f"Unknown vote type: {raw_choice}")
+                return None
+
+        node = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
+        if node == ADDRESS_ZERO:
+            # pre Houston vote
+            voter = el_explorer_url(vote['voter'])
+        else:
+            voter = f"{el_explorer_url(node)} ({el_explorer_url(vote['voter'])})"
+
+        embed = Embed(title=proposal['title'])
+        if prev_vote is None:
+            new_choice = label_fn(vote["choice"])
+            embed.description = handle_fn(voter, new_choice, None)
+        else:
+            new_choice = label_fn(vote["choice"])
+            old_choice = label_fn(prev_vote["choice"])
+            embed.description = handle_fn(voter, new_choice, old_choice)
+
+        if vote["reason"]:
+            max_length = 2000
+            reason = vote["reason"]
+            reason_fmt = f"```{reason}```"
+            if len(embed.description) + len(reason_fmt) > max_length:
+                suffix = "..."
+                overage = len(embed.description) + len(reason_fmt) - max_length
+                reason_fmt = f"```{reason[:-(overage + len(suffix))]}{suffix}```"
+
+            embed.description += reason_fmt
+
+        embed.add_field(name="Voting Power", value=f"{vote['vp']:.2f}", inline=False)
+
+        return embed
+
+    @staticmethod
+    def handle_single_choice_vote(voter: str, choice: str, prev_choice: Optional[str]) -> str:
+        def fmt_vote(_choice: str) -> str:
+            match _choice.lower():
                 case "for":
-                    return "✅ For"
+                    return "`✅ For`"
                 case "against":
-                    return "❌ Against"
+                    return "`❌ Against`"
                 case "abstain":
-                    return "⚪ Abstain"
-            return choice
+                    return "`⚪ Abstain`"
+            return f"`{choice}`"
 
-        voter = f"{el_explorer_url(vote['node'])} ({el_explorer_url(vote['voter'])})"
-        if prev_vote:
-            e.description = f"{voter} changed their vote from **`{fancy_choice(proposal['choices'][prev_vote['choice'] - 1])}`** to **`{fancy_choice(new_choice)}`**"
+        if prev_choice:
+
+            return f"{voter} changed their vote from {fmt_vote(prev_choice)} to {fmt_vote(choice)}"
         else:
-            e.description = f"{voter} voted **`{fancy_choice(new_choice)}`**"
-        e.add_field(name="Voting Power", value=f"`{vote['vp']:.2f}`")
-        e.description += f"\n**Reason:**\n```{vote['reason']}```" if vote["reason"] else ""
-        if len(e.description) > 2000:
-            e.description = f"{e.description[:1999]}…```"
-        return e, f"{proposal['id']}_{vote['voter']}_{new_choice}_{datetime.now().timestamp()}"
+            return f"{voter} voted `{fmt_vote(choice)}`"
 
+    @staticmethod
+    def handle_multiple_choice_vote(voter: str, choice: list[str], prev_choice: Optional[list[str]]) -> str:
+        def fmt_choice(_choice: list[str]) -> str:
+            return "**" + "\n".join([f"- {c}" for c in _choice]) + "**"
+
+        if prev_choice:
+            return (
+                f"{voter} changed their vote from\n"
+                f"{fmt_choice(prev_choice)}\n"
+                f"to\n"
+                f"{fmt_choice(choice)}"
+            )
+        else:
+            return (
+                f"{voter} voted\n"
+                f"{fmt_choice(choice)}"
+            )
+
+    @staticmethod
+    def handle_weighted_vote(voter: str, choice: dict[str, int], prev_choice: Optional[dict[str, int]]) -> str:
+        def fmt_choice(_choice: dict[str, int]) -> str:
+            total_weight = sum(choice.values())
+            choice_perc = [(c, round(100 * w / total_weight)) for c, w in choice.items()]
+            choice_perc.sort(key=lambda x: x[1], reverse=True)
+            graph = tpl.figure()
+            graph.barh([x[1] for x in choice_perc], [x[0] for x in choice_perc], max_width=20)
+            return "```" + graph.get_string().replace("]", "%]") + "```"
+
+        if prev_choice:
+            return (
+                f"{voter} changed their vote from\n"
+                f"{fmt_choice(prev_choice)}\n"
+                f"to\n"
+                f"{fmt_choice(choice)}"
+            )
+        else:
+            return (
+                f"{voter} voted\n"
+                f"{fmt_choice(choice)}"
+            )
+
+    # TODO rewrite hybrid command
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
         """
@@ -170,7 +310,7 @@ class QueuedSnapshot(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")
-        proposals = get_active_snapshot_proposals()
+        proposals = self.get_active_proposals()
         if not proposals:
             e.description = "No active proposals"
             return await ctx.send(embed=e)
