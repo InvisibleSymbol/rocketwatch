@@ -50,6 +50,7 @@ class Core(commands.Cog):
     async def run_loop(self):
         if not self.submodules:
             self.submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
+
         p_id = time.time()
         if p_id - self.previous_run < self.speed_limit:
             log.debug("skipping core update loop")
@@ -166,15 +167,14 @@ class Core(commands.Cog):
                 log.error(f"Submodule returned an exception: {result}")
                 log.exception(result)
                 await report_error(result)
-                continue
-            if result:
+            elif result:
                 for entry in result:
                     if await self.db.event_queue.find_one({"_id": entry.unique_id}):
                         continue
                     await self.db.event_queue.insert_one(entry.to_dict())
                     tmp_event_queue.append(entry)
 
-        log.debug(f"{len(tmp_event_queue)} new Events gathered.")
+        log.debug(f"{len(tmp_event_queue)} new events gathered.")
 
     async def process_event_queue(self):
         log.debug("Processing events in event_queue collection...")

@@ -11,39 +11,16 @@ log = logging.getLogger("thegraph")
 log.setLevel(cfg["log_level"])
 
 
-def get_average_commission():
-    query = """
-{
-    rocketPoolProtocols(first: 1) {
-        lastNetworkNodeBalanceCheckPoint {
-            averageFeeForActiveMinipools
-        }
-    }
-}
-    """
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query}
-    )
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-    data = response.json()["data"]
-    raw_value = int(data["rocketPoolProtocols"][0]["lastNetworkNodeBalanceCheckPoint"]["averageFeeForActiveMinipools"])
-    return solidity.to_float(raw_value)
-
-
 def get_minipool_counts_per_node():
     query = """
-{{
-    nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
-        minipools(first: {count}, skip: {mp_offset}, orderBy: id) {{
+    {{
+        nodes(first: {count}, skip: {offset}, orderBy: id, orderDirection: desc) {{
+            minipools(first: {count}, skip: {mp_offset}, orderBy: id) {{
+                id
+            }}
             id
         }}
-        id
     }}
-}}
     """
     # do partial request, 1000 nodes per page
     node_offset = 0
@@ -87,205 +64,6 @@ def get_minipool_counts_per_node():
 
     # return an array where each element represents a single node, and the value stored is the minipool count
     return sorted([mp_count for _, mp_count in all_nodes.items()])
-
-
-def get_reth_ratio_past_month():
-    query = """
-{{
-    networkStakerBalanceCheckpoints(orderBy: blockTime, orderDirection: asc, where: {{blockTime_gte: "{timestamp}"}}) {{
-        rETHExchangeRate
-        blockTime
-    }}
-}}
-    """
-    # get timestamp 7 days ago
-    timestamp = datetime.datetime.now() - datetime.timedelta(days=30)
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query.format(timestamp=int(timestamp.timestamp()))}
-    )
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-    # convert all entries to ints
-    data = response.json()["data"]["networkStakerBalanceCheckpoints"]
-    data = [{
-        "value": solidity.to_float(int(entry["rETHExchangeRate"])),
-        "time" : int(entry["blockTime"])
-    } for entry in data]
-    return data
-
-
-def get_unclaimed_rpl_reward_nodes():
-    # TODO: Make work with over 1000 nodes
-    query = """
-{{
-    nodes(first: 1000, where: {{blockTime_lte: "{timestamp}", effectiveRPLStaked_gt: "0"}}) {{
-        id
-        effectiveRPLStaked
-    }}
-    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {{
-        totalNodeRewardsClaimed
-        claimableNodeRewards
-        rplRewardClaims(first: 1000, where: {{claimerType: Node}}) {{
-            claimer
-        }}
-    }}
-}}
-    """
-    # get reward period start
-    reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
-    # duration left
-    reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
-    reward_end = reward_start + reward_duration
-    # get timestamp 28 days from the last possible claim date
-    timestamp = reward_end - (solidity.days * 28)
-
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query.format(timestamp=timestamp)}
-    )
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-    # get the eligible nodes for this interval
-    eligible_nodes = {node["id"]: node["effectiveRPLStaked"] for node in data["nodes"]}
-
-    # remove nodes that have already claimed rewards
-    for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
-        if claim["claimer"] in eligible_nodes:
-            eligible_nodes.pop(claim["claimer"])
-
-    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableNodeRewards"])
-    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalNodeRewardsClaimed"])
-    total_rpl_staked = solidity.to_float(rp.call("rocketNetworkPrices.getEffectiveRPLStake"))
-
-    # get theoretical rewards per staked RPL
-    reward_per_staked_rpl = total_rewards / total_rpl_staked
-
-    # get list of eligible claims and sort by largest first
-    eligible_effective = sorted([solidity.to_float(v) for v in eligible_nodes.values()], reverse=True)
-
-    # calculate Rewards required for eligible nodes
-    rewards_required = reward_per_staked_rpl * sum(eligible_effective)
-
-    eligible_claims = [v * reward_per_staked_rpl for v in eligible_effective]
-    impossible_amount = 0
-    current_available_amount = total_rewards - claimed_rewards
-    # simulate claims starting from largest to smallest
-    for claim in eligible_claims:
-        # if the claim is impossible, skip it
-        if claim > current_available_amount:
-            impossible_amount += claim
-            continue
-        # if the claim is possible, decrease the available amount
-        current_available_amount -= claim
-
-    return rewards_required, impossible_amount, current_available_amount
-
-
-def get_unclaimed_rpl_reward_odao():
-    query = """
-{{
-    nodes(first: 1000, where: {{oracleNodeBlockTime_lte: "{timestamp}", oracleNodeBlockTime_gt: "0"}}) {{
-        id
-        effectiveRPLStaked
-    }}
-    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {{
-        totalODAORewardsClaimed
-        claimableODAORewards
-        rplRewardClaims(first: 1000, where: {{claimerType: ODAO}}) {{
-            claimer
-        }}
-    }}
-}}
-    """
-    # get reward period start
-    reward_start = rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
-    # duration left
-    reward_duration = rp.call("rocketRewardsPool.getClaimIntervalTime")
-    reward_end = reward_start + reward_duration
-    # get timestamp 28 days from the last possible claim date
-    timestamp = reward_end - (solidity.days * 28)
-
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query.format(timestamp=timestamp)}
-    )
-
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-    # get the eligible nodes for this interval
-    eligible_nodes = [node["id"] for node in data["nodes"]]
-
-    # remove nodes that have already claimed rewards
-    for claim in data["rplrewardIntervals"][0]["rplRewardClaims"]:
-        if claim["claimer"] in eligible_nodes:
-            eligible_nodes.remove(claim["claimer"])
-
-    # get total rewards
-    total_rewards = solidity.to_float(data["rplrewardIntervals"][0]["claimableODAORewards"])
-    claimed_rewards = solidity.to_float(data["rplrewardIntervals"][0]["totalODAORewardsClaimed"])
-    total_odao_members = rp.call("rocketDAONodeTrusted.getMemberCount")
-
-    # get theoretical rewards per member
-    reward_per_member = total_rewards / total_odao_members
-
-    # calculate Rewards required for eligible nodes
-    rewards_required = reward_per_member * len(eligible_nodes)
-
-    # get list of eligible claims and sort by largest first
-    eligible_claims = [reward_per_member] * len(eligible_nodes)
-    impossible_amount = 0
-    current_available_amount = total_rewards - claimed_rewards
-    # simulate claims starting from largest to smallest
-    for claim in eligible_claims:
-        # if the claim is impossible, skip it
-        if claim > current_available_amount:
-            impossible_amount += claim
-            continue
-        # if the claim is possible, decrease the available amount
-        current_available_amount -= claim
-
-    return rewards_required, impossible_amount, current_available_amount
-
-
-def get_claims_current_period():
-    query = """
-{
-    rplrewardIntervals(first: 1, orderBy: intervalStartTime, orderDirection: desc) {
-        rplRewardClaims(first: 1000, orderBy: ethAmount, where: {claimerType: Node}) {
-            amount
-            claimer
-            ethAmount
-        }
-    }
-}
-    """
-    # do the request
-    response = requests.post(
-        cfg["graph_endpoint"],
-        json={'query': query}
-    )
-
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-
-    return data["rplrewardIntervals"][0]["rplRewardClaims"]
 
 
 def get_node_minipools_and_collateral():
@@ -346,106 +124,14 @@ def get_average_collateral_percentage_per_node(collateral_cap, bonded):
     return result
 
 
-def get_active_snapshot_proposals():
-    query = """
-{
-  proposals(
-    first: 20,
-    skip: 0,
-    where: {
-      space_in: ["rocketpool-dao.eth", ""],
-      state: "active"
-    },
-    orderBy: "created",
-    orderDirection: desc
-  ) {
-    id
-    title
-    choices
-    state
-    scores
-    scores_total
-    scores_updated
-    end
-    quorum
-  }
-}
-"""
-    # do the request
-    response = requests.post(
-        "https://hub.snapshot.org/graphql",
-        json={'query': query}
-    )
-
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-
-    return data["proposals"]
-
-
-def get_votes_of_snapshot(snapshot_id):
-    query = """
-{{
-  votes (
-    first: 1000
-    skip: 0
-    where: {{
-      proposal: "{snapshot_id}"
-    }}
-    orderBy: "created",
-    orderDirection: desc
-  ) {{
-    id
-    voter
-    created
-    vp
-    choice
-    reason
-  }}
-  proposal(
-    id:"{snapshot_id}"
-  ) {{
-    choices
-    title
-  }}
-}}
-
-"""
-    # do the request
-    response = requests.post(
-        "https://hub.snapshot.org/graphql",
-        json={'query': query.format(snapshot_id=snapshot_id)}
-    )
-
-    # parse the response
-    if "errors" in response.json():
-        raise Exception(response.json()["errors"])
-
-    # get the data
-    data = response.json()["data"]
-
-    return data["votes"], data["proposal"]
-
-
-"""
-fetch("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", {
-  "body": "{\"operationName\":\"pool\",\"variables\":{\"poolAddress\":\"0xe42318ea3b998e8355a3da364eb9d48ec725eb45\"},\"query\":\"query pool($poolAddress: String!) {\\n  pool(id: $poolAddress) {\\n    tick\\n    token0 {\\n      symbol\\n      id\\n      decimals\\n      __typename\\n    }\\n    token1 {\\n      symbol\\n      id\\n      decimals\\n      __typename\\n    }\\n    feeTier\\n    sqrtPrice\\n    liquidity\\n    __typename\\n  }\\n}\\n\"}",
-  "method": "POST",
-});"""
-
-
 def get_uniswap_pool_stats(pool_address):
     query = """
-query pool($poolAddress: String!) {
-    pool(id: $poolAddress) {
-        tick
-        sqrtPrice
+    query pool($poolAddress: String!) {
+        pool(id: $poolAddress) {
+            tick
+            sqrtPrice
+        }
     }
-}
     """
     # do the request
     response = requests.post(
@@ -463,14 +149,6 @@ query pool($poolAddress: String!) {
     return data["pool"]
 
 
-"""
-fetch("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", {
-  "body": "{\"operationName\":\"surroundingTicks\",\"variables\":{\"poolAddress\":\"0xe42318ea3b998e8355a3da364eb9d48ec725eb45\",\"tickIdxLowerBound\":22560,\"tickIdxUpperBound\":46560,\"skip\":0},\"query\":\"query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tickIdxUpperBound: BigInt!, $skip: Int!) {\\n  ticks(\\n    subgraphError: allow\\n    first: 1000\\n    skip: $skip\\n    where: {poolAddress: $poolAddress, tickIdx_lte: $tickIdxUpperBound, tickIdx_gte: $tickIdxLowerBound}\\n  ) {\\n    tickIdx\\n    liquidityGross\\n    liquidityNet\\n    price0\\n    price1\\n    __typename\\n  }\\n}\\n\"}",
-  "method": "POST",
-});
-"""
-
-
 def get_uniswap_pool_depth(pool_address):
     # get the pool stats
     pool_stats = get_uniswap_pool_stats(pool_address)
@@ -480,21 +158,21 @@ def get_uniswap_pool_depth(pool_address):
 
     # get the surrounding ticks
     query = """
-query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tickIdxUpperBound: BigInt!, $skip: Int!) {
-    ticks(
-        subgraphError: allow
-        first: 1000
-        skip: $skip
-        where: {poolAddress: $poolAddress, tickIdx_lte: $tickIdxUpperBound, tickIdx_gte: $tickIdxLowerBound}
-    ) {
-        tickIdx
-        liquidityGross
-        liquidityNet
-        price0
-        price1
-        __typename
+    query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tickIdxUpperBound: BigInt!, $skip: Int!) {
+        ticks(
+            subgraphError: allow
+            first: 1000
+            skip: $skip
+            where: {poolAddress: $poolAddress, tickIdx_lte: $tickIdxUpperBound, tickIdx_gte: $tickIdxLowerBound}
+        ) {
+            tickIdx
+            liquidityGross
+            liquidityNet
+            price0
+            price1
+            __typename
+        }
     }
-}
     """
     # do the request
     response = requests.post(
@@ -530,4 +208,3 @@ query surroundingTicks($poolAddress: String!, $tickIdxLowerBound: BigInt!, $tick
     for i in range(len(ticks)):
         ticks[i] = (ticks[i][0], ticks[i][1] - min_liquidity)
     return ticks
-
