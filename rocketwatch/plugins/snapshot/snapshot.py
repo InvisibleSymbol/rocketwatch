@@ -2,11 +2,12 @@ import logging
 import requests
 
 from io import BytesIO
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional, TypedDict, Literal
 
 import pymongo
 import termplotlib as tpl
+from eth_typing import ChecksumAddress
 from PIL import Image
 from discord import File
 from discord.ext import commands
@@ -34,8 +35,35 @@ class QueuedSnapshot(commands.Cog):
         self._rate_limit = timedelta(minutes=5)
         self._last_ran = datetime.now() - self._rate_limit
 
+    ProposalState = Literal["active", "closed"]
+    SingleChoice = int
+    MultiChoice = list[SingleChoice]
+    # weighted votes use strings as keys for some reason
+    WeightedChoice = dict[str, int]
+    VoteChoice = SingleChoice | MultiChoice | WeightedChoice
+
+    class Proposal(TypedDict):
+        id: str
+        title: str
+        choices: list[str]
+        state: 'QueuedSnapshot.ProposalState'
+        scores: list[float]
+        scores_total: float
+        scores_updated: float
+        start: int
+        end: int
+        quorum: int
+
+    class Vote(TypedDict):
+        id: str
+        voter: ChecksumAddress
+        created: int
+        vp: float
+        choice: 'QueuedSnapshot.VoteChoice'
+        reason: str
+
     @staticmethod
-    def get_proposals(state="active", limit=20) -> list[dict]:
+    def get_proposals(state: ProposalState, limit=20) -> list[Proposal]:
         query = f"""
         {{
           proposals(
@@ -55,6 +83,7 @@ class QueuedSnapshot(commands.Cog):
             scores
             scores_total
             scores_updated
+            start
             end
             quorum
           }}
@@ -67,7 +96,7 @@ class QueuedSnapshot(commands.Cog):
         return response["data"]["proposals"]
 
     @staticmethod
-    def get_votes(snapshot_id: int, limit=1000) -> list[dict]:
+    def get_votes(snapshot_id: str, limit=1000) -> list[Vote]:
         query = f"""
         {{
           votes (
@@ -120,7 +149,7 @@ class QueuedSnapshot(commands.Cog):
         events = []
         db_updates = []
 
-        proposals = self.get_proposals(state="closed")
+        proposals = self.get_proposals("active")
         for proposal in proposals:
             log.debug(f"Processing proposal {proposal}")
 
@@ -179,7 +208,7 @@ class QueuedSnapshot(commands.Cog):
 
         return events
 
-    def create_vote_embed(self, proposal: dict, vote: dict, prev_vote: Optional[dict]) -> Optional[Embed]:
+    def create_vote_embed(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Embed]:
         node = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
         if node == ADDRESS_ZERO:
             # pre Houston vote
@@ -222,7 +251,7 @@ class QueuedSnapshot(commands.Cog):
         embed.add_field(name="Voting Power", value=f"{vote['vp']:.2f}", inline=False)
         return embed
 
-    def _format_vote(self, proposal: dict, vote: dict) -> Optional[str]:
+    def _format_vote(self, proposal: Proposal, vote: Vote) -> Optional[str]:
         match (raw_choice := vote["choice"]):
             case int():
                 return self._format_single_choice(proposal, raw_choice)
@@ -235,12 +264,12 @@ class QueuedSnapshot(commands.Cog):
                 return None
 
     @staticmethod
-    def _label_choice(proposal: dict, raw_vote: int) -> str:
+    def _label_choice(proposal: Proposal, raw_vote: SingleChoice) -> str:
         # vote choice represented as 1-based index
         return proposal["choices"][raw_vote - 1]
 
     @staticmethod
-    def _format_single_choice(proposal: dict, choice: int):
+    def _format_single_choice(proposal: Proposal, choice: SingleChoice):
         label = QueuedSnapshot._label_choice(proposal, choice)
         match label.lower():
             case "for":
@@ -252,15 +281,14 @@ class QueuedSnapshot(commands.Cog):
         return f"`{label}`"
 
     @staticmethod
-    def _format_multiple_choice(proposal: dict, choice: list[int]) -> str:
+    def _format_multiple_choice(proposal: Proposal, choice: MultiChoice) -> str:
         labels = [QueuedSnapshot._label_choice(proposal, c) for c in choice]
         if len(labels) == 1:
             return f"`{labels[0]}`"
         return "**" + "\n".join([f"- {c}" for c in labels]) + "**"
 
     @staticmethod
-    def _format_weighted_choice(proposal: dict, choice: dict[str, int]) -> str:
-        # weighted votes use strings as keys for some reason
+    def _format_weighted_choice(proposal: Proposal, choice: WeightedChoice) -> str:
         labels = {QueuedSnapshot._label_choice(proposal, int(c)): w for c, w in choice.items()}
         total_weight = sum(labels.values())
         choice_perc = [(c, round(100 * w / total_weight)) for c, w in labels.items()]
@@ -284,7 +312,7 @@ class QueuedSnapshot(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")
-        proposals = self.get_proposals()
+        proposals = self.get_proposals("active")
         if not proposals:
             e.description = "No active proposals"
             return await ctx.send(embed=e)
