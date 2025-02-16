@@ -2,7 +2,7 @@ import logging
 import math
 
 from utils.cfg import cfg
-from utils.shared_w3 import w
+from utils.shared_w3 import w3
 
 log = logging.getLogger("get_nearest_block")
 log.setLevel(cfg["log_level"])
