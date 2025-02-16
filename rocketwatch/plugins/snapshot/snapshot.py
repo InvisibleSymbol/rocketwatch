@@ -307,7 +307,7 @@ class QueuedSnapshot(commands.Cog):
 
         total_height = 40 * (len(proposals) - 1)
         for proposal in proposals:
-            total_height += 120 + 40 * len(proposal["choices"])
+            total_height += 130 + 40 * len(proposal["choices"])
 
         # match Discord dark mode Embed color (#2b2d31)
         img = Image.new("RGB", (total_width, total_height), color=(43, 45, 49))
@@ -325,8 +325,8 @@ class QueuedSnapshot(commands.Cog):
                 return (x / y) if y else 0
 
             color = {
-                "for": (0, 129, 31),
-                "against": (164, 14, 26)
+                "for": (12, 181, 53),
+                "against": (222, 4, 5)
             }.get(_choice.lower(), (255, 255, 255))
             max_score = max(proposal["scores"])
 
@@ -336,7 +336,7 @@ class QueuedSnapshot(commands.Cog):
             # {choice}
             draw.dynamic_text(
                 (_x_offset + 10, _y_offset),
-                choice,
+                _choice,
                 font_size,
                 max_width = _width / 2,
                 anchor="lt"
@@ -372,50 +372,59 @@ class QueuedSnapshot(commands.Cog):
             drawn_height += 20
             return drawn_height
 
-        x_offset = 0
-        y_offset = 0
+        def draw_proposal(_proposal: QueuedSnapshot.Proposal, _width: int, _x_offset: int, _y_offset: int) -> int:
+            drawn_height = 0
 
-        for proposal in proposals:
-            # draw the proposal title
             draw.dynamic_text(
-                (x_offset + 10, y_offset),
+                (_x_offset + 10, _y_offset),
                 proposal["title"],
                 20,
-                max_width = proposal_width - 20
+                max_width=_width - 20
             )
-            y_offset += 40
+            drawn_height += 40
 
             # order (choice, score) pairs by score
-            choices = sorted(zip(proposal["choices"], proposal["scores"]), key=lambda x: x[1], reverse=True)
+            choice_scores = list(zip(_proposal["choices"], _proposal["scores"]))
+            choice_scores.sort(key=lambda x: x[1], reverse=True)
+            for choice, score in choice_scores:
+                drawn_height += draw_choice(proposal, choice, score, _width, _x_offset, _y_offset + drawn_height)
 
-            for choice, score in choices:
-                y_offset += draw_choice(proposal, choice, score, proposal_width, x_offset, y_offset)
+            drawn_height += 10
 
-            # "Quorum" header
-            draw.dynamic_text((10, y_offset), "Quorum:", 20, max_width=proposal_width - 20)
+            # quorum header
+            draw.dynamic_text((10, _y_offset + drawn_height), "Quorum:", 20, max_width=_width - 20)
+            drawn_height += 30
 
-            # show quorum as a progress bar, (capped at 100%) with the percentage next to it
-            y_offset += 30
+            # quorum progress bar
             quorum_perc: float = proposal["scores_total"] / proposal["quorum"]
             draw.progress_bar(
-                (x_offset + 60, y_offset),
-                (10, proposal_width - 80),
+                (x_offset + 60, _y_offset + drawn_height),
+                (10, _width - 80),
                 min(quorum_perc, 1),
-                primary = (64, 255, 64) if (quorum_perc >= 2) else (82, 81, 80)
+                primary=(242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
             )
-            draw.dynamic_text((50, y_offset), f"{quorum_perc:.0%}", 15, max_width=45, anchor="rt")
+            draw.dynamic_text((50, _y_offset + drawn_height), f"{quorum_perc:.0%}", 15, max_width=45, anchor="rt")
+            drawn_height += 30
 
-            y_offset += 30
-            # show how much time is left using the "end" timestamp
+            # show remaining time until the vote ends
             rem_time = proposal["end"] - datetime.now().timestamp()
             draw.dynamic_text(
-                (x_offset + 10 + (proposal_width / 2), y_offset),
+                (x_offset + 10 + (_width / 2), _y_offset + drawn_height),
                 f"{uptime(rem_time)} left",
                 15,
-                max_width=total_width-20,
+                max_width=_width - 20,
                 anchor="mt"
             )
-            y_offset += 20 + 40
+            drawn_height += 20
+            return drawn_height
+
+        vertical_space = 40
+        horizontal_space = 40
+
+        x_offset, y_offset = 0, -vertical_space
+        for proposal in proposals:
+            y_offset += vertical_space
+            y_offset += draw_proposal(proposal, proposal_width, x_offset, y_offset)
 
         # save drawn image to buffer
         buffer = BytesIO()
