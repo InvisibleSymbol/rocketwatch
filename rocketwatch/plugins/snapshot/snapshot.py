@@ -287,129 +287,143 @@ class QueuedSnapshot(commands.Cog):
         )
         return "```" + graph.get_string().replace("]", "%]") + "```"
 
-
-    # TODO rewrite hybrid command
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
         """
         Show currently active Snapshot votes.
         """
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        e = Embed()
-        e.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net/#/")
+
+        embed = Embed()
+        embed.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net")
+
         proposals = self.get_proposals("active")
         if not proposals:
-            e.description = "No active proposals"
-            return await ctx.send(embed=e)
+            embed.description = "No active proposals."
+            return await ctx.send(embed=embed)
 
-        # image width is based upon the number of proposals
-        p_width = 400
-        width = p_width * len(proposals)
-        # image height is based upon the max number of possible options
-        height = 50 * max(len(p["choices"]) for p in proposals) + 170
-        # pillow image
-        img = Image.new("RGB", (width, height), color=(40, 40, 40))
-        # pillow draw
+        proposal_width = 400
+        total_width = proposal_width
+
+        total_height = 40 * (len(proposals) - 1)
+        for proposal in proposals:
+            total_height += 120 + 40 * len(proposal["choices"])
+
+        # match Discord dark mode Embed color (#2b2d31)
+        img = Image.new("RGB", (total_width, total_height), color=(43, 45, 49))
         draw = BetterImageDraw(img)
-        # visualize the proposals
 
-        def safe_div(x, y):
-            return (x / y) if y != 0 else 0
+        def draw_choice(
+            _proposal: QueuedSnapshot.Proposal,
+            _choice: str,
+            _score: float,
+            _width: int,
+            _x_offset: int,
+            _y_offset: int
+        ) -> int:
+            def safe_div(x, y):
+                return (x / y) if y else 0
 
-        for i, proposal in enumerate(proposals):
-            x_offset = i * p_width
-            y_offset = 20
+            color = {
+                "for": (0, 129, 31),
+                "against": (164, 14, 26)
+            }.get(_choice.lower(), (255, 255, 255))
+            max_score = max(proposal["scores"])
+
+            font_size = 15
+            drawn_height = 0
+
+            # {choice}
+            draw.dynamic_text(
+                (_x_offset + 10, _y_offset),
+                choice,
+                font_size,
+                max_width = _width / 2,
+                anchor="lt"
+            )
+            # {choice}                           {score} votes
+            draw.dynamic_text(
+                (_x_offset + _width - 20, _y_offset),
+                f"{_score:,.2f} votes",
+                font_size,
+                max_width = _width / 2,
+                anchor = "rt"
+            )
+            drawn_height += 20
+            # {choice}                           {score} votes
+            #   {perc}%
+            perc_indent = 50
+            draw.dynamic_text(
+                (_x_offset + perc_indent, _y_offset + drawn_height),
+                f"{safe_div(_score, proposal['scores_total']):.0%}",
+                font_size,
+                max_width = (_width / 2) - perc_indent,
+                anchor = "rt"
+            )
+            # {choice}                           {score} votes
+            #   {perc}% ======================================
+            pb_offset = 10
+            draw.progress_bar(
+                (_x_offset + perc_indent + pb_offset, _y_offset + drawn_height),
+                (10, _width - perc_indent - pb_offset - 30),
+                safe_div(_score, max_score),
+                primary = color
+            )
+            drawn_height += 20
+            return drawn_height
+
+        x_offset = 0
+        y_offset = 0
+
+        for proposal in proposals:
             # draw the proposal title
             draw.dynamic_text(
                 (x_offset + 10, y_offset),
                 proposal["title"],
                 20,
-                max_width=p_width - 20,
+                max_width = proposal_width - 20
             )
             y_offset += 40
+
             # order (choice, score) pairs by score
             choices = sorted(zip(proposal["choices"], proposal["scores"]), key=lambda x: x[1], reverse=True)
-            max_scores = max(proposal["scores"])
-            for i, (choice, scores) in enumerate(choices):
-                draw.dynamic_text(
-                    (x_offset + 10, y_offset),
-                    choice,
-                    15,
-                    max_width=p_width - 20 - 120,
-                )
-                # display the score as text, right aligned
-                draw.dynamic_text(
-                    (x_offset + p_width - 10, y_offset),
-                    f"{scores:,.2f} votes",
-                    15,
-                    max_width=120,
-                    anchor="rt"
-                )
-                y_offset += 20
-                # color first place as golden, second place as silver, third place as bronze, rest as gray
-                color = {
-                    # 1st rank, gold
-                    0: (255, 215, 0),
-                    # 2nd rank, silver
-                    1: (192, 192, 192),
-                    # 3rd rank, bronze
-                    2: (205, 127, 50),
-                }.get(i, (128, 128, 128))
-                draw.progress_bar(
-                    (x_offset + 10 + 50, y_offset),
-                    (10, p_width - 30 - 50),
-                    safe_div(scores, max_scores),
-                    primary=color,
-                )
-                # show percentage next to progress bar (max 40 pixels)
-                draw.dynamic_text(
-                    (x_offset + 50, y_offset),
-                    f"{safe_div(scores, proposal['scores_total']):.0%}",
-                    15,
-                    max_width=45,
-                    anchor="rt"
-                )
-                y_offset += 30
-            # title "Quorum"
-            draw.dynamic_text(
-                (x_offset + 10, y_offset),
-                "Quorum:",
-                20,
-                max_width=p_width - 20,
-            )
-            y_offset += 30
+
+            for choice, score in choices:
+                y_offset += draw_choice(proposal, choice, score, proposal_width, x_offset, y_offset)
+
+            # "Quorum" header
+            draw.dynamic_text((10, y_offset), "Quorum:", 20, max_width=proposal_width - 20)
+
             # show quorum as a progress bar, (capped at 100%) with the percentage next to it
+            y_offset += 30
+            quorum_perc: float = proposal["scores_total"] / proposal["quorum"]
             draw.progress_bar(
-                (x_offset + 10 + 50, y_offset),
-                (10, p_width - 30 - 50),
-                min(proposal["scores_total"] / proposal["quorum"], 1),
-                primary=(64, 255, 64) if proposal["scores_total"] >= proposal["quorum"] else (255, 64, 64),
+                (x_offset + 60, y_offset),
+                (10, proposal_width - 80),
+                min(quorum_perc, 1),
+                primary = (64, 255, 64) if (quorum_perc >= 2) else (82, 81, 80)
             )
-            draw.dynamic_text(
-                (x_offset + 50, y_offset),
-                f"{proposal['scores_total'] / proposal['quorum']:.0%}",
-                15,
-                max_width=45,
-                anchor="rt"
-            )
+            draw.dynamic_text((50, y_offset), f"{quorum_perc:.0%}", 15, max_width=45, anchor="rt")
+
             y_offset += 30
             # show how much time is left using the "end" timestamp
-            d = proposal["end"] - datetime.now().timestamp()
+            rem_time = proposal["end"] - datetime.now().timestamp()
             draw.dynamic_text(
-                (x_offset + 10 + (p_width / 2), y_offset),
-                f"{uptime(d)} left",
+                (x_offset + 10 + (proposal_width / 2), y_offset),
+                f"{uptime(rem_time)} left",
                 15,
-                max_width=p_width - 20,
+                max_width=total_width-20,
                 anchor="mt"
             )
+            y_offset += 20 + 40
 
-        # save the image to a buffer
+        # save drawn image to buffer
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
-        # send the image
-        e.set_image(url="attachment://votes.png")
-        await ctx.send(embed=e, file=File(buffer, "votes.png"))
+        embed.set_image(url="attachment://votes.png")
+
+        await ctx.send(embed=embed, file=File(buffer, "votes.png"))
 
 
 async def setup(bot):
