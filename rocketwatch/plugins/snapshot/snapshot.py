@@ -12,6 +12,7 @@ from PIL import Image
 from discord import File
 from discord.ext import commands
 from web3.constants import ADDRESS_ZERO
+from graphql_query import Operation, Query, Argument
 from discord.ext.commands import Context, hybrid_command
 
 from utils.cfg import cfg
@@ -35,24 +36,57 @@ class QueuedSnapshot(commands.Cog):
         self._rate_limit = timedelta(minutes=5)
         self._last_ran = datetime.now() - self._rate_limit
 
+    @staticmethod
+    def _query_api(queries: list[Query]) -> dict:
+        query_json = {"query": Operation(type="query", queries=queries).render()}
+        log.debug(f"Snapshot query: {query_json}")
+        response = requests.post("https://hub.snapshot.org/graphql", json=query_json).json()
+        if "errors" in response:
+            raise Exception(response["errors"])
+        return response["data"]
+
     ProposalState = Literal["active", "closed"]
-    SingleChoice = int
-    MultiChoice = list[SingleChoice]
-    # weighted votes use strings as keys for some reason
-    WeightedChoice = dict[str, int]
-    VoteChoice = SingleChoice | MultiChoice | WeightedChoice
 
     class Proposal(TypedDict):
         id: str
         title: str
         choices: list[str]
         state: 'QueuedSnapshot.ProposalState'
-        scores: list[float]
-        scores_total: float
-        scores_updated: float
         start: int
         end: int
+        scores: list[float]
+        scores_total: float
         quorum: int
+
+    @staticmethod
+    def get_proposals(state: ProposalState, limit=20) -> list[Proposal]:
+        query = Query(
+            name="proposals",
+            arguments=[
+                Argument(name="first", value=limit),
+                Argument(name="skip", value=0),
+                Argument(
+                    name="where",
+                    value=[
+                        Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
+                        Argument(name="state", value=f"\"{state}\"")
+                    ]
+                ),
+                Argument(name="orderBy", value="\"created\""),
+                Argument(name="orderDirection", value="desc"),
+            ],
+            fields=[
+                "id", "title", "choices", "state", "start", "end",
+                "scores", "scores_total", "quorum"
+            ]
+        )
+        return QueuedSnapshot._query_api([query])["proposals"]
+
+    SingleChoice = int
+    MultiChoice = list[SingleChoice]
+    # weighted votes use strings as keys for some reason
+    WeightedChoice = dict[str, int]
+    VoteChoice = SingleChoice | MultiChoice | WeightedChoice
 
     class Vote(TypedDict):
         id: str
@@ -63,71 +97,22 @@ class QueuedSnapshot(commands.Cog):
         reason: str
 
     @staticmethod
-    def get_proposals(state: ProposalState, limit=20) -> list[Proposal]:
-        query = f"""
-        {{
-          proposals(
-            first: {limit},
-            skip: 0,
-            where: {{
-                space_in: ["rocketpool-dao.eth"],
-                state: "{state}"
-            }},
-            orderBy: "created",
-            orderDirection: desc
-          ) {{
-            id
-            title
-            choices
-            state
-            scores
-            scores_total
-            scores_updated
-            start
-            end
-            quorum
-          }}
-        }}
-        """
-        response = requests.post("https://hub.snapshot.org/graphql", json={"query": query}).json()
-        if "errors" in response:
-            raise Exception(response["errors"])
-
-        return response["data"]["proposals"]
-
-    @staticmethod
-    def get_votes(snapshot_id: str, limit=1000) -> list[Vote]:
-        query = f"""
-        {{
-          votes (
-            first: {limit}
-            skip: 0
-            where: {{
-              proposal: "{snapshot_id}"
-            }}
-            orderBy: "created",
-            orderDirection: desc
-          ) {{
-            id
-            voter
-            created
-            vp
-            choice
-            reason
-          }}
-          proposal(
-            id:"{snapshot_id}"
-          ) {{
-            choices
-            title
-          }}
-        }}
-        """
-        response = requests.post("https://hub.snapshot.org/graphql", json={"query": query}).json()
-        if "errors" in response:
-            raise Exception(response["errors"])
-
-        return response["data"]["votes"]
+    def get_votes(proposal: Proposal, limit=1000) -> list[Vote]:
+        query = Query(
+            name="votes",
+            arguments=[
+                Argument(name="first", value=limit),
+                Argument(name="skip", value=0),
+                Argument(
+                    name="where",
+                    value=[Argument(name="proposal", value=f"\"{proposal['id']}\"")]
+                ),
+                Argument(name="orderBy", value="\"created\""),
+                Argument(name="orderDirection", value="desc"),
+            ],
+            fields=["id", "voter", "created", "vp", "choice", "reason"]
+        )
+        return QueuedSnapshot._query_api([query])["votes"]
 
     def _should_run_loop(self) -> bool:
         if (datetime.now() - self._last_ran) < self._rate_limit:
@@ -153,8 +138,8 @@ class QueuedSnapshot(commands.Cog):
         for proposal in proposals:
             log.debug(f"Processing proposal {proposal}")
 
+            current_votes = self.get_votes(proposal)
             proposal_id = proposal["id"]
-            current_votes = self.get_votes(proposal_id)
 
             previous_votes = {}
             for stored_vote in self.db.snapshot_votes.find({"proposal_id": proposal_id}):
