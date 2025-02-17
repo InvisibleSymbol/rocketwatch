@@ -20,12 +20,13 @@ from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
 from utils.dao import DefaultDAO, ProtocolDAO
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedEvents(Cog):
+class Events(QueuedSubmodule):
     update_block = 0
 
     class State(Enum):
@@ -34,8 +35,8 @@ class QueuedEvents(Cog):
         OK = 2
 
     def __init__(self, bot):
+        super().__init__(bot)
         rp.flush()
-        self.bot = bot
         self.state = self.State.INIT
         self.events = []
         self.internal_event_mapping = {}
@@ -646,7 +647,7 @@ class QueuedEvents(Cog):
             event_index=event.logIndex
         )
 
-    def run_loop(self):
+    def _run(self):
         if self.state == self.State.RUNNING:
             log.error("Bootstrap plugin was interrupted while running. Reinitializing...")
             self.__init__(self.bot)
@@ -843,4 +844,4 @@ class QueuedEvents(Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedEvents(bot))
+    await bot.add_cog(Events(bot))

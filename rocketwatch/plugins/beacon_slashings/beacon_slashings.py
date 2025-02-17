@@ -2,7 +2,6 @@ import logging
 
 import pymongo
 import requests
-from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
@@ -14,19 +13,20 @@ from utils.readable import cl_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import bacon, w3
 from utils.solidity import beacon_block_to_date
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("beacon_slashings")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedSlashings(commands.Cog):
+class Slashings(QueuedSubmodule):
     def __init__(self, bot):
-        self.bot = bot
+        super().__init__(bot)
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.state = "INIT"
 
-    def run_loop(self):
+    def _run(self):
         if self.state == "RUNNING":
             log.error("Slashings plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -209,4 +209,4 @@ class QueuedSlashings(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedSlashings(bot))
+    await bot.add_cog(Slashings(bot))

@@ -15,18 +15,18 @@ from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.dao import DefaultDAO, ProtocolDAO
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedTransactions(Cog):
+class Transactions(QueuedSubmodule):
     def __init__(self, bot):
-        self.bot = bot
+        super().__init__(bot)
         self.state = "INIT"
         self.addresses = []
         self.internal_function_mapping = {}
-
         self.block_event = w3.eth.filter("latest")
 
         with open("./plugins/transactions/functions.json") as f:
@@ -264,7 +264,7 @@ class QueuedTransactions(Cog):
 
         return [response] + responses
 
-    def run_loop(self):
+    def _run(self):
         if self.state == "RUNNING":
             log.error("Transaction plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -303,4 +303,4 @@ class QueuedTransactions(Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedTransactions(bot))
+    await bot.add_cog(Transactions(bot))
