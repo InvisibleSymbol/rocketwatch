@@ -1,3 +1,4 @@
+import math
 import logging
 import requests
 
@@ -141,7 +142,7 @@ class QueuedSnapshot(commands.Cog):
             current_votes = self.get_votes(proposal)
             proposal_id = proposal["id"]
 
-            previous_votes = {}
+            previous_votes: dict[ChecksumAddress, QueuedSnapshot.Vote] = {}
             for stored_vote in self.db.snapshot_votes.find({"proposal_id": proposal_id}):
                 previous_votes[stored_vote["voter"]] = stored_vote
 
@@ -302,22 +303,39 @@ class QueuedSnapshot(commands.Cog):
             embed.description = "No active proposals."
             return await ctx.send(embed=embed)
 
-        proposal_width = 400
-        total_width = proposal_width
+        num_proposals = len(proposals)
+        num_cols = min(int(math.ceil(math.sqrt(num_proposals))), 4)
+        num_rows = int(math.ceil(num_proposals / num_cols))
 
-        total_height = 40 * (len(proposals) - 1)
-        for proposal in proposals:
-            total_height += 130 + 40 * len(proposal["choices"])
+        v_spacing = 40
+        h_spacing = 40
+        proposal_width = 500
+
+        total_height = v_spacing * (num_rows - 1)
+        total_width = proposal_width * num_cols + h_spacing * (num_cols - 1)
+
+        proposal_grid: list[list[QueuedSnapshot.Proposal]] = []
+        for row_idx in range(num_rows):
+            row = proposals[row_idx*num_cols:(row_idx+1)*num_cols]
+            proposal_grid.append(row)
+
+            # row height depends on number of proposal choices
+            max_choices = max(len(p["choices"]) for p in row)
+            total_height += 130 + 40 * max_choices
 
         # match Discord dark mode Embed color (#2b2d31)
         img = Image.new("RGB", (total_width, total_height), color=(43, 45, 49))
         draw = BetterImageDraw(img)
 
+        default_margin = 10
+        pb_margin_left = 10
+        pb_margin_right = 20
+        perc_margin_left = 50
+
         def draw_choice(
             _proposal: QueuedSnapshot.Proposal,
             _choice: str,
             _score: float,
-            _width: int,
             _x_offset: int,
             _y_offset: int
         ) -> int:
@@ -335,51 +353,50 @@ class QueuedSnapshot(commands.Cog):
 
             # {choice}
             draw.dynamic_text(
-                (_x_offset + 10, _y_offset),
+                (_x_offset + default_margin, _y_offset),
                 _choice,
                 font_size,
-                max_width = _width / 2,
+                max_width = (proposal_width / 2),
                 anchor="lt"
             )
             # {choice}                           {score} votes
             draw.dynamic_text(
-                (_x_offset + _width - 20, _y_offset),
+                (_x_offset + proposal_width - pb_margin_right, _y_offset),
                 f"{_score:,.2f} votes",
                 font_size,
-                max_width = _width / 2,
+                max_width = (proposal_width / 2),
                 anchor = "rt"
             )
             drawn_height += 20
             # {choice}                           {score} votes
             #   {perc}%
-            perc_indent = 50
             draw.dynamic_text(
-                (_x_offset + perc_indent, _y_offset + drawn_height),
+                (_x_offset + perc_margin_left, _y_offset + drawn_height),
                 f"{safe_div(_score, proposal['scores_total']):.0%}",
                 font_size,
-                max_width = (_width / 2) - perc_indent,
+                max_width = (proposal_width / 2) - perc_margin_left,
                 anchor = "rt"
             )
             # {choice}                           {score} votes
             #   {perc}% ======================================
-            pb_offset = 10
             draw.progress_bar(
-                (_x_offset + perc_indent + pb_offset, _y_offset + drawn_height),
-                (10, _width - perc_indent - pb_offset - 30),
+                (_x_offset + perc_margin_left + pb_margin_left, _y_offset + drawn_height),
+                (10, proposal_width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
                 safe_div(_score, max_score),
                 primary = color
             )
             drawn_height += 20
             return drawn_height
 
-        def draw_proposal(_proposal: QueuedSnapshot.Proposal, _width: int, _x_offset: int, _y_offset: int) -> int:
+        def draw_proposal(_proposal: QueuedSnapshot.Proposal, _x_offset: int, _y_offset: int) -> int:
+            font_size = 15
             drawn_height = 0
 
             draw.dynamic_text(
-                (_x_offset + 10, _y_offset),
+                (_x_offset + default_margin, _y_offset),
                 proposal["title"],
-                20,
-                max_width=_width - 20
+                25,
+                max_width = (proposal_width - 2 * default_margin)
             )
             drawn_height += 40
 
@@ -387,46 +404,78 @@ class QueuedSnapshot(commands.Cog):
             choice_scores = list(zip(_proposal["choices"], _proposal["scores"]))
             choice_scores.sort(key=lambda x: x[1], reverse=True)
             for choice, score in choice_scores:
-                drawn_height += draw_choice(proposal, choice, score, _width, _x_offset, _y_offset + drawn_height)
+                drawn_height += draw_choice(proposal, choice, score, _x_offset, _y_offset + drawn_height)
 
             drawn_height += 10
 
             # quorum header
-            draw.dynamic_text((10, _y_offset + drawn_height), "Quorum:", 20, max_width=_width - 20)
+            draw.dynamic_text(
+                (_x_offset + default_margin, _y_offset + drawn_height),
+                "Quorum:",
+                20,
+                max_width = (proposal_width - 2 * default_margin)
+            )
             drawn_height += 30
 
             # quorum progress bar
             quorum_perc: float = proposal["scores_total"] / proposal["quorum"]
-            draw.progress_bar(
-                (x_offset + 60, _y_offset + drawn_height),
-                (10, _width - 80),
-                min(quorum_perc, 1),
-                primary=(242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
+            draw.dynamic_text(
+                (_x_offset + perc_margin_left, _y_offset + drawn_height),
+                f"{quorum_perc:.0%}",
+                font_size,
+                max_width = (proposal_width / 2) - perc_margin_left,
+                anchor = "rt"
             )
-            draw.dynamic_text((50, _y_offset + drawn_height), f"{quorum_perc:.0%}", 15, max_width=45, anchor="rt")
+            pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
+            draw.progress_bar(
+                (x_offset + perc_margin_left + pb_margin_left, _y_offset + drawn_height),
+                (10, proposal_width - perc_margin_left - pb_margin_left - pb_margin_right),
+                min(quorum_perc, 1),
+                primary = pb_color
+            )
             drawn_height += 30
 
             # show remaining time until the vote ends
             rem_time = proposal["end"] - datetime.now().timestamp()
+            time_label_width = (proposal_width - 2*default_margin)
             draw.dynamic_text(
-                (x_offset + 10 + (_width / 2), _y_offset + drawn_height),
+                (x_offset + time_label_width/2, _y_offset + drawn_height),
                 f"{uptime(rem_time)} left",
-                15,
-                max_width=_width - 20,
-                anchor="mt"
+                font_size,
+                max_width = time_label_width,
+                anchor = "mt"
             )
             drawn_height += 20
             return drawn_height
 
-        vertical_space = 40
-        horizontal_space = 40
+        # keeping track of widest row
+        max_x_offset = 0
 
-        x_offset, y_offset = 0, -vertical_space
-        for proposal in proposals:
-            y_offset += vertical_space
-            y_offset += draw_proposal(proposal, proposal_width, x_offset, y_offset)
+        # draw proposals in num_rows x num_cols grid
+        x_offset = 0
+        y_offset = -h_spacing
+        for row_idx in range(len(proposal_grid)):
+            x_offset = -h_spacing
+            y_offset += v_spacing
 
-        # save drawn image to buffer
+            max_height = 0
+            for col_idx in range(len(proposal_grid[row_idx])):
+                proposal = proposal_grid[row_idx][col_idx]
+                x_offset += h_spacing
+                height = draw_proposal(proposal, x_offset, y_offset)
+                max_height = max(max_height, height)
+                x_offset += proposal_width
+
+            y_offset += max_height
+            max_x_offset = max(max_x_offset, x_offset)
+
+        # y_offset monotonically increases
+        max_y_offset = y_offset
+        # make sure the image has the right dimensions
+        assert(max_x_offset == total_width)
+        assert(max_y_offset == total_height)
+
+        # write drawn image to buffer
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
