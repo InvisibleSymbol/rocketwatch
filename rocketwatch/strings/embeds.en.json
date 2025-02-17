@@ -92,7 +92,7 @@
         "description": "%{executor} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_vote_event": {
-        "title": ":writing_hand: oDAO Vote",
+        "title": ":ballot_box: oDAO Vote",
         "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "odao_proposal_cancel_event": {
@@ -132,7 +132,7 @@
         "description": "%{executor} executed **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_vote_event": {
-        "title": ":writing_hand: Security Council Vote",
+        "title": ":ballot_box: Security Council Vote",
         "description": "%{voter} voted %{decision} **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "sdao_proposal_cancel_event": {
