@@ -210,7 +210,7 @@ class Snapshot(QueuedSubmodule):
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot.render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -235,7 +235,7 @@ class Snapshot(QueuedSubmodule):
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot.render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -351,7 +351,7 @@ class Snapshot(QueuedSubmodule):
         return "```" + graph.get_string().replace("]", "%]") + "```"
 
     @staticmethod
-    def draw_proposal(
+    def render_proposal(
             draw: BetterImageDraw,
             proposal: Proposal,
             width: int,
@@ -363,8 +363,7 @@ class Snapshot(QueuedSubmodule):
         pb_margin_right = 20
         perc_margin_left = 50
 
-        def draw_choice(
-                _proposal: Snapshot.Proposal,
+        def render_choice(
                 _choice: str,
                 _score: float,
                 _x_offset: int,
@@ -433,7 +432,7 @@ class Snapshot(QueuedSubmodule):
         choice_scores = list(zip(proposal["choices"], proposal["scores"]))
         choice_scores.sort(key=lambda x: x[1], reverse=True)
         for choice, score in choice_scores:
-            proposal_height += draw_choice(proposal, choice, score, x_offset, y_offset + proposal_height)
+            proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
 
         proposal_height += 10
 
@@ -458,7 +457,7 @@ class Snapshot(QueuedSubmodule):
         pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
         draw.progress_bar(
             (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
-            (10, width - perc_margin_left - pb_margin_left - pb_margin_right),
+            (10, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
             min(quorum_perc, 1),
             primary=pb_color
         )
@@ -529,7 +528,7 @@ class Snapshot(QueuedSubmodule):
             for col_idx in range(len(proposal_grid[row_idx])):
                 proposal = proposal_grid[row_idx][col_idx]
                 x_offset += h_spacing
-                height = self.draw_proposal(draw, proposal, proposal_width, x_offset, y_offset)
+                height = self.render_proposal(draw, proposal, proposal_width, x_offset, y_offset)
                 max_height = max(max_height, height)
                 x_offset += proposal_width
 
