@@ -10,7 +10,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -77,7 +77,7 @@ class QueuedTransactions(Cog):
         tnx = w3.eth.get_transaction(tx_hash)
         block = w3.eth.get_block(tnx.blockHash)
 
-        responses: list[Response] = self.process_transaction(block, tnx, tnx.to, tnx.input)
+        responses: list[Event] = self.process_transaction(block, tnx, tnx.to, tnx.input)
         if not responses:
             await ctx.send(content="No events found.")
 
@@ -184,7 +184,7 @@ class QueuedTransactions(Cog):
         args = prepare_args(args)
         return assemble(args)
 
-    def process_transaction(self, block, tnx, contract_address, fn_input) -> list[Response]:
+    def process_transaction(self, block, tnx, contract_address, fn_input) -> list[Event]:
         if contract_address not in self.addresses:
             return []
 
@@ -253,7 +253,7 @@ class QueuedTransactions(Cog):
         if (embed := self.create_embed(event_name, event)) is None:
             return responses
 
-        response = Response(
+        response = Event(
             topic="transactions",
             embed=embed,
             event_name=event_name,

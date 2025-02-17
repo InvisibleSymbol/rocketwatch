@@ -14,7 +14,7 @@ from web3.types import LogReceipt, EventData
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import Embed, assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
@@ -175,7 +175,7 @@ class QueuedEvents(Cog):
         for response in responses:
             await ctx.send(embed=response.embed)
 
-    def handle_global_event(self, event_name, event) -> Optional[Response]:
+    def handle_global_event(self, event_name, event) -> Optional[Event]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         if not any([rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
                     rp.call("rocketMinipoolManager.getMinipoolExists", event.address),
@@ -224,7 +224,7 @@ class QueuedEvents(Cog):
 
 
     @staticmethod
-    def handle_event(event_name, event) -> Optional[Response]:
+    def handle_event(event_name, event) -> Optional[Event]:
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -628,7 +628,7 @@ class QueuedEvents(Cog):
             if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
                 unique_id += f":{arg_k}:{arg_v}"
 
-        return Response(
+        return Event(
             embed=embed,
             topic="events",
             event_name=event_name,
@@ -774,7 +774,7 @@ class QueuedEvents(Cog):
             self.state = self.State.RUNNING
         return messages
 
-    def process_events(self, events: list[EventData]) -> tuple[bool, list[Response]]:
+    def process_events(self, events: list[EventData]) -> tuple[bool, list[Event]]:
         events.sort(key=lambda e: (e.blockNumber, e.logIndex))
         messages = []
         should_reinit = False

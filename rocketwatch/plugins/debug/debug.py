@@ -20,7 +20,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.get_or_fetch import get_or_fetch_channel
@@ -288,7 +288,7 @@ class Debug(Cog):
         if not event:
             await ctx.send(content="Event not found.")
             return
-        e = Response.get_embed(event)
+        e = Event.get_embed(event)
         e.description = e.description.replace("%{minipool_clean}", "[391311](https://beaconcha.in/validator/391311)")
         channel = await get_or_fetch_channel(self.bot, event["channel_id"])
         msg = await channel.fetch_message(message_id)
