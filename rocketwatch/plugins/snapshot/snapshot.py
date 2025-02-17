@@ -469,7 +469,7 @@ class Snapshot(QueuedSubmodule):
         time_label_width = (width - 2 * default_margin)
         draw.dynamic_text(
             (x_offset + time_label_width / 2, y_offset + proposal_height),
-            f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final result",
+            f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final Result",
             font_size,
             max_width=time_label_width,
             anchor="mt"

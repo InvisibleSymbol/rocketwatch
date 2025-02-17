@@ -5,7 +5,7 @@ import warnings
 import web3.exceptions
 from discord import Object
 from discord.app_commands import guilds
-from discord.ext.commands import Cog, Context, is_owner, hybrid_command
+from discord.ext.commands import Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
