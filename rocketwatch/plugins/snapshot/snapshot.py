@@ -13,31 +13,29 @@ import termplotlib as tpl
 from eth_typing import ChecksumAddress
 from PIL import Image
 from discord import File
-from discord.ext import commands
 from web3.constants import ADDRESS_ZERO
 from graphql_query import Operation, Query, Argument
 from discord.ext.commands import Context, hybrid_command
 
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.draw import BetterImageDraw
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import uptime
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden_weak
 from utils.rocketpool import rp
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedSnapshot(commands.Cog):
+class Snapshot(QueuedSubmodule):
     def __init__(self, bot):
-        self.bot = bot
+        super().__init__(bot, timedelta(minutes=5))
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.version = 3
-        self._rate_limit = timedelta(minutes=5)
-        self._last_ran = datetime.now() - self._rate_limit
 
     @staticmethod
     def _query_api(queries: list[Query]) -> dict:
@@ -84,7 +82,7 @@ class QueuedSnapshot(commands.Cog):
                 "start", "end", "scores", "scores_total", "quorum"
             ]
         )
-        return QueuedSnapshot._query_api([query])["proposals"]
+        return Snapshot._query_api([query])["proposals"]
 
     SingleChoice = int
     MultiChoice = list[SingleChoice]
@@ -97,7 +95,7 @@ class QueuedSnapshot(commands.Cog):
         voter: ChecksumAddress
         created: int
         vp: float
-        choice: 'QueuedSnapshot.VoteChoice'
+        choice: 'Snapshot.VoteChoice'
         reason: str
 
     @staticmethod
@@ -116,26 +114,16 @@ class QueuedSnapshot(commands.Cog):
             ],
             fields = ["id", "voter", "created", "vp", "choice", "reason"]
         )
-        return QueuedSnapshot._query_api([query])["votes"]
+        return Snapshot._query_api([query])["votes"]
 
-    def _should_run_loop(self) -> bool:
-        if (datetime.now() - self._last_ran) < self._rate_limit:
-            return False
-
-        self._last_ran = datetime.now()
-        return True
-
-    def run_loop(self) -> list[Response]:
-        if not self._should_run_loop():
-            return []
-
+    def _run(self) -> list[Event]:
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
             log.warning("Snapshot version changed, nuking db")
             self.db.snapshot_votes.drop()
             self.db.snapshot_votes.insert_one({"_id": "version", "version": self.version})
 
         now = datetime.now()
-        events: list[Response] = []
+        events: list[Event] = []
         db_updates: list[dict] = []
 
         known_active_proposals: set[str] = set()
@@ -216,15 +204,15 @@ class QueuedSnapshot(commands.Cog):
         return embed
 
     @staticmethod
-    def _create_proposal_start_event(proposal: Proposal) -> Response:
-        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+    def _create_proposal_start_event(proposal: Proposal) -> Event:
+        embed = Snapshot.__create_proposal_embed(proposal)
         embed.title = ":bulb: New Snapshot Proposal"
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        QueuedSnapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
-        return Response(
+        return Event(
             embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
@@ -234,11 +222,11 @@ class QueuedSnapshot(commands.Cog):
         )
 
     @staticmethod
-    def _create_proposal_end_event(proposal: Proposal) -> Embed:
+    def _create_proposal_end_event(proposal: Proposal) -> Event:
         reached_quorum = proposal["scores_total"] >= proposal["quorum"]
         winning_choice = proposal["choices"][np.argmax(proposal["scores"])]
 
-        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+        embed = Snapshot.__create_proposal_embed(proposal)
         if reached_quorum and ("against" not in winning_choice.lower()):
             # potentially fails if abstain > against > for
             embed.title = ":white_check_mark: Snapshot Proposal Passed"
@@ -247,9 +235,9 @@ class QueuedSnapshot(commands.Cog):
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        QueuedSnapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
-        return Response(
+        return Event(
             embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
@@ -258,7 +246,7 @@ class QueuedSnapshot(commands.Cog):
             attachment=img
         )
 
-    def _create_vote_event(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Response]:
+    def _create_vote_event(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Event]:
         node = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
         if node == ADDRESS_ZERO:
             # pre Houston vote
@@ -270,7 +258,7 @@ class QueuedSnapshot(commands.Cog):
         if vote_fmt is None:
             return None
 
-        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+        embed = Snapshot.__create_proposal_embed(proposal)
         embed.title = f":ballot_box: {proposal['title']}"
 
         if prev_vote is None:
@@ -303,7 +291,7 @@ class QueuedSnapshot(commands.Cog):
         embed.add_field(name="Voting Power", value=f"{vote['vp']:.2f}", inline=False)
 
         event_name = "pdao_snapshot_vote_changed" if (vote['vp'] >= 250) else "snapshot_vote_changed"
-        return Response(
+        return Event(
             embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
@@ -330,7 +318,7 @@ class QueuedSnapshot(commands.Cog):
 
     @staticmethod
     def _format_single_choice(proposal: Proposal, choice: SingleChoice):
-        label = QueuedSnapshot._label_choice(proposal, choice)
+        label = Snapshot._label_choice(proposal, choice)
         match label.lower():
             case "for":
                 label = "✅ For"
@@ -342,14 +330,14 @@ class QueuedSnapshot(commands.Cog):
 
     @staticmethod
     def _format_multiple_choice(proposal: Proposal, choice: MultiChoice) -> str:
-        labels = [QueuedSnapshot._label_choice(proposal, c) for c in choice]
+        labels = [Snapshot._label_choice(proposal, c) for c in choice]
         if len(labels) == 1:
             return f"`{labels[0]}`"
         return "**" + "\n".join([f"- {c}" for c in labels]) + "**"
 
     @staticmethod
     def _format_weighted_choice(proposal: Proposal, choice: WeightedChoice) -> str:
-        labels = {QueuedSnapshot._label_choice(proposal, int(c)): w for c, w in choice.items()}
+        labels = {Snapshot._label_choice(proposal, int(c)): w for c, w in choice.items()}
         total_weight = sum(labels.values())
         choice_perc = [(c, round(100 * w / total_weight)) for c, w in labels.items()]
         choice_perc.sort(key=lambda x: x[1], reverse=True)
@@ -376,7 +364,7 @@ class QueuedSnapshot(commands.Cog):
         perc_margin_left = 50
 
         def draw_choice(
-                _proposal: QueuedSnapshot.Proposal,
+                _proposal: Snapshot.Proposal,
                 _choice: str,
                 _score: float,
                 _x_offset: int,
@@ -515,7 +503,7 @@ class QueuedSnapshot(commands.Cog):
         total_height = v_spacing * (num_rows - 1)
         total_width = proposal_width * num_cols + h_spacing * (num_cols - 1)
 
-        proposal_grid: list[list[QueuedSnapshot.Proposal]] = []
+        proposal_grid: list[list[Snapshot.Proposal]] = []
         for row_idx in range(num_rows):
             row = proposals[row_idx*num_cols:(row_idx+1)*num_cols]
             proposal_grid.append(row)
@@ -564,4 +552,4 @@ class QueuedSnapshot(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedSnapshot(bot))
+    await bot.add_cog(Snapshot(bot))

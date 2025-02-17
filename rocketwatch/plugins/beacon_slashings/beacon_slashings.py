@@ -7,7 +7,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import cl_explorer_url
@@ -96,7 +96,7 @@ class QueuedSlashings(commands.Cog):
                 args = prepare_args(aDict(slash))
                 if embed := assemble(args):
                     closest_block = get_block_by_timestamp(timestamp)[0]
-                    payload.append(Response(
+                    payload.append(Event(
                         topic="beacon_slashings",
                         embed=embed,
                         event_name=slash["event_name"],
@@ -136,7 +136,7 @@ class QueuedSlashings(commands.Cog):
                             args["smoothie_amount"] = rp.call("multicall3.getEthBalance", w3.toChecksumAddress(fee_recipient), block=exec_block)
                         args = prepare_args(aDict(args))
                         if embed := assemble(args):
-                            payload.append(Response(
+                            payload.append(Event(
                                 topic="mev_proposals",
                                 embed=embed,
                                 event_name=args["event_name"],
@@ -161,7 +161,7 @@ class QueuedSlashings(commands.Cog):
                 }
                 args = prepare_args(aDict(args))
                 if embed := assemble(args):
-                    payload.append(Response(
+                    payload.append(Event(
                         topic="finality_delay",
                         embed=embed,
                         event_name=args["event_name"],
@@ -186,7 +186,7 @@ class QueuedSlashings(commands.Cog):
                 }
                 args = prepare_args(aDict(args))
                 if embed := assemble(args):
-                    payload.append(Response(
+                    payload.append(Event(
                         topic="finality_delay_recover",
                         embed=embed,
                         event_name=args["event_name"],

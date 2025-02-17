@@ -7,7 +7,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -70,7 +70,7 @@ class QueuedMilestones(commands.Cog):
                     "event_name"  : milestone.id,
                     "result_value": value
                 }))
-                payload.append(Response(
+                payload.append(Event(
                     embed=embed,
                     topic="milestones",
                     block_number=w3.eth.getBlock("latest").number,

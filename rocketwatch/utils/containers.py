@@ -1,35 +1,42 @@
-import math
 import pickle
+
+from io import BytesIO
+from typing import Optional
 from datetime import datetime
 
+from discord import File
+from PIL.Image import Image
+
 from utils.cfg import cfg
+from utils.embeds import Embed
 
 
-def calc_score(block_number, transaction_index=999, event_index=999):
-    return block_number + (transaction_index * 10 ** -3) + (event_index * 10 ** -6)
-
-
-class Response:
-    def __init__(self,
-                 embed,
-                 topic,
-                 event_name,
-                 unique_id,
-                 block_number,
-                 transaction_index=999,
-                 event_index=999
-                 ):
+class Event:
+    def __init__(
+            self,
+            embed : Embed,
+            topic: str,
+            event_name: str,
+            unique_id: str,
+            block_number: int,
+            transaction_index: int = 999,
+            event_index: int = 999,
+            attachment: Optional[Image] = None
+    ):
         self.embed = embed
-        self.source = topic
+        self.topic = topic
         self.event_name = event_name
         self.unique_id = unique_id
         self.block_number = block_number
         self.transaction_index = transaction_index
         self.event_index = event_index
-        self.time_seen = datetime.utcnow()
+        self.attachment = attachment
+
+        self.time_seen = datetime.now()
         self.score = self.block_number * 10 ** 9 + self.transaction_index * 10 ** 5 + self.event_index
         if self.embed.footer and self.embed.footer.text:
             self.embed.set_footer_parts([f"score: {self.score}"])
+
         # select channel dynamically from config based on event_name prefix
         channels = cfg["discord.channels"]
         channel_candidates = [value for key, value in channels.items() if event_name.startswith(key)]
@@ -39,18 +46,31 @@ class Response:
         return bool(self.embed)
 
     @staticmethod
-    def get_embed(payload):
+    def get_embed(payload) -> Embed:
         return pickle.loads(payload["embed"])
 
-    def to_dict(self):
+    @staticmethod
+    def get_attachment(embed_dict: dict) -> Optional[File]:
+        serialized = embed_dict.get("attachment")
+        if not serialized:
+            return None
+
+        img = pickle.loads(serialized)
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        return File(buffer, f"{embed_dict['event_name']}.png")
+
+    def to_dict(self) -> dict:
         return {
             "_id"         : self.unique_id,
             "embed"       : pickle.dumps(self.embed),
-            "topic"       : self.source,
+            "topic"       : self.topic,
             "event_name"  : self.event_name,
             "block_number": self.block_number,
             "score"       : self.score,
             "time_seen"   : self.time_seen,
+            "attachment"  : pickle.dumps(self.attachment),
             "channel_id"  : self.channel_id,
             "processed"   : False
         }

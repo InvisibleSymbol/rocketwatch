@@ -11,7 +11,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -206,7 +206,7 @@ class QueuedCowOrders(commands.Cog):
 
             data = prepare_args(data)
             embed = assemble(data)
-            payload.append(Response(
+            payload.append(Event(
                 embed=embed,
                 topic="cow_orders",
                 block_number=w3.eth.getBlock("latest").number,
