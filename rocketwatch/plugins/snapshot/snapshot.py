@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 from typing import Optional, TypedDict, Literal
 
 import pymongo
+import numpy as np
 import termplotlib as tpl
+
 from eth_typing import ChecksumAddress
 from PIL import Image
 from discord import File
@@ -53,7 +55,6 @@ class QueuedSnapshot(commands.Cog):
         title: str
         body: str
         choices: list[str]
-        state: 'QueuedSnapshot.ProposalState'
         start: int
         end: int
         scores: list[float]
@@ -61,24 +62,25 @@ class QueuedSnapshot(commands.Cog):
         quorum: int
 
     @staticmethod
-    def get_proposals(state: ProposalState, limit=20) -> list[Proposal]:
+    def get_proposals(state: ProposalState, limit: int = 20, p_id: Optional[str] = None) -> list[Proposal]:
+        proposal_filter = [
+            Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
+            Argument(name="state", value=f"\"{state}\"")
+        ]
+        if p_id:
+            proposal_filter.append(Argument(name="id", value=f"\"{p_id}\""))
+
         query = Query(
             name = "proposals",
             arguments = [
                 Argument(name="first", value=limit),
                 Argument(name="skip", value=0),
-                Argument(
-                    name = "where",
-                    value = [
-                        Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
-                        Argument(name="state", value=f"\"{state}\"")
-                    ]
-                ),
+                Argument(name="where", value=proposal_filter),
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc"),
             ],
             fields = [
-                "id", "title", "body", "choices", "state",
+                "id", "title", "body", "choices",
                 "start", "end", "scores", "scores_total", "quorum"
             ]
         )
@@ -143,7 +145,8 @@ class QueuedSnapshot(commands.Cog):
             else:
                 # stored proposal ended, emit event and delete from DB
                 log.info(f"Found expired proposal: {stored_proposal}")
-                proposal = stored_proposal # TODO add proposal details query to fetch remaining details
+                # recover full proposal
+                proposal = self.get_proposals("closed", p_id=stored_proposal["_id"])[0]
                 event = self._create_proposal_end_event(proposal)
                 self.db.snapshot_proposals.delete_one(stored_proposal)
                 events.append(event)
@@ -197,60 +200,62 @@ class QueuedSnapshot(commands.Cog):
                 pymongo.UpdateOne(
                     {"proposal_id": update["proposal_id"], "voter": update["voter"]},
                     {"$set": update},
-                    upsert = True
+                    upsert=True
                 ) for update in db_updates
             ])
 
         return events
 
     @staticmethod
-    def _create_proposal_start_event(proposal: Proposal) -> Response:
-        embed = Embed(title = f":bulb: New DAO Proposal: {proposal['title']}")
+    def __create_proposal_embed(proposal: Proposal) -> Embed:
+        embed = Embed()
         embed.set_author(
             name="🔗 Data from snapshot.org",
             url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}"
         )
+        return embed
 
-        max_length = 2000
-        description = proposal["body"]
-        if len(description) > max_length:
-            description = description[:(max_length-3)] + "..."
+    @staticmethod
+    def _create_proposal_start_event(proposal: Proposal) -> Response:
+        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+        embed.title = ":bulb: New Snapshot Proposal"
 
-        embed.description = "```" + description + "```"
-
-        # TODO figure out how to add attachment to events
-        """
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        draw = BetterImageDraw(img)
-
-        buffer = BytesIO()
-        img.save(buffer, format="PNG")
-        buffer.seek(0)
-        embed.set_image(url="attachment://votes.png")
-
-        QueuedSnapshot.draw_proposal(draw, proposal, width, 0, 0)
-        """
+        QueuedSnapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Response(
             embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
             event_name="pdao_snapshot_vote_start",
-            unique_id=f"{proposal['id']}:event_start"
+            unique_id=f"{proposal['id']}:event_start",
+            attachment=img
         )
 
     @staticmethod
-    def _create_proposal_end_event(proposal: dict) -> Embed:
-        # TODO versions for success and failure
-        # Embed(title=f":white_check_mark: Proposal Passed: {proposal['title']}")
-        # Embed(title=f":x: Proposal Failed: {proposal['title']}")
+    def _create_proposal_end_event(proposal: Proposal) -> Embed:
+        reached_quorum = proposal["scores_total"] >= proposal["quorum"]
+        winning_choice = proposal["choices"][np.argmax(proposal["scores"])]
+
+        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+        if reached_quorum and ("against" not in winning_choice.lower()):
+            # potentially fails if abstain > against > for
+            embed.title = ":white_check_mark: Snapshot Proposal Passed"
+        else:
+            embed.title = ":x: Snapshot Proposal Failed"
+
+        width = 500
+        img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
+        QueuedSnapshot.draw_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+
         return Response(
-            embed=Embed(title=":white_check_mark: Proposal Passed"),
+            embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
             event_name="pdao_snapshot_vote_end",
-            unique_id=f"{proposal['_id']}:event_end"
+            unique_id=f"{proposal['id']}:event_end",
+            attachment=img
         )
 
     def _create_vote_event(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Response]:
@@ -265,11 +270,8 @@ class QueuedSnapshot(commands.Cog):
         if vote_fmt is None:
             return None
 
-        embed = Embed(title=f":ballot_box: {proposal['title']}")
-        embed.set_author(
-            name="🔗 Data from snapshot.org",
-            url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}"
-        )
+        embed = QueuedSnapshot.__create_proposal_embed(proposal)
+        embed.title = f":ballot_box: {proposal['title']}"
 
         if prev_vote is None:
             if len(vote_fmt) <= 20:
@@ -302,11 +304,11 @@ class QueuedSnapshot(commands.Cog):
 
         event_name = "pdao_snapshot_vote_changed" if (vote['vp'] >= 250) else "snapshot_vote_changed"
         return Response(
-            embed = embed,
-            topic = "snapshot",
-            block_number = w3.eth.getBlock("latest").number,
-            event_name = event_name,
-            unique_id = f"{proposal['id']}_{vote['voter']}_{vote['created']}:vote"
+            embed=embed,
+            topic="snapshot",
+            block_number=w3.eth.getBlock("latest").number,
+            event_name=event_name,
+            unique_id=f"{proposal['id']}_{vote['voter']}_{vote['created']}:vote"
         )
 
     def _format_vote(self, proposal: Proposal, vote: Vote) -> Optional[str]:
@@ -355,8 +357,8 @@ class QueuedSnapshot(commands.Cog):
         graph.barh(
             [x[1] for x in choice_perc],
             [x[0] for x in choice_perc],
-            force_ascii = True,
-            max_width = 15
+            force_ascii=True,
+            max_width=15
         )
         return "```" + graph.get_string().replace("]", "%]") + "```"
 
@@ -396,16 +398,16 @@ class QueuedSnapshot(commands.Cog):
                 (_x_offset + default_margin, _y_offset),
                 _choice,
                 font_size,
-                max_width = (width / 2),
-                anchor = "lt"
+                max_width=(width / 2),
+                anchor="lt"
             )
             # {choice}                           {score} votes
             draw.dynamic_text(
                 (_x_offset + width - pb_margin_right, _y_offset),
                 f"{_score:,.2f} votes",
                 font_size,
-                max_width = (width / 2),
-                anchor = "rt"
+                max_width=(width / 2),
+                anchor="rt"
             )
             choice_height += 20
             # {choice}                           {score} votes
@@ -414,8 +416,8 @@ class QueuedSnapshot(commands.Cog):
                 (_x_offset + perc_margin_left, _y_offset + choice_height),
                 f"{safe_div(_score, proposal['scores_total']):.0%}",
                 font_size,
-                max_width = (width / 2) - perc_margin_left,
-                anchor = "rt"
+                max_width=(width / 2) - perc_margin_left,
+                anchor="rt"
             )
             # {choice}                           {score} votes
             #   {perc}% ======================================
@@ -423,7 +425,7 @@ class QueuedSnapshot(commands.Cog):
                 (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
                 (10, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
                 safe_div(_score, max_score),
-                primary = color
+                primary=color
             )
             choice_height += 20
             return choice_height
@@ -479,7 +481,7 @@ class QueuedSnapshot(commands.Cog):
         time_label_width = (width - 2 * default_margin)
         draw.dynamic_text(
             (x_offset + time_label_width / 2, y_offset + proposal_height),
-            f"{uptime(rem_time)} left",
+            f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final result",
             font_size,
             max_width=time_label_width,
             anchor="mt"
