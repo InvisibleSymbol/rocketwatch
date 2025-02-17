@@ -1,12 +1,12 @@
 import math
 import logging
-import requests
 
 from io import BytesIO
 from datetime import datetime, timedelta
 from typing import Optional, TypedDict, Literal
 
 import pymongo
+import requests
 import numpy as np
 import termplotlib as tpl
 

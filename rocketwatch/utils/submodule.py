@@ -6,7 +6,7 @@ from utils.containers import Event
 
 
 class QueuedSubmodule(commands.Cog):
-    def __init__(self, bot, rate_limit: timedelta):
+    def __init__(self, bot, rate_limit=timedelta()):
         self.bot = bot
         self.rate_limit = rate_limit
         self._last_ran = datetime.now() - rate_limit

@@ -1,12 +1,9 @@
 import logging
-import math
-import random
 from datetime import datetime, timedelta
 
 import pymongo
 import requests
 from datetime import timezone
-from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
@@ -15,18 +12,18 @@ from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("cow_orders")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedCowOrders(commands.Cog):
+class CowOrders(QueuedSubmodule):
     def __init__(self, bot):
-        self.bot = bot
+        super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
-        self.last_run = datetime.now()
         # create the cow_orders collection if it doesn't exist
         # limit the collection to 10000 entries
         # create an index on order_uid
@@ -40,9 +37,7 @@ class QueuedCowOrders(commands.Cog):
             str(rp.get_address_by_name("rocketTokenRETH")).lower()
         ]
 
-    def run_loop(self):
-        if datetime.now() - self.last_run < timedelta(seconds=60):
-            return []
+    def _run(self):
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -54,7 +49,6 @@ class QueuedCowOrders(commands.Cog):
             log.error(f"Error while checking for new Cow Orders: {e}")
             result = []
             self.state = "ERROR"
-        self.last_run = datetime.now()
         return result
 
     # noinspection PyTypeChecker
@@ -225,4 +219,4 @@ class QueuedCowOrders(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedCowOrders(bot))
+    await bot.add_cog(CowOrders(bot))
