@@ -11,7 +11,8 @@ import numpy as np
 import termplotlib as tpl
 
 from eth_typing import ChecksumAddress
-from PIL import Image
+from PIL import Image as PILImage
+from PIL.Image import Image
 from discord import File
 from web3.constants import ADDRESS_ZERO
 from graphql_query import Operation, Query, Argument
@@ -198,7 +199,7 @@ class Snapshot(QueuedSubmodule):
         return events
 
     @staticmethod
-    def __create_proposal_embed(proposal: Proposal) -> Embed:
+    def _create_proposal_embed(proposal: Proposal) -> Embed:
         embed = Embed()
         embed.set_author(
             name="🔗 Data from snapshot.org",
@@ -208,12 +209,8 @@ class Snapshot(QueuedSubmodule):
 
     @staticmethod
     def _create_proposal_start_event(proposal: Proposal) -> Event:
-        embed = Snapshot.__create_proposal_embed(proposal)
+        embed = Snapshot._create_proposal_embed(proposal)
         embed.title = ":bulb: New Snapshot Proposal"
-
-        width = 500
-        img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -221,7 +218,7 @@ class Snapshot(QueuedSubmodule):
             block_number=w3.eth.getBlock("latest").number,
             event_name="pdao_snapshot_vote_start",
             unique_id=f"{proposal['id']}:event_start",
-            attachment=img
+            attachment=Snapshot._create_proposal_image(proposal, include_title=True)
         )
 
     @staticmethod
@@ -229,16 +226,12 @@ class Snapshot(QueuedSubmodule):
         reached_quorum = proposal["scores_total"] >= proposal["quorum"]
         winning_choice = proposal["choices"][np.argmax(proposal["scores"])]
 
-        embed = Snapshot.__create_proposal_embed(proposal)
+        embed = Snapshot._create_proposal_embed(proposal)
         if reached_quorum and ("against" not in winning_choice.lower()):
             # potentially fails if abstain > against > for
             embed.title = ":white_check_mark: Snapshot Proposal Passed"
         else:
             embed.title = ":x: Snapshot Proposal Failed"
-
-        width = 500
-        img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -246,22 +239,23 @@ class Snapshot(QueuedSubmodule):
             block_number=w3.eth.getBlock("latest").number,
             event_name="pdao_snapshot_vote_end",
             unique_id=f"{proposal['id']}:event_end",
-            attachment=img
+            attachment=Snapshot._create_proposal_image(proposal, include_title=True)
         )
 
     def _create_vote_event(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Event]:
         node = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
+        signer = el_explorer_url(vote['voter'])
         if node == ADDRESS_ZERO:
             # pre Houston vote
-            voter = el_explorer_url(vote['voter'])
+            voter = signer
         else:
-            voter = f"{el_explorer_url(node)} ({el_explorer_url(vote['voter'])})"
+            voter = el_explorer_url(node)
 
         vote_fmt = self._format_vote(proposal, vote)
         if vote_fmt is None:
             return None
 
-        embed = Snapshot.__create_proposal_embed(proposal)
+        embed = Snapshot._create_proposal_embed(proposal)
         embed.title = f":ballot_box: {proposal['title']}"
 
         if prev_vote is None:
@@ -291,7 +285,10 @@ class Snapshot(QueuedSubmodule):
 
             embed.description += f" ```{reason}```"
 
-        embed.add_field(name="Voting Power", value=f"{vote['vp']:.2f}", inline=False)
+        vote_time = vote["created"]
+        embed.add_field(name="Signer", value=signer)
+        embed.add_field(name="Vote Power", value=f"**{vote['vp']:.2f}**")
+        embed.add_field(name="Timestamp", value=f"<t:{vote_time}:R>")
 
         event_name = "pdao_snapshot_vote_changed" if (vote['vp'] >= 250) else "snapshot_vote_changed"
         return Event(
@@ -299,7 +296,8 @@ class Snapshot(QueuedSubmodule):
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
             event_name=event_name,
-            unique_id=f"{proposal['id']}_{vote['voter']}_{vote['created']}:vote"
+            unique_id=f"{proposal['id']}_{vote['voter']}_{vote['created']}:vote",
+            attachment=self._create_proposal_image(proposal, include_title=False)
         )
 
     def _format_vote(self, proposal: Proposal, vote: Vote) -> Optional[str]:
@@ -354,12 +352,25 @@ class Snapshot(QueuedSubmodule):
         return "```" + graph.get_string().replace("]", "%]") + "```"
 
     @staticmethod
+    def _create_proposal_image(proposal: Proposal, include_title: bool) -> Image:
+        width = 500
+        height = 90 + 40 * len(proposal["choices"])
+
+        if include_title:
+            height += 40
+
+        img = PILImage.new("RGB", (width, height), color=(43, 45, 49))
+        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0, include_title)
+        return img
+
+    @staticmethod
     def _render_proposal(
             draw: BetterImageDraw,
             proposal: Proposal,
             width: int,
             x_offset: int = 0,
-            y_offset: int = 0
+            y_offset: int = 0,
+            include_title: bool = True
     ) -> int:
         default_margin = 10
         pb_margin_left = 10
@@ -423,13 +434,14 @@ class Snapshot(QueuedSubmodule):
         font_size = 15
         proposal_height = 0
 
-        draw.dynamic_text(
-            (x_offset + default_margin, y_offset),
-            proposal["title"],
-            25,
-            max_width=(width - 2 * default_margin)
-        )
-        proposal_height += 40
+        if include_title:
+            draw.dynamic_text(
+                (x_offset + default_margin, y_offset),
+                proposal["title"],
+                25,
+                max_width=(width - 2 * default_margin)
+            )
+            proposal_height += 40
 
         # order (choice, score) pairs by score
         choice_scores = list(zip(proposal["choices"], proposal["scores"]))
@@ -513,7 +525,7 @@ class Snapshot(QueuedSubmodule):
             total_height += 130 + 40 * max_choices
 
         # match Discord dark mode Embed color (#2b2d31)
-        img = Image.new("RGB", (total_width, total_height), color=(43, 45, 49))
+        img = PILImage.new("RGB", (total_width, total_height), color=(43, 45, 49))
         draw = BetterImageDraw(img)
 
         # keeping track of widest row
