@@ -46,20 +46,24 @@ class Event:
         return bool(self.embed)
 
     @staticmethod
-    def get_embed(payload) -> Embed:
-        return pickle.loads(payload["embed"])
+    def load_embed(event_dict: dict) -> Embed:
+        return pickle.loads(event_dict["embed"])
 
     @staticmethod
-    def get_attachment(embed_dict: dict) -> Optional[File]:
-        serialized = embed_dict.get("attachment")
+    def load_attachment(event_dict: dict) -> Optional[File]:
+        serialized = event_dict.get("attachment")
         if not serialized:
             return None
 
-        img = pickle.loads(serialized)
+        try:
+            img = pickle.loads(serialized)
+        except Exception:
+            return None
+
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
-        return File(buffer, f"{embed_dict['event_name']}.png")
+        return File(buffer, f"{event_dict['event_name']}.png")
 
     def to_dict(self) -> dict:
         return {

@@ -288,7 +288,7 @@ class Debug(Cog):
         if not event:
             await ctx.send(content="Event not found.")
             return
-        e = Event.get_embed(event)
+        e = Event.load_embed(event)
         e.description = e.description.replace("%{minipool_clean}", "[391311](https://beaconcha.in/validator/391311)")
         channel = await get_or_fetch_channel(self.bot, event["channel_id"])
         msg = await channel.fetch_message(message_id)

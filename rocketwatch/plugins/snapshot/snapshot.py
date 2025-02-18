@@ -205,8 +205,9 @@ class Snapshot(QueuedSubmodule):
             )
             return embed
 
-        def create_image(self, width: int, include_title: bool) -> Image:
+        def create_image(self, include_title: bool) -> Image:
             height = self.predict_render_height(include_title)
+            width = max(500, height)
             img = PILImage.new("RGB", (width, height), color=(43, 45, 49))
             self.render_to(BetterImageDraw(img), width, 0, 0, include_title)
             return img
@@ -221,7 +222,7 @@ class Snapshot(QueuedSubmodule):
                 block_number=w3.eth.getBlock("latest").number,
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"{self.id}:event_start",
-                attachment=self.create_image(500, include_title=True)
+                attachment=self.create_image(include_title=True)
             )
 
         def create_end_event(self) -> Event:
@@ -241,7 +242,7 @@ class Snapshot(QueuedSubmodule):
                 block_number=w3.eth.getBlock("latest").number,
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"{self.id}:event_end",
-                attachment=self.create_image(500, include_title=True)
+                attachment=self.create_image(include_title=True)
             )
 
     @dataclass(frozen=True)
@@ -351,7 +352,7 @@ class Snapshot(QueuedSubmodule):
                 embed.description += f" ```{reason}```"
 
             embed.add_field(name="Signer", value=signer)
-            embed.add_field(name="Vote Power", value=f"**{self.vp:.2f}**")
+            embed.add_field(name="Vote Power", value=f"{self.vp:.2f}")
             embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
 
             event_name = "pdao_snapshot_vote" if (self.vp >= 250) else "snapshot_vote"
@@ -361,7 +362,7 @@ class Snapshot(QueuedSubmodule):
                 block_number=w3.eth.getBlock("latest").number,
                 event_name=event_name,
                 unique_id=f"{self.proposal.id}_{self.voter}_{self.created}:vote",
-                attachment=self.proposal.create_image(500, include_title=False)
+                attachment=self.proposal.create_image(include_title=False)
             )
 
     @staticmethod
@@ -514,17 +515,22 @@ class Snapshot(QueuedSubmodule):
 
         v_spacing = 40
         h_spacing = 40
-        proposal_width = 500
 
+        # could potentially be smarter about arranging proposals with different proportions
         total_height = v_spacing * (num_rows - 1)
-        total_width = proposal_width * num_cols + h_spacing * (num_cols - 1)
-
         proposal_grid: list[list[Snapshot.Proposal]] = []
         for row_idx in range(num_rows):
             row = proposals[row_idx*num_cols:(row_idx+1)*num_cols]
             proposal_grid.append(row)
             # row height is equal to height of its tallest proposal
             total_height += max(p.predict_render_height() for p in row)
+
+        proposal_width = 500
+        total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
+        # make sure proportions don't become too skewed
+        if total_width < total_height:
+            proposal_width = (total_height - h_spacing * (num_cols - 1)) // num_cols
+            total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
 
         # match Discord dark mode Embed color (#2b2d31)
         img = PILImage.new("RGB", (total_width, total_height), color=(43, 45, 49))
