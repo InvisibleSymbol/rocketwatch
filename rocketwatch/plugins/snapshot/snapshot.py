@@ -244,34 +244,6 @@ class Snapshot(QueuedSubmodule):
                 attachment=self.create_image(500, include_title=True)
             )
 
-    @staticmethod
-    def fetch_proposals(
-            state: Proposal.State,
-            reverse: bool = False,
-            limit: int = 25,
-            proposal_id: Optional[str] = None
-    ) -> list[Proposal]:
-        proposal_filter = [
-            Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
-            Argument(name="state", value=f"\"{state}\"")
-        ]
-        if proposal_id:
-            proposal_filter.append(Argument(name="id", value=f"\"{proposal_id}\""))
-
-        query = Query(
-            name="proposals",
-            arguments=[
-                Argument(name="first", value=limit),
-                Argument(name="skip", value=0),
-                Argument(name="where", value=proposal_filter),
-                Argument(name="orderBy", value="\"created\""),
-                Argument(name="orderDirection", value="desc" if reverse else "asc")
-            ],
-            fields=["id", "title", "choices", "start", "end", "scores", "quorum"]
-        )
-        response: list[dict] = Snapshot._query_api([query])["proposals"]
-        return [Snapshot.Proposal(**d) for d in response]
-
     @dataclass(frozen=True)
     class MinimalVote:
         SingleChoice = int
@@ -337,6 +309,88 @@ class Snapshot(QueuedSubmodule):
         id: str
         vp: float
         reason: str
+
+        def create_event(self, prev_vote: Optional['Snapshot.MinimalVote']) -> Optional[Event]:
+            node = rp.call("rocketSignerRegistry.signerToNode", self.voter)
+            signer = el_explorer_url(self.voter)
+            voter = signer if (node == ADDRESS_ZERO) else el_explorer_url(node)
+
+            vote_fmt = self.pretty_print()
+            if vote_fmt is None:
+                return None
+
+            embed = self.proposal.get_embed_template()
+            embed.title = f":ballot_box: {self.proposal.title}"
+
+            if prev_vote is None:
+                if len(vote_fmt) <= 20:
+                    embed.description = f"{voter} voted {vote_fmt}"
+                else:
+                    embed.description = f"{voter} voted\n{vote_fmt}"
+            else:
+                assert prev_vote.proposal.id == self.proposal.id
+                prev_vote_fmt = prev_vote.pretty_print()
+                if len(vote_fmt) <= 10 and len(prev_vote_fmt) <= 10:
+                    embed.description = f"{voter} changed their vote from {prev_vote_fmt} to {vote_fmt}"
+                else:
+                    embed.description = (
+                        f"{voter} changed their vote from\n"
+                        f"{prev_vote_fmt}\n"
+                        f"to\n"
+                        f"{vote_fmt}"
+                    )
+
+            if self.reason:
+                max_length = 2000
+                reason = self.reason
+                if len(embed.description) + len(reason) > max_length:
+                    suffix = "..."
+                    overage = len(embed.description) + len(reason) - max_length
+                    reason = reason[:-(overage + len(suffix))] + suffix
+
+                embed.description += f" ```{reason}```"
+
+            embed.add_field(name="Signer", value=signer)
+            embed.add_field(name="Vote Power", value=f"**{self.vp:.2f}**")
+            embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
+
+            event_name = "pdao_snapshot_vote" if (self.vp >= 250) else "snapshot_vote"
+            return Event(
+                embed=embed,
+                topic="snapshot",
+                block_number=w3.eth.getBlock("latest").number,
+                event_name=event_name,
+                unique_id=f"{self.proposal.id}_{self.voter}_{self.created}:vote",
+                attachment=self.proposal.create_image(500, include_title=False)
+            )
+
+    @staticmethod
+    def fetch_proposals(
+            state: Proposal.State,
+            reverse: bool = False,
+            limit: int = 25,
+            proposal_id: Optional[str] = None
+    ) -> list[Proposal]:
+        proposal_filter = [
+            Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
+            Argument(name="state", value=f"\"{state}\"")
+        ]
+        if proposal_id:
+            proposal_filter.append(Argument(name="id", value=f"\"{proposal_id}\""))
+
+        query = Query(
+            name="proposals",
+            arguments=[
+                Argument(name="first", value=limit),
+                Argument(name="skip", value=0),
+                Argument(name="where", value=proposal_filter),
+                Argument(name="orderBy", value="\"created\""),
+                Argument(name="orderDirection", value="desc" if reverse else "asc")
+            ],
+            fields=["id", "title", "choices", "start", "end", "scores", "quorum"]
+        )
+        response: list[dict] = Snapshot._query_api([query])["proposals"]
+        return [Snapshot.Proposal(**d) for d in response]
 
     @staticmethod
     def fetch_votes(proposal: Proposal, reverse: bool = True, limit: int = 100) -> list[Vote]:
@@ -410,14 +464,14 @@ class Snapshot(QueuedSubmodule):
             for vote in current_votes:
                 log.debug(f"Processing vote {vote}")
 
-                prev_vote: Snapshot.MinimalVote = previous_votes.get(vote.voter)
-                if prev_vote and prev_vote.choice == vote.choice:
+                prev_vote: Optional[Snapshot.MinimalVote] = previous_votes.get(vote.voter)
+                if prev_vote and (prev_vote.choice == vote.choice):
                     log.debug(f"Same vote choice as before, skipping event")
                     continue
 
                 previous_votes[vote.voter] = vote
 
-                event = self._create_vote_event(proposal, vote, prev_vote)
+                event = vote.create_event(prev_vote)
                 if event is None:
                     continue
 
@@ -440,60 +494,6 @@ class Snapshot(QueuedSubmodule):
             ])
 
         return events
-
-    @staticmethod
-    def _create_vote_event(proposal: Proposal, vote: Vote, prev_vote: Optional[MinimalVote]) -> Optional[Event]:
-        node = rp.call("rocketSignerRegistry.signerToNode", vote.voter)
-        signer = el_explorer_url(vote.voter)
-        voter = signer if (node == ADDRESS_ZERO) else el_explorer_url(node)
-
-        vote_fmt = vote.pretty_print()
-        if vote_fmt is None:
-            return None
-
-        embed = proposal.get_embed_template()
-        embed.title = f":ballot_box: {proposal.title}"
-
-        if prev_vote is None:
-            if len(vote_fmt) <= 20:
-                embed.description = f"{voter} voted {vote_fmt}"
-            else:
-                embed.description = f"{voter} voted\n{vote_fmt}"
-        else:
-            prev_vote_fmt = prev_vote.pretty_print()
-            if len(vote_fmt) <= 10 and len(prev_vote_fmt) <= 10:
-                embed.description = f"{voter} changed their vote from {prev_vote_fmt} to {vote_fmt}"
-            else:
-                embed.description = (
-                    f"{voter} changed their vote from\n"
-                    f"{prev_vote_fmt}\n"
-                    f"to\n"
-                    f"{vote_fmt}"
-                )
-
-        if vote.reason:
-            max_length = 2000
-            reason = vote.reason
-            if len(embed.description) + len(reason) > max_length:
-                suffix = "..."
-                overage = len(embed.description) + len(reason) - max_length
-                reason = reason[:-(overage + len(suffix))] + suffix
-
-            embed.description += f" ```{reason}```"
-
-        embed.add_field(name="Signer", value=signer)
-        embed.add_field(name="Vote Power", value=f"**{vote.vp:.2f}**")
-        embed.add_field(name="Timestamp", value=f"<t:{vote.created}:R>")
-
-        event_name = "pdao_snapshot_vote" if (vote.vp >= 250) else "snapshot_vote"
-        return Event(
-            embed=embed,
-            topic="snapshot",
-            block_number=w3.eth.getBlock("latest").number,
-            event_name=event_name,
-            unique_id=f"{proposal.id}_{vote.voter}_{vote.created}:vote",
-            attachment=proposal.create_image(500, include_title=False)
-        )
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
