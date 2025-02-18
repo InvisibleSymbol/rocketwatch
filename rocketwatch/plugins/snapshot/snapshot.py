@@ -51,7 +51,6 @@ class Snapshot(QueuedSubmodule):
     class Proposal(TypedDict):
         id: str
         title: str
-        body: str
         choices: list[str]
         start: int
         end: int
@@ -60,27 +59,29 @@ class Snapshot(QueuedSubmodule):
         quorum: int
 
     @staticmethod
-    def get_proposals(state: ProposalState, limit: int = 20, p_id: Optional[str] = None) -> list[Proposal]:
+    def get_proposals(
+            state: ProposalState,
+            reverse: bool = False,
+            limit: int = 25,
+            proposal_id: Optional[str] = None
+    ) -> list[Proposal]:
         proposal_filter = [
             Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
             Argument(name="state", value=f"\"{state}\"")
         ]
-        if p_id:
-            proposal_filter.append(Argument(name="id", value=f"\"{p_id}\""))
+        if proposal_id:
+            proposal_filter.append(Argument(name="id", value=f"\"{proposal_id}\""))
 
         query = Query(
-            name = "proposals",
-            arguments = [
+            name="proposals",
+            arguments=[
                 Argument(name="first", value=limit),
                 Argument(name="skip", value=0),
                 Argument(name="where", value=proposal_filter),
                 Argument(name="orderBy", value="\"created\""),
-                Argument(name="orderDirection", value="desc"),
+                Argument(name="orderDirection", value="desc" if reverse else "asc")
             ],
-            fields = [
-                "id", "title", "body", "choices",
-                "start", "end", "scores", "scores_total", "quorum"
-            ]
+            fields=["id", "title", "choices", "start", "end", "scores", "scores_total", "quorum"]
         )
         return Snapshot._query_api([query])["proposals"]
 
@@ -99,20 +100,20 @@ class Snapshot(QueuedSubmodule):
         reason: str
 
     @staticmethod
-    def get_votes(proposal: Proposal, limit=1000) -> list[Vote]:
+    def get_votes(proposal: Proposal, reverse: bool = True, limit: int = 100) -> list[Vote]:
         query = Query(
-            name = "votes",
-            arguments = [
+            name="votes",
+            arguments=[
                 Argument(name="first", value=limit),
                 Argument(name="skip", value=0),
                 Argument(
-                    name = "where",
-                    value = [Argument(name="proposal", value=f"\"{proposal['id']}\"")]
+                    name="where",
+                    value=[Argument(name="proposal", value=f"\"{proposal['id']}\"")]
                 ),
                 Argument(name="orderBy", value="\"created\""),
-                Argument(name="orderDirection", value="desc"),
+                Argument(name="orderDirection", value="desc" if reverse else "asc")
             ],
-            fields = ["id", "voter", "created", "vp", "choice", "reason"]
+            fields=["id", "voter", "created", "vp", "choice", "reason"]
         )
         return Snapshot._query_api([query])["votes"]
 
@@ -126,23 +127,25 @@ class Snapshot(QueuedSubmodule):
         events: list[Event] = []
         db_updates: list[dict] = []
 
-        known_active_proposals: set[str] = set()
+        known_active_proposal_ids: set[str] = set()
         for stored_proposal in self.db.snapshot_proposals.find():
             if stored_proposal["end"] > now.timestamp():
-                known_active_proposals.add(stored_proposal["_id"])
+                known_active_proposal_ids.add(stored_proposal["_id"])
             else:
                 # stored proposal ended, emit event and delete from DB
                 log.info(f"Found expired proposal: {stored_proposal}")
                 # recover full proposal
-                proposal = self.get_proposals("closed", p_id=stored_proposal["_id"])[0]
+                proposal = self.get_proposals("closed", proposal_id=stored_proposal["_id"])[0]
                 event = self._create_proposal_end_event(proposal)
                 self.db.snapshot_proposals.delete_one(stored_proposal)
                 events.append(event)
 
-        active_proposals = self.get_proposals("active")
+        # fetch descending and reverse to get latest results in chronological order
+        # only relevant if potential results exceed limit
+        active_proposals = self.get_proposals("active", reverse=True)[::-1]
         for proposal in active_proposals:
             log.debug(f"Processing proposal {proposal}")
-            if proposal["id"] not in known_active_proposals:
+            if proposal["id"] not in known_active_proposal_ids:
                 # not aware of this proposal yet, emit event and insert into DB
                 log.info(f"Found new proposal: {proposal}")
                 event = self._create_proposal_start_event(proposal)
@@ -153,7 +156,7 @@ class Snapshot(QueuedSubmodule):
                 })
                 events.append(event)
 
-            current_votes = self.get_votes(proposal)
+            current_votes = self.get_votes(proposal, reverse=True)[::-1]
             proposal_id = proposal["id"]
 
             previous_votes: dict[ChecksumAddress, dict] = {}
@@ -210,7 +213,7 @@ class Snapshot(QueuedSubmodule):
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot.render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -235,7 +238,7 @@ class Snapshot(QueuedSubmodule):
 
         width = 500
         img = Image.new("RGB", (width, 130 + 40 * len(proposal["choices"])), color=(43, 45, 49))
-        Snapshot.render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
+        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0)
 
         return Event(
             embed=embed,
@@ -351,7 +354,7 @@ class Snapshot(QueuedSubmodule):
         return "```" + graph.get_string().replace("]", "%]") + "```"
 
     @staticmethod
-    def render_proposal(
+    def _render_proposal(
             draw: BetterImageDraw,
             proposal: Proposal,
             width: int,
@@ -363,15 +366,15 @@ class Snapshot(QueuedSubmodule):
         pb_margin_right = 20
         perc_margin_left = 50
 
+        def safe_div(x, y):
+            return (x / y) if y else 0
+
         def render_choice(
                 _choice: str,
                 _score: float,
                 _x_offset: int,
                 _y_offset: int
         ) -> int:
-            def safe_div(x, y):
-                return (x / y) if y else 0
-
             color = {
                 "for": (12, 181, 53),
                 "against": (222, 4, 5)
@@ -446,7 +449,7 @@ class Snapshot(QueuedSubmodule):
         proposal_height += 30
 
         # quorum progress bar
-        quorum_perc: float = proposal["scores_total"] / proposal["quorum"]
+        quorum_perc: float = safe_div(proposal["scores_total"], proposal["quorum"])
         draw.dynamic_text(
             (x_offset + perc_margin_left, y_offset + proposal_height),
             f"{quorum_perc:.0%}",
@@ -478,15 +481,13 @@ class Snapshot(QueuedSubmodule):
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
-        """
-        Show currently active Snapshot votes.
-        """
+        """Show currently active Snapshot votes."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
-        embed = Embed()
+        embed = Embed(title="Snapshot Proposals")
         embed.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net")
 
-        proposals = self.get_proposals("active")
+        proposals = self.get_proposals("active", reverse=True)[::-1]
         if not proposals:
             embed.description = "No active proposals."
             return await ctx.send(embed=embed)
@@ -528,7 +529,7 @@ class Snapshot(QueuedSubmodule):
             for col_idx in range(len(proposal_grid[row_idx])):
                 proposal = proposal_grid[row_idx][col_idx]
                 x_offset += h_spacing
-                height = self.render_proposal(draw, proposal, proposal_width, x_offset, y_offset)
+                height = self._render_proposal(draw, proposal, proposal_width, x_offset, y_offset)
                 max_height = max(max_height, height)
                 x_offset += proposal_width
 
