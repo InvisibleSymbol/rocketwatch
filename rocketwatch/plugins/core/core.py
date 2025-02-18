@@ -200,8 +200,8 @@ class Core(commands.Cog):
                     await self.db.state_messages.delete_one({"_id": "state"})
 
             for i, event in enumerate(events):
-                e = Event.get_embed(event)
-                if f := Event.get_attachment(event):
+                e = Event.load_embed(event)
+                if f := Event.load_attachment(event):
                     e.set_image(url=f"attachment://{f.filename}")
 
                 msg = await target_channel.send(embed=e, file=f, silent="debug" in event["event_name"])

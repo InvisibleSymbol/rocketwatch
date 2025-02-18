@@ -19,11 +19,10 @@ log.setLevel(cfg["log_level"])
 class Milestones(QueuedSubmodule):
     def __init__(self, bot):
         super().__init__(bot)
-        self.state = "OK"
-        self.state = {}
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.collection = self.db.milestones
+        self.state = "OK"
 
         with open("./plugins/milestones/milestones.json") as f:
             self.milestones = json.load(f)
@@ -32,6 +31,7 @@ class Milestones(QueuedSubmodule):
         if self.state == "RUNNING":
             log.error("Milestones plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
+
         self.state = "RUNNING"
         result = self.check_for_new_events()
         self.state = "OK"
