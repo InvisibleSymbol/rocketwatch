@@ -49,10 +49,7 @@ class Core(commands.Cog):
     @tasks.loop(seconds=10.0)
     async def run_loop(self):
         if not self.submodules:
-            self.submodules = []
-            for name, submodule in self.bot.cogs.items():
-                if isinstance(submodule, QueuedSubmodule):
-                    self.submodules.append(name)
+            self.submodules = [name for name, cog in self.bot.cogs.items() if isinstance(cog, QueuedSubmodule)]
 
         p_id = time.time()
         if p_id - self.previous_run < self.speed_limit:
