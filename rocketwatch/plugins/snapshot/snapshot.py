@@ -2,8 +2,9 @@ import math
 import logging
 
 from io import BytesIO
+from dataclasses import dataclass
+from typing import Optional, Literal
 from datetime import datetime, timedelta
-from typing import Optional, TypedDict, Literal
 
 import pymongo
 import requests
@@ -47,21 +48,205 @@ class Snapshot(QueuedSubmodule):
             raise Exception(response["errors"])
         return response["data"]
 
-    ProposalState = Literal["active", "closed"]
+    @dataclass(frozen=True)
+    class Proposal:
+        State = Literal["active", "closed"]
 
-    class Proposal(TypedDict):
         id: str
         title: str
         choices: list[str]
         start: int
         end: int
         scores: list[float]
-        scores_total: float
         quorum: int
 
+        _TEXT_SIZE = 15
+        _HEADER_SIZE = 20
+        _TITLE_SIZE = 25
+        _PB_SIZE = 20
+
+        _V_SPACE_MEDIUM = 10
+        _V_SPACE_LARGE = 15
+
+        def predict_render_height(self, with_title: bool = True) -> int:
+            height = (self._TITLE_SIZE + self._V_SPACE_LARGE) if with_title else 0
+            height += (self._TEXT_SIZE + 5 + self._PB_SIZE) * len(self.choices)
+            height += self._V_SPACE_MEDIUM + self._HEADER_SIZE
+            height += self._V_SPACE_MEDIUM + self._PB_SIZE
+            height += self._V_SPACE_MEDIUM + self._TEXT_SIZE
+            return height
+
+        def render_to(
+                self,
+                draw: BetterImageDraw,
+                width: int,
+                x_offset: int = 0,
+                y_offset: int = 0,
+                include_title: bool = True
+        ) -> int:
+            default_margin = 10
+            pb_margin_left = 10
+            pb_margin_right = 20
+            perc_margin_left = 50
+
+            def safe_div(x, y):
+                return (x / y) if y else 0
+
+            def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
+                color = {
+                    "for": (12, 181, 53),
+                    "against": (222, 4, 5)
+                }.get(_choice.lower(), (255, 255, 255))
+                max_score = max(self.scores)
+
+                choice_height = 0
+
+                # {choice}
+                draw.dynamic_text(
+                    (_x_offset + default_margin, _y_offset),
+                    _choice,
+                    self._TEXT_SIZE,
+                    max_width=(width / 2),
+                    anchor="lt"
+                )
+                # {choice}                           {score} votes
+                draw.dynamic_text(
+                    (_x_offset + width - pb_margin_right, _y_offset),
+                    f"{_score:,.2f} votes",
+                    self._TEXT_SIZE,
+                    max_width=(width / 2),
+                    anchor="rt"
+                )
+                choice_height += self._TEXT_SIZE + 5
+                # {choice}                           {score} votes
+                #   {perc}%
+                draw.dynamic_text(
+                    (_x_offset + perc_margin_left, _y_offset + choice_height),
+                    f"{safe_div(_score, sum(self.scores)):.0%}",
+                    self._TEXT_SIZE,
+                    max_width=(width / 2) - perc_margin_left,
+                    anchor="rt"
+                )
+                # {choice}                           {score} votes
+                #   {perc}% ======================================
+                draw.progress_bar(
+                    (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
+                    (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
+                    safe_div(_score, max_score),
+                    primary=color
+                )
+                choice_height += self._PB_SIZE
+                return choice_height
+
+            proposal_height = 0
+
+            if include_title:
+                draw.dynamic_text(
+                    (x_offset + default_margin, y_offset),
+                    self.title,
+                    self._TITLE_SIZE,
+                    max_width=(width - 2 * default_margin)
+                )
+                proposal_height += self._TITLE_SIZE + self._V_SPACE_LARGE
+
+            # order (choice, score) pairs by score
+            choice_scores = list(zip(self.choices, self.scores))
+            choice_scores.sort(key=lambda x: x[1], reverse=True)
+            for choice, score in choice_scores:
+                proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
+
+            proposal_height += self._V_SPACE_MEDIUM
+
+            # quorum header
+            draw.dynamic_text(
+                (x_offset + default_margin, y_offset + proposal_height),
+                "Quorum:",
+                self._HEADER_SIZE,
+                max_width=(width - 2 * default_margin)
+            )
+            proposal_height += self._HEADER_SIZE + self._V_SPACE_MEDIUM
+
+            # quorum progress bar
+            quorum_perc: float = safe_div(sum(self.scores), self.quorum)
+            draw.dynamic_text(
+                (x_offset + perc_margin_left, y_offset + proposal_height),
+                f"{quorum_perc:.0%}",
+                self._TEXT_SIZE,
+                max_width=(width / 2) - perc_margin_left,
+                anchor="rt"
+            )
+            pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
+            draw.progress_bar(
+                (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
+                (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
+                min(quorum_perc, 1),
+                primary=pb_color
+            )
+            proposal_height += self._PB_SIZE + self._V_SPACE_MEDIUM
+
+            # show remaining time until the vote ends
+            rem_time = self.end - datetime.now().timestamp()
+            time_label_width = (width - 2 * default_margin)
+            draw.dynamic_text(
+                (x_offset + time_label_width / 2, y_offset + proposal_height),
+                f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final Result",
+                self._TEXT_SIZE,
+                max_width=time_label_width,
+                anchor="mt"
+            )
+            proposal_height += self._TEXT_SIZE
+            return proposal_height
+
+        def get_embed_template(self) -> Embed:
+            embed = Embed()
+            embed.set_author(
+                name="🔗 Data from snapshot.org",
+                url=f"https://vote.rocketpool.net/#/proposal/{self.id}"
+            )
+            return embed
+
+        def create_image(self, width: int, include_title: bool) -> Image:
+            height = self.predict_render_height(include_title)
+            img = PILImage.new("RGB", (width, height), color=(43, 45, 49))
+            self.render_to(BetterImageDraw(img), width, 0, 0, include_title)
+            return img
+
+        def create_start_event(self) -> Event:
+            embed = self.get_embed_template()
+            embed.title = ":bulb: New Snapshot Proposal"
+
+            return Event(
+                embed=embed,
+                topic="snapshot",
+                block_number=w3.eth.getBlock("latest").number,
+                event_name="pdao_snapshot_vote_start",
+                unique_id=f"{self.id}:event_start",
+                attachment=self.create_image(500, include_title=True)
+            )
+
+        def create_end_event(self) -> Event:
+            reached_quorum = sum(self.scores) >= self.quorum
+            winning_choice = self.choices[np.argmax(self.scores)]
+
+            embed = self.get_embed_template()
+            if reached_quorum and ("against" not in winning_choice.lower()):
+                # potentially fails if abstain > against > for
+                embed.title = ":white_check_mark: Snapshot Proposal Passed"
+            else:
+                embed.title = ":x: Snapshot Proposal Failed"
+
+            return Event(
+                embed=embed,
+                topic="snapshot",
+                block_number=w3.eth.getBlock("latest").number,
+                event_name="pdao_snapshot_vote_end",
+                unique_id=f"{self.id}:event_end",
+                attachment=self.create_image(500, include_title=True)
+            )
+
     @staticmethod
-    def get_proposals(
-            state: ProposalState,
+    def fetch_proposals(
+            state: Proposal.State,
             reverse: bool = False,
             limit: int = 25,
             proposal_id: Optional[str] = None
@@ -82,26 +267,79 @@ class Snapshot(QueuedSubmodule):
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc" if reverse else "asc")
             ],
-            fields=["id", "title", "choices", "start", "end", "scores", "scores_total", "quorum"]
+            fields=["id", "title", "choices", "start", "end", "scores", "quorum"]
         )
-        return Snapshot._query_api([query])["proposals"]
+        response: list[dict] = Snapshot._query_api([query])["proposals"]
+        return [Snapshot.Proposal(**d) for d in response]
 
-    SingleChoice = int
-    MultiChoice = list[SingleChoice]
-    # weighted votes use strings as keys for some reason
-    WeightedChoice = dict[str, int]
-    VoteChoice = SingleChoice | MultiChoice | WeightedChoice
+    @dataclass(frozen=True)
+    class MinimalVote:
+        SingleChoice = int
+        MultiChoice = list[SingleChoice]
+        # weighted votes use strings as keys for some reason
+        WeightedChoice = dict[str, int]
+        Choice = SingleChoice | MultiChoice | WeightedChoice
 
-    class Vote(TypedDict):
-        id: str
+        proposal: 'Snapshot.Proposal'
         voter: ChecksumAddress
+        choice: Choice
         created: int
+
+        def pretty_print(self) -> Optional[str]:
+            match (raw_choice := self.choice):
+                case int():
+                    return self._format_single_choice(raw_choice)
+                case list():
+                    return self._format_multiple_choice(raw_choice)
+                case dict():
+                    return self._format_weighted_choice(raw_choice)
+                case _:
+                    log.error(f"Unknown vote type: {raw_choice}")
+                    return None
+
+        def _label_choice(self, raw_vote: SingleChoice) -> str:
+            # vote choice represented as 1-based index
+            return self.proposal.choices[raw_vote - 1]
+
+        def _format_single_choice(self, choice: SingleChoice):
+            label = self._label_choice(choice)
+            match label.lower():
+                case "for":
+                    label = "✅ For"
+                case "against":
+                    label = "❌ Against"
+                case "abstain":
+                    label = "⚪ Abstain"
+            return f"`{label}`"
+
+        def _format_multiple_choice(self, choice: MultiChoice) -> str:
+            labels = [self._label_choice(c) for c in choice]
+            if len(labels) == 1:
+                return f"`{labels[0]}`"
+            return "**" + "\n".join([f"- {c}" for c in labels]) + "**"
+
+        def _format_weighted_choice(self, choice: WeightedChoice) -> str:
+            labels = {self._label_choice(int(c)): w for c, w in choice.items()}
+            total_weight = sum(labels.values())
+            choice_perc = [(c, round(100 * w / total_weight)) for c, w in labels.items()]
+            choice_perc.sort(key=lambda x: x[1], reverse=True)
+            graph = tpl.figure()
+            graph.barh(
+                [x[1] for x in choice_perc],
+                [x[0] for x in choice_perc],
+                force_ascii=True,
+                max_width=15
+            )
+            return "```" + graph.get_string().replace("]", "%]") + "```"
+
+    @dataclass(frozen=True)
+    class Vote(MinimalVote):
+        id: str
         vp: float
-        choice: 'Snapshot.VoteChoice'
         reason: str
 
     @staticmethod
-    def get_votes(proposal: Proposal, reverse: bool = True, limit: int = 100) -> list[Vote]:
+    def fetch_votes(proposal: Proposal, reverse: bool = True, limit: int = 100) -> list[Vote]:
         query = Query(
             name="votes",
             arguments=[
@@ -109,14 +347,15 @@ class Snapshot(QueuedSubmodule):
                 Argument(name="skip", value=0),
                 Argument(
                     name="where",
-                    value=[Argument(name="proposal", value=f"\"{proposal['id']}\"")]
+                    value=[Argument(name="proposal", value=f"\"{proposal.id}\"")]
                 ),
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc" if reverse else "asc")
             ],
             fields=["id", "voter", "created", "vp", "choice", "reason"]
         )
-        return Snapshot._query_api([query])["votes"]
+        response: list[dict] = Snapshot._query_api([query])["votes"]
+        return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
 
     def _run(self) -> list[Event]:
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
@@ -136,43 +375,47 @@ class Snapshot(QueuedSubmodule):
                 # stored proposal ended, emit event and delete from DB
                 log.info(f"Found expired proposal: {stored_proposal}")
                 # recover full proposal
-                proposal = self.get_proposals("closed", proposal_id=stored_proposal["_id"])[0]
-                event = self._create_proposal_end_event(proposal)
+                proposal = self.fetch_proposals("closed", proposal_id=stored_proposal["_id"])[0]
+                event = proposal.create_end_event()
                 self.db.snapshot_proposals.delete_one(stored_proposal)
                 events.append(event)
 
-        # fetch descending and reverse to get latest results in chronological order
+        # fetch in descending order, then reverse to get latest results in chronological order
         # only relevant if potential results exceed limit
-        active_proposals = self.get_proposals("active", reverse=True)[::-1]
+        active_proposals = self.fetch_proposals("active", reverse=True)[::-1]
         for proposal in active_proposals:
             log.debug(f"Processing proposal {proposal}")
-            if proposal["id"] not in known_active_proposal_ids:
+            if proposal.id not in known_active_proposal_ids:
                 # not aware of this proposal yet, emit event and insert into DB
                 log.info(f"Found new proposal: {proposal}")
-                event = self._create_proposal_start_event(proposal)
+                event = proposal.create_start_event()
                 self.db.snapshot_proposals.insert_one({
-                    "_id"  : proposal["id"],
-                    "start": proposal["start"],
-                    "end"  : proposal["end"]
+                    "_id"  : proposal.id,
+                    "start": proposal.start,
+                    "end"  : proposal.end
                 })
                 events.append(event)
 
-            current_votes = self.get_votes(proposal, reverse=True)[::-1]
-            proposal_id = proposal["id"]
+            previous_votes: dict[ChecksumAddress, Snapshot.MinimalVote] = {}
+            for stored_vote in self.db.snapshot_votes.find({"proposal_id": proposal.id}):
+                vote = Snapshot.MinimalVote(
+                    proposal=proposal,
+                    voter=stored_vote["voter"],
+                    choice=stored_vote["choice"],
+                    created=stored_vote["timestamp"]
+                )
+                previous_votes[vote.voter] = vote
 
-            previous_votes: dict[ChecksumAddress, dict] = {}
-            for stored_vote in self.db.snapshot_votes.find({"proposal_id": proposal_id}):
-                previous_votes[stored_vote["voter"]] = stored_vote
-
+            current_votes = self.fetch_votes(proposal, reverse=True)[::-1]
             for vote in current_votes:
                 log.debug(f"Processing vote {vote}")
 
-                prev_vote = previous_votes.get(vote["voter"])
-                if prev_vote and prev_vote["choice"] == vote["choice"]:
+                prev_vote: Snapshot.MinimalVote = previous_votes.get(vote.voter)
+                if prev_vote and prev_vote.choice == vote.choice:
                     log.debug(f"Same vote choice as before, skipping event")
                     continue
 
-                previous_votes[vote["voter"]] = vote
+                previous_votes[vote.voter] = vote
 
                 event = self._create_vote_event(proposal, vote, prev_vote)
                 if event is None:
@@ -180,9 +423,9 @@ class Snapshot(QueuedSubmodule):
 
                 events.append(event)
                 db_update = {
-                    "proposal_id": proposal_id,
-                    "voter"      : vote["voter"],
-                    "choice"     : vote["choice"],
+                    "proposal_id": proposal.id,
+                    "voter"      : vote.voter,
+                    "choice"     : vote.choice,
                     "timestamp"  : now
                 }
                 db_updates.append(db_update)
@@ -199,64 +442,17 @@ class Snapshot(QueuedSubmodule):
         return events
 
     @staticmethod
-    def _create_proposal_embed(proposal: Proposal) -> Embed:
-        embed = Embed()
-        embed.set_author(
-            name="🔗 Data from snapshot.org",
-            url=f"https://vote.rocketpool.net/#/proposal/{proposal['id']}"
-        )
-        return embed
+    def _create_vote_event(proposal: Proposal, vote: Vote, prev_vote: Optional[MinimalVote]) -> Optional[Event]:
+        node = rp.call("rocketSignerRegistry.signerToNode", vote.voter)
+        signer = el_explorer_url(vote.voter)
+        voter = signer if (node == ADDRESS_ZERO) else el_explorer_url(node)
 
-    @staticmethod
-    def _create_proposal_start_event(proposal: Proposal) -> Event:
-        embed = Snapshot._create_proposal_embed(proposal)
-        embed.title = ":bulb: New Snapshot Proposal"
-
-        return Event(
-            embed=embed,
-            topic="snapshot",
-            block_number=w3.eth.getBlock("latest").number,
-            event_name="pdao_snapshot_vote_start",
-            unique_id=f"{proposal['id']}:event_start",
-            attachment=Snapshot._create_proposal_image(proposal, include_title=True)
-        )
-
-    @staticmethod
-    def _create_proposal_end_event(proposal: Proposal) -> Event:
-        reached_quorum = proposal["scores_total"] >= proposal["quorum"]
-        winning_choice = proposal["choices"][np.argmax(proposal["scores"])]
-
-        embed = Snapshot._create_proposal_embed(proposal)
-        if reached_quorum and ("against" not in winning_choice.lower()):
-            # potentially fails if abstain > against > for
-            embed.title = ":white_check_mark: Snapshot Proposal Passed"
-        else:
-            embed.title = ":x: Snapshot Proposal Failed"
-
-        return Event(
-            embed=embed,
-            topic="snapshot",
-            block_number=w3.eth.getBlock("latest").number,
-            event_name="pdao_snapshot_vote_end",
-            unique_id=f"{proposal['id']}:event_end",
-            attachment=Snapshot._create_proposal_image(proposal, include_title=True)
-        )
-
-    def _create_vote_event(self, proposal: Proposal, vote: Vote, prev_vote: Optional[Vote]) -> Optional[Event]:
-        node = rp.call("rocketSignerRegistry.signerToNode", vote["voter"])
-        signer = el_explorer_url(vote['voter'])
-        if node == ADDRESS_ZERO:
-            # pre Houston vote
-            voter = signer
-        else:
-            voter = el_explorer_url(node)
-
-        vote_fmt = self._format_vote(proposal, vote)
+        vote_fmt = vote.pretty_print()
         if vote_fmt is None:
             return None
 
-        embed = Snapshot._create_proposal_embed(proposal)
-        embed.title = f":ballot_box: {proposal['title']}"
+        embed = proposal.get_embed_template()
+        embed.title = f":ballot_box: {proposal.title}"
 
         if prev_vote is None:
             if len(vote_fmt) <= 20:
@@ -264,7 +460,7 @@ class Snapshot(QueuedSubmodule):
             else:
                 embed.description = f"{voter} voted\n{vote_fmt}"
         else:
-            prev_vote_fmt = self._format_vote(proposal, prev_vote)
+            prev_vote_fmt = prev_vote.pretty_print()
             if len(vote_fmt) <= 10 and len(prev_vote_fmt) <= 10:
                 embed.description = f"{voter} changed their vote from {prev_vote_fmt} to {vote_fmt}"
             else:
@@ -275,9 +471,9 @@ class Snapshot(QueuedSubmodule):
                     f"{vote_fmt}"
                 )
 
-        if vote["reason"]:
+        if vote.reason:
             max_length = 2000
-            reason = vote["reason"]
+            reason = vote.reason
             if len(embed.description) + len(reason) > max_length:
                 suffix = "..."
                 overage = len(embed.description) + len(reason) - max_length
@@ -285,211 +481,19 @@ class Snapshot(QueuedSubmodule):
 
             embed.description += f" ```{reason}```"
 
-        vote_time = vote["created"]
         embed.add_field(name="Signer", value=signer)
-        embed.add_field(name="Vote Power", value=f"**{vote['vp']:.2f}**")
-        embed.add_field(name="Timestamp", value=f"<t:{vote_time}:R>")
+        embed.add_field(name="Vote Power", value=f"**{vote.vp:.2f}**")
+        embed.add_field(name="Timestamp", value=f"<t:{vote.created}:R>")
 
-        event_name = "pdao_snapshot_vote_changed" if (vote['vp'] >= 250) else "snapshot_vote_changed"
+        event_name = "pdao_snapshot_vote" if (vote.vp >= 250) else "snapshot_vote"
         return Event(
             embed=embed,
             topic="snapshot",
             block_number=w3.eth.getBlock("latest").number,
             event_name=event_name,
-            unique_id=f"{proposal['id']}_{vote['voter']}_{vote['created']}:vote",
-            attachment=self._create_proposal_image(proposal, include_title=False)
+            unique_id=f"{proposal.id}_{vote.voter}_{vote.created}:vote",
+            attachment=proposal.create_image(500, include_title=False)
         )
-
-    def _format_vote(self, proposal: Proposal, vote: Vote) -> Optional[str]:
-        match (raw_choice := vote["choice"]):
-            case int():
-                return self._format_single_choice(proposal, raw_choice)
-            case list():
-                return self._format_multiple_choice(proposal, raw_choice)
-            case dict():
-                return self._format_weighted_choice(proposal, raw_choice)
-            case _:
-                log.error(f"Unknown vote type: {raw_choice}")
-                return None
-
-    @staticmethod
-    def _label_choice(proposal: Proposal, raw_vote: SingleChoice) -> str:
-        # vote choice represented as 1-based index
-        return proposal["choices"][raw_vote - 1]
-
-    @staticmethod
-    def _format_single_choice(proposal: Proposal, choice: SingleChoice):
-        label = Snapshot._label_choice(proposal, choice)
-        match label.lower():
-            case "for":
-                label = "✅ For"
-            case "against":
-                label = "❌ Against"
-            case "abstain":
-                label = "⚪ Abstain"
-        return f"`{label}`"
-
-    @staticmethod
-    def _format_multiple_choice(proposal: Proposal, choice: MultiChoice) -> str:
-        labels = [Snapshot._label_choice(proposal, c) for c in choice]
-        if len(labels) == 1:
-            return f"`{labels[0]}`"
-        return "**" + "\n".join([f"- {c}" for c in labels]) + "**"
-
-    @staticmethod
-    def _format_weighted_choice(proposal: Proposal, choice: WeightedChoice) -> str:
-        labels = {Snapshot._label_choice(proposal, int(c)): w for c, w in choice.items()}
-        total_weight = sum(labels.values())
-        choice_perc = [(c, round(100 * w / total_weight)) for c, w in labels.items()]
-        choice_perc.sort(key=lambda x: x[1], reverse=True)
-        graph = tpl.figure()
-        graph.barh(
-            [x[1] for x in choice_perc],
-            [x[0] for x in choice_perc],
-            force_ascii=True,
-            max_width=15
-        )
-        return "```" + graph.get_string().replace("]", "%]") + "```"
-
-    @staticmethod
-    def _create_proposal_image(proposal: Proposal, include_title: bool) -> Image:
-        width = 500
-        height = 90 + 40 * len(proposal["choices"])
-
-        if include_title:
-            height += 40
-
-        img = PILImage.new("RGB", (width, height), color=(43, 45, 49))
-        Snapshot._render_proposal(BetterImageDraw(img), proposal, width, 0, 0, include_title)
-        return img
-
-    @staticmethod
-    def _render_proposal(
-            draw: BetterImageDraw,
-            proposal: Proposal,
-            width: int,
-            x_offset: int = 0,
-            y_offset: int = 0,
-            include_title: bool = True
-    ) -> int:
-        default_margin = 10
-        pb_margin_left = 10
-        pb_margin_right = 20
-        perc_margin_left = 50
-
-        def safe_div(x, y):
-            return (x / y) if y else 0
-
-        def render_choice(
-                _choice: str,
-                _score: float,
-                _x_offset: int,
-                _y_offset: int
-        ) -> int:
-            color = {
-                "for": (12, 181, 53),
-                "against": (222, 4, 5)
-            }.get(_choice.lower(), (255, 255, 255))
-            max_score = max(proposal["scores"])
-
-            choice_height = 0
-
-            # {choice}
-            draw.dynamic_text(
-                (_x_offset + default_margin, _y_offset),
-                _choice,
-                font_size,
-                max_width=(width / 2),
-                anchor="lt"
-            )
-            # {choice}                           {score} votes
-            draw.dynamic_text(
-                (_x_offset + width - pb_margin_right, _y_offset),
-                f"{_score:,.2f} votes",
-                font_size,
-                max_width=(width / 2),
-                anchor="rt"
-            )
-            choice_height += 20
-            # {choice}                           {score} votes
-            #   {perc}%
-            draw.dynamic_text(
-                (_x_offset + perc_margin_left, _y_offset + choice_height),
-                f"{safe_div(_score, proposal['scores_total']):.0%}",
-                font_size,
-                max_width=(width / 2) - perc_margin_left,
-                anchor="rt"
-            )
-            # {choice}                           {score} votes
-            #   {perc}% ======================================
-            draw.progress_bar(
-                (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
-                (10, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
-                safe_div(_score, max_score),
-                primary=color
-            )
-            choice_height += 20
-            return choice_height
-
-        font_size = 15
-        proposal_height = 0
-
-        if include_title:
-            draw.dynamic_text(
-                (x_offset + default_margin, y_offset),
-                proposal["title"],
-                25,
-                max_width=(width - 2 * default_margin)
-            )
-            proposal_height += 40
-
-        # order (choice, score) pairs by score
-        choice_scores = list(zip(proposal["choices"], proposal["scores"]))
-        choice_scores.sort(key=lambda x: x[1], reverse=True)
-        for choice, score in choice_scores:
-            proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
-
-        proposal_height += 10
-
-        # quorum header
-        draw.dynamic_text(
-            (x_offset + default_margin, y_offset + proposal_height),
-            "Quorum:",
-            20,
-            max_width=(width - 2 * default_margin)
-        )
-        proposal_height += 30
-
-        # quorum progress bar
-        quorum_perc: float = safe_div(proposal["scores_total"], proposal["quorum"])
-        draw.dynamic_text(
-            (x_offset + perc_margin_left, y_offset + proposal_height),
-            f"{quorum_perc:.0%}",
-            font_size,
-            max_width=(width / 2) - perc_margin_left,
-            anchor="rt"
-        )
-        pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
-        draw.progress_bar(
-            (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
-            (10, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
-            min(quorum_perc, 1),
-            primary=pb_color
-        )
-        proposal_height += 30
-
-        # show remaining time until the vote ends
-        rem_time = proposal["end"] - datetime.now().timestamp()
-        time_label_width = (width - 2 * default_margin)
-        draw.dynamic_text(
-            (x_offset + time_label_width / 2, y_offset + proposal_height),
-            f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final Result",
-            font_size,
-            max_width=time_label_width,
-            anchor="mt"
-        )
-        proposal_height += 20
-        return proposal_height
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
@@ -499,7 +503,7 @@ class Snapshot(QueuedSubmodule):
         embed = Embed(title="Snapshot Proposals")
         embed.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net")
 
-        proposals = self.get_proposals("active", reverse=True)[::-1]
+        proposals = self.fetch_proposals("active", reverse=True)[::-1]
         if not proposals:
             embed.description = "No active proposals."
             return await ctx.send(embed=embed)
@@ -519,10 +523,8 @@ class Snapshot(QueuedSubmodule):
         for row_idx in range(num_rows):
             row = proposals[row_idx*num_cols:(row_idx+1)*num_cols]
             proposal_grid.append(row)
-
-            # row height depends on number of proposal choices
-            max_choices = max(len(p["choices"]) for p in row)
-            total_height += 130 + 40 * max_choices
+            # row height is equal to height of its tallest proposal
+            total_height += max(p.predict_render_height() for p in row)
 
         # match Discord dark mode Embed color (#2b2d31)
         img = PILImage.new("RGB", (total_width, total_height), color=(43, 45, 49))
@@ -541,7 +543,7 @@ class Snapshot(QueuedSubmodule):
             for col_idx in range(len(proposal_grid[row_idx])):
                 proposal = proposal_grid[row_idx][col_idx]
                 x_offset += h_spacing
-                height = self._render_proposal(draw, proposal, proposal_width, x_offset, y_offset)
+                height = proposal.render_to(draw, proposal_width, x_offset, y_offset)
                 max_height = max(max_height, height)
                 x_offset += proposal_width
 
