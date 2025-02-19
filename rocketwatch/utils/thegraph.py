@@ -66,64 +66,6 @@ def get_minipool_counts_per_node():
     return sorted([mp_count for _, mp_count in all_nodes.items()])
 
 
-def get_node_minipools_and_collateral():
-    # get node addresses
-    nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
-    node_staking = rp.get_contract_by_name("rocketNodeStaking")
-    # get their RPL stake using rocketNodeStaking.getNodeRPLStake
-    rpl_stakes = rp.multicall.aggregate(
-        [node_staking.functions.getNodeRPLStake(node) for node in nodes]
-    )
-    rpl_stakes = [r.results[0] for r in rpl_stakes.results]
-    # get the minipool sizes using rocketMinipoolManager.getNodeStakingMinipoolCountBySize
-    minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-    eb16s = rp.multicall.aggregate(
-        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 16 * 10**18) for node in nodes
-    )
-    eb16s = [r.results[0] for r in eb16s.results]
-    eb8s = rp.multicall.aggregate(
-        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 8 * 10**18) for node in nodes
-    )
-    eb8s = [r.results[0] for r in eb8s.results]
-    return {
-        nodes[i]: {
-            "eb8s"     : eb8s[i],
-            "eb16s"    : eb16s[i],
-            "rplStaked": rpl_stakes[i]
-        } for i in range(len(nodes))
-    }
-
-
-def get_average_collateral_percentage_per_node(collateral_cap, bonded):
-    # get stakes for each node
-    stakes = list(get_node_minipools_and_collateral().values())
-    # get the current rpl price
-    rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-
-    result = {}
-    # process the data
-    for node in stakes:
-        # get the minipool eth value
-        minipool_value = int(node["eb16s"]) * 16 + int(node["eb8s"]) * (8 if bonded else 24)
-        if not minipool_value:
-            continue
-        # rpl stake value
-        rpl_stake_value = solidity.to_float(node["rplStaked"]) * rpl_price
-        # cap rpl stake at x% of minipool_value using collateral_cap
-        if collateral_cap:
-            rpl_stake_value = min(rpl_stake_value, minipool_value * collateral_cap / 100)
-        # calculate percentage
-        percentage = rpl_stake_value / minipool_value * 100
-        # round percentage to 5% steps
-        percentage = (percentage // 5) * 5
-        # add to result
-        if percentage not in result:
-            result[percentage] = []
-        result[percentage].append(rpl_stake_value / rpl_price)
-
-    return result
-
-
 def get_uniswap_pool_stats(pool_address):
     query = """
     query pool($poolAddress: String!) {
