@@ -79,9 +79,7 @@ class MinipoolDistribution(commands.Cog):
     async def minipool_distribution(self,
                                     ctx: Context,
                                     raw: bool = False):
-        """
-        Show the distribution of minipools per node.
-        """
+        """Show the distribution of minipools per node."""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 
