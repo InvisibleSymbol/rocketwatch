@@ -65,12 +65,13 @@ class Snapshot(QueuedSubmodule):
         _TITLE_SIZE = 25
         _PB_SIZE = 20
 
+        _V_SPACE_SMALL = 5
         _V_SPACE_MEDIUM = 10
         _V_SPACE_LARGE = 15
 
         def predict_render_height(self, with_title: bool = True) -> int:
             height = (self._TITLE_SIZE + self._V_SPACE_LARGE) if with_title else 0
-            height += (self._TEXT_SIZE + 5 + self._PB_SIZE) * len(self.choices)
+            height += (self._TEXT_SIZE + self._V_SPACE_SMALL + self._PB_SIZE) * len(self.choices)
             height += self._V_SPACE_MEDIUM + self._HEADER_SIZE
             height += self._V_SPACE_MEDIUM + self._PB_SIZE
             height += self._V_SPACE_MEDIUM + self._TEXT_SIZE
@@ -94,8 +95,9 @@ class Snapshot(QueuedSubmodule):
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
                 color = {
-                    "for": (12, 181, 53),
-                    "against": (222, 4, 5)
+                    "for": (12, 181, 53),       # green
+                    "against": (222, 4, 5),     # red
+                    "abstain": (114, 121, 138)  # slate gray
                 }.get(_choice.lower(), (255, 255, 255))
                 max_score = max(self.scores)
 
@@ -109,16 +111,16 @@ class Snapshot(QueuedSubmodule):
                     max_width=(width / 2),
                     anchor="lt"
                 )
-                # {choice}                           {score} votes
+                # {choice}                                 {score}
                 draw.dynamic_text(
                     (_x_offset + width - pb_margin_right, _y_offset),
-                    f"{_score:,.2f} votes",
+                    f"{_score:,.2f}",
                     self._TEXT_SIZE,
                     max_width=(width / 2),
                     anchor="rt"
                 )
-                choice_height += self._TEXT_SIZE + 5
-                # {choice}                           {score} votes
+                choice_height += self._TEXT_SIZE + self._V_SPACE_SMALL
+                # {choice}                                 {score}
                 #   {perc}%
                 draw.dynamic_text(
                     (_x_offset + perc_margin_left, _y_offset + choice_height),
@@ -127,7 +129,7 @@ class Snapshot(QueuedSubmodule):
                     max_width=(width / 2) - perc_margin_left,
                     anchor="rt"
                 )
-                # {choice}                           {score} votes
+                # {choice}                                 {score}
                 #   {perc}% ======================================
                 draw.progress_bar(
                     (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
@@ -175,6 +177,7 @@ class Snapshot(QueuedSubmodule):
                 max_width=(width / 2) - perc_margin_left,
                 anchor="rt"
             )
+            # dark gray, turns orange when quorum is met
             pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
             draw.progress_bar(
                 (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
@@ -215,7 +218,6 @@ class Snapshot(QueuedSubmodule):
         def create_start_event(self) -> Event:
             embed = self.get_embed_template()
             embed.title = ":bulb: New Snapshot Proposal"
-
             return Event(
                 embed=embed,
                 topic="snapshot",
@@ -352,7 +354,7 @@ class Snapshot(QueuedSubmodule):
                 embed.description += f" ```{reason}```"
 
             embed.add_field(name="Signer", value=signer)
-            embed.add_field(name="Vote Power", value=f"{self.vp:.2f}")
+            embed.add_field(name="Vote Power", value=f"{self.vp:,.2f}")
             embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
 
             event_name = "pdao_snapshot_vote" if (self.vp >= 250) else "snapshot_vote"
