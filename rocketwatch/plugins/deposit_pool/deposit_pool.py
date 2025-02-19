@@ -60,15 +60,7 @@ class DepositPool(commands.Cog):
     @hybrid_command()
     async def dp(self, ctx: Context):
         """Deposit Pool Stats"""
-        await ctx.defer(ephemeral=is_hidden(ctx))
-        e, i = await get_dp()
-        if i:
-            e.set_image(url="attachment://graph.png")
-            f = File(i, filename="graph.png")
-            await ctx.send(embed=e, files=[f])
-            i.close()
-        else:
-            await ctx.send(embed=e)
+        await self.deposit_pool(ctx)
 
     @hybrid_command()
     async def deposit_pool(self, ctx: Context):
@@ -148,8 +140,8 @@ class DepositPool(commands.Cog):
         count_16 = int(data[0]['count_16'])
         count_8 = count - count_16
 
-        e.description = f"Amount deposited into Deposit Pool by Queued Minipools: **{total} ETH**\n" \
-                        f"Non-credit Minipools in the Queue: **{count}** (16 ETH: **{count_16}**, 8 ETH: **{count_8}**)\n" \
+        e.description = f"Amount deposited into deposit pool by queued minipools: **{total} ETH**\n" \
+                        f"Non-credit minipools in the queue: **{count}** (16 ETH: **{count_16}**, 8 ETH: **{count_8}**)\n" \
 
         await ctx.send(embed=e)
 

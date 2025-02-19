@@ -31,7 +31,7 @@ class ScamWarning(commands.Cog):
         embed.title = "**Stay Safe on Rocket Pool Discord**"
         embed.description = (
             f"Hello! You've recently been active on the Rocket Pool server and might have opened "
-            f"your direct messages (DMs) to other members or users. To protect your funds and stay secure, "
+            f"your direct messages (DMs) to other users. To protect your funds and stay secure, "
             f"please follow these guidelines:\n"
             f"\n"
             f"1. **Keep Conversations Public**\n"

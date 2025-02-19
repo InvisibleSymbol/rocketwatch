@@ -2,36 +2,36 @@ import json
 import logging
 
 import pymongo
-from discord.ext import commands
 from web3.datastructures import MutableAttributeDict as aDict
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedMilestones(commands.Cog):
+class Milestones(QueuedSubmodule):
     def __init__(self, bot):
-        self.bot = bot
-        self.state = "OK"
-        self.state = {}
+        super().__init__(bot)
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.collection = self.db.milestones
+        self.state = "OK"
 
         with open("./plugins/milestones/milestones.json") as f:
             self.milestones = json.load(f)
 
-    def run_loop(self):
+    def _run(self):
         if self.state == "RUNNING":
             log.error("Milestones plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
+
         self.state = "RUNNING"
         result = self.check_for_new_events()
         self.state = "OK"
@@ -70,7 +70,7 @@ class QueuedMilestones(commands.Cog):
                     "event_name"  : milestone.id,
                     "result_value": value
                 }))
-                payload.append(Response(
+                payload.append(Event(
                     embed=embed,
                     topic="milestones",
                     block_number=w3.eth.getBlock("latest").number,
@@ -85,4 +85,4 @@ class QueuedMilestones(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedMilestones(bot))
+    await bot.add_cog(Milestones(bot))

@@ -10,15 +10,16 @@ from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
 from plugins.deposit_pool import deposit_pool
-from plugins.queue import queue
 from plugins.support_utils.support_utils import generate_template_embed
+
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import assemble
 from utils.get_or_fetch import get_or_fetch_channel
 from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("core")
 log.setLevel(cfg["log_level"])
@@ -39,7 +40,6 @@ class Core(commands.Cog):
         # block filter
         self.block_event = w3.eth.filter("latest")
         self.previous_run = time.time()
-        # gather all currently cogs with the Queued prefix
         self.submodules = None
         self.speed_limit = 5
 
@@ -49,7 +49,8 @@ class Core(commands.Cog):
     @tasks.loop(seconds=10.0)
     async def run_loop(self):
         if not self.submodules:
-            self.submodules = [cog for cog in self.bot.cogs if cog.startswith("Queued")]
+            self.submodules = [name for name, cog in self.bot.cogs.items() if isinstance(cog, QueuedSubmodule)]
+
         p_id = time.time()
         if p_id - self.previous_run < self.speed_limit:
             log.debug("skipping core update loop")
@@ -119,7 +120,7 @@ class Core(commands.Cog):
             e.set_footer(
                 text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "
                      f"using {len(self.submodules)} submodules "
-                     f"and {len(self.bot.cogs)} plugins"
+                     f"and {len(self.bot.cogs) -  len(self.submodules)} plugins"
             )
             for field in cfg["core.status_message.fields"]:
                 e.add_field(name=field["name"], value=field["value"])
@@ -147,7 +148,7 @@ class Core(commands.Cog):
         loop = asyncio.get_event_loop()
 
         try:
-            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run_loop) for submodule in self.submodules]
+            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run) for submodule in self.submodules]
         except Exception as err:
             log.error("Failed to prepare submodules.")
             raise err
@@ -166,15 +167,14 @@ class Core(commands.Cog):
                 log.error(f"Submodule returned an exception: {result}")
                 log.exception(result)
                 await report_error(result)
-                continue
-            if result:
+            elif result:
                 for entry in result:
                     if await self.db.event_queue.find_one({"_id": entry.unique_id}):
                         continue
                     await self.db.event_queue.insert_one(entry.to_dict())
                     tmp_event_queue.append(entry)
 
-        log.debug(f"{len(tmp_event_queue)} new Events gathered.")
+        log.debug(f"{len(tmp_event_queue)} new events gathered.")
 
     async def process_event_queue(self):
         log.debug("Processing events in event_queue collection...")
@@ -200,8 +200,11 @@ class Core(commands.Cog):
                     await self.db.state_messages.delete_one({"_id": "state"})
 
             for i, event in enumerate(events):
-                e = Response.get_embed(event)
-                msg = await target_channel.send(embed=e,silent="debug" in event["event_name"])
+                e = Event.load_embed(event)
+                if f := Event.load_attachment(event):
+                    e.set_image(url=f"attachment://{f.filename}")
+
+                msg = await target_channel.send(embed=e, file=f, silent="debug" in event["event_name"])
                 # mark event as processed
                 await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True, "message_id": msg.id}})
         log.info("Processed all events in event_queue collection.")

@@ -14,18 +14,19 @@ from web3.types import LogReceipt, EventData
 
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Response
+from utils.containers import Event
 from utils.embeds import Embed, assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
 from utils.dao import DefaultDAO, ProtocolDAO
+from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
 
-class QueuedEvents(Cog):
+class Events(QueuedSubmodule):
     update_block = 0
 
     class State(Enum):
@@ -34,8 +35,8 @@ class QueuedEvents(Cog):
         OK = 2
 
     def __init__(self, bot):
+        super().__init__(bot)
         rp.flush()
-        self.bot = bot
         self.state = self.State.INIT
         self.events = []
         self.internal_event_mapping = {}
@@ -175,7 +176,7 @@ class QueuedEvents(Cog):
         for response in responses:
             await ctx.send(embed=response.embed)
 
-    def handle_global_event(self, event_name, event) -> Optional[Response]:
+    def handle_global_event(self, event_name, event) -> Optional[Event]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         if not any([
             rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
@@ -226,7 +227,7 @@ class QueuedEvents(Cog):
 
 
     @staticmethod
-    def handle_event(event_name, event) -> Optional[Response]:
+    def handle_event(event_name, event) -> Optional[Event]:
         args = aDict(event['args'])
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -636,7 +637,7 @@ class QueuedEvents(Cog):
             if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
                 unique_id += f":{arg_k}:{arg_v}"
 
-        return Response(
+        return Event(
             embed=embed,
             topic="events",
             event_name=event_name,
@@ -646,7 +647,7 @@ class QueuedEvents(Cog):
             event_index=event.logIndex
         )
 
-    def run_loop(self):
+    def _run(self):
         if self.state == self.State.RUNNING:
             log.error("Bootstrap plugin was interrupted while running. Reinitializing...")
             self.__init__(self.bot)
@@ -782,7 +783,7 @@ class QueuedEvents(Cog):
             self.state = self.State.RUNNING
         return messages
 
-    def process_events(self, events: list[EventData]) -> tuple[bool, list[Response]]:
+    def process_events(self, events: list[EventData]) -> tuple[bool, list[Event]]:
         events.sort(key=lambda e: (e.blockNumber, e.logIndex))
         messages = []
         should_reinit = False
@@ -843,4 +844,4 @@ class QueuedEvents(Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(QueuedEvents(bot))
+    await bot.add_cog(Events(bot))
