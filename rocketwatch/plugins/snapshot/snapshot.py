@@ -3,31 +3,31 @@ import logging
 
 from io import BytesIO
 from dataclasses import dataclass
-from typing import Optional, Literal
 from datetime import datetime, timedelta
+from typing import Optional, Literal, Union
 
 import pymongo
 import requests
 import numpy as np
 import termplotlib as tpl
 
-from eth_typing import ChecksumAddress
-from PIL import Image as PILImage
-from PIL.Image import Image
 from discord import File
+from PIL.Image import Image
+from PIL import Image as PILImage
+from eth_typing import ChecksumAddress
 from web3.constants import ADDRESS_ZERO
 from graphql_query import Operation, Query, Argument
 from discord.ext.commands import Context, hybrid_command
 
 from utils.cfg import cfg
+from utils.shared_w3 import w3
+from utils.rocketpool import rp
+from utils.readable import uptime
 from utils.containers import Event
 from utils.draw import BetterImageDraw
-from utils.embeds import Embed, el_explorer_url
-from utils.readable import uptime
-from utils.shared_w3 import w3
-from utils.visibility import is_hidden_weak
-from utils.rocketpool import rp
 from utils.submodule import QueuedSubmodule
+from utils.visibility import is_hidden_weak
+from utils.embeds import Embed, el_explorer_url
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -70,8 +70,10 @@ class Snapshot(QueuedSubmodule):
         _V_SPACE_LARGE = 15
 
         def predict_render_height(self, with_title: bool = True) -> int:
-            height = (self._TITLE_SIZE + self._V_SPACE_LARGE) if with_title else 0
-            height += (self._TEXT_SIZE + self._V_SPACE_SMALL + self._PB_SIZE) * len(self.choices)
+            height = 0
+            if with_title:
+                height = self._TITLE_SIZE + self._V_SPACE_LARGE
+            height += len(self.choices) * (self._TEXT_SIZE + self._V_SPACE_SMALL + self._PB_SIZE)
             height += self._V_SPACE_MEDIUM + self._HEADER_SIZE
             height += self._V_SPACE_MEDIUM + self._PB_SIZE
             height += self._V_SPACE_MEDIUM + self._TEXT_SIZE
@@ -253,7 +255,7 @@ class Snapshot(QueuedSubmodule):
         MultiChoice = list[SingleChoice]
         # weighted votes use strings as keys for some reason
         WeightedChoice = dict[str, int]
-        Choice = SingleChoice | MultiChoice | WeightedChoice
+        Choice = Union[SingleChoice, MultiChoice, WeightedChoice]
 
         proposal: 'Snapshot.Proposal'
         voter: ChecksumAddress
