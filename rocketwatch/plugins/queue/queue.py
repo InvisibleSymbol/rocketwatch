@@ -8,7 +8,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.rocketpool import rp
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
@@ -44,7 +44,7 @@ class Queue(commands.Cog):
     @hybrid_command()
     async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue."""
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.title = "Minipool queue"
         e.description = get_queue()
