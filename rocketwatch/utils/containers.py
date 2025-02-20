@@ -60,6 +60,9 @@ class Event:
         except Exception:
             return None
 
+        if img is None:
+            return None
+
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
