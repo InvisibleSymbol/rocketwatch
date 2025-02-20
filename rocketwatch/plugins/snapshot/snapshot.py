@@ -97,10 +97,10 @@ class Snapshot(QueuedSubmodule):
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
                 color = {
-                    "for": (12, 181, 53),       # green
-                    "against": (222, 4, 5),     # red
-                    "abstain": (114, 121, 138)  # slate gray
-                }.get(_choice.lower(), (255, 255, 255))
+                    "for": (12, 181, 53),      # green
+                    "against": (222, 4, 5),    # red
+                    "abstain": (114, 121, 138) # slate gray
+                }.get(_choice.lower(), (192, 192, 192))
                 max_score = max(self.scores)
 
                 choice_height = 0
