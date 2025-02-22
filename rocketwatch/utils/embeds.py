@@ -6,7 +6,6 @@ import math
 import discord
 import humanize
 import requests
-from retry_async import retry
 from cachetools.func import ttl_cache
 from discord import Color
 from ens import InvalidName
@@ -17,9 +16,10 @@ from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
-from utils.rocketpool import rp, NoAddressFound
+from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
+from utils.retry import retry
 
 ens = CachedEns()
 
@@ -78,7 +78,7 @@ async def resolve_ens(ctx, node_address):
 
 @ttl_cache(ttl=900)
 def get_pdao_delegates() -> dict[str, str]:
-    @retry(is_async=False, tries=3, delay=1)
+    @retry(tries=3, delay=1)
     def _get_delegates() -> dict[str, str]:
         response = requests.get("https://delegates.rocketpool.net/api/delegates")
         return {delegate["nodeAddress"]: delegate["name"] for delegate in response.json()}
