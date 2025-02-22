@@ -68,7 +68,7 @@ class Wall(commands.Cog):
         try:
             await self.gather_new_data()
         except Exception as err:
-            await report_error(self.bot, err)
+            await self.bot.report_error(err)
 
     async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
         # this gets a quote from the cow api
