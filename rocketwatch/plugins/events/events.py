@@ -12,6 +12,7 @@ from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 from web3.types import LogReceipt, EventData
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Event
@@ -34,7 +35,7 @@ class Events(QueuedSubmodule):
         RUNNING = 1
         OK = 2
 
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         rp.flush()
         self.state = self.State.INIT

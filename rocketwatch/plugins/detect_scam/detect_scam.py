@@ -12,9 +12,9 @@ from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.get_or_fetch import get_or_fetch_channel
 
 
 log = logging.getLogger("detect_scam")
@@ -32,7 +32,7 @@ def get_text_of_message(message):
 
 
 class DetectScam(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.reported_ids = set()
@@ -66,7 +66,7 @@ class DetectScam(commands.Cog):
                 warning = await msg.reply(embed=e, mention_author=False)
             e.set_footer(text=bak_footer)
             # report into report-scams channel as well
-            ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
+            ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
             e.description += f"User ID: `{msg.author.id}` ({msg.author.mention})\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
             e.description += "Original message has been attached as a file. Please review and take appropriate action."
             with io.StringIO(get_text_of_message(msg)) as f:

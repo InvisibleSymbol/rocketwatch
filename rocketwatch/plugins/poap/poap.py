@@ -17,6 +17,7 @@ from eth_account.messages import encode_defunct
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.shared_w3 import w3
@@ -107,7 +108,7 @@ class PoapSignatureModal(ui.Modal, title='Enable POAP Automatic Claim'):
 
 
 class Poap(commands.GroupCog, name="poap-autoclaim"):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.cached_commands = None

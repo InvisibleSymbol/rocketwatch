@@ -5,9 +5,9 @@ from discord import errors
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.get_or_fetch import get_or_fetch_channel
 
 
 log = logging.getLogger("scam_warning")
@@ -15,7 +15,7 @@ log.setLevel(cfg["log_level"])
 
 
 class ScamWarning(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.channel_ids = set(cfg["rocketpool.dm_warning.channels"])
@@ -23,9 +23,9 @@ class ScamWarning(commands.Cog):
         self.failure_cooldown = timedelta(days=1)
 
     async def send_warning(self, user) -> None:
-        support_channel = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
-        report_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
-        resource_channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.resources"])
+        support_channel = await self.bot.get_or_fetch_channel(cfg["rocketpool.support.channel_id"])
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+        resource_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.resources"])
 
         embed = Embed()
         embed.title = "**Stay Safe on Rocket Pool Discord**"

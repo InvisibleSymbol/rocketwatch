@@ -4,6 +4,7 @@ import math
 from discord.ext.commands import Cog, Context, hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.shared_w3 import w3
@@ -18,7 +19,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Constellation(Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

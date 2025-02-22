@@ -7,6 +7,7 @@ from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from plugins.queue import queue
 from utils import solidity
 from utils.cfg import cfg
@@ -53,7 +54,7 @@ async def get_dp():
 
 
 class DepositPool(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

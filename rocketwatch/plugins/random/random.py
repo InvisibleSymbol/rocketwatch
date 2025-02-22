@@ -1,20 +1,18 @@
-import asyncio
-import csv
 import io
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 import aiohttp
 import dice
 import humanize
 import pytz
-import requests
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, ens, el_explorer_url
@@ -29,7 +27,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Random(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

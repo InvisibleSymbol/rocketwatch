@@ -7,6 +7,7 @@ from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -48,7 +49,7 @@ def split_rewards_logic(balance, node_share, commission, force_base=False):
 
 
 class TVL(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

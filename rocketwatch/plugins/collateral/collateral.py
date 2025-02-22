@@ -11,6 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 from matplotlib.ticker import FuncFormatter
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
@@ -99,7 +100,7 @@ def get_average_collateral_percentage_per_node(collateral_cap, bonded):
 
 
 class Collateral(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()

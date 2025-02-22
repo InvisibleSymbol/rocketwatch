@@ -1,8 +1,7 @@
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
 import logging
 import re
 import time
+from datetime import datetime, timedelta
 from io import BytesIO
 
 import aiohttp
@@ -18,11 +17,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReplaceOne
 from wordcloud import WordCloud
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.rocketpool import rp
 from utils.solidity import beacon_block_to_date, date_to_beacon_block
-from utils.time_debug import timerun, timerun_async
+from utils.time_debug import timerun_async
 from utils.visibility import is_hidden
 
 log = logging.getLogger("proposals")
@@ -116,7 +115,7 @@ def parse_propsal(entry):
 
 
 class Proposals(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.rocketscan_proposals_url = "https://rocketscan.io/api/mainnet/beacon/blocks/all"
         self.last_chore_run = 0
