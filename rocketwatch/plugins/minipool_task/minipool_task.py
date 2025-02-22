@@ -9,8 +9,8 @@ import pymongo
 from discord.ext import commands, tasks
 from requests.exceptions import HTTPError
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3, bacon
 from utils.solidity import to_float
@@ -24,7 +24,7 @@ monitor = cronitor.Monitor('gather-minipools')
 
 
 class MinipoolTask(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
@@ -50,7 +50,7 @@ class MinipoolTask(commands.Cog):
             await asyncio.gather(*futures)
             monitor.ping(state='complete', series=p_id)
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
             monitor.ping(state='fail', series=p_id)
 
     @timerun

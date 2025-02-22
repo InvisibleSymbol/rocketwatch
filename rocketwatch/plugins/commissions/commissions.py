@@ -10,6 +10,7 @@ from discord.ext.commands import hybrid_command
 from matplotlib import pyplot as plt
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden
@@ -19,7 +20,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Commissions(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         # connect to local mongodb
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")

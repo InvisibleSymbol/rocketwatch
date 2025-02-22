@@ -6,7 +6,7 @@ import math
 import discord
 import humanize
 import requests
-from retry import retry
+from retry_async import retry
 from cachetools.func import ttl_cache
 from discord import Color
 from ens import InvalidName
@@ -78,7 +78,7 @@ async def resolve_ens(ctx, node_address):
 
 @ttl_cache(ttl=900)
 def get_pdao_delegates() -> dict[str, str]:
-    @retry(tries=3, delay=1)
+    @retry(is_async=False, tries=3, delay=1)
     def _get_delegates() -> dict[str, str]:
         response = requests.get("https://delegates.rocketpool.net/api/delegates")
         return {delegate["nodeAddress"]: delegate["name"] for delegate in response.json()}

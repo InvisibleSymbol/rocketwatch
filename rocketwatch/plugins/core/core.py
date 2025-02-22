@@ -9,15 +9,13 @@ import motor.motor_asyncio
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from plugins.deposit_pool import deposit_pool
 from plugins.support_utils.support_utils import generate_template_embed
 
 from utils.cfg import cfg
 from utils.containers import Event
 from utils.embeds import assemble
-from utils.get_or_fetch import get_or_fetch_channel
-from utils.reporter import report_error
-from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.submodule import QueuedSubmodule
 
@@ -31,7 +29,7 @@ monitor = cronitor.Monitor('gather-new-events')
 class Core(commands.Cog):
     event_queue = []
 
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.state = "PENDING"
         self.channels = cfg["discord.channels"]
@@ -62,25 +60,25 @@ class Core(commands.Cog):
             await self.gather_new_events()
         except Exception as err:
             self.state = "ERROR"
-            await report_error(err)
+            await self.bot.report_error(err)
         # process the messages as long as we are in a non-error state
         if self.state != "ERROR":
             try:
                 await self.process_event_queue()
             except Exception as err:
-                await report_error(err)
+                await self.bot.report_error(err)
         # update the state message
         try:
             await self.update_state_message()
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
         self.speed_limit = 5 if self.state == "OK" else 30
         monitor.ping(state='fail' if self.state == "ERROR" else 'complete', series=p_id)
 
     async def update_state_message(self):
         # get the state message from the db
         state_message = await self.db.state_messages.find_one({"_id": "state"})
-        channel = await get_or_fetch_channel(self.bot, self.channels["default"])
+        channel = await self.bot.get_or_fetch_channel(self.channels["default"])
         # return if we are currently displaying an error message, and it's still active
         if self.state == "ERROR":
             # send state message if state changed to ERROR
@@ -166,7 +164,7 @@ class Core(commands.Cog):
                 self.state = "ERROR"
                 log.error(f"Submodule returned an exception: {result}")
                 log.exception(result)
-                await report_error(result)
+                await self.bot.report_error(result)
             elif result:
                 for entry in result:
                     if await self.db.event_queue.find_one({"_id": entry.unique_id}):
@@ -189,7 +187,7 @@ class Core(commands.Cog):
             events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort(
                 [("score", 1)]).to_list(None)
             log.debug(f"{len(events)} Events found for channel {channel}.")
-            target_channel = await get_or_fetch_channel(self.bot, channel)
+            target_channel = await self.bot.get_or_fetch_channel(channel)
 
             if channel == self.channels["default"]:
                 # get the current state message

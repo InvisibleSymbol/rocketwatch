@@ -6,6 +6,7 @@ import requests
 from datetime import timezone
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Event
@@ -19,7 +20,7 @@ log.setLevel(cfg["log_level"])
 
 
 class CowOrders(QueuedSubmodule):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])

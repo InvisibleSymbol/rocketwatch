@@ -22,11 +22,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from scipy.interpolate import interp1d
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.readable import s_hex
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.sampler import CurveSampler
 from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
@@ -37,7 +36,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Wall(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.sell_sampler = CurveSampler(
@@ -69,7 +68,7 @@ class Wall(commands.Cog):
         try:
             await self.gather_new_data()
         except Exception as err:
-            await report_error(err)
+            await report_error(self.bot, err)
 
     async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
         # this gets a quote from the cow api

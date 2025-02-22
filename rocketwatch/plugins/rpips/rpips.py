@@ -9,6 +9,7 @@ from discord.app_commands import Choice, describe
 from cachetools.func import ttl_cache
 from bs4 import BeautifulSoup
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
@@ -17,15 +18,13 @@ log.setLevel(cfg["log_level"])
 
 
 class RPIPS(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()
     @describe(name="RPIP name")
     async def rpip(self, ctx: Context, name: str):
-        """
-        Show information about a specific RPIP.
-        """
+        """Show information about a specific RPIP."""
         await ctx.defer()
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
