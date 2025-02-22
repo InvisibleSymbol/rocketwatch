@@ -42,7 +42,7 @@ class About(commands.Cog):
                                              "api_key": cfg["wakatime.secret"]
                                          }).json()["data"]["text"]
             except Exception as err:
-                await report_error(self.bot, err)
+                await self.bot.report_error(err)
 
         if code_time:
             e.add_field(name="Project Statistics",
@@ -86,7 +86,7 @@ class About(commands.Cog):
                 contributors_str += " and more"
             e.add_field(name="Contributors", value=contributors_str)
         except Exception as err:
-            await report_error(self.bot, err)
+            await self.bot.report_error(err)
 
         await ctx.send(embed=e)
 

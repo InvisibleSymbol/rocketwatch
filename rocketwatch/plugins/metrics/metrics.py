@@ -207,7 +207,7 @@ class Metrics(commands.Cog):
                                              })
         except Exception as e:
             log.error(f"Failed to update command status to completed: {e}")
-            await self.bot.report_error(self.bot, e)
+            await self.bot.report_error(e)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, excep):
@@ -234,7 +234,7 @@ class Metrics(commands.Cog):
                 await ctx.channel.send(msg)
             except Exception as e:
                 log.error(f"Failed to inform user of command error: {e}")
-                await self.bot.report_error(self.bot, e)
+                await self.bot.report_error(e)
 
         try:
             # get the timestamp of when the command was called from the db
@@ -249,9 +249,9 @@ class Metrics(commands.Cog):
                                              })
         except Exception as e:
             log.error(f"Failed to update command status to error: {e}")
-            await self.bot.report_error(self.bot, e)
+            await self.bot.report_error(e)
 
-        await self.bot.report_error(self.bot, excep, ctx=ctx)
+        await self.bot.report_error(excep, ctx)
 
     @commands.Cog.listener()
     async def on_ready(self, ):
