@@ -14,16 +14,16 @@ from checksumdir import dirhash
 from colorama import Fore, Style
 from discord import File, Object
 from discord.app_commands import Choice, guilds, describe
-from discord.ext.commands import is_owner, Cog, Bot, hybrid_command, Context
+from discord.ext.commands import is_owner, Cog, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Event
 from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
-from utils.get_or_fetch import get_or_fetch_channel
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -35,7 +35,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Debug(Cog):
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.ran = False
@@ -145,8 +145,8 @@ class Debug(Cog):
         """
         await ctx.defer(ephemeral=True)
         channel_id, message_id = message_url.split("/")[-2:]
-        channel = await get_or_fetch_channel(self.bot, channel_id)
-        msg = await channel.fetch_message(message_id)
+        channel = await self.bot.get_or_fetch_channel(int(channel_id))
+        msg = await channel.fetch_message(int(message_id))
         await msg.delete()
         await ctx.send(content="Done")
 

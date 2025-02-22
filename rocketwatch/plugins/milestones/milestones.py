@@ -4,6 +4,7 @@ import logging
 import pymongo
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Event
@@ -17,7 +18,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Milestones(QueuedSubmodule):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch

@@ -8,6 +8,7 @@ from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.containers import Event
@@ -22,7 +23,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Transactions(QueuedSubmodule):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.state = "INIT"
         self.addresses = []

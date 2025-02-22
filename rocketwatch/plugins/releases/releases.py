@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden
@@ -14,7 +15,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Releases(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.tag_url = "https://github.com/rocket-pool/smartnode-install/releases/tag/"
 

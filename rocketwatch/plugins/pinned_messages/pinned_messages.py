@@ -7,16 +7,16 @@ from discord.app_commands import guilds
 from discord.ext import commands, tasks
 from discord.ext.commands import hybrid_command, is_owner
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.reporter import report_error
 
 log = logging.getLogger("rich_activity")
 log.setLevel(cfg["log_level"])
 
 
 class PinnedMessages(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
@@ -68,7 +68,7 @@ class PinnedMessages(commands.Cog):
                     m = await channel.send(embed=e)
                     await self.db.pinned_messages.update_one({"_id": message["_id"]}, {"$set": {"message_id": m.id}})
             except Exception as err:
-                await report_error(err)
+                await self.bot.report_error(err)
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))

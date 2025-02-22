@@ -13,10 +13,10 @@ from discord.ext.commands import hybrid_command
 from typing import Optional
 from dataclasses import dataclass
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.get_nearest_block import get_block_by_timestamp
 
@@ -26,7 +26,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Rewards(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @dataclass
@@ -41,8 +41,7 @@ class Rewards(commands.Cog):
         eth_rewards: float
         system_weight: float
 
-    @staticmethod
-    async def get_estimated_rewards(ctx: Context, address: str) -> Optional[RewardEstimate]:
+    async def get_estimated_rewards(self, ctx: Context, address: str) -> Optional[RewardEstimate]:
         if not rp.call("rocketNodeManager.getNodeExists", address):
             await ctx.send(f"{address} is not a registered node.")
             return None
@@ -50,7 +49,7 @@ class Rewards(commands.Cog):
         try:
             patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
         except Exception as e:
-            await report_error(ctx, e)
+            await self.bot.report_error(e, ctx)
             await ctx.send("Error fetching node data from Sprocket Pool API. Blame Patches.")
             return None
 

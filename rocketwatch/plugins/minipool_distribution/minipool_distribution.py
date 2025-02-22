@@ -11,6 +11,7 @@ from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden
@@ -38,7 +39,7 @@ async def minipool_distribution_raw(ctx: Context, distribution):
 
 
 class MinipoolDistribution(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])

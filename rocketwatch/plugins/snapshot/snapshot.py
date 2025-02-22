@@ -19,6 +19,7 @@ from web3.constants import ADDRESS_ZERO
 from graphql_query import Operation, Query, Argument
 from discord.ext.commands import Context, hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.shared_w3 import w3
 from utils.rocketpool import rp
@@ -34,7 +35,7 @@ log.setLevel(cfg["log_level"])
 
 
 class Snapshot(QueuedSubmodule):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=5))
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.version = 3

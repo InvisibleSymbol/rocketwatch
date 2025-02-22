@@ -1,14 +1,21 @@
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext import commands
-from discord.ext.commands import is_owner, ExtensionNotLoaded, ExtensionAlreadyLoaded, ExtensionNotFound, \
-    hybrid_command, Context
+from discord.ext.commands import (
+    is_owner,
+    ExtensionNotLoaded,
+    ExtensionAlreadyLoaded,
+    ExtensionNotFound,
+    hybrid_command,
+    Context
+)
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 
 
 class Reloader(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     # todo add auto complete

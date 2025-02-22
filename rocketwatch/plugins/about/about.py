@@ -10,11 +10,11 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from rocketwatch import RocketWatch
 from utils import readable
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
-from utils.reporter import report_error
 from utils.visibility import is_hidden
 
 psutil.getloadavg()
@@ -22,7 +22,7 @@ BOOT_TIME = time.time()
 
 
 class About(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.process = psutil.Process(os.getpid())
 
@@ -42,7 +42,7 @@ class About(commands.Cog):
                                              "api_key": cfg["wakatime.secret"]
                                          }).json()["data"]["text"]
             except Exception as err:
-                await report_error(err)
+                await report_error(self.bot, err)
 
         if code_time:
             e.add_field(name="Project Statistics",
@@ -86,7 +86,7 @@ class About(commands.Cog):
                 contributors_str += " and more"
             e.add_field(name="Contributors", value=contributors_str)
         except Exception as err:
-            await report_error(err)
+            await report_error(self.bot, err)
 
         await ctx.send(embed=e)
 

@@ -6,18 +6,15 @@ import pymongo
 from discord.ext import commands, tasks
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
-from multicall import Call, constants
+from multicall import Call
 
-# enable multiprocessing
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import s_hex
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden
-
-constants.NUM_PROCESSES = 11
 from utils.cfg import cfg
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.time_debug import timerun
 
@@ -26,7 +23,7 @@ log.setLevel(cfg["log_level"])
 
 
 class MinipoolsUpkeepTask(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.sync_db = pymongo.MongoClient(cfg["mongodb_uri"]).get_database("rocketwatch")
@@ -82,7 +79,7 @@ class MinipoolsUpkeepTask(commands.Cog):
         return minipool_stats
 
     # every 6.4 minutes
-    @tasks.loop(seconds=32*12)
+    @tasks.loop(seconds=solidity.BEACON_EPOCH_LENGTH)
     async def run_loop(self):
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
@@ -90,7 +87,7 @@ class MinipoolsUpkeepTask(commands.Cog):
         try:
             await asyncio.gather(*futures)
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
 
     def upkeep_minipools(self):
         logging.info("Updating minipool states")

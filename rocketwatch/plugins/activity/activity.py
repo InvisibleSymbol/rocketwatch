@@ -5,8 +5,8 @@ import humanize
 from discord import Activity, ActivityType
 from discord.ext import commands, tasks
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
-from utils.reporter import report_error
 from utils.rocketpool import rp
 
 log = logging.getLogger("rich_activity")
@@ -17,7 +17,7 @@ monitor = cronitor.Monitor('update-activity')
 
 
 class RichActivity(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
         if not self.run_loop.is_running() and bot.is_ready():
@@ -37,7 +37,7 @@ class RichActivity(commands.Cog):
             count = humanize.intcomma(rp.call("rocketMinipoolManager.getMinipoolCount"))
             await self.bot.change_presence(activity=Activity(type=ActivityType.watching, name=f"{count} Minipools!"))
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
 
     def cog_unload(self):
         self.run_loop.cancel()
