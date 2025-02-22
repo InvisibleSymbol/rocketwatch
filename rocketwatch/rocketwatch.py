@@ -3,11 +3,11 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from retry_async import retry
 from discord import TextChannel, File
 from discord.ext.commands import Bot, Context
 
 from utils.cfg import cfg
+from utils.retry import retry_async
 
 log = logging.getLogger("rocketwatch")
 log.setLevel(cfg["log_level"])
@@ -78,7 +78,7 @@ class RocketWatch(Bot):
 
         channel = await self.get_or_fetch_channel(cfg["discord.channels.errors"])
 
-        @retry(is_async=True, tries=5, delay=5)
+        @retry_async(tries=5, delay=5)
         async def _send_error_message():
             await channel.send(err_description, file=File(fp=err_trace, filename="exception.txt"))
 

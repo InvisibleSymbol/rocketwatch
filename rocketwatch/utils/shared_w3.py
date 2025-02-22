@@ -4,12 +4,12 @@ import math
 import circuitbreaker
 import requests
 from requests import HTTPError, ConnectTimeout
-from retry_async import retry
 from web3 import Web3, HTTPProvider
 from web3.beacon import Beacon as Bacon
 from web3.middleware import geth_poa_middleware
 
 from utils.cfg import cfg
+from utils.retry import retry
 
 log = logging.getLogger("shared_w3")
 log.setLevel(cfg["log_level"])
@@ -38,8 +38,8 @@ for fallback_endpoint in reversed(endpoints):
         ) -> None:
             super().__init__(base_url, session)
 
-        @retry(is_async=False, tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
-        @retry(is_async=False, tries=5 if tmp else 1, exceptions=ValueError, delay=0.1)
+        @retry(tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
+        @retry(tries=5 if tmp else 1, exceptions=ValueError, delay=0.1)
         @circuitbreaker.circuit(failure_threshold=2 if tmp else math.inf,
                                 recovery_timeout=15,
                                 expected_exception=exceptions,
@@ -57,7 +57,7 @@ for fallback_endpoint in reversed(endpoints):
             response.raise_for_status()
             return response.json()
 
-        @retry(is_async=False, tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
+        @retry(tries=3 if tmp else 1, exceptions=exceptions, delay=0.5)
         @circuitbreaker.circuit(failure_threshold=2 if tmp else math.inf,
                                 recovery_timeout=90,
                                 fallback_function=tmp[-1].get_validator_balances if tmp else None,
