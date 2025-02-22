@@ -58,13 +58,13 @@ class RocketWatch(Bot):
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
 
     async def report_error(self, exception: Exception, ctx: Optional[Context] = None, *args) -> None:
-        err_description = f"**`{repr(exception)[:100]}`**\n"
+        err_description = f"**`{repr(exception)[:100]}`**"
         if args:
             args_fmt = "\n".join(f"args[{i}] = {arg}" for i, arg in enumerate(args))
-            err_description += f"```{args_fmt}```\n"
+            err_description += f"\n```{args_fmt}```"
         if ctx:
             err_description += (
-                f"```"
+                f"\n```"
                 f"{ctx.command.name = }\n"
                 f"{ctx.command.params = }\n"
                 f"{ctx.channel = }\n"
