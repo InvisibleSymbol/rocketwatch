@@ -2,7 +2,6 @@ import math
 import logging
 
 from enum import IntEnum
-from typing import Union
 from abc import ABC, abstractmethod
 
 import termplotlib as tpl
@@ -58,7 +57,7 @@ class DAO(ABC):
                 args = [f"  {arg} = {value}" for arg, value in decoded[1].items()]
                 payload_str = f"{function_name}(\n" + "\n".join(args) + "\n)"
                 body_repr += f"\n\nPayload:\n{payload_str}"
-            except Exception as e:
+            except Exception:
                 # if this goes wrong, just use the raw payload
                 log.exception("Failed to decode proposal payload")
                 body_repr += f"\n\nRaw Payload (failed to decode):\n{payload.hex()}"
@@ -92,7 +91,7 @@ class DefaultDAO(DAO):
     def fetch_proposal(proposal_id: int) -> dict:
         proposal_contract = rp.get_contract_by_name("rocketDAOProposal")
         # map results of functions calls to function name
-        metadata_calls: dict[str, Union[str, bytes, int]] = {
+        metadata_calls: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([
                 proposal_contract.functions.getProposer(proposal_id),
                 proposal_contract.functions.getMessage(proposal_id),
@@ -160,7 +159,7 @@ class ProtocolDAO(DAO):
     def fetch_proposal(proposal_id: int) -> dict:
         proposal_contract = rp.get_contract_by_name("rocketDAOProtocolProposal")
         # map results of functions calls to function name
-        metadata_calls: dict[str, Union[str, bytes, int]] = {
+        metadata_calls: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([
                 proposal_contract.functions.getProposer(proposal_id),
                 proposal_contract.functions.getMessage(proposal_id),

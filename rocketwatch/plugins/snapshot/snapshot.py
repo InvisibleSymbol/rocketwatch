@@ -2,7 +2,7 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Literal, Union
+from typing import Optional, Literal
 
 import numpy as np
 import pymongo
@@ -251,7 +251,7 @@ class Snapshot(EventSubmodule):
         MultiChoice = list[SingleChoice]
         # weighted votes use strings as keys for some reason
         WeightedChoice = dict[str, int]
-        Choice = Union[SingleChoice, MultiChoice, WeightedChoice]
+        Choice = (SingleChoice | MultiChoice | WeightedChoice)
 
         proposal: 'Snapshot.Proposal'
         voter: ChecksumAddress
@@ -561,7 +561,7 @@ class Snapshot(EventSubmodule):
         assert(max_y_offset == total_height)
 
         # write drawn image to buffer
-        file = canvas.to_file("votes.png")
+        file = canvas.image.to_file("votes.png")
         embed.set_image(url=f"attachment://{file.filename}")
         await ctx.send(embed=embed, file=file)
 
