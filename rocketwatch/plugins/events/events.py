@@ -2,12 +2,12 @@ import json
 import logging
 import warnings
 from enum import Enum
+from typing import Union, Optional
 
 import pymongo
-from typing import Union, Optional
 from discord import Object
 from discord.app_commands import guilds
-from discord.ext.commands import Cog, Context, is_owner, hybrid_command
+from discord.ext.commands import Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 from web3.exceptions import ABIEventFunctionNotFound
 from web3.types import LogReceipt, EventData
@@ -15,19 +15,18 @@ from web3.types import LogReceipt, EventData
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
-from utils.embeds import Embed, assemble, prepare_args, el_explorer_url
+from utils.dao import DefaultDAO, ProtocolDAO
+from utils.embeds import assemble, prepare_args, el_explorer_url
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
-from utils.dao import DefaultDAO, ProtocolDAO
-from utils.submodule import QueuedSubmodule
+from utils.event import EventSubmodule, Event
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
 
-class Events(QueuedSubmodule):
+class Events(EventSubmodule):
     update_block = 0
 
     class State(Enum):
@@ -801,7 +800,7 @@ class Events(QueuedSubmodule):
 
             response = None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
-                log.info(f"Found event {event} for {n}")
+                log.debug(f"Found event {event} for {n}")
                 # default event path
                 contract = rp.get_contract_by_address(event.address)
                 contract_event = self.topic_mapping[event.topics[0].hex()]
