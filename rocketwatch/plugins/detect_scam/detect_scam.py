@@ -3,7 +3,6 @@ import contextlib
 import io
 import logging
 from datetime import datetime
-from typing import Union
 
 import regex as re
 from datetime import timezone
@@ -150,7 +149,7 @@ class DetectScam(commands.Cog):
             ]
         )
 
-        def txt_contains(_x: Union[list, tuple, str]) -> bool:
+        def txt_contains(_x: list | tuple | str) -> bool:
             match _x:
                 case str():
                     return _x in txt

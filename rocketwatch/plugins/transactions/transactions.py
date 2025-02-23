@@ -259,9 +259,9 @@ class Transactions(EventSubmodule):
             event_name=event_name,
             unique_id=f"{tnx.hash.hex()}:{event_name}",
             block_number=event.blockNumber,
-            transaction_index=event.transactionIndex
+            transaction_index=event.transactionIndex,
+            event_index=(999 - len(responses)),
         )
-
         return [response] + responses
 
     def _run(self):
@@ -270,9 +270,9 @@ class Transactions(EventSubmodule):
             self.__init__(self.bot)
         return self.check_for_new_transactions()
 
-    def check_for_new_transactions(self):
+    def check_for_new_transactions(self) -> list[Event]:
         log.info("Checking for new Transaction Commands")
-        payload = []
+        events = []
 
         do_full_check = self.state == "INIT"
         self.state = "RUNNING"
@@ -293,13 +293,13 @@ class Transactions(EventSubmodule):
 
             for tnx in block.transactions:
                 if "to" in tnx:
-                    payload.extend(self.process_transaction(block, tnx, tnx.to, tnx.input))
+                    events.extend(self.process_transaction(block, tnx, tnx.to, tnx.input))
                 else:
                     # probably a contract creation transaction
                     log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
 
         self.state = "OK"
-        return payload
+        return events
 
 
 async def setup(bot):

@@ -2,15 +2,18 @@ import json
 import logging
 import warnings
 from enum import Enum
-from typing import Union, Optional
+from typing import Optional, Callable, Literal
 
 import pymongo
 from discord import Object
+from hexbytes import HexBytes
 from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
-from web3.exceptions import ABIEventFunctionNotFound
-from web3.types import LogReceipt, EventData
+from web3._utils.filters import Filter
+from web3.types import LogReceipt, EventData, FilterParams
+from eth_typing import ChecksumAddress, BlockNumber
+
 
 from rocketwatch import RocketWatch
 from utils import solidity
@@ -26,6 +29,8 @@ log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
 
 
+PartialFilter = Callable[[BlockNumber, BlockNumber | Literal["latest"]], Filter]
+
 class Events(EventSubmodule):
     update_block = 0
 
@@ -38,73 +43,73 @@ class Events(EventSubmodule):
         super().__init__(bot)
         rp.flush()
         self.state = self.State.INIT
-        self.events = []
+        self.filters: list[Filter] = []
         self.internal_event_mapping = {}
         self.topic_mapping = {}
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
 
-        with open("./plugins/events/events.json") as f:
-            events_config = json.load(f)
-
         try:
             latest_block = self.db.last_checked_block.find_one({"_id": "events"})["block"]
             self.start_block = latest_block - cfg["core.look_back_distance"]
-        except Exception as err:
-            log.error(f"Failed to get latest block from db: {err}")
+        except Exception:
+            log.exception("Failed to get latest block from db")
             self.start_block = w3.eth.getBlock("latest").number - cfg["core.look_back_distance"]
 
-        # Generate Filter for direct Events
-        addresses = []
-        aggregated_topics = []
-        for group in events_config["direct"]:
+        with open("./plugins/events/events.json") as f:
+            config = json.load(f)
+            partial_filters = self._initialize_event_contracts(config)
+
+        for pf in partial_filters:
+            self.filters.append(pf(self.start_block, "latest"))
+
+    def _initialize_event_contracts(self, event_config: dict) -> list[PartialFilter]:
+        partial_filters: list[PartialFilter] = []
+
+        # generate filter for direct events
+        addresses: set[ChecksumAddress] = set()
+        aggregated_topics: set[HexBytes] = set()
+        for group in event_config["direct"]:
             contract_name = group["contract_name"]
             try:
                 contract = rp.get_contract_by_name(contract_name)
-            except NoAddressFound as err:
-                log.error(f"Failed to get contract {contract_name}: {err}")
+                addresses.add(contract.address)
+            except NoAddressFound:
+                log.exception(f"Failed to get contract {contract_name}")
                 continue
-            addresses.append(contract.address)
 
             for event in group["events"]:
                 event_name = event["event_name"]
-                try:
-                    topic = contract.events[event_name].build_filter().topics[0]
-                except ABIEventFunctionNotFound as err:
-                    log.exception(err)
-                    log.warning(f"Skipping {event_name} ({event['name']}) as it can't be found in the contract")
-                    continue
-
+                topic = contract.events[event_name].build_filter().topics[0]
+                aggregated_topics.add(topic)
                 self.internal_event_mapping[f"{contract_name}.{event_name}"] = event["name"]
                 self.topic_mapping[topic] = event_name
-                if topic not in aggregated_topics:
-                    aggregated_topics.append(topic)
 
         if addresses:
-            self.events.append(w3.eth.filter({
-                "address"  : addresses,
-                "topics"   : [aggregated_topics],
-                "fromBlock": self.start_block,
-                "toBlock"  : "latest"
-            }))
+            def build_direct_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
+                filter_params: FilterParams = {
+                    "address"  : list(addresses),
+                    "topics"   : [list(aggregated_topics)],
+                    "fromBlock": _from,
+                    "toBlock"  : _to
+                }
+                return w3.eth.filter(filter_params)
+            partial_filters.append(build_direct_filter)
 
-        # Generate Filters for global Events
-        for group in events_config["global"]:
+        # generate filters for global events
+        for group in event_config["global"]:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
-                try:
-                    self.events.append(
-                        contract.events[event["event_name"]].createFilter(
-                            fromBlock=self.start_block,
-                            toBlock="latest",
-                            argument_filters=event.get("filter", {})
-                        )
+                self.internal_event_mapping[event["event_name"]] = event["name"]
+                def build_topic_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
+                    return contract.events[event["event_name"]].createFilter(
+                        fromBlock=_from,
+                        toBlock=_to,
+                        argument_filters=event.get("filter", {})
                     )
-                    self.internal_event_mapping[event["event_name"]] = event["name"]
-                except ABIEventFunctionNotFound as err:
-                    log.exception(err)
-                    log.warning(f"Skipping {event['event_name']} ({event['name']}) as it can't be found in the contract")
+                partial_filters.append(build_topic_filter)
 
+        return partial_filters
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -148,7 +153,7 @@ class Events(EventSubmodule):
         receipt = w3.eth.get_transaction_receipt(tx_hash)
         logs: list[LogReceipt] = receipt.logs
 
-        filtered_events: list[Union[LogReceipt, EventData]] = []
+        filtered_events: list[LogReceipt | EventData] = []
 
         # get direct events
         for event_log in logs:
@@ -162,12 +167,9 @@ class Events(EventSubmodule):
         for group in global_events:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
-                try:
-                    event = contract.events[event["event_name"]]()
-                    rich_logs = event.process_receipt(receipt)
-                    filtered_events.extend(rich_logs)
-                except ABIEventFunctionNotFound:
-                    continue
+                event = contract.events[event["event_name"]]()
+                rich_logs = event.process_receipt(receipt)
+                filtered_events.extend(rich_logs)
 
         _, responses = self.process_events(filtered_events)
         if not responses:
@@ -653,7 +655,7 @@ class Events(EventSubmodule):
             self.__init__(self.bot)
         return self.check_for_new_events()
 
-    def aggregate_events(self, events: list[Union[LogReceipt, EventData]]) -> list[aDict]:
+    def aggregate_events(self, events: list[LogReceipt | EventData]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
         events_by_tx = {}
         for event in reversed(events):
@@ -668,7 +670,7 @@ class Events(EventSubmodule):
             "unstETH.WithdrawalRequested": "amountOfStETH"
         }
 
-        def get_event_name(_event: Union[LogReceipt, EventData]) -> tuple[str, str]:
+        def get_event_name(_event: LogReceipt | EventData) -> tuple[str, str]:
             if "topics" in _event:
                 contract_name = rp.get_name_by_address(_event["address"])
                 name = self.topic_mapping[_event["topics"][0].hex()]
@@ -683,7 +685,7 @@ class Events(EventSubmodule):
         for tx_hash, tx_events in events_by_tx.items():
             tx_aggregates = {}
             aggregates[tx_hash] = tx_aggregates
-            events_by_name: dict[str, list[Union[LogReceipt, EventData]]] = {}
+            events_by_name: dict[str, list[LogReceipt | EventData]] = {}
 
             for event in tx_events:
                 event_name, full_event_name = get_event_name(event)
@@ -756,17 +758,11 @@ class Events(EventSubmodule):
 
     def check_for_new_events(self):
         log.info("Checking for new events")
-
-        if do_full_check := (self.state == self.State.INIT):
-            log.info("Doing full check")
         self.state = self.state.RUNNING
 
         pending_events = []
-        for events in self.events:
-            if do_full_check:
-                pending_events += events.get_all_entries()
-            else:
-                pending_events += events.get_new_entries()
+        for event_filter in self.filters:
+            pending_events += event_filter.get_new_entries()
         log.debug(f"Found {len(pending_events)} pending events")
 
         should_reinit, messages = self.process_events(pending_events)
@@ -781,6 +777,7 @@ class Events(EventSubmodule):
         if should_reinit:
             log.info("Detected update, triggering reinit")
             self.state = self.State.RUNNING
+
         return messages
 
     def process_events(self, events: list[EventData]) -> tuple[bool, list[Event]]:
