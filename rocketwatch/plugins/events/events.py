@@ -101,13 +101,16 @@ class Events(EventSubmodule):
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
                 self.internal_event_mapping[event["event_name"]] = event["name"]
-                def build_topic_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
-                    return contract.events[event["event_name"]].createFilter(
-                        fromBlock=_from,
-                        toBlock=_to,
-                        argument_filters=event.get("filter", {})
-                    )
-                partial_filters.append(build_topic_filter)
+                def super_builder(_contract, _event) -> PartialFilter:
+                    # this is needed to pin nonlocal variables
+                    def build_topic_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
+                        return _contract.events[_event["event_name"]].createFilter(
+                            fromBlock=_from,
+                            toBlock=_to,
+                            argument_filters=_event.get("filter", {})
+                        )
+                    return build_topic_filter
+                partial_filters.append(super_builder(contract, event))
 
         return partial_filters
 
