@@ -21,7 +21,6 @@ from web3.datastructures import MutableAttributeDict as aDict
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
 from utils.embeds import el_explorer_url, Embed
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import prettify_json_string

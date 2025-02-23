@@ -7,20 +7,19 @@ from web3.datastructures import MutableAttributeDict as aDict
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.get_nearest_block import get_block_by_timestamp
 from utils.readable import cl_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import bacon, w3
 from utils.solidity import beacon_block_to_date
-from utils.submodule import QueuedSubmodule
+from utils.event import EventSubmodule, Event
 
 log = logging.getLogger("beacon_slashings")
 log.setLevel(cfg["log_level"])
 
 
-class Slashings(QueuedSubmodule):
+class Slashings(EventSubmodule):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
