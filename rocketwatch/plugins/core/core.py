@@ -1,23 +1,24 @@
 import asyncio
 import logging
+import pickle
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from typing import Optional, cast
 
 import cronitor
+import pymongo
 import motor.motor_asyncio
 from discord.ext import commands, tasks
 from web3.datastructures import MutableAttributeDict as aDict
 
-from rocketwatch import RocketWatch
 from plugins.deposit_pool import deposit_pool
 from plugins.support_utils.support_utils import generate_template_embed
-
 from utils.cfg import cfg
-from utils.containers import Event
-from utils.embeds import assemble
+from utils.image import Image
+from utils.embeds import assemble, Embed
+from utils.event import EventSubmodule, Event
 from utils.shared_w3 import w3
-from utils.submodule import QueuedSubmodule
 
 log = logging.getLogger("core")
 log.setLevel(cfg["log_level"])
@@ -27,9 +28,7 @@ monitor = cronitor.Monitor('gather-new-events')
 
 
 class Core(commands.Cog):
-    event_queue = []
-
-    def __init__(self, bot: RocketWatch):
+    def __init__(self, bot):
         self.bot = bot
         self.state = "PENDING"
         self.channels = cfg["discord.channels"]
@@ -38,7 +37,7 @@ class Core(commands.Cog):
         # block filter
         self.block_event = w3.eth.filter("latest")
         self.previous_run = time.time()
-        self.submodules = None
+        self.submodules: Optional[list[EventSubmodule]] = None
         self.speed_limit = 5
 
         if not self.run_loop.is_running():
@@ -47,7 +46,7 @@ class Core(commands.Cog):
     @tasks.loop(seconds=10.0)
     async def run_loop(self):
         if not self.submodules:
-            self.submodules = [name for name, cog in self.bot.cogs.items() if isinstance(cog, QueuedSubmodule)]
+            self.submodules = [cog for cog in self.bot.cogs.values() if isinstance(cog, EventSubmodule)]
 
         p_id = time.time()
         if p_id - self.previous_run < self.speed_limit:
@@ -118,7 +117,7 @@ class Core(commands.Cog):
             e.set_footer(
                 text=f"Currently tracking {cfg['rocketpool.chain'].capitalize()} "
                      f"using {len(self.submodules)} submodules "
-                     f"and {len(self.bot.cogs) -  len(self.submodules)} plugins"
+                     f"and {len(self.bot.cogs) - len(self.submodules)} plugins"
             )
             for field in cfg["core.status_message.fields"]:
                 e.add_field(name=field["name"], value=field["value"])
@@ -137,7 +136,7 @@ class Core(commands.Cog):
                 })
 
     async def gather_new_events(self):
-        log.info("Gathering messages from submodules")
+        log.info("Gathering messages from submodules.")
         self.state = "OK"
 
         log.debug(f"Running {len(self.submodules)} submodules...")
@@ -146,18 +145,20 @@ class Core(commands.Cog):
         loop = asyncio.get_event_loop()
 
         try:
-            futures = [loop.run_in_executor(executor, self.bot.cogs[submodule].run) for submodule in self.submodules]
+            futures = [loop.run_in_executor(executor, submodule.run) for submodule in self.submodules]
         except Exception as err:
-            log.error("Failed to prepare submodules.")
+            log.exception("Failed to prepare submodules.")
             raise err
 
         try:
-            results = await asyncio.gather(*futures, return_exceptions=True)
+            results: list[list[Event] | Exception] = await asyncio.gather(*futures, return_exceptions=True)
         except Exception as err:
-            log.error("Failed to gather submodules.")
+            log.exception("Failed to gather events from submodules.")
             raise err
 
-        tmp_event_queue = []
+        channels = cfg["discord.channels"]
+
+        num_events = 0
         for result in results:
             # check if the result is an exception
             if isinstance(result, Exception):
@@ -165,28 +166,46 @@ class Core(commands.Cog):
                 log.error(f"Submodule returned an exception: {result}")
                 log.exception(result)
                 await self.bot.report_error(result)
-            elif result:
-                for entry in result:
-                    if await self.db.event_queue.find_one({"_id": entry.unique_id}):
-                        continue
-                    await self.db.event_queue.insert_one(entry.to_dict())
-                    tmp_event_queue.append(entry)
+                continue
 
-        log.debug(f"{len(tmp_event_queue)} new events gathered.")
+            for event in result:
+                if await self.db.event_queue.find_one({"_id": event.unique_id}):
+                    continue
+
+                # select channel dynamically from config based on event_name prefix
+                channel_candidates = [value for key, value in channels.items() if event.event_name.startswith(key)]
+                channel_id = channel_candidates[0] if channel_candidates else channels['default']
+                entry = {
+                    "_id": event.unique_id,
+                    "embed": pickle.dumps(event.embed),
+                    "topic": event.topic,
+                    "event_name": event.event_name,
+                    "block_number": event.block_number,
+                    "score": event.score,
+                    "time_seen": datetime.now(),
+                    "attachment": pickle.dumps(event.attachment),
+                    "channel_id": channel_id,
+                    "processed": False
+                }
+                await self.db.event_queue.insert_one(entry)
+                num_events += 1
+
+        log.info(f"{num_events} new events gathered.")
 
     async def process_event_queue(self):
-        log.debug("Processing events in event_queue collection...")
-        # get all non-processed unique channels from event_queue
+        log.debug("Processing events in queue...")
+        # get all channels with unprocessed events
         channels = await self.db.event_queue.distinct("channel_id", {"processed": False})
 
         if not channels:
-            log.debug("No pending events in event_queue collection.")
+            log.debug("No pending events in queue.")
             return
 
         for channel in channels:
-            events = await self.db.event_queue.find({"channel_id": channel, "processed": False}).sort(
-                [("score", 1)]).to_list(None)
-            log.debug(f"{len(events)} Events found for channel {channel}.")
+            db_events: list[dict[str]] = await self.db.event_queue.find(
+                {"channel_id": channel, "processed": False}
+            ).sort("score", pymongo.ASCENDING).to_list(None)
+            log.debug(f"{len(db_events)} events found for channel {channel}.")
             target_channel = await self.bot.get_or_fetch_channel(channel)
 
             if channel == self.channels["default"]:
@@ -197,15 +216,42 @@ class Core(commands.Cog):
                     await msg.delete()
                     await self.db.state_messages.delete_one({"_id": "state"})
 
-            for i, event in enumerate(events):
-                e = Event.load_embed(event)
-                if f := Event.load_attachment(event):
-                    e.set_image(url=f"attachment://{f.filename}")
+            def try_load(_entry: dict[str], _key: str) -> Optional[object]:
+                try:
+                    return pickle.loads(_entry[_key])
+                except Exception:
+                    return None
 
-                msg = await target_channel.send(embed=e, file=f, silent="debug" in event["event_name"])
+            for event_dict in db_events:
+                event = Event(
+                    embed=cast(Embed, try_load(event_dict, "embed")),
+                    topic=event_dict["topic"],
+                    event_name=event_dict["event_name"],
+                    unique_id=event_dict["_id"],
+                    block_number=event_dict["block_number"],
+                    attachment=cast(Image, try_load(event_dict, "attachment")),
+                )
+
+                embed = event.embed
+                attachment = event.attachment
+                if embed and attachment:
+                    file_name = event.event_name
+                    file = attachment.to_file(file_name)
+                    embed.set_image(url=f"attachment://{file_name}.png")
+                else:
+                    file = None
+
+                # post event message
+                send_silent: bool = ("debug" in event.event_name)
+                msg = await target_channel.send(embed=embed, file=file, silent=send_silent)
+
                 # mark event as processed
-                await self.db.event_queue.update_one({"_id": event["_id"]}, {"$set": {"processed": True, "message_id": msg.id}})
-        log.info("Processed all events in event_queue collection.")
+                await self.db.event_queue.update_one(
+                    {"_id": event.unique_id},
+                    {"$set": {"processed": True, "message_id": msg.id}}
+                )
+
+        log.info("Processed all events in queue.")
 
     def cog_unload(self):
         self.state = "STOPPED"

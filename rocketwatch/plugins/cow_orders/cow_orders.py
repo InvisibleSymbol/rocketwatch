@@ -9,17 +9,16 @@ from web3.datastructures import MutableAttributeDict as aDict
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.submodule import QueuedSubmodule
+from utils.event import EventSubmodule, Event
 
 log = logging.getLogger("cow_orders")
 log.setLevel(cfg["log_level"])
 
 
-class CowOrders(QueuedSubmodule):
+class CowOrders(EventSubmodule):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"
