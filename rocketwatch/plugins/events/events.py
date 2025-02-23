@@ -41,13 +41,12 @@ class Events(EventSubmodule):
 
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        rp.flush()
         self.state = self.State.INIT
-        self.filters: list[Filter] = []
-        self.internal_event_mapping = {}
-        self.topic_mapping = {}
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
+        self.filters: list[Filter] = []
+
+        rp.flush()
 
         try:
             latest_block = self.db.last_checked_block.find_one({"_id": "events"})["block"]
@@ -58,12 +57,15 @@ class Events(EventSubmodule):
 
         with open("./plugins/events/events.json") as f:
             config = json.load(f)
-            partial_filters = self._initialize_event_contracts(config)
+            partial_filters, event_mapping, topic_mapping = self._initialize_event_contracts(config)
+            self._partial_filters: list[PartialFilter] = partial_filters
+            self.internal_event_mapping = event_mapping
+            self.topic_mapping = topic_mapping
 
-        for pf in partial_filters:
-            self.filters.append(pf(self.start_block, "latest"))
-
-    def _initialize_event_contracts(self, event_config: dict) -> list[PartialFilter]:
+    @staticmethod
+    def _initialize_event_contracts(event_config: dict) -> tuple[list[PartialFilter], dict, dict]:
+        event_mapping = {}
+        topic_mapping = {}
         partial_filters: list[PartialFilter] = []
 
         # generate filter for direct events
@@ -82,8 +84,8 @@ class Events(EventSubmodule):
                 event_name = event["event_name"]
                 topic = contract.events[event_name].build_filter().topics[0]
                 aggregated_topics.add(topic)
-                self.internal_event_mapping[f"{contract_name}.{event_name}"] = event["name"]
-                self.topic_mapping[topic] = event_name
+                event_mapping[f"{contract_name}.{event_name}"] = event["name"]
+                topic_mapping[topic] = event_name
 
         if addresses:
             def build_direct_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
@@ -100,7 +102,7 @@ class Events(EventSubmodule):
         for group in event_config["global"]:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
-                self.internal_event_mapping[event["event_name"]] = event["name"]
+                event_mapping[event["event_name"]] = event["name"]
                 def super_builder(_contract, _event) -> PartialFilter:
                     # this is needed to pin nonlocal variables
                     def build_topic_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
@@ -112,7 +114,7 @@ class Events(EventSubmodule):
                     return build_topic_filter
                 partial_filters.append(super_builder(contract, event))
 
-        return partial_filters
+        return partial_filters, event_mapping, topic_mapping
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -761,9 +763,25 @@ class Events(EventSubmodule):
 
     def check_for_new_events(self):
         log.info("Checking for new events")
-        self.state = self.state.RUNNING
+        self.state = self.State.RUNNING
 
         pending_events = []
+        max_request_blocks = 50_000
+        latest_block = w3.eth.get_block_number()
+
+        # split up into smaller block chunks to avoid request timeout
+        if (latest_block - self.start_block) > max_request_blocks:
+            while self.start_block < latest_block:
+                end_block = min(latest_block, self.start_block + max_request_blocks - 1)
+                for pf in self._partial_filters:
+                    pending_events += pf(self.start_block, end_block).get_all_entries()
+                self.start_block = end_block + 1
+
+            self.filters.clear()
+
+        if not self.filters:
+            self.filters = [pf(self.start_block, "latest") for pf in self._partial_filters]
+
         for event_filter in self.filters:
             pending_events += event_filter.get_new_entries()
         log.debug(f"Found {len(pending_events)} pending events")
