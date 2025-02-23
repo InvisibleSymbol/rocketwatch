@@ -124,8 +124,10 @@ class Core(commands.Cog):
             if state_message:
                 msg = await channel.fetch_message(state_message["message_id"])
                 await msg.edit(embed=e)
-                await self.db.state_messages.update_one({"_id": "state"},
-                                                        {"$set": {"sent_at": time.time(), "state": self.state}})
+                await self.db.state_messages.update_one(
+                    {"_id": "state"},
+                    {"$set": {"sent_at": time.time(), "state": self.state}}
+                )
             else:
                 msg = await channel.send(embed=e)
                 await self.db.state_messages.insert_one({
@@ -185,7 +187,7 @@ class Core(commands.Cog):
                     "time_seen": datetime.now(),
                     "attachment": pickle.dumps(event.attachment),
                     "channel_id": channel_id,
-                    "processed": False
+                    "message_id": None
                 }
                 await self.db.event_queue.insert_one(entry)
                 num_events += 1
@@ -195,7 +197,7 @@ class Core(commands.Cog):
     async def process_event_queue(self):
         log.debug("Processing events in queue...")
         # get all channels with unprocessed events
-        channels = await self.db.event_queue.distinct("channel_id", {"processed": False})
+        channels = await self.db.event_queue.distinct("channel_id", {"message_id": None})
 
         if not channels:
             log.debug("No pending events in queue.")
@@ -203,7 +205,7 @@ class Core(commands.Cog):
 
         for channel in channels:
             db_events: list[dict[str]] = await self.db.event_queue.find(
-                {"channel_id": channel, "processed": False}
+                {"channel_id": channel, "message_id": None}
             ).sort("score", pymongo.ASCENDING).to_list(None)
             log.debug(f"{len(db_events)} events found for channel {channel}.")
             target_channel = await self.bot.get_or_fetch_channel(channel)
@@ -245,10 +247,10 @@ class Core(commands.Cog):
                 send_silent: bool = ("debug" in event.event_name)
                 msg = await target_channel.send(embed=embed, file=file, silent=send_silent)
 
-                # mark event as processed
+                # add message id to event
                 await self.db.event_queue.update_one(
                     {"_id": event.unique_id},
-                    {"$set": {"processed": True, "message_id": msg.id}}
+                    {"$set": {"message_id": msg.id}}
                 )
 
         log.info("Processed all events in queue.")
