@@ -27,7 +27,7 @@ class Milestones(EventSubmodule):
         with open("./plugins/milestones/milestones.json") as f:
             self.milestones = json.load(f)
 
-    def _run(self):
+    def _get_new_events(self) -> list[Event]:
         if self.state == "RUNNING":
             log.error("Milestones plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)

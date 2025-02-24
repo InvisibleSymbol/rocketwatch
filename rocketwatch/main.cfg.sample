@@ -37,8 +37,6 @@ rocketpool: {
   }
   etherscan_secret: "secret"
 },
-override_addresses: {
-}
 modules: {
   include: [],
   exclude: []
@@ -48,11 +46,12 @@ modules: {
 graph_endpoint = "https://gateway.thegraph.com/api/<apikey>/subgraphs/id/0xa508c16666c5b8981fa46eb32784fccc01942a71-3"
 mongodb_uri = "mongodb://mongodb:27017"
 cronitor_secret = "a"
-core: {
+events: {
   look_back_distance: 8,
+  genesis: 13325233,
+  request_block_limit: 1000
   status_message: {
-    fields: [
-    ]
+    fields: []
   }
 }
 discord: {

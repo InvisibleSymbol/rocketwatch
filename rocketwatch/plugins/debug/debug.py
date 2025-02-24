@@ -1,22 +1,19 @@
 import asyncio
-import io
-import math
-
-import requests
 import json
 import logging
+import math
 import random
 import time
 from pathlib import Path
 
 import humanize
+import requests
 from checksumdir import dirhash
 from colorama import Fore, Style
 from discord import File, Object
 from discord.app_commands import Choice, guilds, describe
 from discord.ext.commands import is_owner, Cog, hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
-from web3.datastructures import MutableAttributeDict as aDict
 
 from rocketwatch import RocketWatch
 from utils import solidity
@@ -27,7 +24,6 @@ from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden, is_hidden_weak, is_hidden_role_controlled
-from strings import _
 
 log = logging.getLogger("debug")
 log.setLevel(cfg["log_level"])
@@ -91,7 +87,7 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def raise_exception(self, ctx: Context):
+    async def raise_exception(self, _: Context):
         """
         Raise an exception for testing purposes.
         """
@@ -112,7 +108,10 @@ class Debug(Cog):
             # print name + identifier and id of each member
             members = [f"{member.name}#{member.discriminator}, ({member.id})" for member in role.members]
             # generate a file with a header that mentions what role and guild the members are from
-            file = File(io.StringIO(f"Members of {role.name} ({role.id}) in {guild.name} ({guild.id})\n\n" + "\n".join(members)), filename="members.txt")
+            file = File(
+                fp=f"Members of {role.name} ({role.id}) in {guild.name} ({guild.id})\n\n" + "\n".join(members),
+                filename="members.txt"
+            )
             await ctx.send(file=file)
         except Exception as err:
             await ctx.send(content=f"```{repr(err)}```")
@@ -130,7 +129,7 @@ class Debug(Cog):
             # print name + identifier and id of each member
             roles = [f"{role.name}, ({role.id})" for role in guild.roles]
             # generate a file with a header that mentions what role and guild the members are from
-            file = File(io.StringIO(f"Roles of {guild.name} ({guild.id})\n\n" + "\n".join(roles)), filename="roles.txt")
+            file = File(f"Roles of {guild.name} ({guild.id})\n\n" + "\n".join(roles), filename="roles.txt")
             await ctx.send(file=file)
         except Exception as err:
             await ctx.send(content=f"```{repr(err)}```")
@@ -210,45 +209,6 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def tmp_fix(self, ctx: Context):
-        await ctx.defer(ephemeral=True)
-        # delete slot index of proposal collection
-        await self.db.proposals.drop_index("slot_1")
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def tmp_fix_42(self, ctx: Context, i: str):
-        await ctx.defer(ephemeral=True)
-        await self.db.event_queue.delete_one({"_id": int(i)})
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def overwrite_events_block(self, ctx: Context, block_number: int):
-        """
-        Overwrite the events block number in the latest_checked_block collection.
-        """
-        await ctx.defer(ephemeral=True)
-        await self.db.last_checked_block.update_one({"_id": "events"}, {"$set": {"block": block_number}})
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def overwrite_beacon_slashings_block(self, ctx: Context, block_number: int):
-        """
-        Overwrite the beacon slashings block number in the latest_checked_block collection.
-        """
-        await ctx.defer(ephemeral=True)
-        await self.db.last_checked_block.update_one({"_id": "slashings"}, {"$set": {"block": block_number}})
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
     async def force_update_commands(self, ctx: Context):
         """
         Force an update of the commands.
@@ -276,146 +236,12 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def fix_fuckup_1(self, ctx: Context,
-                           message_id: str):
-        """
-        Fix fuckup #1: incorrect format specifier in slashing message.
-        """
-        await ctx.defer(ephemeral=True)
-        event_id = "1656176303:slash-391311:slasher-347354:slashing-type-Attestation"
-        event = await self.db.event_queue.find_one({"_id": event_id, "processed": True})
-        if not event:
-            await ctx.send(content="Event not found.")
-            return
-        e = Event.load_embed(event)
-        e.description = e.description.replace("%{minipool_clean}", "[391311](https://beaconcha.in/validator/391311)")
-        channel = await get_or_fetch_channel(self.bot, event["channel_id"])
-        msg = await channel.fetch_message(message_id)
-        await msg.edit(embed=e)
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_fuckup_2(self, ctx: Context,
-                            message_id: str,
-                            transaction_id: str):
-        """
-        Fix fuckup #2: missing translations for queue clear events.
-        """
-        await ctx.defer(ephemeral=True)
-        cog = self.bot.get_cog("QueuedTransactions")
-        tnx = w3.eth.get_transaction(transaction_id)
-        contract = rp.get_contract_by_address(tnx.to)
-        decoded = contract.decode_function_input(tnx.input)
-        function = decoded[0].function_identifier
-
-        event = aDict(tnx)
-        event.args = {}
-        for arg, value in decoded[1].items():
-            event.args[arg.lstrip("_")] = value
-        block = w3.eth.getBlock(tnx.blockNumber)
-        event.args["timestamp"] = block.timestamp
-        event.args["function_name"] = function
-        event_name = "deposit_pool_queue_clear_partial"
-        embed = cog.create_embed(event_name, event)
-        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
-        msg = await channel.fetch_message(message_id)
-        await msg.edit(embed=embed)
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_fuckup_3(self, ctx: Context,
-                           message_id: str):
-        """
-
-        Fix fuckup #3: missing translation for large pool deposit by protocol contract
-        """
-        await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
-        msg = await channel.fetch_message(message_id)
-        e = msg.embeds[0]
-        e.description = _("embeds.pool_deposit_recycled_event.description", amount="105.758")
-        await msg.edit(embed=e)
-        await ctx.send("Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_fuckup_4(self, ctx: Context):
-        """
-
-        Fix fuckup #4: detect_scam plugin self-reporting
-        """
-        await ctx.defer(ephemeral=True)
-        reports = await self.db["scam_reports"].find({"user_id": 884095717168259142}).to_list(None)
-        await ctx.send(f"Deleting {len(reports)} self-reports")
-        channel = await get_or_fetch_channel(self.bot, 815453222205652992)
-        for report in reports:
-            assert report["user_id"] == 884095717168259142
-            try:
-                msg = await channel.fetch_message(report["message_id"])
-                await msg.delete()
-            except:
-                pass
-            try:
-                msg = await channel.fetch_message(report["report_id"])
-                await msg.delete()
-            except:
-                pass
-            try:
-                msg = await channel.fetch_message(report["warning_id"])
-                await msg.delete()
-            except:
-                pass
-        await ctx.send("Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_fuckup_5(self, ctx: Context, message_id: str, amount: float, recipient: str):
-        """
-        Fix fuckup #5: missing translation for bootstrap treasury spend
-        """
-        await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.bootstrap"])
-        msg = await channel.fetch_message(message_id)
-        e = msg.embeds[0]
-        e.title = _("embeds.bootstrap_pdao_spend_treasury_event.title")
-        e.description = _(
-            "embeds.bootstrap_pdao_spend_treasury_event.description",
-            amount=humanize.intcomma(amount),
-            recipientAddress=el_explorer_url(recipient)
-        )
-        await msg.edit(embed=e)
-        await ctx.send("Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_fuckup_6(self, ctx: Context, message_id: str):
-        """
-        Fix fuckup #6: inaccessible emote for Constellation events
-        """
-        await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, cfg["discord.channels.default"])
-        msg = await channel.fetch_message(message_id)
-        e = msg.embeds[0]
-        e.title = e.title.replace(":nodeset:", "<:nodeset:1297235812278341653>")
-        await msg.edit(embed=e)
-        await ctx.send("Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
     async def talk(self, ctx: Context, channel: str, message: str):
         """
         Send a message to a channel.
         """
         await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, channel)
+        channel = await self.bot.get_or_fetch_channel(int(channel))
         await channel.send(message)
         await ctx.send(content="Done", ephemeral=True)
 
@@ -427,7 +253,7 @@ class Debug(Cog):
         Send a message to a channel.
         """
         await ctx.defer(ephemeral=True)
-        channel = await get_or_fetch_channel(self.bot, channel)
+        channel = await self.bot.get_or_fetch_channel(int(channel))
         e = Embed(title="Announcement", description=message)
         e.add_field(name="Timestamp", value=f"<t:{int(time.time())}:R> (<t:{int(time.time())}:f>)")
         await channel.send(embed=e)
@@ -485,9 +311,10 @@ class Debug(Cog):
         """retrieve the latest ABI for a contract"""
         await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         try:
-            with io.StringIO(prettify_json_string(rp.uncached_get_abi_by_name(contract))) as f:
-                await ctx.send(
-                    files=[File(fp=f, filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json")])
+            await ctx.send(file=File(
+                fp=prettify_json_string(rp.uncached_get_abi_by_name(contract)),
+                filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json")
+            )
         except Exception as err:
             await ctx.send(content=f"```Exception: {repr(err)}```")
 
@@ -545,8 +372,7 @@ class Debug(Cog):
         text = f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): "
         if len(text + str(v)) > 2000:
             text += "too long, attached as file`"
-            with io.StringIO(str(v)) as f:
-                await ctx.send(text, file=File(fp=f, filename="exception.txt"))
+            await ctx.send(text, file=File(fp=str(v), filename="exception.txt"))
         else:
             text += f"{str(v)}`"
             await ctx.send(content=text)

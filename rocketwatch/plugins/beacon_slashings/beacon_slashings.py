@@ -2,6 +2,7 @@ import logging
 
 import pymongo
 import requests
+from eth_typing import BlockNumber
 from web3.datastructures import MutableAttributeDict as aDict
 
 from rocketwatch import RocketWatch
@@ -24,53 +25,41 @@ class Slashings(EventSubmodule):
         super().__init__(bot)
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
-        self.state = "INIT"
 
-    def _run(self):
-        if self.state == "RUNNING":
-            log.error("Slashings plugin was interrupted while running. Re-initializing...")
-            self.__init__(self.bot)
-        return self.check_for_new_slashings()
+    def _get_new_events(self) -> list[Event]:
+        from_block = self.last_served_block + 1 - self.lookback_distance
+        return self.get_slashings(from_block, self._pending_block)
 
-    def check_for_new_slashings(self):
-        log.info("Checking for new Slashings")
+    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+        return self.get_slashings(from_block, to_block)
 
-        payload = []
+    def get_slashings(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+        log.info("Checking for new slashings")
+        events = []
 
-        self.state = "RUNNING"
-        latest_db_block = self.db.last_checked_block.find_one({"_id": "slashings"})
-        node_finalized = int(bacon.get_block("head")["data"]["message"]["slot"]) - 8    
-        if not latest_db_block:
-            log.info("Doing full check")
-            blocks = list(range(node_finalized - cfg["core.look_back_distance"], node_finalized))
-        elif latest_db_block["block"] <= node_finalized:
-            blocks = list(range(latest_db_block["block"], node_finalized))
-        else:
-            log.warning(
-                "Node is being stupid and returned a block that is smaller than a previously seen finalized block: "
-                f"{node_finalized=} < {latest_db_block['block']=}. Skipping this check.")
-            return
-        for block_number in blocks:
+        for block_number in range(from_block, to_block):
             log.debug(f"Checking Beacon block {block_number}")
             timestamp = beacon_block_to_date(block_number)
+
             try:
                 block = bacon.get_block(block_number)["data"]["message"]
             except ValueError as e:
-                if e.args[0] == "Block does not exist":
-                    log.error(f"Beacon block {block_number} not found. Skipping.")
-                    continue
-                raise e
+                if e.args[0] != "Block does not exist":
+                    raise e
+                log.error(f"Beacon block {block_number} not found. Skipping.")
+                continue
+
             slashings = []
             for slash in block["body"]["attester_slashings"]:
                 set_a = set(slash["attestation_2"]["attesting_indices"])
-                offending_indieces = set_a.intersection(slash["attestation_1"]["attesting_indices"])
+                offending_indices = set_a.intersection(slash["attestation_1"]["attesting_indices"])
                 slashings.extend(
                     {
                         "slashing_type": "Attestation",
                         "minipool"     : index,
                         "slasher"      : block["proposer_index"],
                         "timestamp"    : timestamp
-                    } for index in offending_indieces)
+                    } for index in offending_indices)
 
             slashings.extend(
                 {
@@ -96,7 +85,7 @@ class Slashings(EventSubmodule):
                 args = prepare_args(aDict(slash))
                 if embed := assemble(args):
                     closest_block = get_block_by_timestamp(timestamp)[0]
-                    payload.append(Event(
+                    events.append(Event(
                         topic="beacon_slashings",
                         embed=embed,
                         event_name=slash["event_name"],
@@ -136,14 +125,13 @@ class Slashings(EventSubmodule):
                             args["smoothie_amount"] = rp.call("multicall3.getEthBalance", w3.toChecksumAddress(fee_recipient), block=exec_block)
                         args = prepare_args(aDict(args))
                         if embed := assemble(args):
-                            payload.append(Event(
+                            events.append(Event(
                                 topic="mev_proposals",
                                 embed=embed,
                                 event_name=args["event_name"],
                                 unique_id=f"{timestamp}:mev_proposal-{block['body']['execution_payload']['block_number']}",
                                 block_number=exec_block
                             ))
-                    print(req)
 
             # new-feature: alerts for non-finality issue
             current_epoch = block_number // 32
@@ -161,7 +149,7 @@ class Slashings(EventSubmodule):
                 }
                 args = prepare_args(aDict(args))
                 if embed := assemble(args):
-                    payload.append(Event(
+                    events.append(Event(
                         topic="finality_delay",
                         embed=embed,
                         event_name=args["event_name"],
@@ -176,7 +164,7 @@ class Slashings(EventSubmodule):
                 latest_finality_delay = 2
 
             # if finality delay recovers, notify
-            if finality_delay <= 2 and latest_finality_delay > 2:
+            if finality_delay <= 2 < latest_finality_delay:
                 log.info(f"Finality delay recovered from {latest_finality_delay} to {finality_delay}")
                 args = {
                     "event_name"   : "finality_delay_recover_event",
@@ -186,7 +174,7 @@ class Slashings(EventSubmodule):
                 }
                 args = prepare_args(aDict(args))
                 if embed := assemble(args):
-                    payload.append(Event(
+                    events.append(Event(
                         topic="finality_delay_recover",
                         embed=embed,
                         event_name=args["event_name"],
@@ -194,18 +182,14 @@ class Slashings(EventSubmodule):
                         block_number=block_number
                     ))
 
-            self.db.finality_checkpoints.update_one({"epoch": current_epoch},
-                                                    {"$set": {"finality_delay": finality_delay}},
-                                                    upsert=True)
+            self.db.finality_checkpoints.update_one(
+                {"epoch": current_epoch},
+                {"$set": {"finality_delay": finality_delay}},
+                upsert=True
+            )
 
-        log.debug("Finished Checking for new Slashes Commands")
-        self.state = "OK"
-
-        self.db.last_checked_block.update_one({"_id": "slashings"},
-                                              {"$set": {"block": node_finalized}},
-                                              upsert=True)
-
-        return payload
+        log.debug("Finished checking for new slashings")
+        return events
 
 
 async def setup(bot):
