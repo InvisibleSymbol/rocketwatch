@@ -20,9 +20,9 @@ from utils.embeds import Embed, el_explorer_url
 from utils.image import ImageCanvas
 from utils.readable import uptime
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
 from utils.event import EventSubmodule, Event
 from utils.visibility import is_hidden_weak
+from utils.get_nearest_block import get_block_by_timestamp
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -219,7 +219,7 @@ class Snapshot(EventSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.start)[0],
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"{self.id}:event_start",
                 attachment=self.create_image(include_title=True)
@@ -239,7 +239,7 @@ class Snapshot(EventSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.end)[0],
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"{self.id}:event_end",
                 attachment=self.create_image(include_title=True)
@@ -359,7 +359,7 @@ class Snapshot(EventSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.created)[0],
                 event_name=event_name,
                 unique_id=f"{self.proposal.id}_{self.voter}_{self.created}:vote",
                 attachment=self.proposal.create_image(include_title=False)

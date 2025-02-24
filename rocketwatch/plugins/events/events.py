@@ -283,7 +283,7 @@ class Events(EventSubmodule):
 
             for event in tx_events:
                 event_name, full_event_name = get_event_name(event)
-                log.info(f"Processing event {full_event_name}")
+                log.debug(f"Processing event {full_event_name}")
 
                 if full_event_name not in events_by_name:
                     events_by_name[full_event_name] = []
