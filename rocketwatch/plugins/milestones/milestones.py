@@ -73,7 +73,7 @@ class Milestones(EventSubmodule):
                 payload.append(Event(
                     embed=embed,
                     topic="milestones",
-                    block_number=w3.eth.getBlock("latest").number,
+                    block_number=self._pending_block,
                     event_name=milestone.id,
                     unique_id=f"{milestone.id}:{latest_goal}",
                 ))

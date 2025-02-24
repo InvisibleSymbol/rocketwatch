@@ -91,14 +91,20 @@ class AdminModal(ui.Modal,
         # verify that no changes were made while we were editing
         if template["title"] != self.old_title or template["description"] != self.old_description:
             # dump the description into a memory file
-            with io.StringIO(self.description_field.value) as f:
-                await interaction.response.edit_message(
-                    embed=Embed(
-                        description="Someone made changes while you were editing. Please try again.\n"
-                                    "Your pending changes have been attached to this message."), view=None)
-                a = await interaction.original_response()
-                await a.add_files(File(fp=f, filename="pending_description_dump.txt"))
+            await interaction.response.edit_message(
+                embed=Embed(
+                    description=(
+                        "Someone made changes while you were editing. Please try again.\n"
+                        "Your pending changes have been attached to this message."
+                    ),
+                    view=None
+                )
+            )
+            a = await interaction.original_response()
+            file = File(io.BytesIO(self.description_field.value.encode()), "pending_description_dump.txt")
+            await a.add_files(file)
             return
+
         try:
             await self.db.support_bot_dumps.insert_one(
                 {

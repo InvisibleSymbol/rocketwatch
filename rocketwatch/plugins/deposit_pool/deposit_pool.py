@@ -19,7 +19,7 @@ log = logging.getLogger("despoit_pool")
 log.setLevel(cfg["log_level"])
 
 
-async def get_dp():
+async def get_dp() -> Embed:
     e = Embed()
     e.title = "Deposit Pool Stats"
 
@@ -50,7 +50,7 @@ async def get_dp():
                           (f"\n**`{deposit_pool // 32:>4.0f}`** Credit Minipools (32 ETH from DP)" if deposit_pool // 32 > 0 else ""),
                     inline=False)
 
-    return e, None
+    return e
 
 
 class DepositPool(commands.Cog):
@@ -67,14 +67,8 @@ class DepositPool(commands.Cog):
     async def deposit_pool(self, ctx: Context):
         """Deposit Pool Stats"""
         await ctx.defer(ephemeral=is_hidden(ctx))
-        e, i = await get_dp()
-        if i:
-            e.set_image(url="attachment://graph.png")
-            f = File(i, filename="graph.png")
-            await ctx.send(embed=e, files=[f])
-            i.close()
-        else:
-            await ctx.send(embed=e)
+        embed = await get_dp()
+        await ctx.send(embed=embed)
 
     @hybrid_command()
     async def reth_extra_collateral(self, ctx: Context):

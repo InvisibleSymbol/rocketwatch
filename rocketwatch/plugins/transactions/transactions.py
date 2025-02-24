@@ -101,7 +101,7 @@ class Transactions(EventSubmodule):
         return events
 
     def get_events_for_block(self, block: BlockIdentifier) -> list[Event]:
-        log.debug(f"Checking block: {block}")
+        log.debug(f"Checking block {block}")
         try:
             block = w3.eth.get_block(block, full_transactions=True)
         except web3.exceptions.BlockNotFound:
@@ -113,7 +113,7 @@ class Transactions(EventSubmodule):
                 return self.process_transaction(block, tnx, tnx.to, tnx.input)
             else:
                 # probably a contract creation transaction
-                log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
+                log.debug(f"Skipping transaction {tnx.hash.hex()} as it has no `to` parameter. Possible contract creation.")
 
         return []
 

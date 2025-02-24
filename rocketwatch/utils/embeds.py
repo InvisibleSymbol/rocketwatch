@@ -34,8 +34,7 @@ class Embed(discord.Embed):
         self.set_footer_parts([])
 
     def set_footer_parts(self, parts):
-        footer_parts = ["Created by 0xinvis.eth & Developed by haloooloolo.eth",
-                        "/donate"]
+        footer_parts = ["Created by 0xinvis.eth", "Developed by haloooloolo.eth"]
         if cfg["rocketpool.chain"] != "mainnet":
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
         footer_parts.extend(parts)
@@ -48,7 +47,6 @@ class Embed(discord.Embed):
 # If the user input isn't sanitary, send an error message back to the user and return None, None.
 async def resolve_ens(ctx, node_address):
     # if it looks like an ens, attempt to resolve it
-    address = None
     if "." in node_address:
         try:
             address = ens.resolve_name(node_address)
