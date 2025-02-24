@@ -12,13 +12,10 @@ from utils.rocketpool import rp
 log = logging.getLogger("rich_activity")
 log.setLevel(cfg["log_level"])
 
-cronitor.api_key = cfg["cronitor_secret"]
-monitor = cronitor.Monitor('update-activity')
-
-
 class RichActivity(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
+        self.monitor = cronitor.Monitor('update-activity', api_key=cfg["cronitor_secret"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()
@@ -31,7 +28,7 @@ class RichActivity(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def run_loop(self):
-        monitor.ping()
+        self.monitor.ping()
         try:
             log.debug("Updating Discord Activity...")
             count = humanize.intcomma(rp.call("rocketMinipoolManager.getMinipoolCount"))

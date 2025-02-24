@@ -45,13 +45,14 @@ class EventSubmodule(commands.Cog):
         self.lookback_distance: int = cfg["events.look_back_distance"]
         self.last_served_block = w3.eth.get_block(cfg["events.genesis"]).number
         self._pending_block = self.last_served_block
-        self._last_ran = datetime.now() - rate_limit
+        self._last_run = datetime.now() - rate_limit
 
     def get_new_events(self) -> list[Event]:
-        if (datetime.now() - self._last_ran) < self.rate_limit:
+        now = datetime.now()
+        if (now - self._last_run) < self.rate_limit:
             return []
 
-        self._last_ran = datetime.now()
+        self._last_run = now
         self._pending_block = w3.eth.get_block_number()
         events = self._get_new_events()
         self.last_served_block = self._pending_block

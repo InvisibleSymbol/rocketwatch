@@ -19,16 +19,13 @@ from utils.time_debug import timerun
 log = logging.getLogger("minipool_task")
 log.setLevel(cfg["log_level"])
 
-cronitor.api_key = cfg["cronitor_secret"]
-monitor = cronitor.Monitor('gather-minipools')
-
-
 class MinipoolTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
         self.db = self.mongo.rocketwatch
         self.minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
+        self.monitor = cronitor.Monitor('gather-minipools', api_key=cfg["cronitor_secret"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()
@@ -42,16 +39,16 @@ class MinipoolTask(commands.Cog):
     @tasks.loop(seconds=60 ** 2)
     async def run_loop(self):
         p_id = time.time()
-        monitor.ping(state='run', series=p_id)
+        self.monitor.ping(state='run', series=p_id)
         executor = ThreadPoolExecutor()
         loop = asyncio.get_event_loop()
         futures = [loop.run_in_executor(executor, self.task)]
         try:
             await asyncio.gather(*futures)
-            monitor.ping(state='complete', series=p_id)
+            self.monitor.ping(state='complete', series=p_id)
         except Exception as err:
             await self.bot.report_error(err)
-            monitor.ping(state='fail', series=p_id)
+            self.monitor.ping(state='fail', series=p_id)
 
     @timerun
     def get_untracked_minipools(self):

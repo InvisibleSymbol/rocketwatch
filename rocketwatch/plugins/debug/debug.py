@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import io
 import json
 import logging
 import math
@@ -108,10 +110,8 @@ class Debug(Cog):
             # print name + identifier and id of each member
             members = [f"{member.name}#{member.discriminator}, ({member.id})" for member in role.members]
             # generate a file with a header that mentions what role and guild the members are from
-            file = File(
-                fp=f"Members of {role.name} ({role.id}) in {guild.name} ({guild.id})\n\n" + "\n".join(members),
-                filename="members.txt"
-            )
+            content = f"Members of {role.name} ({role.id}) in {guild.name} ({guild.id})\n\n" + "\n".join(members)
+            file = File(io.BytesIO(content.encode()), "members.txt")
             await ctx.send(file=file)
         except Exception as err:
             await ctx.send(content=f"```{repr(err)}```")
@@ -311,8 +311,9 @@ class Debug(Cog):
         """retrieve the latest ABI for a contract"""
         await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
         try:
+            abi = prettify_json_string(rp.uncached_get_abi_by_name(contract))
             await ctx.send(file=File(
-                fp=prettify_json_string(rp.uncached_get_abi_by_name(contract)),
+                fp=io.BytesIO(abi.encode()),
                 filename=f"{contract}.{cfg['rocketpool.chain']}.abi.json")
             )
         except Exception as err:
@@ -372,7 +373,7 @@ class Debug(Cog):
         text = f"`block: {block}`\n`gas estimate: {g}`\n`{function}({', '.join([repr(a) for a in args])}): "
         if len(text + str(v)) > 2000:
             text += "too long, attached as file`"
-            await ctx.send(text, file=File(fp=str(v), filename="exception.txt"))
+            await ctx.send(text, file=File(io.BytesIO(str(v).encode()), "exception.txt"))
         else:
             text += f"{str(v)}`"
             await ctx.send(content=text)

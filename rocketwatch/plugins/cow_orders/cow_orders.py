@@ -203,7 +203,7 @@ class CowOrders(EventSubmodule):
             payload.append(Event(
                 embed=embed,
                 topic="cow_orders",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=self._pending_block,
                 event_name=data["event_name"],
                 unique_id=f"cow_order_found_{order['uid']}"
             ))

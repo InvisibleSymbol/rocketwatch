@@ -1,3 +1,4 @@
+import io
 import logging
 import traceback
 from pathlib import Path
@@ -44,13 +45,12 @@ class RocketWatch(Bot):
                 log.warning(f"Skipping plugin {plugin_name}")
                 continue
 
-            log.debug(f"Loading plugin \"{plugin_name}\"")
+            log.info(f"Loading plugin \"{plugin_name}\"")
             try:
                 extension_name = f"plugins.{plugin_name}.{plugin_name}"
                 await self.load_extension(extension_name)
-            except Exception as err:
-                log.error(f"Failed to load plugin \"{plugin_name}\"")
-                log.exception(err)
+            except Exception:
+                log.exception(f"Failed to load plugin \"{plugin_name}\"")
 
         log.info('Finished loading plugins')
 
@@ -58,7 +58,7 @@ class RocketWatch(Bot):
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
 
     async def report_error(self, exception: Exception, ctx: Optional[Context] = None, *args) -> None:
-        err_description = f"**`{repr(exception)[:100]}`**"
+        err_description = f"`{repr(exception)[:100]}`"
         if args:
             args_fmt = "\n".join(f"args[{i}] = {arg}" for i, arg in enumerate(args))
             err_description += f"\n```{args_fmt}```"
@@ -80,7 +80,8 @@ class RocketWatch(Bot):
 
         @retry_async(tries=5, delay=5)
         async def _send_error_message():
-            await channel.send(err_description, file=File(fp=err_trace, filename="exception.txt"))
+            fp = io.BytesIO(err_trace.encode())
+            await channel.send(err_description, file=File(fp, "exception.txt"))
 
         try:
             await _send_error_message()
