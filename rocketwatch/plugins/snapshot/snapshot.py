@@ -412,7 +412,7 @@ class Snapshot(EventSubmodule):
         response: list[dict] = Snapshot._query_api([query])["votes"]
         return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
 
-    def _run(self) -> list[Event]:
+    def _get_new_events(self) -> list[Event]:
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
             log.warning("Snapshot version changed, nuking db")
             self.db.snapshot_votes.drop()

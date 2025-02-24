@@ -37,7 +37,7 @@ class CowOrders(EventSubmodule):
             str(rp.get_address_by_name("rocketTokenRETH")).lower()
         ]
 
-    def _run(self):
+    def _get_new_events(self) -> list[Event]:
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)

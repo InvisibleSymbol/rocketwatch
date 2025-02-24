@@ -1,29 +1,27 @@
 import json
 import logging
 import warnings
-from enum import Enum
 from typing import Optional, Callable, Literal
 
 import pymongo
 from discord import Object
-from hexbytes import HexBytes
 from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
-from web3.datastructures import MutableAttributeDict as aDict
-from web3._utils.filters import Filter
-from web3.types import LogReceipt, EventData, FilterParams
 from eth_typing import ChecksumAddress, BlockNumber
-
+from hexbytes import HexBytes
+from web3._utils.filters import Filter
+from web3.datastructures import MutableAttributeDict as aDict
+from web3.types import LogReceipt, EventData, FilterParams
 
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.dao import DefaultDAO, ProtocolDAO
 from utils.embeds import assemble, prepare_args, el_explorer_url
+from utils.event import EventSubmodule, Event
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
-from utils.event import EventSubmodule, Event
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
@@ -34,38 +32,22 @@ PartialFilter = Callable[[BlockNumber, BlockNumber | Literal["latest"]], Filter]
 class Events(EventSubmodule):
     update_block = 0
 
-    class State(Enum):
-        INIT = 0
-        RUNNING = 1
-        OK = 2
-
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.state = self.State.INIT
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
         self.filters: list[Filter] = []
 
         rp.flush()
-
-        try:
-            latest_block = self.db.last_checked_block.find_one({"_id": "events"})["block"]
-            self.start_block = latest_block - cfg["core.look_back_distance"]
-        except Exception:
-            log.exception("Failed to get latest block from db")
-            self.start_block = w3.eth.getBlock("latest").number - cfg["core.look_back_distance"]
-
         with open("./plugins/events/events.json") as f:
             config = json.load(f)
-            partial_filters, event_mapping, topic_mapping = self._initialize_event_contracts(config)
+            partial_filters, event_map, topic_map = self._parse_event_config(config)
             self._partial_filters: list[PartialFilter] = partial_filters
-            self.internal_event_mapping = event_mapping
-            self.topic_mapping = topic_mapping
+            self.internal_event_mapping = event_map
+            self.topic_mapping = topic_map
 
     @staticmethod
-    def _initialize_event_contracts(event_config: dict) -> tuple[list[PartialFilter], dict, dict]:
-        event_mapping = {}
-        topic_mapping = {}
+    def _parse_event_config(event_config: dict) -> tuple[list[PartialFilter], dict, dict]:
+        event_map = {}
+        topic_map = {}
         partial_filters: list[PartialFilter] = []
 
         # generate filter for direct events
@@ -84,8 +66,8 @@ class Events(EventSubmodule):
                 event_name = event["event_name"]
                 topic = contract.events[event_name].build_filter().topics[0]
                 aggregated_topics.add(topic)
-                event_mapping[f"{contract_name}.{event_name}"] = event["name"]
-                topic_mapping[topic] = event_name
+                event_map[f"{contract_name}.{event_name}"] = event["name"]
+                topic_map[topic] = event_name
 
         if addresses:
             def build_direct_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
@@ -102,7 +84,7 @@ class Events(EventSubmodule):
         for group in event_config["global"]:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
-                event_mapping[event["event_name"]] = event["name"]
+                event_map[event["event_name"]] = event["name"]
                 def super_builder(_contract, _event) -> PartialFilter:
                     # this is needed to pin nonlocal variables
                     def build_topic_filter(_from: BlockNumber, _to: BlockNumber | Literal["latest"]) -> Filter:
@@ -114,7 +96,7 @@ class Events(EventSubmodule):
                     return build_topic_filter
                 partial_filters.append(super_builder(contract, event))
 
-        return partial_filters, event_mapping, topic_mapping
+        return partial_filters, event_map, topic_map
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -183,6 +165,191 @@ class Events(EventSubmodule):
         for response in responses:
             await ctx.send(embed=response.embed)
 
+    def _get_new_events(self) -> list[Event]:
+        if not self.filters:
+            from_block = self.last_served_block + 1 - self.lookback_distance
+            self.filters = [pf(from_block, "latest") for pf in self._partial_filters]
+
+        events = []
+        for event_filter in self.filters:
+            events.extend(event_filter.get_new_entries())
+
+        contract_upgraded, messages = self.process_events(events)
+        if contract_upgraded:
+            log.info("Detected update, triggering reinit")
+            self.__init__(self.bot)
+            self.last_requested_block = self.update_block - 1
+            messages += self._get_new_events()
+
+        return messages
+
+    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+        events = []
+        for pf in self._partial_filters:
+            events.extend(pf(from_block, to_block).get_all_entries())
+
+        self.filters.clear()
+
+        _, messages = self.process_events(events)
+        return messages
+
+    def process_events(self, events: list[LogReceipt | EventData]) -> tuple[bool, list[Event]]:
+        events.sort(key=lambda e: (e.blockNumber, e.logIndex))
+        messages = []
+        contract_upgraded = False
+
+        log.debug(f"Aggregating {len(events)} events")
+        events = self.aggregate_events(events)
+        log.debug(f"Processing {len(events)} events")
+
+        for event in events:
+            if event.get("removed", False):
+                continue
+
+            log.debug(f"Checking event {event}")
+
+            response = None
+            if (n := rp.get_name_by_address(event.address)) and "topics" in event:
+                log.debug(f"Found event {event} for {n}")
+                # default event path
+                contract = rp.get_contract_by_address(event.address)
+                contract_event = self.topic_mapping[event.topics[0].hex()]
+                topics = [w3.toHex(t) for t in event.topics]
+                _event = aDict(contract.events[contract_event]().processLog(event))
+                _event.topics = topics
+                if "assignment_count" in event:
+                    _event.assignment_count = event.assignment_count
+                if "amountOfStETH" in event:
+                    _event.args = aDict(_event.args)
+                    _event.args.amountOfStETH = event.amountOfStETH
+                event = _event
+
+                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}"):
+                    response = self.handle_event(event_name, event)
+                else:
+                    log.warning(f"Skipping unknown event {n}.{event.event}")
+
+            elif event.get("event") in self.internal_event_mapping:
+                event_name = self.internal_event_mapping[event.event]
+                if event_name in ["contract_upgraded", "contract_added"]:
+                    if event.blockNumber > self.update_block:
+                        log.info("detected update, setting reinit flag")
+                        contract_upgraded = True
+                        self.update_block = event.blockNumber
+                else:
+                    # deposit/exit event path
+                    response = self.handle_global_event(event_name, event)
+
+            if response is not None:
+                # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
+                identical_events = filter(lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash), events)
+                log_index_offset = min(e.logIndex for e in identical_events)
+                response.unique_id += f":{event.logIndex - log_index_offset}"
+                messages.append(response)
+
+        return contract_upgraded, messages
+
+    def aggregate_events(self, events: list[LogReceipt | EventData]) -> list[aDict]:
+        # aggregate and deduplicate events within the same transaction
+        events_by_tx = {}
+        for event in reversed(events):
+            tx_hash = event["transactionHash"]
+            if tx_hash not in events_by_tx:
+                events_by_tx[tx_hash] = []
+
+            events_by_tx[tx_hash].append(event)
+
+        aggregation_attributes = {
+            "rocketDepositPool.DepositAssigned": "assignment_count",
+            "unstETH.WithdrawalRequested": "amountOfStETH"
+        }
+
+        def get_event_name(_event: LogReceipt | EventData) -> tuple[str, str]:
+            if "topics" in _event:
+                contract_name = rp.get_name_by_address(_event["address"])
+                name = self.topic_mapping[_event["topics"][0].hex()]
+            else:
+                contract_name = None
+                name = _event.get("event")
+
+            full_name = f"{contract_name}.{name}" if contract_name else name
+            return name, full_name
+
+        aggregates = {}
+        for tx_hash, tx_events in events_by_tx.items():
+            tx_aggregates = {}
+            aggregates[tx_hash] = tx_aggregates
+            events_by_name: dict[str, list[LogReceipt | EventData]] = {}
+
+            for event in tx_events:
+                event_name, full_event_name = get_event_name(event)
+                log.info(f"Processing event {full_event_name}")
+
+                if full_event_name not in events_by_name:
+                    events_by_name[full_event_name] = []
+
+                if full_event_name == "unstETH.WithdrawalRequested":
+                    contract = rp.get_contract_by_address(event["address"])
+                    _event = aDict(contract.events[event_name]().processLog(event))
+                    # sum up the amount of stETH withdrawn in this transaction
+                    if amount := tx_aggregates.get(full_event_name, 0):
+                        events.remove(event)
+                    tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
+                elif full_event_name == "rocketTokenRETH.Transfer":
+                    conflicting_events = ["rocketTokenRETH.TokensBurned", "rocketDepositPool.DepositReceived"]
+                    if any((event in tx_aggregates for event in conflicting_events)):
+                        events.remove(event)
+                        continue
+                    if prev_event := tx_aggregates.get(full_event_name, None):
+                        # only keep largest rETH transfer
+                        contract = rp.get_contract_by_address(event["address"])
+                        _event = aDict(contract.events[event_name]().processLog(event))
+                        _prev_event = aDict(contract.events[event_name]().processLog(event))
+                        if _prev_event["args"]["value"] > _event["args"]["value"]:
+                            events.remove(event)
+                            event = prev_event
+                        else:
+                            events.remove(prev_event)
+                    tx_aggregates[full_event_name] = event
+                elif full_event_name == "rocketDAOProtocolProposal.ProposalVoteOverridden":
+                    # override is emitted first, thus only seen here after the main vote event
+                    # remove last seen vote event
+                    vote_event = events_by_name.get("rocketDAOProtocolProposal.ProposalVoted", [None]).pop()
+                    if vote_event is not None:
+                        events.remove(vote_event)
+                elif full_event_name == "MinipoolPrestaked":
+                    for assign_event in events_by_name.get("rocketDepositPool.DepositAssigned", []).copy():
+                        assigned_minipool = w3.to_checksum_address(assign_event["topics"][1][-20:])
+                        if event["address"] == assigned_minipool:
+                            events_by_name["rocketDepositPool.DepositAssigned"].remove(assign_event)
+                            events.remove(assign_event)
+                            tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
+                elif full_event_name in aggregation_attributes:
+                    # there is a special aggregated event, remove duplicates
+                    if count := tx_aggregates.get(full_event_name, 0):
+                        events.remove(event)
+                    tx_aggregates[full_event_name] = count + 1
+                else:
+                    # count, but report as individual events
+                    tx_aggregates[full_event_name] = tx_aggregates.get(full_event_name, 0) + 1
+
+                if event in events:
+                    events_by_name[full_event_name].append(event)
+
+        events = [aDict(event) for event in events]
+        for event in events:
+            _, full_event_name = get_event_name(event)
+            if full_event_name not in aggregation_attributes:
+                continue
+
+            tx_hash = event["transactionHash"]
+            if (aggregated_value := aggregates[tx_hash].get(full_event_name, None)) is None:
+                continue
+
+            event[aggregation_attributes[full_event_name]] = aggregated_value
+
+        return events
+
     def handle_global_event(self, event_name, event) -> Optional[Event]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         if not any([
@@ -231,7 +398,6 @@ class Events(EventSubmodule):
         event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
         return self.handle_event(event_name, event)
-
 
     @staticmethod
     def handle_event(event_name, event) -> Optional[Event]:
@@ -653,213 +819,6 @@ class Events(EventSubmodule):
             transaction_index=event.transactionIndex,
             event_index=event.logIndex
         )
-
-    def _run(self):
-        if self.state == self.State.RUNNING:
-            log.error("Bootstrap plugin was interrupted while running. Reinitializing...")
-            self.__init__(self.bot)
-        return self.check_for_new_events()
-
-    def aggregate_events(self, events: list[LogReceipt | EventData]) -> list[aDict]:
-        # aggregate and deduplicate events within the same transaction
-        events_by_tx = {}
-        for event in reversed(events):
-            tx_hash = event["transactionHash"]
-            if tx_hash not in events_by_tx:
-                events_by_tx[tx_hash] = []
-
-            events_by_tx[tx_hash].append(event)
-
-        aggregation_attributes = {
-            "rocketDepositPool.DepositAssigned": "assignment_count",
-            "unstETH.WithdrawalRequested": "amountOfStETH"
-        }
-
-        def get_event_name(_event: LogReceipt | EventData) -> tuple[str, str]:
-            if "topics" in _event:
-                contract_name = rp.get_name_by_address(_event["address"])
-                name = self.topic_mapping[_event["topics"][0].hex()]
-            else:
-                contract_name = None
-                name = _event.get("event")
-
-            full_name = f"{contract_name}.{name}" if contract_name else name
-            return name, full_name
-
-        aggregates = {}
-        for tx_hash, tx_events in events_by_tx.items():
-            tx_aggregates = {}
-            aggregates[tx_hash] = tx_aggregates
-            events_by_name: dict[str, list[LogReceipt | EventData]] = {}
-
-            for event in tx_events:
-                event_name, full_event_name = get_event_name(event)
-                log.info(f"Processing event {full_event_name}")
-
-                if full_event_name not in events_by_name:
-                    events_by_name[full_event_name] = []
-
-                if full_event_name == "unstETH.WithdrawalRequested":
-                    contract = rp.get_contract_by_address(event["address"])
-                    _event = aDict(contract.events[event_name]().processLog(event))
-                    # sum up the amount of stETH withdrawn in this transaction
-                    if amount := tx_aggregates.get(full_event_name, 0):
-                        events.remove(event)
-                    tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
-                elif full_event_name == "rocketTokenRETH.Transfer":
-                    conflicting_events = ["rocketTokenRETH.TokensBurned", "rocketDepositPool.DepositReceived"]
-                    if any((event in tx_aggregates for event in conflicting_events)):
-                        events.remove(event)
-                        continue
-                    if prev_event := tx_aggregates.get(full_event_name, None):
-                        # only keep largest rETH transfer
-                        contract = rp.get_contract_by_address(event["address"])
-                        _event = aDict(contract.events[event_name]().processLog(event))
-                        _prev_event = aDict(contract.events[event_name]().processLog(event))
-                        if _prev_event["args"]["value"] > _event["args"]["value"]:
-                            events.remove(event)
-                            event = prev_event
-                        else:
-                            events.remove(prev_event)
-                    tx_aggregates[full_event_name] = event
-                elif full_event_name == "rocketDAOProtocolProposal.ProposalVoteOverridden":
-                    # override is emitted first, thus only seen here after the main vote event
-                    # remove last seen vote event
-                    vote_event = events_by_name.get("rocketDAOProtocolProposal.ProposalVoted", [None]).pop()
-                    if vote_event is not None:
-                        events.remove(vote_event)
-                elif full_event_name == "MinipoolPrestaked":
-                    for assign_event in events_by_name.get("rocketDepositPool.DepositAssigned", []).copy():
-                        assigned_minipool = w3.to_checksum_address(assign_event["topics"][1][-20:])
-                        if event["address"] == assigned_minipool:
-                            events_by_name["rocketDepositPool.DepositAssigned"].remove(assign_event)
-                            events.remove(assign_event)
-                            tx_aggregates["rocketDepositPool.DepositAssigned"] -= 1
-                elif full_event_name in aggregation_attributes:
-                    # there is a special aggregated event, remove duplicates
-                    if count := tx_aggregates.get(full_event_name, 0):
-                        events.remove(event)
-                    tx_aggregates[full_event_name] = count + 1
-                else:
-                    # count, but report as individual events
-                    tx_aggregates[full_event_name] = tx_aggregates.get(full_event_name, 0) + 1
-
-                if event in events:
-                    events_by_name[full_event_name].append(event)
-
-        events = [aDict(event) for event in events]
-        for event in events:
-            _, full_event_name = get_event_name(event)
-            if full_event_name not in aggregation_attributes:
-                continue
-
-            tx_hash = event["transactionHash"]
-            if (aggregated_value := aggregates[tx_hash].get(full_event_name, None)) is None:
-                continue
-
-            event[aggregation_attributes[full_event_name]] = aggregated_value
-
-        return events
-
-    def check_for_new_events(self):
-        log.info("Checking for new events")
-        self.state = self.State.RUNNING
-
-        pending_events = []
-        max_request_blocks = 50_000
-        latest_block = w3.eth.get_block_number()
-
-        # split up into smaller block chunks to avoid request timeout
-        if (latest_block - self.start_block) > max_request_blocks:
-            while self.start_block < latest_block:
-                end_block = min(latest_block, self.start_block + max_request_blocks - 1)
-                for pf in self._partial_filters:
-                    pending_events += pf(self.start_block, end_block).get_all_entries()
-                self.start_block = end_block + 1
-
-            self.filters.clear()
-
-        if not self.filters:
-            self.filters = [pf(self.start_block, "latest") for pf in self._partial_filters]
-
-        for event_filter in self.filters:
-            pending_events += event_filter.get_new_entries()
-        log.debug(f"Found {len(pending_events)} pending events")
-
-        should_reinit, messages = self.process_events(pending_events)
-        log.debug("Finished checking for new events")
-        # store last checked block in db if it's bigger than the one we have stored
-        self.state = self.State.OK
-        self.db.last_checked_block.replace_one(
-            {"_id": "events"},
-            {"_id": "events", "block": self.start_block},
-            upsert=True
-        )
-        if should_reinit:
-            log.info("Detected update, triggering reinit")
-            self.state = self.State.RUNNING
-
-        return messages
-
-    def process_events(self, events: list[EventData]) -> tuple[bool, list[Event]]:
-        events.sort(key=lambda e: (e.blockNumber, e.logIndex))
-        messages = []
-        should_reinit = False
-
-        log.debug(f"Aggregating {len(events)} events")
-        events = self.aggregate_events(events)
-        log.debug(f"Processing {len(events)} events")
-
-        for event in events:
-            if event.get("removed", False):
-                continue
-
-            log.debug(f"Checking event {event}")
-
-            response = None
-            if (n := rp.get_name_by_address(event.address)) and "topics" in event:
-                log.debug(f"Found event {event} for {n}")
-                # default event path
-                contract = rp.get_contract_by_address(event.address)
-                contract_event = self.topic_mapping[event.topics[0].hex()]
-                topics = [w3.toHex(t) for t in event.topics]
-                _event = aDict(contract.events[contract_event]().processLog(event))
-                _event.topics = topics
-                if "assignment_count" in event:
-                    _event.assignment_count = event.assignment_count
-                if "amountOfStETH" in event:
-                    _event.args = aDict(_event.args)
-                    _event.args.amountOfStETH = event.amountOfStETH
-                event = _event
-
-                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}"):
-                    response = self.handle_event(event_name, event)
-                else:
-                    log.warning(f"Skipping unknown event {n}.{event.event}")
-
-            elif event.get("event") in self.internal_event_mapping:
-                event_name = self.internal_event_mapping[event.event]
-                if event_name in ["contract_upgraded", "contract_added"]:
-                    if event.blockNumber > self.update_block:
-                        log.info("detected update, setting reinit flag")
-                        should_reinit = True
-                        self.update_block = event.blockNumber
-                else:
-                    # deposit/exit event path
-                    response = self.handle_global_event(event_name, event)
-
-            if response is not None:
-                # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
-                identical_events = filter(lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash), events)
-                log_index_offset = min(e.logIndex for e in identical_events)
-                response.unique_id += f":{event.logIndex - log_index_offset}"
-                messages.append(response)
-
-            if (event.blockNumber > self.start_block) and not should_reinit:
-                self.start_block = event.blockNumber
-
-        return should_reinit, messages
-
 
 async def setup(bot):
     await bot.add_cog(Events(bot))

@@ -21,10 +21,10 @@ log.setLevel(cfg["log_level"])
 class Constellation(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
 
     async def _fetch_num_operators(self) -> int:
-        current_block = w3.eth.get_block('latest').number
+        current_block = w3.eth.get_block_number()
         whitelist_contract = rp.get_contract_by_name("Constellation.Whitelist")
 
         if db_entry := (await self.db.last_checked_block.find_one({"_id": cog_id})):

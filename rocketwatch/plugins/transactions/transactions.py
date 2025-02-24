@@ -1,9 +1,11 @@
 import json
 import logging
 import warnings
+from typing import cast
 
 import web3.exceptions
 from discord import Object
+from eth_typing import ChecksumAddress, BlockNumber, BlockIdentifier
 from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
@@ -24,23 +26,27 @@ log.setLevel(cfg["log_level"])
 class Transactions(EventSubmodule):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.state = "INIT"
-        self.addresses = []
-        self.internal_function_mapping = {}
-        self.block_event = w3.eth.filter("latest")
 
         with open("./plugins/transactions/functions.json") as f:
-            mapped_events = json.load(f)
+            tx_config = json.load(f)
+            contract_addresses, function_map = self._parse_transaction_config(tx_config)
+            self.addresses = contract_addresses
+            self.internal_function_mapping = function_map
 
-        for contract_name, event_mapping in mapped_events.items():
+    @staticmethod
+    def _parse_transaction_config(tx_config: dict) -> tuple[list[ChecksumAddress], dict]:
+        addresses: list[ChecksumAddress] = []
+        function_map = {}
+
+        for contract_name, mapping in tx_config.items():
             try:
                 address = rp.get_address_by_name(contract_name)
-            except Exception as e:
-                log.exception(e)
-                log.error(f"Could not find address for contract {contract_name}")
-                continue
-            self.addresses.append(address)
-            self.internal_function_mapping[contract_name] = event_mapping
+                addresses.append(address)
+                function_map[contract_name] = mapping
+            except Exception:
+                log.exception(f"Could not find address for contract {contract_name}")
+
+        return addresses, function_map
 
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
@@ -83,6 +89,33 @@ class Transactions(EventSubmodule):
 
         for response in responses:
             await ctx.send(embed=response.embed)
+
+    def _get_new_events(self) -> list[Event]:
+        from_block = self.last_served_block + 1 - self.lookback_distance
+        return self._get_past_events(from_block, self._pending_block)
+
+    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+        events = []
+        for block in range(from_block, to_block):
+            events.extend(self.get_events_for_block(cast(BlockNumber, block)))
+        return events
+
+    def get_events_for_block(self, block: BlockIdentifier) -> list[Event]:
+        log.debug(f"Checking block: {block}")
+        try:
+            block = w3.eth.get_block(block, full_transactions=True)
+        except web3.exceptions.BlockNotFound:
+            log.error(f"Skipping block {block} as it can't be found")
+            return []
+
+        for tnx in block.transactions:
+            if "to" in tnx:
+                return self.process_transaction(block, tnx, tnx.to, tnx.input)
+            else:
+                # probably a contract creation transaction
+                log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
+
+        return []
 
     @staticmethod
     def create_embed(event_name, event):
@@ -263,44 +296,6 @@ class Transactions(EventSubmodule):
             event_index=(999 - len(responses)),
         )
         return [response] + responses
-
-    def _run(self):
-        if self.state == "RUNNING":
-            log.error("Transaction plugin was interrupted while running. Re-initializing...")
-            self.__init__(self.bot)
-        return self.check_for_new_transactions()
-
-    def check_for_new_transactions(self) -> list[Event]:
-        log.info("Checking for new Transaction Commands")
-        events = []
-
-        do_full_check = self.state == "INIT"
-        self.state = "RUNNING"
-        if do_full_check:
-            log.info("Doing full check")
-            latest_block = w3.eth.getBlock("latest").number
-            blocks = list(range(latest_block - cfg["core.look_back_distance"], latest_block))
-        else:
-            blocks = list(self.block_event.get_new_entries())
-
-        for block_hash in blocks:
-            log.debug(f"Checking block: {block_hash}")
-            try:
-                block = w3.eth.get_block(block_hash, full_transactions=True)
-            except web3.exceptions.BlockNotFound:
-                log.error(f"Skipping block {block_hash} as it can't be found")
-                continue
-
-            for tnx in block.transactions:
-                if "to" in tnx:
-                    events.extend(self.process_transaction(block, tnx, tnx.to, tnx.input))
-                else:
-                    # probably a contract creation transaction
-                    log.debug(f"Skipping Transaction {tnx.hash.hex()} as it has no `to` parameter. Possible Contract Creation.")
-
-        self.state = "OK"
-        return events
-
 
 async def setup(bot):
     await bot.add_cog(Transactions(bot))
