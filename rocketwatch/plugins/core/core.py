@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
+from functools import partial
 from typing import Optional, cast, Any
 
 import cronitor
@@ -53,6 +54,7 @@ class Core(commands.Cog):
 
         p_id = time.time()
         self.monitor.ping(state='run', series=p_id)
+        self.state = self.State.OK
 
         try:
             await self.gather_new_events()
@@ -141,11 +143,11 @@ class Core(commands.Cog):
 
     async def gather_new_events(self) -> None:
         log.info("Gathering messages from submodules.")
-        self.state = self.State.OK
         log.debug(f"Running {len(self.submodules)} submodules")
         log.debug(f"{self.head_block = }")
 
         latest_block = w3.eth.get_block_number()
+        log.info(f"plugins: {self.bot.cogs}")
 
         if self.head_block == "latest":
             # already caught up to head, just fetch new events
@@ -174,34 +176,28 @@ class Core(commands.Cog):
 
             from_block = cast(BlockNumber, self.head_block + 1)
             log.info(f"Checking block range [{from_block}, {to_block}]")
-            gather_fns = [lambda: sm.get_past_events(from_block, to_block) for sm in self.submodules]
+
+            gather_fns = []
+            for sm in self.submodules:
+                fn = partial(sm.get_past_events, from_block=from_block, to_block=to_block)
+                gather_fns.append(fn)
 
         log.debug(f"{target_block = }")
 
         try:
-            executor = ThreadPoolExecutor()
-            loop = asyncio.get_event_loop()
-            futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
-        except Exception as err:
-            log.exception("Failed to prepare submodules.")
-            raise err
-
-        try:
-            results: list[list[Event] | Exception] = await asyncio.gather(*futures, return_exceptions=True)
+            with ThreadPoolExecutor() as executor:
+                loop = asyncio.get_running_loop()
+                futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
+                results = await asyncio.gather(*futures)
         except Exception as err:
             log.exception("Failed to gather events from submodules.")
+            self.bot.report_error(err)
             raise err
 
         channels = cfg["discord.channels"]
         events: list[dict[str, Any]] = []
 
         for result in results:
-            # check if the result is an exception
-            if isinstance(result, Exception):
-                self.state = self.State.ERROR
-                self.bot.report_error(result)
-                raise result
-
             for event in result:
                 if await self.db.event_queue.find_one({"_id": event.unique_id}):
                     log.debug(f"Event {event} already exists, skipping.")
@@ -225,7 +221,7 @@ class Core(commands.Cog):
 
         log.info(f"{len(events)} new events gathered, updating DB.")
         if events:
-            await self.db.event_queue.bulk_write(map(pymongo.InsertOne, events))
+            await self.db.event_queue.bulk_write(list(map(pymongo.InsertOne, events)))
 
         self.head_block = target_block
         self.db.last_checked_block.replace_one(
