@@ -34,7 +34,7 @@ class Embed(discord.Embed):
         self.set_footer_parts([])
 
     def set_footer_parts(self, parts):
-        footer_parts = ["Created by 0xinvis.eth", "Developed by haloooloolo.eth"]
+        footer_parts = ["Created by 0xinvis.eth & Developed by haloooloolo.eth"]
         if cfg["rocketpool.chain"] != "mainnet":
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
         footer_parts.extend(parts)
