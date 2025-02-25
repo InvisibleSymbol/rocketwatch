@@ -49,7 +49,7 @@ cronitor_secret = "a"
 events: {
   look_back_distance: 8,
   genesis: 13325233,
-  request_block_limit: 1000
+  block_batch_size: 1000,
   status_message: {
     fields: []
   }
