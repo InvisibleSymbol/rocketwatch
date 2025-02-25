@@ -22,8 +22,7 @@ class CowOrders(EventSubmodule):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         # create the cow_orders collection if it doesn't exist
         # limit the collection to 10000 entries
         # create an index on order_uid
