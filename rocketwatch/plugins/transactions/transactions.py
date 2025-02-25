@@ -157,7 +157,6 @@ class Transactions(EventPlugin):
         # this is duplicated for now because boostrap events are in events.py
         # and there is no good spot in utils for it
         elif event_name == "pdao_claimer":
-            # TODO redo with forced ascii graph
             def share_repr(percentage: float) -> str:
                 max_width = 35
                 num_points = round(max_width * percentage / 100)

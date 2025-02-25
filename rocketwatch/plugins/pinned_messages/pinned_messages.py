@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 class PinnedMessages(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"])
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()

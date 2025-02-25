@@ -41,8 +41,7 @@ class MinipoolsUpkeepTask(commands.Cog):
     @timerun
     def get_minipools_from_db(self):
         # get all minipools from db
-        m = self.sync_db.minipools.find({}).distinct("address")
-        return m
+        return self.sync_db.minipools.find().distinct("address")
 
     @timerun
     def get_minipool_stats(self, minipools):
