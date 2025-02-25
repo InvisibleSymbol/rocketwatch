@@ -12,13 +12,13 @@ from utils.cfg import cfg
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 
 log = logging.getLogger("cow_orders")
 log.setLevel(cfg["log_level"])
 
 
-class CowOrders(EventSubmodule):
+class CowOrders(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"

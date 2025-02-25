@@ -20,7 +20,7 @@ from utils.embeds import Embed, el_explorer_url
 from utils.image import ImageCanvas
 from utils.readable import uptime
 from utils.rocketpool import rp
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 from utils.visibility import is_hidden_weak
 from utils.get_nearest_block import get_block_by_timestamp
 
@@ -28,7 +28,7 @@ log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
 
 
-class Snapshot(EventSubmodule):
+class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=5))
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch

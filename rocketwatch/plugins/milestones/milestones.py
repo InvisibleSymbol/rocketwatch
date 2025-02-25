@@ -10,13 +10,13 @@ from utils.cfg import cfg
 from utils.embeds import assemble
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
 
 
-class Milestones(EventSubmodule):
+class Milestones(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
