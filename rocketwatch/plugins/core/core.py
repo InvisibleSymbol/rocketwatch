@@ -19,7 +19,7 @@ from plugins.deposit_pool import deposit_pool
 from plugins.support_utils.support_utils import generate_template_embed
 from utils.cfg import cfg
 from utils.embeds import assemble, Embed
-from utils.event import EventPlugin, Event
+from utils.event import EventPlugin
 from utils.shared_w3 import w3
 
 log = logging.getLogger("core")
@@ -41,7 +41,7 @@ class Core(commands.Cog):
         self.channels = cfg["discord.channels"]
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
         self.head_block: BlockIdentifier = cfg["events.genesis"]
-        self.block_batch_size = cfg["events.request_block_limit"]
+        self.block_batch_size = cfg["events.block_batch_size"]
         self.monitor = cronitor.Monitor('gather-new-events', api_key=cfg["cronitor_secret"])
         self.run_loop.start()
 
@@ -70,7 +70,7 @@ class Core(commands.Cog):
         await asyncio.sleep(30)
 
     async def gather_new_events(self) -> None:
-        log.info("Gathering messages from submodules.")
+        log.info("Gathering messages from submodules")
         log.debug(f"{self.head_block = }")
 
         latest_block = w3.eth.get_block_number()
@@ -86,7 +86,7 @@ class Core(commands.Cog):
             self.head_block = cfg["events.genesis"]
         else:
             # behind chain head, let's see how far
-            last_event_entry = await self.db.event_queue.find({}).sort(
+            last_event_entry = await self.db.event_queue.find().sort(
                 "block_number", pymongo.DESCENDING
             ).limit(1).to_list(None)
             if last_event_entry:
@@ -121,7 +121,7 @@ class Core(commands.Cog):
                 futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
                 results = await asyncio.gather(*futures)
         except Exception as err:
-            log.exception("Failed to gather events from submodules.")
+            log.exception("Failed to gather events from submodules")
             self.bot.report_error(err)
             raise err
 
@@ -131,7 +131,7 @@ class Core(commands.Cog):
         for result in results:
             for event in result:
                 if await self.db.event_queue.find_one({"_id": event.unique_id}):
-                    log.debug(f"Event {event} already exists, skipping.")
+                    log.debug(f"Event {event} already exists, skipping")
                     continue
 
                 # select channel dynamically from config based on event_name prefix
@@ -150,7 +150,7 @@ class Core(commands.Cog):
                     "message_id": None
                 })
 
-        log.info(f"{len(events)} new events gathered, updating DB.")
+        log.info(f"{len(events)} new events gathered, updating DB")
         if events:
             await self.db.event_queue.bulk_write(list(map(pymongo.InsertOne, events)))
 
@@ -162,11 +162,11 @@ class Core(commands.Cog):
         )
 
     async def process_event_queue(self) -> None:
-        log.debug("Processing events in queue...")
+        log.debug("Processing events in queue")
         # get all channels with unprocessed events
         channels = await self.db.event_queue.distinct("channel_id", {"message_id": None})
         if not channels:
-            log.debug("No pending events in queue.")
+            log.debug("No pending events in queue")
             return
 
         def try_load(_entry: dict, _key: str) -> Optional[Any]:
@@ -211,7 +211,7 @@ class Core(commands.Cog):
                     {"$set": {"message_id": msg.id}}
                 )
 
-        log.info("Processed all events in queue.")
+        log.info("Processed all events in queue")
 
     async def update_status_message(self) -> None:
         state_message = await self.db.state_messages.find_one({"_id": "state"})
