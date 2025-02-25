@@ -22,8 +22,7 @@ log.setLevel(cfg["log_level"])
 class Slashings(EventSubmodule):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
 
     def _get_new_events(self) -> list[Event]:
         from_block = self.last_served_block + 1 - self.lookback_distance
