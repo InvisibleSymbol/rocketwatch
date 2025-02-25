@@ -3,7 +3,7 @@ import logging
 import pickle
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from functools import partial
 from typing import Optional, cast, Any
@@ -54,7 +54,7 @@ class Core(commands.Cog):
         try:
             await self.gather_new_events()
             await self.process_event_queue()
-            await self.update_state_message()
+            await self.update_status_message()
             self.monitor.ping(state="complete", series=p_id)
             return
         except Exception as err:
@@ -222,17 +222,17 @@ class Core(commands.Cog):
 
         log.info("Processed all events in queue.")
 
-    async def update_state_message(self) -> None:
+    async def update_status_message(self) -> None:
         state_message = await self.db.state_messages.find_one({"_id": "state"})
 
         if not cfg["events.status_message"]:
-            await self._replace_or_add_state_message(None, state_message)
+            await self._replace_or_add_status(None, state_message)
             return
 
         if state_message:
-            # only update every 60 seconds
-            age = time.time() - state_message["sent_at"]
-            if (age < 60) and (state_message["state"] == str(self.State.OK)):
+            # only update once every 60 seconds
+            age = datetime.now() - state_message["sent_at"]
+            if (age < timedelta(seconds=60)) and (state_message["state"] == str(self.State.OK)):
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
@@ -241,13 +241,13 @@ class Core(commands.Cog):
 
         embed.timestamp = datetime.now()
         embed.set_footer(text=(
-            f"Currently tracking {cfg['rocketpool.chain']} "
+            f"Tracking {cfg['rocketpool.chain']} "
             f"using {len(self.bot.cogs)} plugins"
         ))
         for field in cfg["events.status_message.fields"]:
             embed.add_field(name=field["name"], value=field["value"])
 
-        await self._replace_or_add_state_message(embed, state_message)
+        await self._replace_or_add_status(embed, state_message)
 
     async def show_service_interrupt(self) -> None:
         state_message = await self.db.state_messages.find_one({"_id": "state"})
@@ -255,30 +255,38 @@ class Core(commands.Cog):
             return
 
         embed = assemble(aDict({"event_name": "service_interrupted"}))
-        await self._replace_or_add_state_message(embed, state_message)
+        await self._replace_or_add_status(embed, state_message)
 
-    async def _replace_or_add_state_message(self, embed: Optional[Embed], prev_message: Optional[dict]) -> None:
-        # TODO store channel ID in database instead of assuming default
-        channel = await self.bot.get_or_fetch_channel(self.channels["default"])
-        if embed and prev_message:
-            msg = await channel.fetch_message(prev_message["message_id"])
+    async def _replace_or_add_status(self, embed: Optional[Embed], prev_status: Optional[dict]) -> None:
+        new_channel_id = self.channels["default"]
+        prev_channel_id = (prev_status or {}).get("channel_id", new_channel_id)
+
+        if embed and prev_status and (prev_channel_id == new_channel_id):
+            channel = await self.bot.get_or_fetch_channel(prev_channel_id)
+            msg = await channel.fetch_message(prev_status["message_id"])
             await msg.edit(embed=embed)
             await self.db.state_messages.update_one(
                 {"_id": "state"},
-                {"$set": {"sent_at": time.time(), "state": str(self.state)}}
+                {"$set": {"sent_at": datetime.now(), "state": str(self.state)}}
             )
-        elif embed and (not prev_message):
+            return
+
+        if prev_status:
+            channel = await self.bot.get_or_fetch_channel(prev_channel_id)
+            msg = await channel.fetch_message(prev_status["message_id"])
+            await msg.delete()
+            await self.db.state_messages.delete_one({"_id": "state"})
+
+        if embed:
+            channel = await self.bot.get_or_fetch_channel(new_channel_id)
             msg = await channel.send(embed=embed)
             await self.db.state_messages.insert_one({
                 "_id": "state",
+                "channel_id": new_channel_id,
                 "message_id": msg.id,
-                "state": str(self.state),
-                "sent_at": time.time()
+                "sent_at": datetime.now(),
+                "state": str(self.state)
             })
-        elif prev_message:
-            msg = await channel.fetch_message(prev_message["message_id"])
-            await msg.delete()
-            await self.db.state_messages.delete_one({"_id": "state"})
 
     def cog_unload(self) -> None:
         self.state = self.State.STOPPED
