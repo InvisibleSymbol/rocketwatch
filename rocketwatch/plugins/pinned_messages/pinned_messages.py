@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
-import motor.motor_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext import commands, tasks
@@ -18,8 +18,7 @@ log.setLevel(cfg["log_level"])
 class PinnedMessages(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()
@@ -35,12 +34,12 @@ class PinnedMessages(commands.Cog):
         # get all pinned messages in db
         messages = await self.db.pinned_messages.find().to_list(length=None)
         for message in messages:
-            # if its older than 6 hours and not disabled, mark as disabled
+            # if it's older than 6 hours and not disabled, mark as disabled
             if message["created_at"] + timedelta(hours=6) < datetime.utcnow() and not message["disabled"]:
                 await self.db.pinned_messages.update_one({"_id": message["_id"]}, {"$set": {"disabled": True}})
                 message["disabled"] = True
             try:
-                # check if its marked as disabled but not cleaned_up
+                # check if it's marked as disabled but not cleaned_up
                 if message["disabled"] and not message["cleaned_up"]:
                     # get channel
                     channel = self.bot.get_channel(message["channel_id"])

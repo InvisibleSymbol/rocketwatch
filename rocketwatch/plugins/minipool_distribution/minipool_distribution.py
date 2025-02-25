@@ -41,9 +41,7 @@ async def minipool_distribution_raw(ctx: Context, distribution):
 class MinipoolDistribution(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
 
     def get_minipool_counts_per_node(self):
         # get an array for minipool counts per node from db using aggregation

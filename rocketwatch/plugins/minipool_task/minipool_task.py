@@ -22,8 +22,7 @@ log.setLevel(cfg["log_level"])
 class MinipoolTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
         self.monitor = cronitor.Monitor('gather-minipools', api_key=cfg["cronitor_secret"])
 
