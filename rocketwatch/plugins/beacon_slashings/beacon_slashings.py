@@ -13,13 +13,13 @@ from utils.readable import cl_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import bacon, w3
 from utils.solidity import date_to_beacon_block
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 
 log = logging.getLogger("beacon_slashings")
 log.setLevel(cfg["log_level"])
 
 
-class Slashings(EventSubmodule):
+class Slashings(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch

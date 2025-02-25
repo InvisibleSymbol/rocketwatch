@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -12,33 +13,21 @@ from utils.image import Image
 from rocketwatch import RocketWatch
 
 
+@dataclass(slots=True)
 class Event:
-    def __init__(
-            self,
-            embed: Embed,
-            topic: str,
-            event_name: str,
-            unique_id: str,
-            block_number: int,
-            transaction_index: int = 999,
-            event_index: int = 999,
-            attachment: Optional[Image] = None
-    ):
-        self.embed = embed.copy()
-        self.topic = topic
-        self.event_name = event_name
-        self.unique_id = unique_id
-        self.block_number = block_number
-        self.transaction_index = transaction_index
-        self.attachment = attachment
-        self.time_seen = datetime.now()
-        self.score = (10**9 * block_number) + (10**5 * transaction_index) + event_index
+    embed: Embed
+    topic: str
+    event_name: str
+    unique_id: str
+    block_number: int
+    transaction_index: int = 999
+    event_index: int = 999
+    attachment: Optional[Image] = None
 
-        if self.embed.footer and self.embed.footer.text:
-            self.embed.set_footer_parts([f"score: {self.score}"])
+    def get_score(self):
+        return (10**9 * self.block_number) + (10**5 * self.transaction_index) + self.event_index
 
-
-class EventSubmodule(commands.Cog):
+class EventPlugin(commands.Cog):
     def __init__(self, bot: RocketWatch, rate_limit=timedelta()):
         self.bot = bot
         self.rate_limit = rate_limit
