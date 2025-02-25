@@ -18,7 +18,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.dao import DefaultDAO, ProtocolDAO
 from utils.embeds import assemble, prepare_args, el_explorer_url
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
@@ -29,7 +29,7 @@ log.setLevel(cfg["log_level"])
 
 PartialFilter = Callable[[BlockNumber, BlockNumber | Literal["latest"]], Filter]
 
-class Events(EventSubmodule):
+class Events(EventPlugin):
     update_block = 0
 
     def __init__(self, bot: RocketWatch):

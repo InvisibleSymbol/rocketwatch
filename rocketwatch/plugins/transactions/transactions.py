@@ -1,29 +1,29 @@
 import json
 import logging
 import warnings
-from typing import cast
+from typing import cast, Optional
 
 import web3.exceptions
 from discord import Object
-from eth_typing import ChecksumAddress, BlockNumber, BlockIdentifier
 from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
+from eth_typing import ChecksumAddress, BlockNumber, BlockIdentifier
 from web3.datastructures import MutableAttributeDict as aDict
 
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import assemble, prepare_args, el_explorer_url
+from utils.dao import DefaultDAO, ProtocolDAO
+from utils.embeds import assemble, prepare_args, el_explorer_url, Embed
+from utils.event import EventPlugin, Event
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.dao import DefaultDAO, ProtocolDAO
-from utils.event import EventSubmodule, Event
 
 log = logging.getLogger("transactions")
 log.setLevel(cfg["log_level"])
 
 
-class Transactions(EventSubmodule):
+class Transactions(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
 
@@ -58,7 +58,7 @@ class Transactions(EventSubmodule):
             function: str,
             json_args: str = "{}",
             block_number: int = 0
-    ):
+    ) -> None:
         await ctx.defer()
         try:
             event_obj = aDict({
@@ -67,7 +67,8 @@ class Transactions(EventSubmodule):
                 "args": json.loads(json_args) | {"function_name": function}
             })
         except json.JSONDecodeError:
-            return await ctx.send(content="Invalid JSON args!")
+            await ctx.send(content="Invalid JSON args!")
+            return
 
         event_name = self.internal_function_mapping[contract][function]
         if embed := self.create_embed(event_name, event_obj):
@@ -100,12 +101,12 @@ class Transactions(EventSubmodule):
             events.extend(self.get_events_for_block(cast(BlockNumber, block)))
         return events
 
-    def get_events_for_block(self, block: BlockIdentifier) -> list[Event]:
-        log.debug(f"Checking block {block}")
+    def get_events_for_block(self, block_number: BlockIdentifier) -> list[Event]:
+        log.debug(f"Checking block {block_number}")
         try:
-            block = w3.eth.get_block(block, full_transactions=True)
+            block = w3.eth.get_block(block_number, full_transactions=True)
         except web3.exceptions.BlockNotFound:
-            log.error(f"Skipping block {block} as it can't be found")
+            log.error(f"Skipping block {block_number} as it can't be found")
             return []
 
         for tnx in block.transactions:
@@ -118,7 +119,7 @@ class Transactions(EventSubmodule):
         return []
 
     @staticmethod
-    def create_embed(event_name, event):
+    def create_embed(event_name: str, event: aDict) -> Optional[Embed]:
         # prepare args
         args = aDict(event.args)
 
@@ -156,6 +157,7 @@ class Transactions(EventSubmodule):
         # this is duplicated for now because boostrap events are in events.py
         # and there is no good spot in utils for it
         elif event_name == "pdao_claimer":
+            # TODO redo with forced ascii graph
             def share_repr(percentage: float) -> str:
                 max_width = 35
                 num_points = round(max_width * percentage / 100)

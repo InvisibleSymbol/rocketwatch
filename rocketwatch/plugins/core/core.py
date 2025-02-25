@@ -19,7 +19,7 @@ from plugins.deposit_pool import deposit_pool
 from plugins.support_utils.support_utils import generate_template_embed
 from utils.cfg import cfg
 from utils.embeds import assemble, Embed
-from utils.event import EventSubmodule, Event
+from utils.event import EventPlugin, Event
 from utils.shared_w3 import w3
 
 log = logging.getLogger("core")
@@ -74,7 +74,7 @@ class Core(commands.Cog):
         log.debug(f"{self.head_block = }")
 
         latest_block = w3.eth.get_block_number()
-        submodules = [cog for cog in self.bot.cogs.values() if isinstance(cog, EventSubmodule)]
+        submodules = [cog for cog in self.bot.cogs.values() if isinstance(cog, EventPlugin)]
         log.debug(f"Running {len(submodules)} submodules")
 
         if self.head_block == "latest":
@@ -143,7 +143,7 @@ class Core(commands.Cog):
                     "topic": event.topic,
                     "event_name": event.event_name,
                     "block_number": event.block_number,
-                    "score": event.score,
+                    "score": event.get_score(),
                     "time_seen": datetime.now(),
                     "attachment": pickle.dumps(event.attachment) if event.attachment else None,
                     "channel_id": channel_id,
@@ -191,32 +191,23 @@ class Core(commands.Cog):
                     await msg.delete()
                     await self.db.state_messages.delete_one({"_id": "state"})
 
-            for event_dict in db_events:
-                event = Event(
-                    embed=try_load(event_dict, "embed"),
-                    topic=event_dict["topic"],
-                    event_name=event_dict["event_name"],
-                    unique_id=event_dict["_id"],
-                    block_number=event_dict["block_number"],
-                    attachment=try_load(event_dict, "attachment"),
-                )
+            for event_entry in db_events:
+                embed = try_load(event_entry, "embed")
+                attachment = try_load(event_entry, "attachment")
 
-                embed = event.embed
-                attachment = event.attachment
                 if embed and attachment:
-                    file_name = event.event_name
+                    file_name = event_entry["event_name"]
                     file = attachment.to_file(file_name)
                     embed.set_image(url=f"attachment://{file_name}.png")
                 else:
                     file = None
 
                 # post event message
-                send_silent: bool = ("debug" in event.event_name)
+                send_silent: bool = ("debug" in event_entry["event_name"])
                 msg = await channel.send(embed=embed, file=file, silent=send_silent)
-
                 # add message id to event
                 await self.db.event_queue.update_one(
-                    {"_id": event.unique_id},
+                    {"_id": event_entry["_id"]},
                     {"$set": {"message_id": msg.id}}
                 )
 
