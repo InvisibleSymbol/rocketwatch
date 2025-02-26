@@ -26,17 +26,18 @@ log.setLevel(cfg["log_level"])
 class Transactions(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
+        rp.flush()
+        contract_addresses, function_map = self._parse_transaction_config()
+        self.addresses = contract_addresses
+        self.function_map = function_map
+
+    @staticmethod
+    def _parse_transaction_config() -> tuple[list[ChecksumAddress], dict]:
+        addresses: list[ChecksumAddress] = []
+        function_map = {}
 
         with open("./plugins/transactions/functions.json") as f:
             tx_config = json.load(f)
-            contract_addresses, function_map = self._parse_transaction_config(tx_config)
-            self.addresses = contract_addresses
-            self.internal_function_mapping = function_map
-
-    @staticmethod
-    def _parse_transaction_config(tx_config: dict) -> tuple[list[ChecksumAddress], dict]:
-        addresses: list[ChecksumAddress] = []
-        function_map = {}
 
         for contract_name, mapping in tx_config.items():
             try:
@@ -70,7 +71,7 @@ class Transactions(EventPlugin):
             await ctx.send(content="Invalid JSON args!")
             return
 
-        event_name = self.internal_function_mapping[contract][function]
+        event_name = self.function_map[contract][function]
         if embed := self.create_embed(event_name, event_obj):
             await ctx.send(embed=embed)
         else:
@@ -92,8 +93,14 @@ class Transactions(EventPlugin):
             await ctx.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
-        from_block = self.last_served_block + 1 - self.lookback_distance
-        return self._get_past_events(from_block, self._pending_block)
+        old_addresses = self.addresses
+        try:
+            from_block = self.last_served_block + 1 - self.lookback_distance
+            return self._get_past_events(from_block, self._pending_block)
+        except Exception as err:
+            # rollback in case of contract upgrade
+            self.addresses = old_addresses
+            raise err
 
     def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
@@ -242,7 +249,7 @@ class Transactions(EventPlugin):
         log.debug(decoded)
 
         function = decoded[0].function_identifier
-        if (event_name := self.internal_function_mapping[contract_name].get(function)) is None:
+        if (event_name := self.function_map[contract_name].get(function)) is None:
             return []
 
         event = aDict(tnx)
@@ -296,6 +303,11 @@ class Transactions(EventPlugin):
             transaction_index=event.transactionIndex,
             event_index=(999 - len(responses)),
         )
+
+        if "upgrade_triggered" in event_name:
+            log.info(f"Detected contract upgrade at block {response.block_number}, reinitializing")
+            self.__init__(self.bot)
+
         return [response] + responses
 
 async def setup(bot):
