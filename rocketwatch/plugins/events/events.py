@@ -3,7 +3,6 @@ import logging
 import warnings
 from typing import Optional, Callable, Literal
 
-import pymongo
 from discord import Object
 from discord.app_commands import guilds
 from discord.ext.commands import Context, is_owner, hybrid_command
@@ -30,22 +29,20 @@ log.setLevel(cfg["log_level"])
 PartialFilter = Callable[[BlockNumber, BlockNumber | Literal["latest"]], Filter]
 
 class Events(EventPlugin):
-    update_block = 0
-
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.filters: list[Filter] = []
-
         rp.flush()
-        with open("./plugins/events/events.json") as f:
-            config = json.load(f)
-            partial_filters, event_map, topic_map = self._parse_event_config(config)
-            self._partial_filters: list[PartialFilter] = partial_filters
-            self.internal_event_mapping = event_map
-            self.topic_mapping = topic_map
+        partial_filters, event_map, topic_map = self._parse_event_config()
+        self._partial_filters = partial_filters
+        self.event_map = event_map
+        self.topic_map = topic_map
+        self.active_filters: list[Filter] = []
 
     @staticmethod
-    def _parse_event_config(event_config: dict) -> tuple[list[PartialFilter], dict, dict]:
+    def _parse_event_config() -> tuple[list[PartialFilter], dict, dict]:
+        with open("./plugins/events/events.json") as f:
+            config = json.load(f)
+
         event_map = {}
         topic_map = {}
         partial_filters: list[PartialFilter] = []
@@ -53,7 +50,7 @@ class Events(EventPlugin):
         # generate filter for direct events
         addresses: set[ChecksumAddress] = set()
         aggregated_topics: set[HexBytes] = set()
-        for group in event_config["direct"]:
+        for group in config["direct"]:
             contract_name = group["contract_name"]
             try:
                 contract = rp.get_contract_by_name(contract_name)
@@ -81,7 +78,7 @@ class Events(EventPlugin):
             partial_filters.append(build_direct_filter)
 
         # generate filters for global events
-        for group in event_config["global"]:
+        for group in config["global"]:
             contract = rp.assemble_contract(name=group["contract_name"])
             for event in group["events"]:
                 event_map[event["event_name"]] = event["name"]
@@ -124,8 +121,8 @@ class Events(EventPlugin):
         except json.JSONDecodeError:
             return await ctx.send(content="Invalid JSON args!")
 
-        if not (event_name := self.internal_event_mapping.get(event, None)):
-            event_name = self.internal_event_mapping[f"{contract}.{event}"]
+        if not (event_name := self.event_map.get(event, None)):
+            event_name = self.event_map[f"{contract}.{event}"]
 
         if response := self.handle_event(event_name, event_obj):
             await ctx.send(embed=response.embed)
@@ -144,7 +141,7 @@ class Events(EventPlugin):
 
         # get direct events
         for event_log in logs:
-            if ("topics" in event_log) and (event_log["topics"][0].hex() in self.topic_mapping):
+            if ("topics" in event_log) and (event_log["topics"][0].hex() in self.topic_map):
                 filtered_events.append(event_log)
 
         # get global events
@@ -158,7 +155,7 @@ class Events(EventPlugin):
                 rich_logs = event.process_receipt(receipt)
                 filtered_events.extend(rich_logs)
 
-        _, responses = self.process_events(filtered_events)
+        responses, _ = self.process_events(filtered_events)
         if not responses:
             await ctx.send(content="No events found.")
 
@@ -166,37 +163,46 @@ class Events(EventPlugin):
             await ctx.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
-        if not self.filters:
+        if not self.active_filters:
             from_block = self.last_served_block + 1 - self.lookback_distance
-            self.filters = [pf(from_block, "latest") for pf in self._partial_filters]
+            self.active_filters = [pf(from_block, "latest") for pf in self._partial_filters]
 
         events = []
-        for event_filter in self.filters:
+        for event_filter in self.active_filters:
             events.extend(event_filter.get_new_entries())
 
-        contract_upgraded, messages = self.process_events(events)
-        if contract_upgraded:
-            log.info("Detected update, triggering reinit")
-            self.__init__(self.bot)
-            self.last_requested_block = self.update_block - 1
-            messages += self._get_new_events()
+        messages, contract_upgrade_block = self.process_events(events)
+        if not contract_upgrade_block:
+            return messages
 
-        return messages
+        log.info(f"Detected contract upgrade at block {contract_upgrade_block}, reinitializing")
+        old_config = self._partial_filters, self.event_map, self.topic_map
+
+        try:
+            self.__init__(self.bot)
+            post_upgrade_block = BlockNumber(contract_upgrade_block + 1)
+            self.active_filters = [pf(post_upgrade_block, "latest") for pf in self._partial_filters]
+            messages.extend(self._get_new_events())
+            return messages
+        except Exception as err:
+            # rollback to pre upgrade config if this goes wrong
+            self._partial_filters, self.event_map, self.topic_map = old_config
+            self.active_filters.clear()
+            raise err
 
     def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
         for pf in self._partial_filters:
             events.extend(pf(from_block, to_block).get_all_entries())
 
-        self.filters.clear()
-
-        _, messages = self.process_events(events)
+        self.active_filters.clear()
+        messages, _ = self.process_events(events)
         return messages
 
-    def process_events(self, events: list[LogReceipt | EventData]) -> tuple[bool, list[Event]]:
+    def process_events(self, events: list[LogReceipt | EventData]) -> tuple[list[Event], Optional[BlockNumber]]:
         events.sort(key=lambda e: (e.blockNumber, e.logIndex))
         messages = []
-        contract_upgraded = False
+        upgrade_block = None
 
         log.debug(f"Aggregating {len(events)} events")
         events = self.aggregate_events(events)
@@ -213,7 +219,7 @@ class Events(EventPlugin):
                 log.debug(f"Found event {event} for {n}")
                 # default event path
                 contract = rp.get_contract_by_address(event.address)
-                contract_event = self.topic_mapping[event.topics[0].hex()]
+                contract_event = self.topic_map[event.topics[0].hex()]
                 topics = [w3.toHex(t) for t in event.topics]
                 _event = aDict(contract.events[contract_event]().processLog(event))
                 _event.topics = topics
@@ -224,18 +230,16 @@ class Events(EventPlugin):
                     _event.args.amountOfStETH = event.amountOfStETH
                 event = _event
 
-                if event_name := self.internal_event_mapping.get(f"{n}.{event.event}"):
+                if event_name := self.event_map.get(f"{n}.{event.event}"):
                     response = self.handle_event(event_name, event)
                 else:
                     log.warning(f"Skipping unknown event {n}.{event.event}")
 
-            elif event.get("event") in self.internal_event_mapping:
-                event_name = self.internal_event_mapping[event.event]
+            elif event.get("event") in self.event_map:
+                event_name = self.event_map[event.event]
                 if event_name in ["contract_upgraded", "contract_added"]:
-                    if event.blockNumber > self.update_block:
-                        log.info("detected update, setting reinit flag")
-                        contract_upgraded = True
-                        self.update_block = event.blockNumber
+                    log.info("detected contract upgrade")
+                    upgrade_block = event.blockNumber
                 else:
                     # deposit/exit event path
                     response = self.handle_global_event(event_name, event)
@@ -247,7 +251,7 @@ class Events(EventPlugin):
                 response.unique_id += f":{event.logIndex - log_index_offset}"
                 messages.append(response)
 
-        return contract_upgraded, messages
+        return messages, upgrade_block
 
     def aggregate_events(self, events: list[LogReceipt | EventData]) -> list[aDict]:
         # aggregate and deduplicate events within the same transaction
@@ -267,7 +271,7 @@ class Events(EventPlugin):
         def get_event_name(_event: LogReceipt | EventData) -> tuple[str, str]:
             if "topics" in _event:
                 contract_name = rp.get_name_by_address(_event["address"])
-                name = self.topic_mapping[_event["topics"][0].hex()]
+                name = self.topic_map[_event["topics"][0].hex()]
             else:
                 contract_name = None
                 name = _event.get("event")

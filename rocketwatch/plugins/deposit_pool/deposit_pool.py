@@ -1,7 +1,6 @@
 import logging
 
 import humanize
-from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -13,9 +12,9 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
-log = logging.getLogger("despoit_pool")
+log = logging.getLogger("deposit_pool")
 log.setLevel(cfg["log_level"])
 
 
@@ -66,13 +65,13 @@ class DepositPool(commands.Cog):
     @hybrid_command()
     async def deposit_pool(self, ctx: Context):
         """Deposit Pool Stats"""
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         embed = await get_dp()
         await ctx.send(embed=embed)
 
     @hybrid_command()
     async def reth_extra_collateral(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         current_reth_value = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", rp.call("rocketTokenRETH.totalSupply")))
         current_collateral_rate = solidity.to_float(rp.call("rocketTokenRETH.getCollateralRate"))
@@ -91,7 +90,7 @@ class DepositPool(commands.Cog):
 
     @hybrid_command()
     async def atlas_queue(self, ctx):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         e = Embed()
         e.title = "Atlas Queue Stats"

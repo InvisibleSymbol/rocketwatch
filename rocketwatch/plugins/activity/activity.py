@@ -1,7 +1,6 @@
 import logging
 
 import cronitor
-import humanize
 from discord import Activity, ActivityType
 from discord.ext import commands, tasks
 
@@ -22,17 +21,21 @@ class RichActivity(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
+        if not self.run_loop.is_running():
+            self.run_loop.start()
 
     @tasks.loop(seconds=60.0)
     async def run_loop(self):
         self.monitor.ping()
         try:
-            log.debug("Updating Discord Activity...")
-            count = humanize.intcomma(rp.call("rocketMinipoolManager.getMinipoolCount"))
-            await self.bot.change_presence(activity=Activity(type=ActivityType.watching, name=f"{count} Minipools!"))
+            log.debug("Updating Discord activity")
+            mp_count = rp.call("rocketMinipoolManager.getMinipoolCount")
+            await self.bot.change_presence(
+                activity=Activity(
+                    type=ActivityType.watching,
+                    name=f"{mp_count:,} minipools!"
+                )
+            )
         except Exception as err:
             await self.bot.report_error(err)
 
