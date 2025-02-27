@@ -301,7 +301,7 @@ class Events(EventPlugin):
                     tx_aggregates[full_event_name] = amount + _event["args"]["amountOfStETH"]
                 elif full_event_name == "rocketTokenRETH.Transfer":
                     conflicting_events = ["rocketTokenRETH.TokensBurned", "rocketDepositPool.DepositReceived"]
-                    if any((event in tx_aggregates for event in conflicting_events)):
+                    if any((event in events_by_name for event in conflicting_events)):
                         events.remove(event)
                         continue
                     if prev_event := tx_aggregates.get(full_event_name, None):
@@ -315,6 +315,10 @@ class Events(EventPlugin):
                         else:
                             events.remove(prev_event)
                     tx_aggregates[full_event_name] = event
+                elif full_event_name == "StatusUpdated":
+                    if "MinipoolScrubbed" in events_by_name:
+                        events.remove(event)
+                        continue
                 elif full_event_name == "rocketDAOProtocolProposal.ProposalVoteOverridden":
                     # override is emitted first, thus only seen here after the main vote event
                     # remove last seen vote event
@@ -772,7 +776,7 @@ class Events(EventPlugin):
                 # 3. the validator does not have the active_ongoing validator status
                 # 4. the migration could have timed out, the oDAO will scrub minipools after they have passed half of the migration window
                 # get pubkey from minipool contract
-                pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", args.minipool, block=args.blockNumber - 1).hex()
+                pubkey = rp.call("rocketMinipoolManager.getMinipoolPubkey", args.minipool).hex()
                 vali_info = bacon.get_validator(f"0x{pubkey}")["data"]
                 reason = "joe fucking up (unknown reason)"
                 if vali_info:
