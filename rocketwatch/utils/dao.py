@@ -40,6 +40,7 @@ class DAO(ABC):
     def build_proposal_body(
             self,
             proposal: dict,
+            *,
             include_proposer=True,
             include_payload=True,
             include_votes=True
