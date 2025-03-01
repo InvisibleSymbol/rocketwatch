@@ -32,7 +32,7 @@ class EventPlugin(commands.Cog):
         self.bot = bot
         self.rate_limit = rate_limit
         self.lookback_distance: int = cfg["events.look_back_distance"]
-        self.last_served_block = w3.eth.get_block(cfg["events.genesis"]).number
+        self.last_served_block = w3.eth.get_block(cfg["events.genesis"]).number - 1
         self._pending_block = self.last_served_block
         self._last_run = datetime.now() - rate_limit
 
