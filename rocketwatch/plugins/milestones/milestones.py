@@ -9,7 +9,6 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import assemble
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
 from utils.event import EventPlugin, Event
 
 log = logging.getLogger("milestones")

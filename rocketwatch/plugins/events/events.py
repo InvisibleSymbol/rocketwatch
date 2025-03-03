@@ -645,8 +645,6 @@ class Events(EventPlugin):
             elif token_prefix != "reth":
                 return None
 
-            args.time = w3.eth.get_block(event.blockNumber).timestamp
-
         # reject if the amount is not major
         if any([event_name == "reth_transfer_event" and args.amount < 1000,
                 event_name == "rpl_stake_event" and args.amount < 1000,
