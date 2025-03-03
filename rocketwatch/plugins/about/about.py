@@ -36,11 +36,13 @@ class About(commands.Cog):
 
         if cfg.get("wakatime.secret"):
             try:
-                code_time = requests.get("https://wakatime.com/api/v1/users/current/all_time_since_today",
-                                         params={
-                                             "project": "rocketwatch",
-                                             "api_key": cfg["wakatime.secret"]
-                                         }).json()["data"]["text"]
+                code_time = requests.get(
+                    "https://wakatime.com/api/v1/users/current/all_time_since_today",
+                     params={
+                         "project": "rocketwatch",
+                         "api_key": cfg["wakatime.secret"]
+                     }
+                ).json()["data"]["text"]
             except Exception as err:
                 await self.bot.report_error(err)
 
