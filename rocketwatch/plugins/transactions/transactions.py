@@ -116,14 +116,17 @@ class Transactions(EventPlugin):
             log.error(f"Skipping block {block_number} as it can't be found")
             return []
 
+        events = []
         for tnx in block.transactions:
             if "to" in tnx:
-                return self.process_transaction(block, tnx, tnx.to, tnx.input)
+                events.extend(self.process_transaction(block, tnx, tnx.to, tnx.input))
             else:
-                # probably a contract creation transaction
-                log.debug(f"Skipping transaction {tnx.hash.hex()} as it has no `to` parameter. Possible contract creation.")
+                log.debug((
+                    f"Skipping transaction {tnx.hash.hex()} as it has no `to` parameter. "
+                    f"Possible contract creation.")
+                )
 
-        return []
+        return events
 
     @staticmethod
     def create_embed(event_name: str, event: aDict) -> Optional[Embed]:

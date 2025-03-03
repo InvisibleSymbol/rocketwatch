@@ -17,11 +17,11 @@ from utils.solidity import date_to_beacon_block, beacon_block_to_date
 from utils.event import EventPlugin, Event
 from utils.get_nearest_block import get_block_by_timestamp
 
-log = logging.getLogger("beacon_slashings")
+log = logging.getLogger("beacon_events")
 log.setLevel(cfg["log_level"])
 
 
-class BeaconChain(EventPlugin):
+class BeaconEvents(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
@@ -29,24 +29,28 @@ class BeaconChain(EventPlugin):
 
     def _get_new_events(self) -> list[Event]:
         from_block = self.last_served_block + 1 - self.lookback_distance
-        return self._get_past_events(from_block, self._pending_block)
+        return self._get_events(from_block, self._pending_block, check_finality=True)
 
     def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
-        from_slot = date_to_beacon_block(w3.eth.get_block(from_block - 1).timestamp) + 1
+        # quite expensive and only really makes sense to check toward the head of the chain
+        return self._get_events(from_block, to_block, check_finality=False)
+
+    def _get_events(self, from_block: BlockNumber, to_block: BlockNumber, *, check_finality: bool) -> list[Event]:
+        from_slot = max(0, date_to_beacon_block(w3.eth.get_block(from_block - 1).timestamp) + 1)
         to_slot = date_to_beacon_block(w3.eth.get_block(to_block).timestamp)
         log.info(f"Checking for new beacon chain events in slot range [{from_slot}, {to_slot}]")
 
         events: list[Event] = []
         for slot_number in range(from_slot, to_slot):
-            events.extend(self.get_events_for_slot(slot_number))
+            events.extend(self._get_events_for_slot(slot_number))
+
+        if check_finality and (finality_delay_event := self._check_finality(to_slot)):
+            events.append(finality_delay_event)
 
         log.debug("Finished checking beacon chain events")
         return events
 
-    def get_events_for_slot(self, slot_number: int) -> list[Event]:
-        if slot_number < 0:
-            return []
-
+    def _get_events_for_slot(self, slot_number: int) -> list[Event]:
         try:
             log.debug(f"Checking slot {slot_number}")
             beacon_block = bacon.get_block(slot_number)["data"]["message"]
@@ -56,18 +60,15 @@ class BeaconChain(EventPlugin):
                 return []
             raise err
 
-        events = self.get_slashings(beacon_block)
-
-        if proposal_event := self.get_proposal(beacon_block):
+        events = self._get_slashings(beacon_block)
+        if proposal_event := self._get_proposal(beacon_block):
             events.append(proposal_event)
-
-        if finality_delay_event := self.check_finality(beacon_block):
-            events.append(finality_delay_event)
 
         return events
 
-    def get_slashings(self, beacon_block: dict) -> list[Event]:
-        timestamp = beacon_block_to_date(beacon_block["slot"])
+    def _get_slashings(self, beacon_block: dict) -> list[Event]:
+        slot = int(beacon_block["slot"])
+        timestamp = beacon_block_to_date(slot)
         slashings = []
 
         for slash in beacon_block["body"]["attester_slashings"]:
@@ -108,7 +109,7 @@ class BeaconChain(EventPlugin):
             args = prepare_args(aDict(slash))
             if embed := assemble(args):
                 events.append(Event(
-                    topic="beacon_slashings",
+                    topic="beacon_events",
                     embed=embed,
                     event_name=slash["event_name"],
                     unique_id=unique_id,
@@ -117,7 +118,7 @@ class BeaconChain(EventPlugin):
 
         return events
 
-    def get_proposal(self, beacon_block: dict) -> Optional[Event]:
+    def _get_proposal(self, beacon_block: dict) -> Optional[Event]:
         if not "execution_payload" in beacon_block["body"]:
             # no proposed block
             return None
@@ -160,7 +161,7 @@ class BeaconChain(EventPlugin):
         args = {
             "node_operator": minipool["node_operator"],
             "minipool": minipool["address"],
-            "slot": beacon_block["slot"],
+            "slot": int(beacon_block["slot"]),
             "reward_amount": block_reward_eth,
             "timestamp": timestamp,
         }
@@ -187,15 +188,19 @@ class BeaconChain(EventPlugin):
             block_number=block_number
         )
 
-    def check_finality(self, beacon_block: dict) -> Optional[Event]:
-        slot_number = beacon_block["slot"]
+    def _check_finality(self, beacon_block: dict) -> Optional[Event]:
+        slot_number = int(beacon_block["slot"])
         epoch_number = slot_number // 32
         timestamp = beacon_block_to_date(slot_number)
 
-        # calculate finality delay
-        finality_checkpoint = bacon.get_finality_checkpoint(state_id=slot_number)
-        last_finalized_epoch = int(finality_checkpoint["data"]["finalized"]["epoch"])
-        finality_delay = epoch_number - last_finalized_epoch
+        try:
+            # calculate finality delay
+            finality_checkpoint = bacon.get_finality_checkpoint(state_id=str(slot_number))
+            last_finalized_epoch = int(finality_checkpoint["data"]["finalized"]["epoch"])
+            finality_delay = epoch_number - last_finalized_epoch
+        except requests.exceptions.HTTPError:
+            log.error("Failed to get finality checkpoints")
+            return None
 
         # latest finality delay from db
         delay_entry = self.db.finality_checkpoints.find_one({"epoch": epoch_number - 1})
@@ -255,4 +260,4 @@ class BeaconChain(EventPlugin):
 
 
 async def setup(bot):
-    await bot.add_cog(BeaconChain(bot))
+    await bot.add_cog(BeaconEvents(bot))

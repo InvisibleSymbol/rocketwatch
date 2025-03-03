@@ -475,6 +475,10 @@ def assemble(args) -> Embed:
         times = [args["time"]]
     else:
         times = [value for key, value in args.items() if "time" in key.lower()]
+
+    if block := args.get("blockNumber"):
+        times += [w3.eth.get_block(block).timestamp]
+
     time = times[0] if times else int(datetime.datetime.now().timestamp())
     e.add_field(name="Timestamp",
                 value=f"<t:{time}:R> (<t:{time}:f>)",
