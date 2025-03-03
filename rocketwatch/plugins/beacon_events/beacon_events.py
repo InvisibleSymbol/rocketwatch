@@ -29,28 +29,24 @@ class BeaconEvents(EventPlugin):
 
     def _get_new_events(self) -> list[Event]:
         from_block = self.last_served_block + 1 - self.lookback_distance
-        return self._get_events(from_block, self._pending_block, check_finality=True)
+        return self._get_past_events(from_block, self._pending_block)
 
     def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
-        # quite expensive and only really makes sense to check toward the head of the chain
-        return self._get_events(from_block, to_block, check_finality=False)
-
-    def _get_events(self, from_block: BlockNumber, to_block: BlockNumber, *, check_finality: bool) -> list[Event]:
         from_slot = max(0, date_to_beacon_block(w3.eth.get_block(from_block - 1).timestamp) + 1)
         to_slot = date_to_beacon_block(w3.eth.get_block(to_block).timestamp)
         log.info(f"Checking for new beacon chain events in slot range [{from_slot}, {to_slot}]")
 
         events: list[Event] = []
-        for slot_number in range(from_slot, to_slot):
-            events.extend(self._get_events_for_slot(slot_number))
+        for slot_number in range(from_slot, to_slot-1):
+            events.extend(self._get_events_for_slot(slot_number, check_finality=False))
 
-        if check_finality and (finality_delay_event := self._check_finality(to_slot)):
-            events.append(finality_delay_event)
+        # quite expensive and only really makes sense to check toward the head of the chain
+        events.extend(self._get_events_for_slot(to_slot, check_finality=True))
 
         log.debug("Finished checking beacon chain events")
         return events
 
-    def _get_events_for_slot(self, slot_number: int) -> list[Event]:
+    def _get_events_for_slot(self, slot_number: int, *, check_finality: bool) -> list[Event]:
         try:
             log.debug(f"Checking slot {slot_number}")
             beacon_block = bacon.get_block(slot_number)["data"]["message"]
@@ -63,6 +59,9 @@ class BeaconEvents(EventPlugin):
         events = self._get_slashings(beacon_block)
         if proposal_event := self._get_proposal(beacon_block):
             events.append(proposal_event)
+
+        if check_finality and (finality_delay_event := self._check_finality(beacon_block)):
+            events.append(finality_delay_event)
 
         return events
 
@@ -198,8 +197,8 @@ class BeaconEvents(EventPlugin):
             finality_checkpoint = bacon.get_finality_checkpoint(state_id=str(slot_number))
             last_finalized_epoch = int(finality_checkpoint["data"]["finalized"]["epoch"])
             finality_delay = epoch_number - last_finalized_epoch
-        except requests.exceptions.HTTPError:
-            log.error("Failed to get finality checkpoints")
+        except requests.exceptions.HTTPError as e:
+            log.exception("Failed to get finality checkpoints")
             return None
 
         # latest finality delay from db
