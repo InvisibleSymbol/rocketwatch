@@ -13,7 +13,7 @@ from utils.image import Image
 from rocketwatch import RocketWatch
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Event:
     embed: Embed
     topic: str
