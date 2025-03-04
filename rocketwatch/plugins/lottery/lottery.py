@@ -5,10 +5,10 @@ from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
-from utils.readable import cl_explorer_url
 from utils.shared_w3 import bacon
 from utils.solidity import BEACON_START_DATE, BEACON_EPOCH_LENGTH
 from utils.time_debug import timerun_async
@@ -139,7 +139,7 @@ lottery = LotteryBase()
 
 
 class Lottery(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()

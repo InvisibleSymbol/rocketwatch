@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.etherscan import get_recent_account_transactions
@@ -22,7 +23,7 @@ def get_percentiles(percentiles, values):
 class NodeFeeDistribution(commands.Cog):
     PERCENTILES = [1, 10, 25, 50, 75, 90, 99]
 
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()

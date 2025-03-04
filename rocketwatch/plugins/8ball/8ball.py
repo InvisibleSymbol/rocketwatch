@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import random
 import random as pyrandom
 
@@ -7,12 +6,13 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
-from utils.cfg import cfg
+from rocketwatch import RocketWatch
 from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 
+
 class EightBall(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command(name="8ball")

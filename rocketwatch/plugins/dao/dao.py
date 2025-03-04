@@ -5,6 +5,7 @@ from typing import Literal
 from discord.app_commands import describe
 from discord.ext.commands import Cog, Context, hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden, is_hidden_weak
@@ -17,7 +18,7 @@ log.setLevel(cfg["log_level"])
 
 
 class DAOCommand(Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @staticmethod

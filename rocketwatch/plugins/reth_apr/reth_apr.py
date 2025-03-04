@@ -12,10 +12,10 @@ from discord.ext.commands import hybrid_command
 from matplotlib.dates import DateFormatter
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.reporter import report_error
 from utils.rocketpool import rp
 from utils.shared_w3 import w3, historical_w3
 from utils.visibility import is_hidden
@@ -42,7 +42,7 @@ def get_duration(d1, d2):
 
 
 class RETHAPR(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
@@ -60,7 +60,7 @@ class RETHAPR(commands.Cog):
         try:
             await self.gather_new_data()
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
 
     def get_time_of_block(self, block_number):
         block = w3.eth.getBlock(block_number)

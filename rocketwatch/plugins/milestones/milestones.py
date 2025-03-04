@@ -4,30 +4,28 @@ import logging
 import pymongo
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
 from utils.embeds import assemble
 from utils.rocketpool import rp
-from utils.shared_w3 import w3
-from utils.submodule import QueuedSubmodule
+from utils.event import EventPlugin, Event
 
 log = logging.getLogger("milestones")
 log.setLevel(cfg["log_level"])
 
 
-class Milestones(QueuedSubmodule):
-    def __init__(self, bot):
+class Milestones(EventPlugin):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.collection = self.db.milestones
         self.state = "OK"
 
         with open("./plugins/milestones/milestones.json") as f:
             self.milestones = json.load(f)
 
-    def _run(self):
+    def _get_new_events(self) -> list[Event]:
         if self.state == "RUNNING":
             log.error("Milestones plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -73,7 +71,7 @@ class Milestones(QueuedSubmodule):
                 payload.append(Event(
                     embed=embed,
                     topic="milestones",
-                    block_number=w3.eth.getBlock("latest").number,
+                    block_number=self._pending_block,
                     event_name=milestone.id,
                     unique_id=f"{milestone.id}:{latest_goal}",
                 ))

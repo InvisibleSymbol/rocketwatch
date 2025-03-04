@@ -1,22 +1,14 @@
-import asyncio
 import logging
-from concurrent.futures import ThreadPoolExecutor
-from io import BytesIO
 
-import pymongo
-from discord import File
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ext.commands import hybrid_command, Context
 from motor.motor_asyncio import AsyncIOMotorClient
-import matplotlib.pyplot as plt
 
-from utils import solidity
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.readable import render_tree_legacy
-from utils.reporter import report_error
-from utils.shared_w3 import bacon, w3
-from utils.time_debug import timerun
+from utils.shared_w3 import w3
 from utils.visibility import is_hidden
 
 log = logging.getLogger("beacon_states")
@@ -24,7 +16,7 @@ log.setLevel(cfg["log_level"])
 
 
 class BeaconStates(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

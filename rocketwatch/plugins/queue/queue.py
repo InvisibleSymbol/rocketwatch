@@ -4,11 +4,12 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.embeds import el_explorer_url
 from utils.rocketpool import rp
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
@@ -38,13 +39,13 @@ def get_queue(l=15):
 
 
 class Queue(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()
     async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue."""
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
         e = Embed()
         e.title = "Minipool queue"
         e.description = get_queue()

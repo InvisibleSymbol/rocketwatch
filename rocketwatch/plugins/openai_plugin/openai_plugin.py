@@ -2,18 +2,18 @@ import logging
 import re
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
-from typing import Tuple, Awaitable
 
+import anthropic
 import pytz
 import tiktoken
 from discord import File, DeletedReferencedMessage
+from discord.channel import TextChannel
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from discord.channel import TextChannel
 from motor.motor_asyncio import AsyncIOMotorClient
-import anthropic
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
@@ -22,7 +22,7 @@ log.setLevel(cfg["log_level"])
 
 
 class OpenAi(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.client = anthropic.AsyncAnthropic(
             api_key=cfg["anthropic.api_key"],  # Ensure you have this in your configuration

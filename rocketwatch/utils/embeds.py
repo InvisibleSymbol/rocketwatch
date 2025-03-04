@@ -6,7 +6,6 @@ import math
 import discord
 import humanize
 import requests
-from retry import retry
 from cachetools.func import ttl_cache
 from discord import Color
 from ens import InvalidName
@@ -17,9 +16,10 @@ from utils import solidity
 from utils.cached_ens import CachedEns
 from utils.cfg import cfg
 from utils.readable import cl_explorer_url, advanced_tnx_url, s_hex
-from utils.rocketpool import rp, NoAddressFound
+from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
+from utils.retry import retry
 
 ens = CachedEns()
 
@@ -34,8 +34,7 @@ class Embed(discord.Embed):
         self.set_footer_parts([])
 
     def set_footer_parts(self, parts):
-        footer_parts = ["Created by 0xinvis.eth & Developed by haloooloolo.eth",
-                        "/donate"]
+        footer_parts = ["Created by 0xinvis.eth & Developed by haloooloolo.eth"]
         if cfg["rocketpool.chain"] != "mainnet":
             footer_parts.insert(-1, f"Chain: {cfg['rocketpool.chain'].capitalize()}")
         footer_parts.extend(parts)
@@ -48,7 +47,6 @@ class Embed(discord.Embed):
 # If the user input isn't sanitary, send an error message back to the user and return None, None.
 async def resolve_ens(ctx, node_address):
     # if it looks like an ens, attempt to resolve it
-    address = None
     if "." in node_address:
         try:
             address = ens.resolve_name(node_address)
@@ -248,7 +246,7 @@ def assemble(args) -> Embed:
             (args.event_name == "cs_deposit_eth_event" and args.assets >= 500)
     )):
         e.set_image(url="https://media.giphy.com/media/VIX2atZr8dCKk5jF6L/giphy.gif")
-    elif any(kw in args.event_name for kw in ["_scrub_", "_dissolve_", "_slash_", "finality_delay_event"]):
+    elif any(kw in args.event_name for kw in ["_scrub_event", "_dissolve_event", "_slash_event", "finality_delay_event"]):
         e.set_image(url="https://c.tenor.com/p3hWK5YRo6IAAAAC/this-is-fine-dog.gif")
     elif "_proposal_smoothie_" in args.event_name:
         e.set_image(url="https://cdn.discordapp.com/attachments/812745786638336021/1106983677130461214/butta-commie-filter.png")
@@ -477,6 +475,10 @@ def assemble(args) -> Embed:
         times = [args["time"]]
     else:
         times = [value for key, value in args.items() if "time" in key.lower()]
+
+    if block := args.get("blockNumber"):
+        times += [w3.eth.get_block(block).timestamp]
+
     time = times[0] if times else int(datetime.datetime.now().timestamp())
     e.add_field(name="Timestamp",
                 value=f"<t:{time}:R> (<t:{time}:f>)",

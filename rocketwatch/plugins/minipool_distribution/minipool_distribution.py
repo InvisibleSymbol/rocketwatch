@@ -11,6 +11,7 @@ from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden
@@ -38,11 +39,9 @@ async def minipool_distribution_raw(ctx: Context, distribution):
 
 
 class MinipoolDistribution(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
-
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
 
     def get_minipool_counts_per_node(self):
         # get an array for minipool counts per node from db using aggregation
@@ -79,9 +78,7 @@ class MinipoolDistribution(commands.Cog):
     async def minipool_distribution(self,
                                     ctx: Context,
                                     raw: bool = False):
-        """
-        Show the distribution of minipools per node.
-        """
+        """Show the distribution of minipools per node."""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
 

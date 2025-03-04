@@ -6,24 +6,23 @@ import requests
 from datetime import timezone
 from web3.datastructures import MutableAttributeDict as aDict
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.containers import Event
 from utils.embeds import assemble, prepare_args
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.submodule import QueuedSubmodule
+from utils.event import EventPlugin, Event
 
 log = logging.getLogger("cow_orders")
 log.setLevel(cfg["log_level"])
 
 
-class CowOrders(QueuedSubmodule):
-    def __init__(self, bot):
+class CowOrders(EventPlugin):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(seconds=60))
         self.state = "OK"
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         # create the cow_orders collection if it doesn't exist
         # limit the collection to 10000 entries
         # create an index on order_uid
@@ -37,7 +36,7 @@ class CowOrders(QueuedSubmodule):
             str(rp.get_address_by_name("rocketTokenRETH")).lower()
         ]
 
-    def _run(self):
+    def _get_new_events(self) -> list[Event]:
         if self.state == "RUNNING":
             log.error("Cow Orders plugin was interrupted while running. Re-initializing...")
             self.__init__(self.bot)
@@ -203,7 +202,7 @@ class CowOrders(QueuedSubmodule):
             payload.append(Event(
                 embed=embed,
                 topic="cow_orders",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=self._pending_block,
                 event_name=data["event_name"],
                 unique_id=f"cow_order_found_{order['uid']}"
             ))

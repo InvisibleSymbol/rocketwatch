@@ -6,6 +6,7 @@ from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
@@ -17,7 +18,7 @@ log.setLevel(cfg["log_level"])
 
 
 class EffectiveRPL(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 

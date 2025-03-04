@@ -4,12 +4,12 @@ import math
 import circuitbreaker
 import requests
 from requests import HTTPError, ConnectTimeout
-from retry import retry
 from web3 import Web3, HTTPProvider
 from web3.beacon import Beacon as Bacon
 from web3.middleware import geth_poa_middleware
 
 from utils.cfg import cfg
+from utils.retry import retry
 
 log = logging.getLogger("shared_w3")
 log.setLevel(cfg["log_level"])

@@ -1,40 +1,35 @@
-import math
 import logging
-
-from io import BytesIO
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Literal, Union
+from typing import Optional, Literal
 
+import numpy as np
 import pymongo
 import requests
-import numpy as np
 import termplotlib as tpl
-
-from discord import File
 from PIL.Image import Image
-from PIL import Image as PILImage
-from eth_typing import ChecksumAddress
-from web3.constants import ADDRESS_ZERO
-from graphql_query import Operation, Query, Argument
 from discord.ext.commands import Context, hybrid_command
+from eth_typing import ChecksumAddress
+from graphql_query import Operation, Query, Argument
+from web3.constants import ADDRESS_ZERO
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
-from utils.shared_w3 import w3
-from utils.rocketpool import rp
-from utils.readable import uptime
-from utils.containers import Event
-from utils.draw import BetterImageDraw
-from utils.submodule import QueuedSubmodule
-from utils.visibility import is_hidden_weak
 from utils.embeds import Embed, el_explorer_url
+from utils.image import ImageCanvas
+from utils.readable import uptime
+from utils.rocketpool import rp
+from utils.event import EventPlugin, Event
+from utils.visibility import is_hidden_weak
+from utils.get_nearest_block import get_block_by_timestamp
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
 
 
-class Snapshot(QueuedSubmodule):
-    def __init__(self, bot):
+class Snapshot(EventPlugin):
+    def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=5))
         self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.version = 3
@@ -81,10 +76,11 @@ class Snapshot(QueuedSubmodule):
 
         def render_to(
                 self,
-                draw: BetterImageDraw,
+                canvas: ImageCanvas,
                 width: int,
                 x_offset: int = 0,
                 y_offset: int = 0,
+                *,
                 include_title: bool = True
         ) -> int:
             default_margin = 10
@@ -106,34 +102,34 @@ class Snapshot(QueuedSubmodule):
                 choice_height = 0
 
                 # {choice}
-                draw.dynamic_text(
+                canvas.dynamic_text(
                     (_x_offset + default_margin, _y_offset),
                     _choice,
                     self._TEXT_SIZE,
-                    max_width=(width / 2),
+                    max_width=(width // 2),
                     anchor="lt"
                 )
                 # {choice}                                 {score}
-                draw.dynamic_text(
+                canvas.dynamic_text(
                     (_x_offset + width - pb_margin_right, _y_offset),
                     f"{_score:,.2f}",
                     self._TEXT_SIZE,
-                    max_width=(width / 2),
+                    max_width=(width // 2),
                     anchor="rt"
                 )
                 choice_height += self._TEXT_SIZE + self._V_SPACE_SMALL
                 # {choice}                                 {score}
                 #   {perc}%
-                draw.dynamic_text(
+                canvas.dynamic_text(
                     (_x_offset + perc_margin_left, _y_offset + choice_height),
                     f"{safe_div(_score, sum(self.scores)):.0%}",
                     self._TEXT_SIZE,
-                    max_width=(width / 2) - perc_margin_left,
+                    max_width=(width // 2) - perc_margin_left,
                     anchor="rt"
                 )
                 # {choice}                                 {score}
                 #   {perc}% ======================================
-                draw.progress_bar(
+                canvas.progress_bar(
                     (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
                     (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
                     safe_div(_score, max_score),
@@ -145,7 +141,7 @@ class Snapshot(QueuedSubmodule):
             proposal_height = 0
 
             if include_title:
-                draw.dynamic_text(
+                canvas.dynamic_text(
                     (x_offset + default_margin, y_offset),
                     self.title,
                     self._TITLE_SIZE,
@@ -162,7 +158,7 @@ class Snapshot(QueuedSubmodule):
             proposal_height += self._V_SPACE_MEDIUM
 
             # quorum header
-            draw.dynamic_text(
+            canvas.dynamic_text(
                 (x_offset + default_margin, y_offset + proposal_height),
                 "Quorum:",
                 self._HEADER_SIZE,
@@ -172,16 +168,16 @@ class Snapshot(QueuedSubmodule):
 
             # quorum progress bar
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
-            draw.dynamic_text(
+            canvas.dynamic_text(
                 (x_offset + perc_margin_left, y_offset + proposal_height),
                 f"{quorum_perc:.0%}",
                 self._TEXT_SIZE,
-                max_width=(width / 2) - perc_margin_left,
+                max_width=(width // 2) - perc_margin_left,
                 anchor="rt"
             )
             # dark gray, turns orange when quorum is met
             pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
-            draw.progress_bar(
+            canvas.progress_bar(
                 (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
                 (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
                 min(quorum_perc, 1),
@@ -192,8 +188,8 @@ class Snapshot(QueuedSubmodule):
             # show remaining time until the vote ends
             rem_time = self.end - datetime.now().timestamp()
             time_label_width = (width - 2 * default_margin)
-            draw.dynamic_text(
-                (x_offset + time_label_width / 2, y_offset + proposal_height),
+            canvas.dynamic_text(
+                (x_offset + time_label_width // 2, y_offset + proposal_height),
                 f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final Result",
                 self._TEXT_SIZE,
                 max_width=time_label_width,
@@ -210,12 +206,12 @@ class Snapshot(QueuedSubmodule):
             )
             return embed
 
-        def create_image(self, include_title: bool) -> Image:
+        def create_image(self, *, include_title: bool) -> Image:
             height = self.predict_render_height(include_title)
             width = max(500, height)
-            img = PILImage.new("RGB", (width, height), color=(43, 45, 49))
-            self.render_to(BetterImageDraw(img), width, 0, 0, include_title)
-            return img
+            canvas = ImageCanvas(width, height)
+            self.render_to(canvas, width, 0, 0, include_title=include_title)
+            return canvas.image
 
         def create_start_event(self) -> Event:
             embed = self.get_embed_template()
@@ -223,7 +219,7 @@ class Snapshot(QueuedSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.start)[0],
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"{self.id}:event_start",
                 attachment=self.create_image(include_title=True)
@@ -243,7 +239,7 @@ class Snapshot(QueuedSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.end)[0],
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"{self.id}:event_end",
                 attachment=self.create_image(include_title=True)
@@ -255,7 +251,7 @@ class Snapshot(QueuedSubmodule):
         MultiChoice = list[SingleChoice]
         # weighted votes use strings as keys for some reason
         WeightedChoice = dict[str, int]
-        Choice = Union[SingleChoice, MultiChoice, WeightedChoice]
+        Choice = (SingleChoice | MultiChoice | WeightedChoice)
 
         proposal: 'Snapshot.Proposal'
         voter: ChecksumAddress
@@ -363,7 +359,7 @@ class Snapshot(QueuedSubmodule):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=w3.eth.getBlock("latest").number,
+                block_number=get_block_by_timestamp(self.created)[0],
                 event_name=event_name,
                 unique_id=f"{self.proposal.id}_{self.voter}_{self.created}:vote",
                 attachment=self.proposal.create_image(include_title=False)
@@ -416,7 +412,7 @@ class Snapshot(QueuedSubmodule):
         response: list[dict] = Snapshot._query_api([query])["votes"]
         return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
 
-    def _run(self) -> list[Event]:
+    def _get_new_events(self) -> list[Event]:
         if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
             log.warning("Snapshot version changed, nuking db")
             self.db.snapshot_votes.drop()
@@ -536,9 +532,7 @@ class Snapshot(QueuedSubmodule):
             proposal_width = (total_height - h_spacing * (num_cols - 1)) // num_cols
             total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
 
-        # match Discord dark mode Embed color (#2b2d31)
-        img = PILImage.new("RGB", (total_width, total_height), color=(43, 45, 49))
-        draw = BetterImageDraw(img)
+        canvas = ImageCanvas(total_width, total_height)
 
         # keeping track of widest row
         max_x_offset = 0
@@ -553,7 +547,7 @@ class Snapshot(QueuedSubmodule):
             for col_idx in range(len(proposal_grid[row_idx])):
                 proposal = proposal_grid[row_idx][col_idx]
                 x_offset += h_spacing
-                height = proposal.render_to(draw, proposal_width, x_offset, y_offset)
+                height = proposal.render_to(canvas, proposal_width, x_offset, y_offset)
                 max_height = max(max_height, height)
                 x_offset += proposal_width
 
@@ -567,12 +561,9 @@ class Snapshot(QueuedSubmodule):
         assert(max_y_offset == total_height)
 
         # write drawn image to buffer
-        buffer = BytesIO()
-        img.save(buffer, format="PNG")
-        buffer.seek(0)
-        embed.set_image(url="attachment://votes.png")
-
-        await ctx.send(embed=embed, file=File(buffer, "votes.png"))
+        file = canvas.image.to_file("votes.png")
+        embed.set_image(url=f"attachment://{file.filename}")
+        await ctx.send(embed=embed, file=file)
 
 
 async def setup(bot):

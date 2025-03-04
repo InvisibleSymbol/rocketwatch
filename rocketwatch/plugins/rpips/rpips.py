@@ -1,14 +1,15 @@
 import logging
 import requests
-from typing import Union
+from typing import Optional
 
+from bs4 import BeautifulSoup
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from discord.app_commands import Choice, describe
 from cachetools.func import ttl_cache
-from bs4 import BeautifulSoup
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
@@ -17,15 +18,13 @@ log.setLevel(cfg["log_level"])
 
 
 class RPIPS(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()
     @describe(name="RPIP name")
     async def rpip(self, ctx: Context, name: str):
-        """
-        Show information about a specific RPIP.
-        """
+        """Show information about a specific RPIP."""
         await ctx.defer()
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
@@ -53,7 +52,7 @@ class RPIPS(commands.Cog):
             self.url = url
 
         @ttl_cache(ttl=900)
-        def __fetch_data(self) -> dict[str, Union[None, str, list[str]]]:
+        def __fetch_data(self) -> dict[str, Optional[str | list[str]]]:
             soup = BeautifulSoup(requests.get(self.url).text, "html.parser")
             metadata = {}
 
@@ -82,7 +81,7 @@ class RPIPS(commands.Cog):
                 raise AttributeError(f"RPIP has no attribute '{item}'")
 
     @rpip.autocomplete("name")
-    async def get_rpip_names(self, ctx: Context, current: str):
+    async def get_rpip_names(self, _: Context, current: str):
         names = self.get_rpips().keys()
         return [Choice(name=name, value=name) for name in names if current.lower() in name.lower()][:-26:-1]
 

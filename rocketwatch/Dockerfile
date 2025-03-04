@@ -7,5 +7,6 @@ RUN pip install -r requirements.txt
 
 COPY . ./app
 ENV PYTHONUNBUFFERED=1
+ENV MULTICALL_PROCESSES=11
 WORKDIR ./app
 CMD [ "python", "." ]

@@ -5,21 +5,21 @@ from discord import AllowedMentions
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
-from utils.visibility import is_hidden, is_hidden_weak
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("defi")
 log.setLevel(cfg["log_level"])
 
 
 class DeFi(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
 
     @hybrid_command()

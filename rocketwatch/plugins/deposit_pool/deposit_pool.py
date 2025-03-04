@@ -1,24 +1,24 @@
 import logging
 
 import humanize
-from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from plugins.queue import queue
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.rocketpool import rp
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
-log = logging.getLogger("despoit_pool")
+log = logging.getLogger("deposit_pool")
 log.setLevel(cfg["log_level"])
 
 
-async def get_dp():
+async def get_dp() -> Embed:
     e = Embed()
     e.title = "Deposit Pool Stats"
 
@@ -49,11 +49,11 @@ async def get_dp():
                           (f"\n**`{deposit_pool // 32:>4.0f}`** Credit Minipools (32 ETH from DP)" if deposit_pool // 32 > 0 else ""),
                     inline=False)
 
-    return e, None
+    return e
 
 
 class DepositPool(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
@@ -65,19 +65,13 @@ class DepositPool(commands.Cog):
     @hybrid_command()
     async def deposit_pool(self, ctx: Context):
         """Deposit Pool Stats"""
-        await ctx.defer(ephemeral=is_hidden(ctx))
-        e, i = await get_dp()
-        if i:
-            e.set_image(url="attachment://graph.png")
-            f = File(i, filename="graph.png")
-            await ctx.send(embed=e, files=[f])
-            i.close()
-        else:
-            await ctx.send(embed=e)
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        embed = await get_dp()
+        await ctx.send(embed=embed)
 
     @hybrid_command()
     async def reth_extra_collateral(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         current_reth_value = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", rp.call("rocketTokenRETH.totalSupply")))
         current_collateral_rate = solidity.to_float(rp.call("rocketTokenRETH.getCollateralRate"))
@@ -96,7 +90,7 @@ class DepositPool(commands.Cog):
 
     @hybrid_command()
     async def atlas_queue(self, ctx):
-        await ctx.defer(ephemeral=is_hidden(ctx))
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         e = Embed()
         e.title = "Atlas Queue Stats"

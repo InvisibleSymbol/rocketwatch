@@ -2,18 +2,17 @@ import datetime
 import logging
 from io import BytesIO
 
-import aiohttp
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import pytz
 import requests
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
-from icalendar import Calendar
-import matplotlib.colors as mcolors
-from homeassistant_api import Client, Entity
+from homeassistant_api import Client
 from matplotlib import dates
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden
@@ -36,7 +35,7 @@ def get_color_hsv(value):
     return mcolors.hsv_to_rgb(color_hsv)
 
 class Oura(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.calendar_url = cfg["oura.calendar_url"]
 

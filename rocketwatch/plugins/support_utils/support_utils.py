@@ -9,10 +9,9 @@ from discord.app_commands import Group, Choice, choices
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.get_or_fetch import get_or_fetch_channel
-from utils.reporter import report_error
 
 log = logging.getLogger("support-threads")
 log.setLevel(cfg["log_level"])
@@ -62,8 +61,7 @@ class DeleteableView(ui.View):
         # delete the message
         await interaction.message.delete()
         # log deletion
-        await report_error(Exception(f"Support Template Message deleted by {interaction.user} in {interaction.channel}"),
-                           {"user": repr(interaction.user), "channel": repr(interaction.channel)})
+        log.warning(f"Support Template Message deleted by {interaction.user} in {interaction.channel}")
 
 
 class AdminModal(ui.Modal,
@@ -93,14 +91,20 @@ class AdminModal(ui.Modal,
         # verify that no changes were made while we were editing
         if template["title"] != self.old_title or template["description"] != self.old_description:
             # dump the description into a memory file
-            with io.StringIO(self.description_field.value) as f:
-                await interaction.response.edit_message(
-                    embed=Embed(
-                        description="Someone made changes while you were editing. Please try again.\n"
-                                    "Your pending changes have been attached to this message."), view=None)
-                a = await interaction.original_response()
-                await a.add_files(File(fp=f, filename="pending_description_dump.txt"))
+            await interaction.response.edit_message(
+                embed=Embed(
+                    description=(
+                        "Someone made changes while you were editing. Please try again.\n"
+                        "Your pending changes have been attached to this message."
+                    ),
+                    view=None
+                )
+            )
+            a = await interaction.original_response()
+            file = File(io.BytesIO(self.description_field.value.encode()), "pending_description_dump.txt")
+            await a.add_files(file)
             return
+
         try:
             await self.db.support_bot_dumps.insert_one(
                 {
@@ -178,7 +182,7 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
 
 
 class SupportGlobal(Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
 
@@ -213,7 +217,7 @@ class SupportUtils(GroupCog, name="support"):
     subgroup = Group(name='template', description='various templates used by active support members',
                      guild_ids=[cfg["rocketpool.support.server_id"]])
 
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
         self.ctx_menu = app_commands.ContextMenu(
@@ -253,7 +257,7 @@ class SupportUtils(GroupCog, name="support"):
             args = {}
             if message.channel.id != cfg["rocketpool.support.channel_id"]:
                 # create a new thread in the support channel
-                target = await get_or_fetch_channel(self.bot, cfg["rocketpool.support.channel_id"])
+                target = await self.bot.get_or_fetch_channel(cfg["rocketpool.support.channel_id"])
                 args = {"type": ChannelType.public_thread}
 
             a = await target.create_thread(name=f"{author} - Support Thread",

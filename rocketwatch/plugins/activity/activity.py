@@ -1,43 +1,43 @@
 import logging
 
 import cronitor
-import humanize
 from discord import Activity, ActivityType
 from discord.ext import commands, tasks
 
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
-from utils.reporter import report_error
 from utils.rocketpool import rp
 
 log = logging.getLogger("rich_activity")
 log.setLevel(cfg["log_level"])
 
-cronitor.api_key = cfg["cronitor_secret"]
-monitor = cronitor.Monitor('update-activity')
-
-
 class RichActivity(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
+        self.monitor = cronitor.Monitor('update-activity', api_key=cfg["cronitor_secret"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
+        if not self.run_loop.is_running():
+            self.run_loop.start()
 
     @tasks.loop(seconds=60.0)
     async def run_loop(self):
-        monitor.ping()
+        self.monitor.ping()
         try:
-            log.debug("Updating Discord Activity...")
-            count = humanize.intcomma(rp.call("rocketMinipoolManager.getMinipoolCount"))
-            await self.bot.change_presence(activity=Activity(type=ActivityType.watching, name=f"{count} Minipools!"))
+            log.debug("Updating Discord activity")
+            mp_count = rp.call("rocketMinipoolManager.getMinipoolCount")
+            await self.bot.change_presence(
+                activity=Activity(
+                    type=ActivityType.watching,
+                    name=f"{mp_count:,} minipools!"
+                )
+            )
         except Exception as err:
-            await report_error(err)
+            await self.bot.report_error(err)
 
     def cog_unload(self):
         self.run_loop.cancel()

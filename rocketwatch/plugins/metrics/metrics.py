@@ -3,19 +3,18 @@ import math
 from datetime import datetime, timedelta
 from io import BytesIO
 
-import motor.motor_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 from bson import SON
 from cachetools import TTLCache
-from discord import NotFound, File, Interaction, app_commands
+from discord import NotFound, File, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from matplotlib import pyplot as plt
 
-from utils import reporter
+from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.reporter import report_error
 from utils.visibility import is_hidden
 
 log = logging.getLogger("metrics")
@@ -23,11 +22,10 @@ log.setLevel(cfg["log_level"])
 
 
 class Metrics(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.notice_ttl_cache = TTLCache(math.inf, ttl=60 * 15)
-        self.mongo = motor.motor_asyncio.AsyncIOMotorClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
         self.collection = self.db.command_metrics
 
         self.bot.tree.on_error = self.on_command_error
@@ -92,7 +90,7 @@ class Metrics(commands.Cog):
             await ctx.send(embed=e)
         except Exception as e:
             log.error(f"Failed to get command metrics: {e}")
-            await report_error(e)
+            await self.bot.report_error(e)
 
     @hybrid_command()
     async def metrics_chart(self, ctx):
@@ -182,7 +180,7 @@ class Metrics(commands.Cog):
             })
         except Exception as e:
             log.error(f"Failed to insert command into database: {e}")
-            await report_error(e)
+            await self.bot.report_error(e)
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
@@ -208,7 +206,7 @@ class Metrics(commands.Cog):
                                              })
         except Exception as e:
             log.error(f"Failed to update command status to completed: {e}")
-            await report_error(e)
+            await self.bot.report_error(e)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, excep):
@@ -235,7 +233,7 @@ class Metrics(commands.Cog):
                 await ctx.channel.send(msg)
             except Exception as e:
                 log.error(f"Failed to inform user of command error: {e}")
-                await report_error(e)
+                await self.bot.report_error(e)
 
         try:
             # get the timestamp of when the command was called from the db
@@ -250,9 +248,9 @@ class Metrics(commands.Cog):
                                              })
         except Exception as e:
             log.error(f"Failed to update command status to error: {e}")
-            await report_error(e)
+            await self.bot.report_error(e)
 
-        await reporter.report_error(excep, ctx=ctx)
+        await self.bot.report_error(excep, ctx)
 
     @commands.Cog.listener()
     async def on_ready(self, ):

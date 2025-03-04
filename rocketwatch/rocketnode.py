@@ -18,10 +18,6 @@ from utils.time_debug import timerun
 log = logging.getLogger("rocketnode")
 log.setLevel(cfg["log_level"])
 
-cronitor.api_key = cfg["cronitor_secret"]
-monitor = cronitor.Monitor('rocketnode-task')
-
-
 def func_if_success(func):
     def _func(_, data):
         res = None
@@ -37,8 +33,8 @@ def func_if_success(func):
 class Task:
     def __init__(self):
         self.event_loop = None
-        self.mongo = pymongo.MongoClient(cfg["mongodb_uri"])
-        self.db = self.mongo.rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.monitor = cronitor.Monitor('rocketnode-task', api_key=cfg["cronitor_secret"])
         self.batch_size = 10_000
 
     @timerun
@@ -469,13 +465,13 @@ class Task:
     @timerun
     def task(self):
         p_id = time.time()
-        monitor.ping(state='run', series=p_id)
+        self.monitor.ping(state='run', series=p_id)
         try:
             self._run()
-            monitor.ping(state='complete', series=p_id)
+            self.monitor.ping(state='complete', series=p_id)
         except Exception as err:
             log.exception(err)
-            monitor.ping(state='fail', series=p_id)
+            self.monitor.ping(state='fail', series=p_id)
 
     @timerun
     def _run(self):
