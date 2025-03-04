@@ -45,7 +45,7 @@ class Core(commands.Cog):
         self.monitor = cronitor.Monitor('gather-new-events', api_key=cfg["cronitor_secret"])
         self.run_loop.start()
 
-    @tasks.loop(seconds=10.0)
+    @tasks.loop(seconds=12.0)
     async def run_loop(self) -> None:
         p_id = time.time()
         self.monitor.ping(state='run', series=p_id)
