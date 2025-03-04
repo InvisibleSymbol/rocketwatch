@@ -1,4 +1,5 @@
 import json
+import hashlib
 import logging
 import warnings
 from typing import Optional, Callable, Literal
@@ -408,8 +409,14 @@ class Events(EventPlugin):
         return self.handle_event(event_name, event)
 
     @staticmethod
-    def handle_event(event_name, event) -> Optional[Event]:
-        args = aDict(event['args'])
+    def handle_event(event_name: str, event: aDict) -> Optional[Event]:
+        args_hash = hashlib.md5()
+        for k, v in sorted(event.args.items()):
+            if not ("time" in k.lower() or "block" in k.lower()):
+                args_hash.update(f"{k}:{v}".encode())
+
+        unique_id = f"{event.transactionHash.hex()}:{event_name}:{args_hash.hexdigest()}"
+        args = aDict(event.args)
 
         if "negative_rETH_ratio_update_event" in event_name:
             args.currRETHRate = solidity.to_float(args.totalEth) / solidity.to_float(args.rethSupply)
@@ -812,11 +819,6 @@ class Events(EventPlugin):
         args.event_name = event_name
         args = prepare_args(args)
         embed = assemble(args)
-
-        unique_id = f"{event.transactionHash.hex()}:{event_name}"
-        for arg_k, arg_v in event.get("args", {}).items():
-            if all(t not in arg_k.lower() for t in ["time", "block", "timestamp"]):
-                unique_id += f":{arg_k}:{arg_v}"
 
         return Event(
             embed=embed,
