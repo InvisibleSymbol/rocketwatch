@@ -26,7 +26,6 @@ log.setLevel(cfg["log_level"])
 class Transactions(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        rp.flush()
         contract_addresses, function_map = self._parse_transaction_config()
         self.addresses = contract_addresses
         self.function_map = function_map
@@ -309,6 +308,7 @@ class Transactions(EventPlugin):
 
         if "upgrade_triggered" in event_name:
             log.info(f"Detected contract upgrade at block {response.block_number}, reinitializing")
+            rp.flush()
             self.__init__(self.bot)
 
         return [response] + responses

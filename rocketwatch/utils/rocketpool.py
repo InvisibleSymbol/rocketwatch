@@ -1,16 +1,15 @@
 import logging
 import os
 import warnings
+from pathlib import Path
 
 from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
-from multicall import Call, constants
+from multicall import Call
 from multicall import Multicall
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall as Web3Multicall
-
-constants.NUM_PROCESSES = 11
 
 from utils import solidity
 from utils.cfg import cfg
@@ -55,6 +54,18 @@ class RocketPool:
         manual_addresses = cfg["rocketpool.manual_addresses"]
         for name, address in manual_addresses.items():
             self.addresses[name] = address
+
+        log.info("Indexing Rocket Pool contracts...")
+        # generate list of all file names with the .sol extension from the rocketpool submodule
+        for path in Path("contracts/rocketpool/contracts/contract").rglob('*.sol'):
+            # append to list but ensure that the first character is lowercase
+            file_name = path.stem
+            contract = file_name[0].lower() + file_name[1:]
+            try:
+                self.get_address_by_name(contract)
+            except Exception:
+                log.exception(f"Skipping {contract} in function list generation")
+                continue
 
         cs_dir, cs_prefix = "ConstellationDirectory", "Constellation"
         self.addresses |= {

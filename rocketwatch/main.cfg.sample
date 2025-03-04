@@ -1,7 +1,7 @@
 log_level: `logging:DEBUG`,
 rocketpool: {
   support: {
-    role_id: 708268619867619338,
+    role_ids: [708268619867619338],
     server_id: 544295541849456651,
     channel_id: 912434217118498876
   }

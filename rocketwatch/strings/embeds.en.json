@@ -570,7 +570,7 @@
     },
     "exit_arbitrage_event": {
         "title": ":money_mouth: Large Exit Arbitrage",
-        "description": "%{caller} earned **%{profit} ETH** using a %{amount} ETH flash loan!",
+        "description": "%{caller} earned **%{profit} ETH** with a %{amount} ETH flash loan!",
         "description_small": ":money_mouth: %{caller} earned **%{profit} ETH** from an exit arbitrage!"
     }
 }
