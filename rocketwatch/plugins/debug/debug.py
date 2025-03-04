@@ -107,7 +107,8 @@ class Debug(Cog):
             # print name + identifier and id of each member
             roles = [f"{role.name}, ({role.id})" for role in guild.roles]
             # generate a file with a header that mentions what role and guild the members are from
-            file = File(f"Roles of {guild.name} ({guild.id})\n\n" + "\n".join(roles), filename="roles.txt")
+            content = f"Roles of {guild.name} ({guild.id})\n\n" + "\n".join(roles)
+            file = File(io.BytesIO(content.encode()), filename="roles.txt")
             await ctx.send(file=file)
         except Exception as err:
             await ctx.send(content=f"```{repr(err)}```")
