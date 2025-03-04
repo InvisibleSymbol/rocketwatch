@@ -31,7 +31,6 @@ PartialFilter = Callable[[BlockNumber, BlockNumber | Literal["latest"]], Filter]
 class Events(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        rp.flush()
         partial_filters, event_map, topic_map = self._parse_event_config()
         self._partial_filters = partial_filters
         self.event_map = event_map
@@ -179,6 +178,7 @@ class Events(EventPlugin):
         old_config = self._partial_filters, self.event_map, self.topic_map
 
         try:
+            rp.flush()
             self.__init__(self.bot)
             post_upgrade_block = BlockNumber(contract_upgrade_block + 1)
             self.active_filters = [pf(post_upgrade_block, "latest") for pf in self._partial_filters]

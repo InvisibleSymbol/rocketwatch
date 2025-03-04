@@ -1,12 +1,9 @@
-import asyncio
-import base64
 import io
 import json
 import logging
 import math
 import random
 import time
-from pathlib import Path
 
 import humanize
 import requests
@@ -59,30 +56,11 @@ class Debug(Cog):
             await self.bot.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
             await self.db.state.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
             log.info("Commands updated!")
-        log.info("Indexing Rocket Pool contracts...")
-        # generate list of all file names with the .sol extension from the rocketpool submodule
-        for path in Path("contracts/rocketpool/contracts/contract").rglob('*.sol'):
-            # append to list but ensure that the first character is lowercase
-            file_name = path.stem
-            contract = file_name[0].lower() + file_name[1:]
+
+        for contract in rp.addresses:
             self.contract_files.append(contract)
-            try:
-                rp.get_contract_by_name(contract)
-            except Exception as e:
-                log.warning(f"Skipping {contract} in function list generation: {e}")
-                continue
             for function in rp.get_contract_by_name(contract).functions:
                 self.function_list.append(f"{contract}.{function}")
-            await asyncio.sleep(0.1)
-
-        self.contract_files.extend(list(cfg["rocketpool.manual_addresses"].keys()))
-        # enable calls to non-RocketStorage contracts
-        for manual_name in ["rocketSignerRegistry"]:
-            contract = rp.assemble_contract(manual_name, cfg[f"rocketpool.manual_addresses.{manual_name}"])
-            for function in contract.functions:
-                self.function_list.append(f"{manual_name}.{function}")
-
-        log.info("Done!")
 
     # --------- PRIVATE OWNER COMMANDS --------- #
 
