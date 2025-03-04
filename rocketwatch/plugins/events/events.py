@@ -215,6 +215,11 @@ class Events(EventPlugin):
 
             log.debug(f"Checking event {event}")
 
+            args_hash = hashlib.md5()
+            for k, v in sorted(event.args.items()):
+                if not ("time" in k.lower() or "block" in k.lower()):
+                    args_hash.update(f"{k}:{v}".encode())
+
             event_name, embed = None, None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
                 log.debug(f"Found event {event} for {n}")
@@ -250,11 +255,6 @@ class Events(EventPlugin):
 
             if (event_name is None) or (embed is None):
                 continue
-
-            args_hash = hashlib.md5()
-            for k, v in sorted(event.args.items()):
-                if not ("time" in k.lower() or "block" in k.lower()):
-                    args_hash.update(f"{k}:{v}".encode())
 
             # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
             identical_events = filter(
