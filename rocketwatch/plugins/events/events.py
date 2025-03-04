@@ -17,7 +17,7 @@ from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.dao import DefaultDAO, ProtocolDAO
-from utils.embeds import assemble, prepare_args, el_explorer_url
+from utils.embeds import assemble, prepare_args, el_explorer_url, Embed
 from utils.event import EventPlugin, Event
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
@@ -215,15 +215,7 @@ class Events(EventPlugin):
 
             log.debug(f"Checking event {event}")
 
-            # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
-            identical_events = filter(
-                lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash),
-                events
-            )
-            tx_log_offset = min(e.logIndex for e in identical_events)
-            event.txLogIndex = event.logIndex - tx_log_offset
-
-            response = None
+            event_name, embed = None, None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
                 log.debug(f"Found event {event} for {n}")
                 # default event path
@@ -234,16 +226,17 @@ class Events(EventPlugin):
                 _event.topics = topics
                 _event.args = aDict(_event.args)
 
-                _event.txLogIndex = event.txLogIndex
                 if "assignment_count" in event:
                     _event.assignment_count = event.assignment_count
                 if "amountOfStETH" in event:
                     _event.args.amountOfStETH = event.amountOfStETH
 
-                if event_name := self.event_map.get(f"{n}.{_event.event}"):
-                    response = self.handle_event(event_name, _event)
+                event = _event
+
+                if event_name := self.event_map.get(f"{n}.{event.event}"):
+                    embed = self.handle_event(event_name, event)
                 else:
-                    log.warning(f"Skipping unknown event {n}.{_event.event}")
+                    log.warning(f"Skipping unknown event {n}.{event.event}")
 
             elif event.get("event") in self.event_map:
                 event_name = self.event_map[event.event]
@@ -252,10 +245,34 @@ class Events(EventPlugin):
                     upgrade_block = event.blockNumber
                 else:
                     # deposit/exit event path
-                    response = self.handle_global_event(event_name, event)
+                    event.args = aDict(event.args)
+                    embed = self.handle_global_event(event_name, event)
 
-            if response is not None:
-                messages.append(response)
+            if (event_name is None) or (embed is None):
+                continue
+
+            args_hash = hashlib.md5()
+            for k, v in sorted(event.args.items()):
+                if not ("time" in k.lower() or "block" in k.lower()):
+                    args_hash.update(f"{k}:{v}".encode())
+
+            # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
+            identical_events = filter(
+                lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash),
+                events
+            )
+            tx_log_index = event.logIndex - min(e.logIndex for e in identical_events)
+
+            response = Event(
+                embed=embed,
+                topic="events",
+                event_name=event_name,
+                unique_id=f"{event.transactionHash.hex()}:{event_name}:{args_hash.hexdigest()}:{tx_log_index}",
+                block_number=event.blockNumber,
+                transaction_index=event.transactionIndex,
+                event_index=event.logIndex
+            )
+            messages.append(response)
 
         return messages, upgrade_block
 
@@ -364,7 +381,7 @@ class Events(EventPlugin):
 
         return events
 
-    def handle_global_event(self, event_name: str, event: aDict) -> Optional[Event]:
+    def handle_global_event(self, event_name: str, event: aDict) -> Optional[Embed]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         if not any([
             rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
@@ -376,7 +393,6 @@ class Events(EventPlugin):
             log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
             return None
 
-        event.args = aDict(event.args)
         pubkey = None
 
         # is the pubkey in the event arguments?
@@ -410,13 +426,7 @@ class Events(EventPlugin):
         return self.handle_event(event_name, event)
 
     @staticmethod
-    def handle_event(event_name: str, event: aDict) -> Optional[Event]:
-        args_hash = hashlib.md5()
-        for k, v in sorted(event.args.items()):
-            if not ("time" in k.lower() or "block" in k.lower()):
-                args_hash.update(f"{k}:{v}".encode())
-
-        unique_id = f"{event.transactionHash.hex()}:{event_name}:{args_hash.hexdigest()}:{event.txLogIndex}"
+    def handle_event(event_name: str, event: aDict) -> Optional[Embed]:
         args = aDict(event.args)
 
         if "negative_rETH_ratio_update_event" in event_name:
@@ -819,17 +829,7 @@ class Events(EventPlugin):
 
         args.event_name = event_name
         args = prepare_args(args)
-        embed = assemble(args)
-
-        return Event(
-            embed=embed,
-            topic="events",
-            event_name=event_name,
-            unique_id=unique_id,
-            block_number=event.blockNumber,
-            transaction_index=event.transactionIndex,
-            event_index=event.logIndex
-        )
+        return assemble(args)
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
