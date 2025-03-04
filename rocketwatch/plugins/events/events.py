@@ -216,9 +216,10 @@ class Events(EventPlugin):
             log.debug(f"Checking event {event}")
 
             args_hash = hashlib.md5()
-            for k, v in sorted(event.args.items()):
-                if not ("time" in k.lower() or "block" in k.lower()):
-                    args_hash.update(f"{k}:{v}".encode())
+            def hash_args(_args: aDict) -> None:
+                for k, v in sorted(_args.items()):
+                    if not ("time" in k.lower() or "block" in k.lower()):
+                        args_hash.update(f"{k}:{v}".encode())
 
             event_name, embed = None, None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
@@ -230,6 +231,7 @@ class Events(EventPlugin):
                 _event = aDict(contract.events[contract_event]().processLog(event))
                 _event.topics = topics
                 _event.args = aDict(_event.args)
+                hash_args(_event.args)
 
                 if "assignment_count" in event:
                     _event.assignment_count = event.assignment_count
@@ -251,6 +253,7 @@ class Events(EventPlugin):
                 else:
                     # deposit/exit event path
                     event.args = aDict(event.args)
+                    hash_args(event.args)
                     embed = self.handle_global_event(event_name, event)
 
             if (event_name is None) or (embed is None):
