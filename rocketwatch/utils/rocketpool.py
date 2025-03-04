@@ -93,7 +93,7 @@ class RocketPool:
         raise Exception(f"Function {function_name} not found in ABI")
 
     @timerun
-    def multicall2_do_call(self, calls: [Call], require_success=True):
+    def multicall2_do_call(self, calls: list[Call], require_success=True):
         multicall = Multicall(calls, _w3=w3, gas_limit=500_000_000, require_success=require_success)
         return multicall()
 
@@ -214,6 +214,8 @@ class RocketPool:
         if processed_logs:
             deposit_event = processed_logs[0]
             return deposit_event.args.pubkey.hex()
+
+        return None
 
     def get_annual_rpl_inflation(self):
         inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))
