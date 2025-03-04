@@ -206,7 +206,7 @@ class Events(EventPlugin):
         upgrade_block = None
 
         log.debug(f"Aggregating {len(events)} events")
-        events = self.aggregate_events(events)
+        events: list[aDict] = self.aggregate_events(events)
         log.debug(f"Processing {len(events)} events")
 
         for event in events:
@@ -214,6 +214,14 @@ class Events(EventPlugin):
                 continue
 
             log.debug(f"Checking event {event}")
+
+            # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
+            identical_events = filter(
+                lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash),
+                events
+            )
+            tx_log_offset = min(e.logIndex for e in identical_events)
+            event.txLogIndex = event.logIndex - tx_log_offset
 
             response = None
             if (n := rp.get_name_by_address(event.address)) and "topics" in event:
@@ -224,17 +232,18 @@ class Events(EventPlugin):
                 topics = [w3.toHex(t) for t in event.topics]
                 _event = aDict(contract.events[contract_event]().processLog(event))
                 _event.topics = topics
+                _event.args = aDict(_event.args)
+
+                _event.txLogIndex = event.txLogIndex
                 if "assignment_count" in event:
                     _event.assignment_count = event.assignment_count
                 if "amountOfStETH" in event:
-                    _event.args = aDict(_event.args)
                     _event.args.amountOfStETH = event.amountOfStETH
-                event = _event
 
-                if event_name := self.event_map.get(f"{n}.{event.event}"):
-                    response = self.handle_event(event_name, event)
+                if event_name := self.event_map.get(f"{n}.{_event.event}"):
+                    response = self.handle_event(event_name, _event)
                 else:
-                    log.warning(f"Skipping unknown event {n}.{event.event}")
+                    log.warning(f"Skipping unknown event {n}.{_event.event}")
 
             elif event.get("event") in self.event_map:
                 event_name = self.event_map[event.event]
@@ -246,10 +255,6 @@ class Events(EventPlugin):
                     response = self.handle_global_event(event_name, event)
 
             if response is not None:
-                # get the event offset based on the lowest event log index of events with the same txn hashes and block hashes
-                identical_events = filter(lambda e: (e.transactionHash == event.transactionHash) and (e.blockHash == event.blockHash), events)
-                log_index_offset = min(e.logIndex for e in identical_events)
-                response.unique_id += f":{event.logIndex - log_index_offset}"
                 messages.append(response)
 
         return messages, upgrade_block
@@ -359,7 +364,7 @@ class Events(EventPlugin):
 
         return events
 
-    def handle_global_event(self, event_name, event) -> Optional[Event]:
+    def handle_global_event(self, event_name: str, event: aDict) -> Optional[Event]:
         receipt = w3.eth.get_transaction_receipt(event.transactionHash)
         if not any([
             rp.call("rocketMinipoolManager.getMinipoolExists", receipt.to),
@@ -371,11 +376,7 @@ class Events(EventPlugin):
             log.warning(f"Skipping {event.transactionHash.hex()} because the called contract is not a minipool")
             return None
 
-        # first need to make the container mutable
-        event = aDict(event)
-        # so we can make the args mutable
         event.args = aDict(event.args)
-
         pubkey = None
 
         # is the pubkey in the event arguments?
@@ -415,7 +416,7 @@ class Events(EventPlugin):
             if not ("time" in k.lower() or "block" in k.lower()):
                 args_hash.update(f"{k}:{v}".encode())
 
-        unique_id = f"{event.transactionHash.hex()}:{event_name}:{args_hash.hexdigest()}"
+        unique_id = f"{event.transactionHash.hex()}:{event_name}:{args_hash.hexdigest()}:{event.txLogIndex}"
         args = aDict(event.args)
 
         if "negative_rETH_ratio_update_event" in event_name:
