@@ -326,6 +326,20 @@ class Kucoin(CEX):
         return {float(price): float(size) for price, size in api_response["data"]["asks"]}
 
 
+class ERC20Token:
+    def __init__(self, address: ChecksumAddress):
+        self.address = address
+        contract = rp.assemble_contract("ERC20", address)
+        self.symbol: str = contract.functions.symbol().call()
+        self.decimals: int = contract.functions.decimals().call()
+
+    def __str__(self) -> str:
+        return self.symbol
+
+    def __repr__(self) -> str:
+        return f"{self.symbol} ({self.address})"
+
+
 class DEX(LiquiditySource, ABC):
     class Pool(ABC):
         @abstractmethod
@@ -348,22 +362,24 @@ class Balancer(DEX):
         def __init__(self, balancer: 'Balancer', pool_id: str):
             self.balancer = balancer
             self.id = pool_id
+            tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()[0]
+            self.token_0 = ERC20Token(tokens[0])
+            self.token_1 = ERC20Token(tokens[1])
 
         def get_liquidity(self) -> Optional[Liquidity]:
-            tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()
-            balance_0, balance_1 = tokens[1]
-
+            balance_0, balance_1 = self.balancer.vault.functions.getPoolTokens(self.id).call()[1]
             if (balance_0 == 0) or (balance_1 == 0):
                 log.warning("Empty token balances")
                 return None
 
-            price = balance_0 / balance_1
+            balance_norm = 10 ** (self.token_1.decimals - self.token_0.decimals)
+            price = balance_norm * balance_0 / balance_1
 
-            # assume 18 digits and equal weights for now
+            # assume equal weights and liquidity in token 0 for now
             def depth_at(_price: float) -> float:
                 constant_product = balance_0 * balance_1
-                new_balance_0 = math.sqrt(_price * constant_product)
-                return abs(new_balance_0 - balance_0) / 1e18
+                new_balance_0 = math.sqrt(_price * constant_product / balance_norm)
+                return abs(new_balance_0 - balance_0) / (10 ** self.token_0.decimals)
 
             return Liquidity(price, depth_at)
 
@@ -393,6 +409,8 @@ class UniswapV3(DEX):
         def __init__(self, pool_address: ChecksumAddress):
             self.contract = rp.assemble_contract("UniswapV3Pool", pool_address)
             self.tick_spacing: int = self.contract.functions.tickSpacing().call()
+            self.token_0 = ERC20Token(self.contract.functions.token0().call())
+            self.token_1 = ERC20Token(self.contract.functions.token1().call())
 
         def tick_to_word_and_bit(self, tick: int) -> tuple[int, int]:
             compressed = int(tick // self.tick_spacing)
@@ -439,8 +457,10 @@ class UniswapV3(DEX):
             delta_x = (1 / sqrtp_lower - 1 / sqrtp_upper) * liquidity
             delta_y = (sqrtp_upper - sqrtp_lower) * liquidity
 
-            # assume 18 decimals for now
-            return float(delta_x / 1e18), float(delta_y / 1e18)
+            balance_0 = float(delta_x / (10 ** self.token_0.decimals))
+            balance_1 = float(delta_y / (10 ** self.token_1.decimals))
+
+            return balance_0, balance_1
 
         def get_liquidity(self) -> Optional[Liquidity]:
             sqrt96x = self.contract.functions.slot0().call()[0]
@@ -450,7 +470,6 @@ class UniswapV3(DEX):
             calculated_tick = UniswapV3.price_to_tick(price)
             current_tick = int(calculated_tick)
             ticks = self.get_initialized_ticks(current_tick)
-
 
             if not ticks:
                 log.warning("No liquidity found")
@@ -466,15 +485,16 @@ class UniswapV3(DEX):
                 net_liquidity: dict[int, int] = self.get_ticks_net_liquidity(_ticks)
                 liquidity = []
 
+                # assume liquidity in token 0 for now
                 for tick in _ticks:
                     if tick > last_tick:
-                        liq_x, _ = self.liquidity_to_tokens(active_liquidity, last_tick, tick)
+                        liq_0, _ = self.liquidity_to_tokens(active_liquidity, last_tick, tick)
                         active_liquidity += net_liquidity[tick]
                     else:
-                        liq_x, _ = self.liquidity_to_tokens(active_liquidity, tick, last_tick)
+                        liq_0, _ = self.liquidity_to_tokens(active_liquidity, tick, last_tick)
                         active_liquidity -= net_liquidity[tick]
 
-                    cumulative_liquidity += liq_x
+                    cumulative_liquidity += liq_0
                     liquidity.append(cumulative_liquidity)
                     last_tick = tick
 
@@ -490,11 +510,13 @@ class UniswapV3(DEX):
                 log.exception("Failed to get tick liquidity information")
                 return None
 
+            balance_norm = 10 ** (self.token_1.decimals - self.token_0.decimals)
+
             def depth_at(_price: float) -> float:
                 if _price <= 0:
                     tick = UniswapV3.MAX_TICK
                 else:
-                    tick = -UniswapV3.price_to_tick(_price)
+                    tick = -UniswapV3.price_to_tick(_price / balance_norm)
 
                 if tick <= calculated_tick:
                     i = int(np.searchsorted(-np.array(ask_ticks), -tick))
@@ -514,7 +536,7 @@ class UniswapV3(DEX):
                 range_liquidity = abs(liquidity_levels[i] - liquidity_levels[i - 1])
                 return float(liquidity_levels[i - 1] + range_share * range_liquidity)
 
-            return Liquidity(1 / price, depth_at)
+            return Liquidity(balance_norm / price, depth_at)
 
     def __init__(self, pools: list[ChecksumAddress]):
         super().__init__([UniswapV3.Pool(pool) for pool in pools])

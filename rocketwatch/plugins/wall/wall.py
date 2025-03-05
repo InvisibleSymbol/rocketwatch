@@ -11,8 +11,8 @@ from matplotlib import ticker
 
 from rocketwatch import RocketWatch
 from utils.embeds import Embed
-from utils.liquidity import *
 from utils.visibility import is_hidden_weak
+from utils.liquidity import *
 
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
@@ -58,8 +58,7 @@ class Wall(commands.Cog):
                     log.warning(f"Failed to fetch liquidity from {cex}")
                     continue
 
-                # only looking at one pair for now
-                # assuming RPL / USD-like
+                # only looking at one pair for now (RPL / USD-like)
                 cex_liquidity[cex] = liq
 
         if not cex_liquidity:
