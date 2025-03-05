@@ -381,14 +381,15 @@ class UniswapV3(DEX):
             # assume 18 decimals for now
             return float(delta_x / 1e18), float(delta_y / 1e18)
 
-
         def get_liquidity(self) -> Optional[Liquidity]:
-            slot0 = self.contract.functions.slot0().call()
-            price = (slot0[0] / 2 ** 96) ** 2
+            sqrt96x = self.contract.functions.slot0().call()[0]
+            initial_liquidity = self.contract.functions.liquidity().call()
+
+            price = (sqrt96x / 2**96) ** 2
             calculated_tick = UniswapV3.price_to_tick(price)
             current_tick = int(calculated_tick)
             ticks = self.get_initialized_ticks(current_tick)
-            initial_liquidity = self.contract.functions.liquidity().call()
+
 
             if not ticks:
                 log.warning("No liquidity found")
