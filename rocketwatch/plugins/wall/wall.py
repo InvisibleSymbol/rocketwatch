@@ -1,6 +1,8 @@
+import asyncio
 import logging
 from io import BytesIO
 
+import aiohttp
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
@@ -34,11 +36,21 @@ class Wall(commands.Cog):
         embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
 
         cex_liquidity: dict[LiquiditySource, Liquidity] = {}
-        for cex in self.cex:
-            if liq := cex.get_liquidity():
+        async with aiohttp.ClientSession() as session:
+            requests = [cex.get_liquidity(session) for cex in self.cex]
+            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
+                if not liq:
+                    log.warning(f"Failed to fetch liquidity from {cex}")
+                    continue
+
+                # only looking at one pair for now
+                # assuming RPL / USD-like
                 cex_liquidity[cex] = liq
-            else:
-                log.warning(f"Failed to fetch liquidity from {cex}")
+
+        if not cex_liquidity:
+            log.error("Failed to fetch any CEX liquidity data")
+            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+            return
 
         dex_liquidity: dict[LiquiditySource, list[Liquidity]] = {}
         for dex in self.dex:
@@ -47,28 +59,20 @@ class Wall(commands.Cog):
             else:
                 log.warning(f"Failed to fetch liquidity from {dex}")
 
-        if not cex_liquidity:
-            log.error("Failed to fetch any CEX liquidity data")
-            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-            return
-
         rpl_usd = float(np.mean([liq.price for liq in cex_liquidity.values()]))
         x = np.arange(0, 5 * rpl_usd, 0.01)
         y = []
 
         cex_depth = {}
         for cex, liq in cex_liquidity.items():
-            cex_depth[cex] = np.zeros_like(x)
-            for i, price in enumerate(x):
-                cex_depth[cex][i] = liq.depth_at(price)
+            cex_depth[cex] = np.array(list(map(liq.depth_at, x)))
 
         dex_depth = {}
-        for dex, liqs in dex_liquidity.items():
+        for dex, pools in dex_liquidity.items():
             dex_depth[dex] = np.zeros_like(x)
-            for liq in liqs:
+            for liq in pools:
                 conv = liq.price / rpl_usd
-                for i, price in enumerate(x):
-                    dex_depth[dex][i] += liq.depth_at(price * conv) / conv
+                dex_depth[dex] += np.array(list(map(liq.depth_at, x * conv))) / conv
 
         exchanges = list(sorted(cex_depth, key=lambda c: float(cex_depth[c][0] + cex_depth[c][-1]), reverse=True))
         major_cex = exchanges[:3]
