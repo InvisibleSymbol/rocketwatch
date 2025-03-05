@@ -30,7 +30,7 @@ class Wall(commands.Cog):
     async def wall(self, ctx: Context):
         """Show the current RPL market depth across exchanges."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        embed = Embed(title="RPL Market Depth")
+        embed = Embed()
         embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
 
         cex_liquidity: dict[LiquiditySource, Liquidity] = {}
@@ -104,9 +104,10 @@ class Wall(commands.Cog):
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.set_facecolor("#f8f9fa")
 
-        ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
+        ax.set_title("RPL Market Depth", fontsize=14, fontweight='bold')
 
         ax.minorticks_on()
+        ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
         ax.grid(True, which='minor', linestyle=':', linewidth=0.3, alpha=0.5)
 
         ax.stackplot(x, np.array(y), labels=labels, colors=colors, edgecolor="black", linewidth=0.3)
@@ -133,7 +134,7 @@ class Wall(commands.Cog):
         embed.set_image(url=f"attachment://{file_name}")
 
         embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f}")
-        embed.add_field(name="Liquidity Sources", value=len(self.cex) + len(self.dex))
+        embed.add_field(name="Liquidity Sources", value=f"{len(self.cex)} CEX, {len(self.dex)} DEX")
 
         await ctx.send(embed=embed, files=[File(img, file_name)])
         img.close()
