@@ -2,12 +2,15 @@ import asyncio
 from io import BytesIO
 from typing import cast
 
-import matplotlib.pyplot as plt
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from matplotlib import ticker
+from matplotlib import (
+    pyplot as plt,
+    ticker,
+    figure
+)
 
 from rocketwatch import RocketWatch
 from utils.embeds import Embed
@@ -43,82 +46,73 @@ class Wall(commands.Cog):
             ])
         ]
 
-    @hybrid_command()
-    async def wall(self, ctx: Context):
-        """Show the current RPL market depth across exchanges."""
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        embed = Embed()
-        embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
+    @staticmethod
+    def _get_cex_data(liquidity: dict[CEX, Liquidity], x: np.ndarray) -> list[tuple[np.ndarray, str, str]]:
+        depth: dict[CEX, np.ndarray] = {}
+        for cex, liq in liquidity.items():
+            depth[cex] = np.array(list(map(liq.depth_at, x)))
 
-        cex_liquidity: dict[LiquiditySource, Liquidity] = {}
-        async with aiohttp.ClientSession() as session:
-            requests = [cex.get_liquidity(session) for cex in self.cex]
-            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
-                if not liq:
-                    log.warning(f"Failed to fetch liquidity from {cex}")
-                    continue
+        def get_range_liquidity(_e: CEX) -> float:
+            return liquidity[_e].depth_at(float(x[0])) + liquidity[_e].depth_at(float(x[-1]))
 
-                # only looking at one pair for now (RPL / USD-like)
-                cex_liquidity[cex] = liq
+        exchanges = list(sorted(depth, key=get_range_liquidity, reverse=True))
+        ret = []
 
-        if not cex_liquidity:
-            log.error("Failed to fetch any CEX liquidity data")
-            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-            return
+        if len(exchanges) > 3:
+            y = np.sum([depth[cex] for cex in exchanges[3:]], axis=0)
+            ret.append((y, "Other", "#555555"))
 
-        dex_liquidity: dict[LiquiditySource, list[Liquidity]] = {}
+        for exchange in reversed(exchanges[:3]):
+            ret.append((depth[exchange], str(exchange), exchange.color))
+
+        return ret
+
+    def _get_dex_data(self, x: np.ndarray, rpl_usd: float) -> list[tuple[np.ndarray, str, str]]:
+        depth: dict[DEX, np.ndarray] = {}
+        liquidity: dict[DEX, float] = {}
         for dex in self.dex:
-            if liq := dex.get_liquidity():
-                dex_liquidity[dex] = liq
-            else:
+            if not (pools := dex.get_liquidity()):
                 log.warning(f"Failed to fetch liquidity from {dex}")
+                continue
 
-        rpl_usd = float(np.mean([liq.price for liq in cex_liquidity.values()]))
-        x = np.arange(0, 5 * rpl_usd, 0.01)
-        y = []
+            depth[dex] = np.zeros_like(x)
+            liquidity[dex] = 0
 
-        cex_depth = {}
-        for cex, liq in cex_liquidity.items():
-            cex_depth[cex] = np.array(list(map(liq.depth_at, x)))
-
-        dex_depth = {}
-        for dex, pools in dex_liquidity.items():
-            dex_depth[dex] = np.zeros_like(x)
             for liq in pools:
                 conv = liq.price / rpl_usd
-                dex_depth[dex] += np.array(list(map(liq.depth_at, x * conv))) / conv
+                depth[dex] += np.array(list(map(liq.depth_at, x * conv))) / conv
+                liquidity[dex] += liq.depth_at(float(x[0])) + liq.depth_at(float(x[-1]))
 
-        exchanges = list(sorted(cex_depth, key=lambda c: float(cex_depth[c][0] + cex_depth[c][-1]), reverse=True))
-        major_cex = exchanges[:3]
-        minor_cex = exchanges[3:]
+        def get_range_liquidity(_e: DEX) -> float:
+            return liquidity[_e]
 
+        exchanges = list(sorted(depth, key=get_range_liquidity, reverse=True))
+        ret = []
+
+        if len(exchanges) > 2:
+            y = np.sum([depth[cex] for cex in exchanges[2:]], axis=0)
+            ret.append((y, "Other", "#777777"))
+
+        for exchange in reversed(exchanges[:2]):
+            ret.append((depth[exchange], str(exchange), exchange.color))
+
+        return ret
+
+    @staticmethod
+    def _plot_data(x, rpl_usd, cex_data, dex_data) -> figure.Figure:
         cex_labels, cex_colors = [], []
+        y = []
 
-        if minor_cex:
-            y.append(np.sum([cex_depth[cex] for cex in minor_cex], axis=0))
-            cex_labels.append("Other")
-            cex_colors.append("#555555")
-
-        for cex in reversed(major_cex):
-            y.append(cex_depth[cex])
-            cex_labels.append(str(cex))
-            cex_colors.append(cex.color)
-
-        exchanges = list(sorted(dex_depth, key=lambda d: float(dex_depth[d][0] + dex_depth[d][-1]), reverse=True))
-        major_dex = exchanges[:2]
-        minor_dex = exchanges[2:]
+        for y_values, label, color in cex_data:
+            y.append(y_values)
+            cex_labels.append(label)
+            cex_colors.append(color)
 
         dex_labels, dex_colors = [], []
-
-        if minor_dex:
-            y.append(np.sum([dex_depth[dex] for dex in minor_dex], axis=0))
-            dex_labels.append("Other")
-            dex_colors.append("#777777")
-
-        for dex in reversed(major_dex):
-            y.append(dex_depth[dex])
-            dex_labels.append(str(dex))
-            dex_colors.append(dex.color)
+        for y_values, label, color in dex_data:
+            y.append(y_values)
+            dex_labels.append(label)
+            dex_colors.append(color)
 
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.set_facecolor("#f8f9fa")
@@ -153,7 +147,7 @@ class Wall(commands.Cog):
         )
         ax.add_artist(legend)
 
-        y_offset = 0.08 + 0.055 * len(handles)
+        y_offset = 0.1 + 0.055 * len(handles)
 
         handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in cex_colors]
         legend = ax.legend(
@@ -167,20 +161,48 @@ class Wall(commands.Cog):
         )
         ax.add_artist(legend)
 
-        img = BytesIO()
-        fig.savefig(img, format="png")
-        img.seek(0)
-        plt.close()
+        return fig
 
-        file_name = "wall.png"
-        embed.set_image(url=f"attachment://{file_name}")
+    @hybrid_command()
+    async def wall(self, ctx: Context):
+        """Show the current RPL market depth across exchanges."""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        embed = Embed()
+        embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
+
+        cex_liquidity: dict[CEX, Liquidity] = {}
+        async with aiohttp.ClientSession() as session:
+            requests = [cex.get_liquidity(session) for cex in self.cex]
+            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
+                if not liq:
+                    log.warning(f"Failed to fetch liquidity from {cex}")
+                    continue
+
+                # only looking at one pair for now (RPL / USD-like)
+                cex_liquidity[cex] = liq
+
+        if not cex_liquidity:
+            log.error("Failed to fetch any CEX liquidity data")
+            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+            return
+
+        rpl_usd = float(np.mean([liq.price for liq in cex_liquidity.values()]))
+        x = np.arange(0, 5 * rpl_usd, 0.01)
+
+        cex_data = self._get_cex_data(cex_liquidity, x)
+        dex_data = self._get_dex_data(x, rpl_usd)
+        fig = self._plot_data(x, rpl_usd, cex_data, dex_data)
 
         embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f}")
         embed.add_field(name="Liquidity Sources", value=f"{len(self.cex)} CEX, {len(self.dex)} DEX")
 
-        await ctx.send(embed=embed, files=[File(img, file_name)])
-        img.close()
+        buffer = BytesIO()
+        fig.savefig(buffer, format="png")
+        buffer.seek(0)
 
+        file_name = "wall.png"
+        embed.set_image(url=f"attachment://{file_name}")
+        await ctx.send(embed=embed, files=[File(buffer, file_name)])
 
 async def setup(bot):
     await bot.add_cog(Wall(bot))
