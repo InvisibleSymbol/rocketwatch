@@ -3,7 +3,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, cast
 
-import requests
+import aiohttp
 import numpy as np
 
 from cachetools.func import ttl_cache
@@ -35,18 +35,14 @@ class LiquiditySource(ABC):
     def color(self) -> str:
         pass
 
-    @abstractmethod
-    def get_liquidity(self) -> Optional[Liquidity]:
-        pass
-
 
 class CEX(LiquiditySource):
     def __init__(self, api_endpoint: str):
         self.api_endpoint = api_endpoint
 
     @retry(tries=3, delay=1)
-    def get_order_book(self) -> tuple[dict[float, float], dict[float, float]]:
-        response = requests.get(self.api_endpoint).json()
+    async def get_order_book(self, session: aiohttp.ClientSession) -> tuple[dict[float, float], dict[float, float]]:
+        response = await (await session.get(self.api_endpoint)).json()
         bids = dict(sorted(self._get_bids(response).items()))
         asks = dict(sorted(self._get_asks(response).items()))
         return bids, asks
@@ -59,10 +55,10 @@ class CEX(LiquiditySource):
     def _get_asks(self, api_response: dict) -> dict[float, float]:
         pass
 
-    @ttl_cache(ttl=30)
-    def get_liquidity(self) -> Optional[Liquidity]:
+    @ttl_cache(ttl=120)
+    async def get_liquidity(self, session: aiohttp.ClientSession) -> Optional[Liquidity]:
         try:
-            bids, asks = self.get_order_book()
+            bids, asks = await self.get_order_book(session)
         except Exception:
             log.exception(f"Failed to fetch order book")
             return None
@@ -467,6 +463,6 @@ class UniswapV3(DEX):
     def color(self) -> str:
         return "#691453"
 
-    @ttl_cache(ttl=300)
+    @ttl_cache(ttl=60)
     def get_liquidity(self) -> list[Liquidity]:
         return super().get_liquidity()
