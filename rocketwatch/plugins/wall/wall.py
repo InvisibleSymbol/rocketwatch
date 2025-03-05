@@ -92,32 +92,33 @@ class Wall(commands.Cog):
         major_cex = exchanges[:3]
         minor_cex = exchanges[3:]
 
+        cex_labels, cex_colors = [], []
+
+        if minor_cex:
+            y.append(np.sum([cex_depth[cex] for cex in minor_cex], axis=0))
+            cex_labels.append("Other")
+            cex_colors.append("#555555")
+
+        for cex in reversed(major_cex):
+            y.append(cex_depth[cex])
+            cex_labels.append(str(cex))
+            cex_colors.append(cex.color)
+
         exchanges = list(sorted(dex_depth, key=lambda d: float(dex_depth[d][0] + dex_depth[d][-1]), reverse=True))
         major_dex = exchanges[:2]
         minor_dex = exchanges[2:]
 
-        colors = []
-        labels = []
-
-        if minor_cex:
-            y.append(np.sum([cex_depth[cex] for cex in minor_cex], axis=0))
-            labels.append("Other CEX")
-            colors.append("#555555")
+        dex_labels, dex_colors = [], []
 
         if minor_dex:
             y.append(np.sum([dex_depth[dex] for dex in minor_dex], axis=0))
-            labels.append("Other DEX")
-            colors.append("#777777")
-
-        for cex in reversed(major_cex):
-            y.append(cex_depth[cex])
-            labels.append(str(cex))
-            colors.append(cex.color)
+            dex_labels.append("Other")
+            dex_colors.append("#777777")
 
         for dex in reversed(major_dex):
             y.append(dex_depth[dex])
-            labels.append(str(dex))
-            colors.append(dex.color)
+            dex_labels.append(str(dex))
+            dex_colors.append(dex.color)
 
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.set_facecolor("#f8f9fa")
@@ -128,7 +129,7 @@ class Wall(commands.Cog):
         ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
         ax.grid(True, which='minor', linestyle=':', linewidth=0.3, alpha=0.5)
 
-        ax.stackplot(x, np.array(y), labels=labels, colors=colors, edgecolor="black", linewidth=0.3)
+        ax.stackplot(x, np.array(y), colors=(cex_colors + dex_colors), edgecolor="black", linewidth=0.3)
         ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
 
         ax.xaxis.set_major_formatter(ticker.StrMethodFormatter('${x:,.2f}'))
@@ -140,8 +141,31 @@ class Wall(commands.Cog):
 
         ax.set_xlim((x[0], x[-1]))
 
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[::-1], labels[::-1], fontsize=10, title_fontsize=12, loc="upper left", labelspacing=0.5)
+        handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in dex_colors]
+        legend = ax.legend(
+            handles[::-1],
+            dex_labels[::-1],
+            title="DEX",
+            fontsize=10,
+            title_fontsize=10,
+            loc="upper left",
+            bbox_to_anchor=(0, 1)
+        )
+        ax.add_artist(legend)
+
+        y_offset = 0.08 + 0.055 * len(handles)
+
+        handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in cex_colors]
+        legend = ax.legend(
+            handles[::-1],
+            cex_labels[::-1],
+            title="CEX",
+            fontsize=10,
+            title_fontsize=10,
+            loc="upper left",
+            bbox_to_anchor=(0, 1 - y_offset)
+        )
+        ax.add_artist(legend)
 
         img = BytesIO()
         fig.savefig(img, format="png")
