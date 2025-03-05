@@ -234,7 +234,7 @@ class Events(EventPlugin):
                 contract = rp.get_contract_by_address(event.address)
                 contract_event = self.topic_map[event.topics[0].hex()]
                 topics = [w3.toHex(t) for t in event.topics]
-                _event = aDict(contract.events[contract_event]().processLog(event))
+                _event = aDict(contract.events[contract_event]().process_log(event))
                 _event.topics = topics
                 _event.args = aDict(_event.args)
                 hash_args(_event.args)
