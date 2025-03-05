@@ -85,11 +85,13 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        # if self, ignore
+        if message.author.id == self.bot.user.id:
+            return
+        if message.guild is None:
+            return
         if message.guild.id != cfg["rocketpool.support.server_id"]:
             log.warning(f"Ignoring message from {message.guild.id} (Content: {message.content})")
-            return
-        # if self ignore
-        if message.author.id == self.bot.user.id:
             return
         checks = [
             self.markdown_link_trick(message),
