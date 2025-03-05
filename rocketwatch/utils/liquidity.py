@@ -6,6 +6,7 @@ from typing import Optional, Callable, cast
 import requests
 import numpy as np
 
+from cachetools.func import ttl_cache
 from eth_typing import ChecksumAddress
 
 from utils.cfg import cfg
@@ -58,6 +59,7 @@ class CEX(LiquiditySource):
     def _get_asks(self, api_response: dict) -> dict[float, float]:
         pass
 
+    @ttl_cache(ttl=30)
     def get_liquidity(self) -> Optional[Liquidity]:
         try:
             bids, asks = self.get_order_book()
@@ -285,13 +287,14 @@ class Balancer(DEX):
             self.id = pool_id
 
         def get_liquidity(self) -> Optional[Liquidity]:
-            try:
-                tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()
-                other_balance, rpl_balance = tokens[1]
-                price = other_balance / rpl_balance
-            except Exception:
-                log.exception("Failed to fetch token balances")
+            tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()
+            other_balance, rpl_balance = tokens[1]
+
+            if (other_balance == 0) or (rpl_balance == 0):
+                log.warning("Empty token balances")
                 return None
+
+            price = other_balance / rpl_balance
 
             # assume 18 digits and equal weights for now
             def depth_at(_price: float) -> float:
@@ -339,15 +342,25 @@ class UniswapV3(DEX):
             bit_position = compressed % UniswapV3.TICK_WORD_SIZE
             return word_position, bit_position
 
-        def get_tick_net_liquidity(self, tick: int) -> int:
-            return self.contract.functions.ticks(tick).call()[1]
+        def get_ticks_net_liquidity(self, ticks: list[int]) -> dict[int, int]:
+            return dict(zip(ticks, [
+                res.results[1] for res in rp.multicall.aggregate(
+                    [self.contract.functions.ticks(tick) for tick in ticks],
+                ).results
+            ]))
 
         def get_initialized_ticks(self, current_tick: int) -> list[int]:
             ticks = []
             active_word, b = self.tick_to_word_and_bit(current_tick)
 
-            for word in range(active_word - 5, active_word + 5):
-                tick_bitmap = self.contract.functions.tickBitmap(word).call()
+            word_range = list(range(active_word - 5, active_word + 5))
+            bitmaps = [
+                res.results[0] for res in rp.multicall.aggregate(
+                    [self.contract.functions.tickBitmap(word) for word in word_range],
+                ).results
+            ]
+
+            for word, tick_bitmap in zip(word_range, bitmaps):
                 if not tick_bitmap:
                     continue
 
@@ -368,17 +381,14 @@ class UniswapV3(DEX):
             # assume 18 decimals for now
             return float(delta_x / 1e18), float(delta_y / 1e18)
 
+
         def get_liquidity(self) -> Optional[Liquidity]:
-            try:
-                slot0 = self.contract.functions.slot0().call()
-                price = (slot0[0] / 2 ** 96) ** 2
-                calculated_tick = UniswapV3.price_to_tick(price)
-                current_tick = int(calculated_tick)
-                ticks = self.get_initialized_ticks(current_tick)
-                initial_liquidity = self.contract.functions.liquidity().call()
-            except Exception:
-                log.exception("Failed to get initial liquidity information")
-                return None
+            slot0 = self.contract.functions.slot0().call()
+            price = (slot0[0] / 2 ** 96) ** 2
+            calculated_tick = UniswapV3.price_to_tick(price)
+            current_tick = int(calculated_tick)
+            ticks = self.get_initialized_ticks(current_tick)
+            initial_liquidity = self.contract.functions.liquidity().call()
 
             if not ticks:
                 log.warning("No liquidity found")
@@ -386,19 +396,21 @@ class UniswapV3(DEX):
 
             log.debug(f"Found {len(ticks)} initialized ticks!")
 
-            def get_cumulative_liqudity(_ticks: list[int]) -> list[float]:
+            def get_cumulative_liquidity(_ticks: list[int]) -> list[float]:
                 cumulative_liquidity = 0
                 last_tick = calculated_tick
                 active_liquidity = initial_liquidity
 
+                net_liquidity: dict[int, int] = self.get_ticks_net_liquidity(_ticks)
                 liquidity = []
+
                 for tick in _ticks:
                     if tick > last_tick:
                         other_liq, _ = self.liquidity_to_tokens(active_liquidity, last_tick, tick)
-                        active_liquidity += self.get_tick_net_liquidity(tick)
+                        active_liquidity += net_liquidity[tick]
                     else:
                         other_liq, _ = self.liquidity_to_tokens(active_liquidity, tick, last_tick)
-                        active_liquidity -= self.get_tick_net_liquidity(tick)
+                        active_liquidity -= net_liquidity[tick]
 
                     cumulative_liquidity += other_liq
                     liquidity.append(cumulative_liquidity)
@@ -410,8 +422,8 @@ class UniswapV3(DEX):
             bid_ticks = [t for t in ticks if t > current_tick] + [UniswapV3.MAX_TICK]
 
             try:
-                ask_liquidity = get_cumulative_liqudity(ask_ticks)
-                bid_liquidity = get_cumulative_liqudity(bid_ticks)
+                ask_liquidity = get_cumulative_liquidity(ask_ticks)
+                bid_liquidity = get_cumulative_liquidity(bid_ticks)
             except Exception:
                 log.exception("Failed to get tick liquidity information")
                 return None
@@ -453,3 +465,7 @@ class UniswapV3(DEX):
     @property
     def color(self) -> str:
         return "#691453"
+
+    @ttl_cache(ttl=300)
+    def get_liquidity(self) -> list[Liquidity]:
+        return super().get_liquidity()
