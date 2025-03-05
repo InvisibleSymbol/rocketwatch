@@ -1,22 +1,18 @@
 import asyncio
-import logging
 from io import BytesIO
+from typing import cast
 
-import aiohttp
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import ticker
-
 from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from matplotlib import ticker
 
 from rocketwatch import RocketWatch
-from utils.cfg import cfg
 from utils.embeds import Embed
+from utils.liquidity import *
 from utils.visibility import is_hidden_weak
-from utils.liquidity import LiquiditySource, Liquidity, CEX, DEX
 
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
@@ -25,8 +21,27 @@ log.setLevel(cfg["log_level"])
 class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.cex: list[CEX] = [cls() for cls in CEX.__subclasses__()]
-        self.dex: list[DEX] = [cls() for cls in DEX.__subclasses__()]
+        self.cex: list[CEX] = [
+            Binance("RPL", "USDT"),
+            Coinbase("RPL", "USD"),
+            Deepcoin("RPL", "USDT"),
+            GateIO("RPL", "USDT"),
+            OKX("RPL", "USDT"),
+            Bitget("RPL", "USDT"),
+            MEXC("RPL", "USDT"),
+            Bybit("RPL", "USDT"),
+            CryptoDotCom("RPL", "USD"),
+            Kraken("RPL", "USD"),
+            Kucoin("RPL", "USDT")
+        ]
+        self.dex: list[DEX] = [
+            Balancer([
+                cast(HexStr, "0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462")
+            ]),
+            UniswapV3([
+                cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45")
+            ])
+        ]
 
     @hybrid_command()
     async def wall(self, ctx: Context):
