@@ -115,37 +115,6 @@ class DeFi(commands.Cog):
         )
         await ctx.send(embed=e)
 
-    @hybrid_command()
-    async def liquidity(self, ctx: Context):
-        """
-        Show the RPL liquidity on uniswap v3
-        """
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        url = "https://rocketscan.io/api/mainnet/uniswap/rpl"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                data = await resp.json()
-        total_rpl_liquidity = 0
-        for d in data:
-            # if both tokens are RPL, skip
-            if "RPL" in d["token0"]["symbol"] and "RPL" in d["token1"]["symbol"]:
-                continue
-            for t in ["token0", "token1"]:
-                if "RPL" not in d[t]["symbol"]:
-                    continue
-                total_rpl_liquidity += solidity.to_float(d[t]["liquidity"])
-
-        e = Embed()
-        e.title = "Uniswap v3 Liquidity"
-        e.set_author(name="🔗 Data from rocketscan.io", url="https://rocketscan.io/rpl/uniswap")
-        if not total_rpl_liquidity:
-            e.description = "<@806275470140244019> broke rocketscan.io's API. Please try again later."
-        e.add_field(
-            name="RPL Liquidity",
-            value=f"`{total_rpl_liquidity:,.2f} RPL`",
-        )
-        await ctx.send(embed=e, allowed_mentions=AllowedMentions(everyone=False, users=True))
-
 
 async def setup(bot):
     await bot.add_cog(DeFi(bot))
