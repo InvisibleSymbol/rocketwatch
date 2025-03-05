@@ -357,17 +357,17 @@ class DEX(LiquiditySource, ABC):
         return liqs
 
 
-class Balancer(DEX):
+class BalancerV2(DEX):
     class WeightedPool(DEX.Pool):
-        def __init__(self, balancer: 'Balancer', pool_id: str):
-            self.balancer = balancer
+        def __init__(self, pool_id: HexStr):
+            self.vault = rp.get_contract_by_name("BalancerVault")
             self.id = pool_id
-            tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()[0]
+            tokens = self.vault.functions.getPoolTokens(self.id).call()[0]
             self.token_0 = ERC20Token(tokens[0])
             self.token_1 = ERC20Token(tokens[1])
 
         def get_liquidity(self) -> Optional[Liquidity]:
-            balance_0, balance_1 = self.balancer.vault.functions.getPoolTokens(self.id).call()[1]
+            balance_0, balance_1 = self.vault.functions.getPoolTokens(self.id).call()[1]
             if (balance_0 == 0) or (balance_1 == 0):
                 log.warning("Empty token balances")
                 return None
@@ -377,15 +377,18 @@ class Balancer(DEX):
 
             # assume equal weights and liquidity in token 0 for now
             def depth_at(_price: float) -> float:
-                constant_product = balance_0 * balance_1
-                new_balance_0 = math.sqrt(_price * constant_product / balance_norm)
+                invariant = balance_0 * balance_1
+                new_balance_0 = math.sqrt(_price * invariant / balance_norm)
                 return abs(new_balance_0 - balance_0) / (10 ** self.token_0.decimals)
 
             return Liquidity(price, depth_at)
 
-    def __init__(self, pool_ids: list[HexStr]):
-        self.vault = rp.get_contract_by_name("BalancerVault")
-        super().__init__([Balancer.WeightedPool(self, pool_id) for pool_id in pool_ids])
+    def __init__(self, pools: list[WeightedPool]):
+        # missing support for other pool types
+        super().__init__(pools)
+
+    def __str__(self):
+        return "Balancer"
 
     @property
     def color(self) -> str:
