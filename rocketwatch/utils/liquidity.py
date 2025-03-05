@@ -1,13 +1,13 @@
-import logging
 import math
+import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, cast
+from typing import Optional, Callable
 
 import aiohttp
 import numpy as np
 
 from cachetools.func import ttl_cache
-from eth_typing import ChecksumAddress
+from eth_typing import ChecksumAddress, HexStr
 
 from utils.cfg import cfg
 from utils.retry import retry
@@ -36,13 +36,25 @@ class LiquiditySource(ABC):
         pass
 
 
-class CEX(LiquiditySource):
-    def __init__(self, api_endpoint: str):
-        self.api_endpoint = api_endpoint
+class CEX(LiquiditySource, ABC):
+    def __init__(self, major: str, minor: str):
+        self.major = major
+        self.minor = minor
+
+    @property
+    @abstractmethod
+    def _api_endpoint(self) -> str:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        pass
 
     @retry(tries=3, delay=1)
     async def get_order_book(self, session: aiohttp.ClientSession) -> tuple[dict[float, float], dict[float, float]]:
-        response = await (await session.get(self.api_endpoint)).json()
+        params = self._get_request_params(self.major, self.minor)
+        response = await (await session.get(self._api_endpoint, params=params)).json()
         bids = dict(sorted(self._get_bids(response).items()))
         asks = dict(sorted(self._get_asks(response).items()))
         return bids, asks
@@ -92,8 +104,13 @@ class CEX(LiquiditySource):
 
 
 class Binance(CEX):
-    def __init__(self):
-        super().__init__("https://api.binance.com/api/v3/depth?symbol=RPLUSDT&limit=5000")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.binance.com/api/v3/depth"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"symbol": f"{major}{minor}", "limit": 5000}
 
     @property
     def color(self) -> str:
@@ -107,8 +124,13 @@ class Binance(CEX):
 
 
 class Coinbase(CEX):
-    def __init__(self):
-        super().__init__("https://api.coinbase.com/api/v3/brokerage/market/product_book?product_id=RPL-USD")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.coinbase.com/api/v3/brokerage/market/product_book"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"product_id": f"{major}-{minor}"}
 
     @property
     def color(self) -> str:
@@ -122,8 +144,13 @@ class Coinbase(CEX):
 
 
 class Deepcoin(CEX):
-    def __init__(self):
-        super().__init__("https://api.deepcoin.com/deepcoin/market/books?instId=RPL-USDT&sz=400")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.deepcoin.com/deepcoin/market/books"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"instId": f"{major}-{minor}", "sz": 400}
 
     @property
     def color(self) -> str:
@@ -137,8 +164,13 @@ class Deepcoin(CEX):
 
 
 class GateIO(CEX):
-    def __init__(self):
-        super().__init__("https://api.gateio.ws/api/v4/spot/order_book?currency_pair=RPL_USDT&limit=1000")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.gateio.ws/api/v4/spot/order_book"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"currency_pair": f"{major}_{minor}", "limit": 1000}
 
     @property
     def color(self) -> str:
@@ -152,8 +184,13 @@ class GateIO(CEX):
 
 
 class OKX(CEX):
-    def __init__(self):
-        super().__init__("https://www.okx.com/api/v5/market/books?instId=RPL-USDT&sz=400")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://www.okx.com/api/v5/market/books"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"instId": f"{major}-{minor}", "sz": 400}
 
     @property
     def color(self) -> str:
@@ -167,8 +204,13 @@ class OKX(CEX):
 
 
 class Bitget(CEX):
-    def __init__(self):
-        super().__init__("https://api.bitget.com/api/v2/spot/market/orderbook?symbol=RPLUSDT")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.bitget.com/api/v2/spot/market/orderbook"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"symbol": f"{major}{minor}"}
 
     @property
     def color(self) -> str:
@@ -182,8 +224,13 @@ class Bitget(CEX):
 
 
 class MEXC(CEX):
-    def __init__(self):
-        super().__init__("https://api.mexc.com/api/v3/depth?symbol=RPLUSDT&limit=5000")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.mexc.com/api/v3/depth"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"symbol": f"{major}{minor}", "limit": 5000}
 
     @property
     def color(self) -> str:
@@ -197,8 +244,13 @@ class MEXC(CEX):
 
 
 class Bybit(CEX):
-    def __init__(self):
-        super().__init__("https://api.bybit.com/v5/market/orderbook?category=spot&symbol=RPLUSDT&limit=200")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.bybit.com/v5/market/orderbook"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"category": "spot", "symbol": f"{major}{minor}", "limit": 200}
 
     @property
     def color(self) -> str:
@@ -212,8 +264,13 @@ class Bybit(CEX):
 
 
 class CryptoDotCom(CEX):
-    def __init__(self):
-        super().__init__("https://api.crypto.com/exchange/v1/public/get-book?instrument_name=RPL_USD")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.crypto.com/exchange/v1/public/get-book"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"instrument_name": f"{major}_{minor}"}
 
     def __str__(self) -> str:
         return "Crypto.com"
@@ -230,23 +287,33 @@ class CryptoDotCom(CEX):
 
 
 class Kraken(CEX):
-    def __init__(self):
-        super().__init__("https://api.kraken.com/0/public/Depth?pair=RPLUSD&count=500")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.kraken.com/0/public/Depth"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"pair": f"{major}{minor}", "count": 500}
 
     @property
     def color(self) -> str:
         return "#6e3bed"
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
-        return {float(price): float(size) for price, size, _ in api_response["result"]["RPLUSD"]["bids"]}
+        return {float(price): float(size) for price, size, _ in list(api_response["result"].values())[0]["bids"]}
 
     def _get_asks(self, api_response: dict) -> dict[float, float]:
-        return {float(price): float(size) for price, size, _ in api_response["result"]["RPLUSD"]["asks"]}
+        return {float(price): float(size) for price, size, _ in list(api_response["result"].values())[0]["asks"]}
 
 
 class Kucoin(CEX):
-    def __init__(self):
-        super().__init__("https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=RPL-USDT")
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.kucoin.com/api/v1/market/orderbook/level2_100"
+
+    @staticmethod
+    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+        return {"symbol": f"{major}-{minor}"}
 
     @property
     def color(self) -> str:
@@ -284,27 +351,25 @@ class Balancer(DEX):
 
         def get_liquidity(self) -> Optional[Liquidity]:
             tokens = self.balancer.vault.functions.getPoolTokens(self.id).call()
-            other_balance, rpl_balance = tokens[1]
+            balance_0, balance_1 = tokens[1]
 
-            if (other_balance == 0) or (rpl_balance == 0):
+            if (balance_0 == 0) or (balance_1 == 0):
                 log.warning("Empty token balances")
                 return None
 
-            price = other_balance / rpl_balance
+            price = balance_0 / balance_1
 
             # assume 18 digits and equal weights for now
             def depth_at(_price: float) -> float:
-                constant_product = other_balance * rpl_balance
-                new_other_balance = math.sqrt(_price * constant_product)
-                return abs(new_other_balance - other_balance) / 1e18
+                constant_product = balance_0 * balance_1
+                new_balance_0 = math.sqrt(_price * constant_product)
+                return abs(new_balance_0 - balance_0) / 1e18
 
             return Liquidity(price, depth_at)
 
-    def __init__(self):
+    def __init__(self, pool_ids: list[HexStr]):
         self.vault = rp.get_contract_by_name("BalancerVault")
-        super().__init__([
-            Balancer.WeightedPool(self, "0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462")
-        ])
+        super().__init__([Balancer.WeightedPool(self, pool_id) for pool_id in pool_ids])
 
     @property
     def color(self) -> str:
@@ -403,13 +468,13 @@ class UniswapV3(DEX):
 
                 for tick in _ticks:
                     if tick > last_tick:
-                        other_liq, _ = self.liquidity_to_tokens(active_liquidity, last_tick, tick)
+                        liq_x, _ = self.liquidity_to_tokens(active_liquidity, last_tick, tick)
                         active_liquidity += net_liquidity[tick]
                     else:
-                        other_liq, _ = self.liquidity_to_tokens(active_liquidity, tick, last_tick)
+                        liq_x, _ = self.liquidity_to_tokens(active_liquidity, tick, last_tick)
                         active_liquidity -= net_liquidity[tick]
 
-                    cumulative_liquidity += other_liq
+                    cumulative_liquidity += liq_x
                     liquidity.append(cumulative_liquidity)
                     last_tick = tick
 
@@ -451,10 +516,8 @@ class UniswapV3(DEX):
 
             return Liquidity(1 / price, depth_at)
 
-    def __init__(self):
-        super().__init__([
-            UniswapV3.Pool(cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45"))
-        ])
+    def __init__(self, pools: list[ChecksumAddress]):
+        super().__init__([UniswapV3.Pool(pool) for pool in pools])
 
     def __str__(self) -> str:
         return "Uniswap"
