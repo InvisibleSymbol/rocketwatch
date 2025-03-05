@@ -35,8 +35,8 @@ class Wall(commands.Cog):
             Kucoin("RPL", "USDT")
         ]
         self.dex: list[DEX] = [
-            Balancer([
-                cast(HexStr, "0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462")
+            BalancerV2([
+                BalancerV2.WeightedPool(HexStr("0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462"))
             ]),
             UniswapV3([
                 cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45")
