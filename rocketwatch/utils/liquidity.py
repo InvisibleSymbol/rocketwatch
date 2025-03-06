@@ -69,12 +69,7 @@ class CEX(LiquiditySource, ABC):
 
     @ttl_cache(ttl=120)
     async def get_liquidity(self, session: aiohttp.ClientSession) -> Optional[Liquidity]:
-        try:
-            bids, asks = await self.get_order_book(session)
-        except Exception:
-            log.exception(f"Failed to fetch order book")
-            return None
-
+        bids, asks = await self.get_order_book(session)
         if not (bids and asks):
             log.warning(f"Empty order book")
             return None
@@ -504,14 +499,10 @@ class UniswapV3(DEX):
                 return liquidity
 
             ask_ticks = [t for t in reversed(ticks) if t <= current_tick] + [UniswapV3.MIN_TICK]
-            bid_ticks = [t for t in ticks if t > current_tick] + [UniswapV3.MAX_TICK]
+            ask_liquidity = get_cumulative_liquidity(ask_ticks)
 
-            try:
-                ask_liquidity = get_cumulative_liquidity(ask_ticks)
-                bid_liquidity = get_cumulative_liquidity(bid_ticks)
-            except Exception:
-                log.exception("Failed to get tick liquidity information")
-                return None
+            bid_ticks = [t for t in ticks if t > current_tick] + [UniswapV3.MAX_TICK]
+            bid_liquidity = get_cumulative_liquidity(bid_ticks)
 
             balance_norm = 10 ** (self.token_1.decimals - self.token_0.decimals)
 
