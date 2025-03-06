@@ -189,6 +189,7 @@ class Wall(commands.Cog):
         ax_right = ax.twinx()
         ax_right.minorticks_on()
         ax_right.set_yticks(ax.get_yticks())
+        ax_right.set_ylim(ax.get_ylim())
         ax_right.yaxis.set_major_formatter(get_formatter("#.3g", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
         return fig
