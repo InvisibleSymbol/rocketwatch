@@ -6,6 +6,7 @@ from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from discord.app_commands import describe
 from matplotlib import (
     pyplot as plt,
     ticker,
@@ -165,7 +166,7 @@ class Wall(commands.Cog):
                 log.info(f"{base_value = }")
 
                 for m, s in levels:
-                    if base_value >= (m - 0.5):
+                    if base_value >= round(m):
                         modifier = s
                         base_value /= m
                         break
@@ -194,8 +195,9 @@ class Wall(commands.Cog):
         return fig
 
     @hybrid_command()
-    async def wall(self, ctx: Context, exchanges: Literal["All", "CEX", "DEX"] = "All") -> None:
-        """Show the current RPL market depth across exchanges."""
+    @describe(sources="choose places to pull liquidity data from")
+    async def wall(self, ctx: Context, sources: Literal["All", "CEX", "DEX"] = "All") -> None:
+        """Show the current RPL market depth across exchanges"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         embed = Embed(title="RPL Market Depth")
 
@@ -214,23 +216,23 @@ class Wall(commands.Cog):
             await self.bot.report_error(e, ctx)
             return await on_fail()
 
-        sources = []
+        source_desc = []
         cex_data, dex_data = [], []
         total_liquidity = 0
 
         x = np.arange(0, 5 * rpl_usd, 0.01)
 
         try:
-            if exchanges != "CEX":
-                max_unique = 7 if (exchanges == "DEX") else 3
+            if sources != "CEX":
+                max_unique = 7 if (sources == "DEX") else 3
                 dex_data = self._get_dex_data(x, rpl_usd, max_unique)
-                sources.append(f"{len(self.dex)} DEX")
+                source_desc.append(f"{len(self.dex)} DEX")
                 total_liquidity += sum(y[0] + y[-1] for y, _, _ in dex_data)
 
-            if exchanges != "DEX":
-                max_unique = 7 if (exchanges == "CEX") else 3
+            if sources != "DEX":
+                max_unique = 7 if (sources == "CEX") else 3
                 cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
-                sources.append(f"{len(self.cex)} CEX")
+                source_desc.append(f"{len(self.cex)} CEX")
                 total_liquidity += sum(y[0] + y[-1] for y, _, _ in cex_data)
         except Exception as e:
             await self.bot.report_error(e, ctx)
@@ -248,7 +250,7 @@ class Wall(commands.Cog):
         embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
         embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} (Ξ {rpl_eth:.5f})")
         embed.add_field(name="Observed Liquidity", value=f"${total_liquidity:,.0f}")
-        embed.add_field(name="Sources", value=", ".join(sources))
+        embed.add_field(name="Sources", value=", ".join(source_desc))
 
         file_name = "wall.png"
         embed.set_image(url=f"attachment://{file_name}")
