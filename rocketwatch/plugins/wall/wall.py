@@ -15,6 +15,7 @@ from matplotlib import (
 )
 
 from rocketwatch import RocketWatch
+from utils.time_debug import timerun, timerun_async
 from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 from utils.liquidity import *
@@ -66,6 +67,7 @@ class Wall(commands.Cog):
 
         return depth, liquidity
 
+    @timerun_async
     async def _get_cex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
         depth: dict[CEX, np.ndarray] = {}
         liquidity: dict[CEX, float] = {}
@@ -86,6 +88,7 @@ class Wall(commands.Cog):
 
         return ret
 
+    @timerun
     def _get_dex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
         depth: dict[DEX, np.ndarray] = {}
         liquidity: dict[DEX, float] = {}
