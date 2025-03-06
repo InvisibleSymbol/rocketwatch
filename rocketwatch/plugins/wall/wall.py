@@ -224,13 +224,13 @@ class Wall(commands.Cog):
 
         try:
             if sources != "CEX":
-                max_unique = 7 if (sources == "DEX") else 3
+                max_unique = 3 if (sources == "All") else 7
                 dex_data = self._get_dex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.dex)} DEX")
                 liquidity_usd += sum(y[0] + y[-1] for y, _, _ in dex_data)
 
             if sources != "DEX":
-                max_unique = 7 if (sources == "CEX") else 3
+                max_unique = 3 if (sources == "All") else 7
                 cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.cex)} CEX")
                 liquidity_usd += sum(y[0] + y[-1] for y, _, _ in cex_data)
@@ -249,7 +249,7 @@ class Wall(commands.Cog):
         fig.savefig(buffer, format="png")
         buffer.seek(0)
 
-        embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
+        embed.set_author(name="🔗 Data from CEX APIs and Mainnet")
         embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} | Ξ{rpl_eth:.5f}")
         embed.add_field(name="Observed Liquidity", value=f"${liquidity_usd:,.0f} | Ξ{liquidity_eth:,.0f}")
         embed.add_field(name="Sources", value=", ".join(source_desc))
