@@ -68,11 +68,13 @@ class Core(commands.Cog):
             try:
                 await self.process_event_queue()
             except Exception as err:
+                self.state = "ERROR"
                 await report_error(err)
         # update the state message
         try:
             await self.update_state_message()
         except Exception as err:
+            self.state = "ERROR"
             await report_error(err)
         self.speed_limit = 5 if self.state == "OK" else 30
         monitor.ping(state='fail' if self.state == "ERROR" else 'complete', series=p_id)
