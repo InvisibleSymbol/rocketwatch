@@ -175,15 +175,14 @@ class Wall(commands.Cog):
             return ticker.FuncFormatter(formatter)
 
         x_ticks = ax.get_xticks()
-        x_ticks = [t for t in x_ticks if abs(t - rpl_usd) > (x[-1] - x[0]) / 20] + [rpl_usd]
-        ax.set_xticks(x_ticks)
+        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 15] + [rpl_usd])
         ax.set_xlim((x[0], x[-1]))
         ax.xaxis.set_major_formatter("${x:,.2f}")
         ax.yaxis.set_major_formatter(get_formatter("$", 1, "#.3g"))
 
         ax_top = ax.twiny()
         ax_top.minorticks_on()
-        ax_top.set_xticks(ax.get_xticks())
+        ax_top.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 10] + [rpl_usd])
         ax_top.set_xlim(ax.get_xlim())
         ax_top.xaxis.set_major_formatter(get_formatter("Ξ ", rpl_eth / rpl_usd, ".5f"))
 
