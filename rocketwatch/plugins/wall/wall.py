@@ -19,6 +19,8 @@ from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 from utils.liquidity import *
 
+Pair = CEX.MarketPair
+
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
 
@@ -27,17 +29,18 @@ class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.cex: list[CEX] = [
-            Binance("RPL", "USDT"),
-            Coinbase("RPL", "USD"),
-            Deepcoin("RPL", "USDT"),
-            GateIO("RPL", "USDT"),
-            OKX("RPL", "USDT"),
-            Bitget("RPL", "USDT"),
-            MEXC("RPL", "USDT"),
-            Bybit("RPL", "USDT"),
-            CryptoDotCom("RPL", "USD"),
-            Kraken("RPL", "USD"),
-            Kucoin("RPL", "USDT")
+            Binance([Pair("RPL", "USDT")]),
+            Coinbase([Pair("RPL", "USDC")]),
+            Deepcoin([Pair("RPL", "USDT")]),
+            GateIO([Pair("RPL", "USDT")]),
+            OKX([Pair("RPL", "USDT")]),
+            Bitget([Pair("RPL", "USDT")]),
+            MEXC([Pair("RPL", "USDT")]),
+            Bybit([Pair("RPL", "USDT")]),
+            CryptoDotCom([Pair("RPL", "USD")]),
+            Kraken([Pair("RPL", "USD"), Pair("RPL", "EUR")]),
+            Kucoin([Pair("RPL", "USDT")]),
+            Bithumb([Pair("RPL", "KRW")]),
         ]
         self.dex: list[DEX] = [
             BalancerV2([
@@ -48,20 +51,30 @@ class Wall(commands.Cog):
             ])
         ]
 
+    @staticmethod
+    def _get_market_depth_and_liquidity(
+            markets: dict[Pair | DEX.LiquidityPool, Liquidity],
+            x: np.ndarray,
+            rpl_usd: float
+    ) -> tuple[np.ndarray, float]:
+        depth = np.zeros_like(x)
+        liquidity = 0
+
+        for liq in markets.values():
+            conv = liq.price / rpl_usd
+            depth += np.array(list(map(liq.depth_at, x * conv))) / conv
+            liquidity += (liq.depth_at(float(x[0] * conv)) + liq.depth_at(float(x[-1] * conv))) / conv
+
+        return depth, liquidity
+
     async def _get_cex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
         depth: dict[CEX, np.ndarray] = {}
         liquidity: dict[CEX, float] = {}
         async with aiohttp.ClientSession() as session:
             requests = [cex.get_liquidity(session) for cex in self.cex]
             for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
-                if not liq:
-                    log.warning(f"Failed to fetch liquidity from {cex}")
-                    continue
-
-                # only look at one pair for now
-                conv = liq.price / rpl_usd
-                depth[cex] = np.array(list(map(liq.depth_at, x * conv))) / conv
-                liquidity[cex] = liq.depth_at(float(x[0])) + liq.depth_at(float(x[-1]))
+                if markets := await cex.get_liquidity(session):
+                    depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
 
         exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
         ret = []
@@ -79,17 +92,8 @@ class Wall(commands.Cog):
         depth: dict[DEX, np.ndarray] = {}
         liquidity: dict[DEX, float] = {}
         for dex in self.dex:
-            if not (pools := dex.get_liquidity()):
-                log.warning(f"Failed to fetch liquidity from {dex}")
-                continue
-
-            depth[dex] = np.zeros_like(x)
-            liquidity[dex] = 0
-
-            for liq in pools:
-                conv = liq.price / rpl_usd
-                depth[dex] += np.array(list(map(liq.depth_at, x * conv))) / conv
-                liquidity[dex] += liq.depth_at(float(x[0])) + liq.depth_at(float(x[-1]))
+            if pools := dex.get_liquidity():
+                depth[dex], liquidity[dex] = self._get_market_depth_and_liquidity(pools, x, rpl_usd)
 
         exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
         ret = []
@@ -167,7 +171,6 @@ class Wall(commands.Cog):
                 ]
                 modifier = ""
                 base_value = _x * scale
-                log.info(f"{base_value = }")
 
                 for m, s in levels:
                     if base_value >= round(m):
@@ -178,15 +181,17 @@ class Wall(commands.Cog):
                 return prefix + f"{base_value:{base_fmt}}".rstrip(".") + modifier + suffix
             return ticker.FuncFormatter(formatter)
 
+        range_size = x[-1] - x[0]
+
         x_ticks = ax.get_xticks()
-        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 15] + [rpl_usd])
+        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 15] + [rpl_usd])
         ax.set_xlim((x[0], x[-1]))
-        ax.xaxis.set_major_formatter(get_formatter(".2f", prefix="$"))
+        ax.xaxis.set_major_formatter(get_formatter(".2f" if (range_size >= 0.1) else ".3f", prefix="$"))
         ax.yaxis.set_major_formatter(get_formatter("#.3g", prefix="$"))
 
         ax_top = ax.twiny()
         ax_top.minorticks_on()
-        ax_top.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 10] + [rpl_usd])
+        ax_top.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 10] + [rpl_usd])
         ax_top.set_xlim(ax.get_xlim())
         ax_top.xaxis.set_major_formatter(get_formatter(".5f", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
@@ -221,25 +226,29 @@ class Wall(commands.Cog):
         try:
             async with aiohttp.ClientSession() as session:
                 # use Binance as price oracle
-                rpl_usd = (await Binance("RPL", "USDT").get_liquidity(session)).price
-                eth_usd = (await Binance("ETH", "USDT").get_liquidity(session)).price
+                rpl_usd = list((await Binance([Pair("RPL", "USDT")]).get_liquidity(session)).values())[0].price
+                eth_usd = list((await Binance([Pair("ETH", "USDT")]).get_liquidity(session)).values())[0].price
                 rpl_eth = rpl_usd / eth_usd
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
 
+        if min_price < 0:
+            min_price = rpl_usd + min_price
+
+        if max_price is None:
+            max_price = 5 * rpl_usd
+        elif max_price < 0:
+            max_price = rpl_usd - max_price
+
+        step_size = 0.001
+        min_price = max(0.0, min(min_price, rpl_usd - 5 * step_size))
+        max_price = min(100 * rpl_usd, max(max_price, rpl_usd + 5 * step_size))
+        x = np.arange(min_price, max_price + step_size, step_size)
+
         source_desc = []
         cex_data, dex_data = [], []
         liquidity_usd = 0
-
-        step_size = 0.01
-        min_price = max(0.0, min(min_price, rpl_usd - 5 * step_size))
-        if max_price is None:
-            max_price = 5 * rpl_usd
-        else:
-            max_price = min(100 * rpl_usd, max(max_price, rpl_usd + 5 * step_size))
-
-        x = np.arange(min_price, max_price, step_size)
 
         try:
             if sources != "CEX":
