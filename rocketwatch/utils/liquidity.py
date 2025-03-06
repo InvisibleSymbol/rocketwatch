@@ -1,6 +1,8 @@
 import math
 import logging
+from collections import OrderedDict
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional, Callable
 
 import aiohttp
@@ -10,7 +12,7 @@ from cachetools.func import ttl_cache
 from eth_typing import ChecksumAddress, HexStr
 
 from utils.cfg import cfg
-from utils.retry import retry
+from utils.retry import retry_async
 from utils.rocketpool import rp
 
 log = logging.getLogger("liquidity")
@@ -26,7 +28,13 @@ class Liquidity:
         return self.__depth_fn(price)
 
 
-class LiquiditySource(ABC):
+class LiquidityProvider(ABC):
+    @abstractmethod
+    def get_liquidity(self) -> Optional[Liquidity]:
+        pass
+
+
+class Exchange(ABC):
     def __str__(self) -> str:
         return self.__class__.__name__
 
@@ -36,10 +44,14 @@ class LiquiditySource(ABC):
         pass
 
 
-class CEX(LiquiditySource, ABC):
-    def __init__(self, major: str, minor: str):
-        self.major = major
-        self.minor = minor
+class CEX(Exchange, ABC):
+    @dataclass(frozen=True, slots=True)
+    class MarketPair:
+        major: str
+        minor: str
+
+    def __init__(self, pair: list[MarketPair]):
+        self.pairs = pair
 
     @property
     @abstractmethod
@@ -48,34 +60,40 @@ class CEX(LiquiditySource, ABC):
 
     @staticmethod
     @abstractmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
+    def _get_request_params(pair: MarketPair) -> dict[str, str|int]:
         pass
-
-    @retry(tries=3, delay=1)
-    async def get_order_book(self, session: aiohttp.ClientSession) -> tuple[dict[float, float], dict[float, float]]:
-        params = self._get_request_params(self.major, self.minor)
-        response = await (await session.get(self._api_endpoint, params=params)).json()
-        bids = dict(sorted(self._get_bids(response).items()))
-        asks = dict(sorted(self._get_asks(response).items()))
-        return bids, asks
 
     @abstractmethod
     def _get_bids(self, api_response: dict) -> dict[float, float]:
+        """Extract mapping of price to major-denominated bid liquidity from API response"""
         pass
 
     @abstractmethod
     def _get_asks(self, api_response: dict) -> dict[float, float]:
+        """Extract mapping of price to major-denominated ask liquidity from API response"""
         pass
 
-    @ttl_cache(ttl=120)
-    async def get_liquidity(self, session: aiohttp.ClientSession) -> Optional[Liquidity]:
-        bids, asks = await self.get_order_book(session)
+    @retry_async(tries=3, delay=1)
+    async def _get_order_book(
+            self,
+            pair: MarketPair,
+            session: aiohttp.ClientSession
+    ) -> tuple[dict[float, float], dict[float, float]]:
+        params = self._get_request_params(pair)
+        response = await session.get(self._api_endpoint, params=params, headers={"User-Agent": "Rocket Watch"})
+        data = await response.json()
+        bids = OrderedDict(sorted(self._get_bids(data).items(), reverse=True))
+        asks = OrderedDict(sorted(self._get_asks(data).items()))
+        return bids, asks
+
+    async def _get_liquidity(self, pair: MarketPair, session: aiohttp.ClientSession) -> Optional[Liquidity]:
+        bids, asks = await self._get_order_book(pair, session)
         if not (bids and asks):
             log.warning(f"Empty order book")
             return None
 
-        bid_prices = np.array(list(reversed(bids.keys())))
-        bid_liquidity = np.cumsum([p * bids[p] for p in reversed(bids)])
+        bid_prices = np.array(list(bids.keys()))
+        bid_liquidity = np.cumsum([p * bids[p] for p in bids])
 
         ask_prices = np.array(list(asks.keys()))
         ask_liquidity = np.cumsum([p * asks[p] for p in asks])
@@ -97,19 +115,26 @@ class CEX(LiquiditySource, ABC):
 
         return Liquidity(price, depth_at)
 
+    async def get_liquidity(self, session: aiohttp.ClientSession) -> dict[MarketPair, Liquidity]:
+        markets = {}
+        for pair in self.pairs:
+            if liq := await self._get_liquidity(pair, session):
+                markets[pair] = liq
+        return markets
+
 
 class Binance(CEX):
+    @property
+    def color(self) -> str:
+        return "#e8bd47"
+
     @property
     def _api_endpoint(self) -> str:
         return "https://api.binance.com/api/v3/depth"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"symbol": f"{major}{minor}", "limit": 5000}
-
-    @property
-    def color(self) -> str:
-        return "#e8bd47"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"symbol": f"{pair.major}{pair.minor}", "limit": 5000}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["bids"]}
@@ -120,16 +145,16 @@ class Binance(CEX):
 
 class Coinbase(CEX):
     @property
+    def color(self) -> str:
+        return "#2856f5"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.coinbase.com/api/v3/brokerage/market/product_book"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"product_id": f"{major}-{minor}"}
-
-    @property
-    def color(self) -> str:
-        return "#2856f5"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"product_id": f"{pair.major}-{pair.minor}"}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(bid["price"]): float(bid["size"]) for bid in api_response["pricebook"]["bids"]}
@@ -140,16 +165,16 @@ class Coinbase(CEX):
 
 class Deepcoin(CEX):
     @property
+    def color(self) -> str:
+        return "#ee8337"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.deepcoin.com/deepcoin/market/books"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"instId": f"{major}-{minor}", "sz": 400}
-
-    @property
-    def color(self) -> str:
-        return "#ee8337"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"instId": f"{pair.major}-{pair.minor}", "sz": 400}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["data"]["bids"]}
@@ -160,16 +185,16 @@ class Deepcoin(CEX):
 
 class GateIO(CEX):
     @property
+    def color(self) -> str:
+        return "#3758de"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.gateio.ws/api/v4/spot/order_book"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"currency_pair": f"{major}_{minor}", "limit": 1000}
-
-    @property
-    def color(self) -> str:
-        return "#3758de"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"currency_pair": f"{pair.major}_{pair.minor}", "limit": 1000}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["bids"]}
@@ -180,16 +205,16 @@ class GateIO(CEX):
 
 class OKX(CEX):
     @property
+    def color(self) -> str:
+        return "#080808"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://www.okx.com/api/v5/market/books"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"instId": f"{major}-{minor}", "sz": 400}
-
-    @property
-    def color(self) -> str:
-        return "#080808"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"instId": f"{pair.major}-{pair.minor}", "sz": 400}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size, _, _ in api_response["data"][0]["bids"]}
@@ -200,16 +225,16 @@ class OKX(CEX):
 
 class Bitget(CEX):
     @property
+    def color(self) -> str:
+        return "#5ac2ce"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.bitget.com/api/v2/spot/market/orderbook"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"symbol": f"{major}{minor}", "limit": 150}
-
-    @property
-    def color(self) -> str:
-        return "#5ac2ce"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"symbol": f"{pair.major}{pair.minor}", "limit": 150}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["data"]["bids"]}
@@ -220,16 +245,16 @@ class Bitget(CEX):
 
 class MEXC(CEX):
     @property
+    def color(self) -> str:
+        return "#0b0935"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.mexc.com/api/v3/depth"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"symbol": f"{major}{minor}", "limit": 5000}
-
-    @property
-    def color(self) -> str:
-        return "#0b0935"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"symbol": f"{pair.major}{pair.minor}", "limit": 5000}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["bids"]}
@@ -240,16 +265,16 @@ class MEXC(CEX):
 
 class Bybit(CEX):
     @property
+    def color(self) -> str:
+        return "#eba93b"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.bybit.com/v5/market/orderbook"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"category": "spot", "symbol": f"{major}{minor}", "limit": 200}
-
-    @property
-    def color(self) -> str:
-        return "#eba93b"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"category": "spot", "symbol": f"{pair.major}{pair.minor}", "limit": 200}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["result"]["b"]}
@@ -259,20 +284,20 @@ class Bybit(CEX):
 
 
 class CryptoDotCom(CEX):
-    @property
-    def _api_endpoint(self) -> str:
-        return "https://api.crypto.com/exchange/v1/public/get-book"
-
-    @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"instrument_name": f"{major}_{minor}", "depth": 150}
-
     def __str__(self) -> str:
         return "Crypto.com"
 
     @property
     def color(self) -> str:
         return "#1b3376"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.crypto.com/exchange/v1/public/get-book"
+
+    @staticmethod
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"instrument_name": f"{pair.major}_{pair.minor}", "depth": 150}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size, _ in api_response["result"]["data"][0]["bids"]}
@@ -283,16 +308,16 @@ class CryptoDotCom(CEX):
 
 class Kraken(CEX):
     @property
+    def color(self) -> str:
+        return "#6e3bed"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.kraken.com/0/public/Depth"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"pair": f"{major}{minor}", "count": 500}
-
-    @property
-    def color(self) -> str:
-        return "#6e3bed"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"pair": f"{pair.major}{pair.minor}", "count": 500}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size, _ in list(api_response["result"].values())[0]["bids"]}
@@ -303,22 +328,42 @@ class Kraken(CEX):
 
 class Kucoin(CEX):
     @property
+    def color(self) -> str:
+        return "#55ae92"
+
+    @property
     def _api_endpoint(self) -> str:
         return "https://api.kucoin.com/api/v1/market/orderbook/level2_100"
 
     @staticmethod
-    def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"symbol": f"{major}-{minor}"}
-
-    @property
-    def color(self) -> str:
-        return "#55ae92"
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"symbol": f"{pair.major}-{pair.minor}"}
 
     def _get_bids(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["data"]["bids"]}
 
     def _get_asks(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["data"]["asks"]}
+
+
+class Bithumb(CEX):
+    @property
+    def color(self) -> str:
+        return "#ea7825"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.bithumb.com/v1/orderbook"
+
+    @staticmethod
+    def _get_request_params(pair: CEX.MarketPair) -> dict[str, str|int]:
+        return {"markets": f"{pair.minor}-{pair.major}"}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {entry["bid_price"]: entry["bid_size"] for entry in api_response[0]["orderbook_units"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {entry["ask_price"]: entry["ask_size"] for entry in api_response[0]["orderbook_units"]}
 
 
 class ERC20Token:
@@ -335,25 +380,26 @@ class ERC20Token:
         return f"{self.symbol} ({self.address})"
 
 
-class DEX(LiquiditySource, ABC):
-    class Pool(ABC):
+class DEX(Exchange, ABC):
+    class LiquidityPool(ABC):
         @abstractmethod
         def get_liquidity(self) -> Optional[Liquidity]:
             pass
 
-    def __init__(self, pools: list[Pool]):
+    def __init__(self, pools: list[LiquidityPool]):
         self.pools = pools
 
-    def get_liquidity(self) -> list[Liquidity]:
-        liqs = []
+    @ttl_cache(ttl=60)
+    def get_liquidity(self) -> dict[LiquidityPool, Liquidity]:
+        pools = {}
         for pool in self.pools:
             if liq := pool.get_liquidity():
-                liqs.append(liq)
-        return liqs
+                pools[pool] = liq
+        return pools
 
 
 class BalancerV2(DEX):
-    class WeightedPool(DEX.Pool):
+    class WeightedPool(DEX.LiquidityPool):
         def __init__(self, pool_id: HexStr):
             self.vault = rp.get_contract_by_name("BalancerVault")
             self.id = pool_id
@@ -403,7 +449,7 @@ class UniswapV3(DEX):
     def price_to_tick(price: float) -> float:
         return math.log(price, 1.0001)
 
-    class Pool(DEX.Pool):
+    class LiquidityPool(DEX.LiquidityPool):
         def __init__(self, pool_address: ChecksumAddress):
             self.contract = rp.assemble_contract("UniswapV3Pool", pool_address)
             self.tick_spacing: int = self.contract.functions.tickSpacing().call()
@@ -533,7 +579,7 @@ class UniswapV3(DEX):
             return Liquidity(balance_norm / price, depth_at)
 
     def __init__(self, pools: list[ChecksumAddress]):
-        super().__init__([UniswapV3.Pool(pool) for pool in pools])
+        super().__init__([UniswapV3.LiquidityPool(pool) for pool in pools])
 
     def __str__(self) -> str:
         return "Uniswap"
@@ -541,7 +587,3 @@ class UniswapV3(DEX):
     @property
     def color(self) -> str:
         return "#691453"
-
-    @ttl_cache(ttl=60)
-    def get_liquidity(self) -> list[Liquidity]:
-        return super().get_liquidity()
