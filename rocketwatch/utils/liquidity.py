@@ -205,7 +205,7 @@ class Bitget(CEX):
 
     @staticmethod
     def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"symbol": f"{major}{minor}"}
+        return {"symbol": f"{major}{minor}", "limit": 150}
 
     @property
     def color(self) -> str:
@@ -265,7 +265,7 @@ class CryptoDotCom(CEX):
 
     @staticmethod
     def _get_request_params(major: str, minor: str) -> dict[str, str|int]:
-        return {"instrument_name": f"{major}_{minor}"}
+        return {"instrument_name": f"{major}_{minor}", "depth": 150}
 
     def __str__(self) -> str:
         return "Crypto.com"
