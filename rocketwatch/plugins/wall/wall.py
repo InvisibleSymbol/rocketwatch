@@ -9,6 +9,7 @@ from discord.ext.commands import hybrid_command
 from discord.app_commands import describe
 from matplotlib import (
     pyplot as plt,
+    font_manager as fm,
     ticker,
     figure
 )
@@ -123,12 +124,13 @@ class Wall(commands.Cog):
         ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
 
         y_offset = 0
+        max_label_length: int = np.max([len(t[1]) for t in (cex_data + dex_data)])
 
         def add_data(_data: list[tuple[np.ndarray, str, str]], _legend_title: Optional[str]) -> None:
             labels, handles = [], []
             for y_values, label, color in _data:
                 y.append(y_values)
-                labels.append(label)
+                labels.append(f"{label:\u00A0<{max_label_length}}")
                 colors.append(color)
                 handles.append(plt.Rectangle((0, 0), 1, 1, color=color))
 
@@ -136,10 +138,9 @@ class Wall(commands.Cog):
                 handles,
                 labels,
                 title=_legend_title,
-                fontsize=10,
-                title_fontsize=10,
                 loc="upper left",
-                bbox_to_anchor=(0, 1 - y_offset)
+                bbox_to_anchor=(0, 1 - y_offset),
+                prop=fm.FontProperties(family="monospace", size=10)
             )
             ax.add_artist(legend)
 
