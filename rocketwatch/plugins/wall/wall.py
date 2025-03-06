@@ -195,8 +195,8 @@ class Wall(commands.Cog):
         return fig
 
     @hybrid_command()
-    @describe(min_price="lower end of price range to show in USD")
-    @describe(max_price="upper end of price range to show in USD")
+    @describe(min_price="lower end of price range in USD")
+    @describe(max_price="upper end of price range in USD")
     @describe(sources="choose places to pull liquidity data from")
     async def wall(
             self,
