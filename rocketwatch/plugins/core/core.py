@@ -200,7 +200,7 @@ class Core(commands.Cog):
             log.debug(f"Found {len(db_events)} events for channel {channel_id}.")
             channel = await self.bot.get_or_fetch_channel(channel_id)
 
-            if state_message and (channel_id == state_message.get("channel_id", self.channels["default"])):
+            if state_message and (channel_id == state_message["channel_id"]):
                 msg = await channel.fetch_message(state_message["message_id"])
                 await msg.delete()
                 await self.db.state_messages.delete_one({"_id": "state"})
@@ -261,11 +261,10 @@ class Core(commands.Cog):
         await self._replace_or_add_status(embed, state_message)
 
     async def _replace_or_add_status(self, embed: Optional[Embed], prev_status: Optional[dict]) -> None:
-        new_channel_id = self.channels["default"]
-        prev_channel_id = (prev_status or {}).get("channel_id", new_channel_id)
+        target_channel_id = self.channels["default"]
 
-        if embed and prev_status and (prev_channel_id == new_channel_id):
-            channel = await self.bot.get_or_fetch_channel(prev_channel_id)
+        if embed and prev_status and (prev_status["channel_id"] == target_channel_id):
+            channel = await self.bot.get_or_fetch_channel(target_channel_id)
             msg = await channel.fetch_message(prev_status["message_id"])
             await msg.edit(embed=embed)
             await self.db.state_messages.update_one(
@@ -275,17 +274,17 @@ class Core(commands.Cog):
             return
 
         if prev_status:
-            channel = await self.bot.get_or_fetch_channel(prev_channel_id)
+            channel = await self.bot.get_or_fetch_channel(prev_status["channel_id"])
             msg = await channel.fetch_message(prev_status["message_id"])
             await msg.delete()
             await self.db.state_messages.delete_one({"_id": "state"})
 
         if embed:
-            channel = await self.bot.get_or_fetch_channel(new_channel_id)
+            channel = await self.bot.get_or_fetch_channel(target_channel_id)
             msg = await channel.send(embed=embed)
             await self.db.state_messages.insert_one({
                 "_id": "state",
-                "channel_id": new_channel_id,
+                "channel_id": target_channel_id,
                 "message_id": msg.id,
                 "sent_at": datetime.now(),
                 "state": str(self.state)
