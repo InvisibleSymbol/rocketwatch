@@ -196,9 +196,9 @@ class Core(commands.Cog):
                 attachment = try_load(event_entry, "attachment")
 
                 if embed and attachment:
-                    file_name = event_entry["event_name"]
+                    file_name = event_entry["event_name"] + ".png"
                     file = attachment.to_file(file_name)
-                    embed.set_image(url=f"attachment://{file_name}.png")
+                    embed.set_image(url=f"attachment://{file_name}")
                 else:
                     file = None
 
