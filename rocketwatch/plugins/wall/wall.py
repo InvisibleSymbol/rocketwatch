@@ -154,7 +154,7 @@ class Wall(commands.Cog):
 
         ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
 
-        def get_formatter(unit: str, conv: float, base_fmt: str):
+        def get_formatter(base_fmt: str, *, scale=1.0, prefix="", suffix=""):
             def formatter(_x, _pos) -> str:
                 levels = [
                     (1_000_000_000, "B"),
@@ -162,7 +162,7 @@ class Wall(commands.Cog):
                     (1_000, "K")
                 ]
                 modifier = ""
-                base_value = _x * conv
+                base_value = _x * scale
                 log.info(f"{base_value = }")
 
                 for m, s in levels:
@@ -171,25 +171,25 @@ class Wall(commands.Cog):
                         base_value /= m
                         break
 
-                return unit + f"{base_value:{base_fmt}}".rstrip(".") + modifier
+                return prefix + f"{base_value:{base_fmt}}".rstrip(".") + modifier + suffix
             return ticker.FuncFormatter(formatter)
 
         x_ticks = ax.get_xticks()
         ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 15] + [rpl_usd])
         ax.set_xlim((x[0], x[-1]))
-        ax.xaxis.set_major_formatter("${x:,.2f}")
-        ax.yaxis.set_major_formatter(get_formatter("$", 1, "#.3g"))
+        ax.xaxis.set_major_formatter(get_formatter(".2f", prefix="$"))
+        ax.yaxis.set_major_formatter(get_formatter("#.3g", prefix="$"))
 
         ax_top = ax.twiny()
         ax_top.minorticks_on()
         ax_top.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= (x[-1] - x[0]) / 10] + [rpl_usd])
         ax_top.set_xlim(ax.get_xlim())
-        ax_top.xaxis.set_major_formatter(get_formatter("Ξ ", rpl_eth / rpl_usd, ".5f"))
+        ax_top.xaxis.set_major_formatter(get_formatter(".5f", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
         ax_right = ax.twinx()
         ax_right.minorticks_on()
         ax_right.set_yticks(ax.get_yticks())
-        ax_right.yaxis.set_major_formatter(get_formatter("Ξ ", rpl_eth / rpl_usd, "#.3g"))
+        ax_right.yaxis.set_major_formatter(get_formatter("#.3g", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
         return fig
 
@@ -250,7 +250,7 @@ class Wall(commands.Cog):
 
         embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
         embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} | Ξ{rpl_eth:.5f}")
-        embed.add_field(name="Observed Liquidity", value=f"${liquidity_usd:,.0f} | {liquidity_eth:,.0f} ETH")
+        embed.add_field(name="Observed Liquidity", value=f"${liquidity_usd:,.0f} | Ξ{liquidity_eth:,.0f}")
         embed.add_field(name="Sources", value=", ".join(source_desc))
 
         file_name = "wall.png"
