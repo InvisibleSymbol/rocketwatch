@@ -8,21 +8,22 @@ from discord import File
 
 Color = tuple[int, int, int]
 
-class Image(PillowImage.Image):
+class Image:
     def __init__(self, image: PillowImage.Image):
         self.__img = image
 
     def to_file(self, name: str) -> File:
         buffer = BytesIO()
-        self.__img.save(buffer, format="PNG")
+        self.__img.save(buffer, format="png")
         buffer.seek(0)
         return File(buffer, name)
 
 class ImageCanvas(ImageDraw):
     # default color matches Discord Desktop dark mode Embed color (#2b2d31)
     def __init__(self, width: int, height: int, bg_color: Color = (43, 45, 49)):
-        self.image = Image(PillowImage.new('RGB', (width, height), color=bg_color))
-        super().__init__(self.image)
+        p_img = PillowImage.new('RGB', (width, height), color=bg_color)
+        super().__init__(p_img)
+        self.image = Image(p_img)
         self._fonts_cache: dict[int, ImageFont] = {}
 
     def progress_bar(
