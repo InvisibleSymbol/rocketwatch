@@ -46,16 +46,22 @@ class Wall(commands.Cog):
             ])
         ]
 
-    @staticmethod
-    def _get_cex_data(liquidity: dict[CEX, Liquidity], x: np.ndarray, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
+    async def _get_cex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
         depth: dict[CEX, np.ndarray] = {}
-        for cex, liq in liquidity.items():
-            depth[cex] = np.array(list(map(liq.depth_at, x)))
+        liquidity: dict[CEX, float] = {}
+        async with aiohttp.ClientSession() as session:
+            requests = [cex.get_liquidity(session) for cex in self.cex]
+            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
+                if not liq:
+                    log.warning(f"Failed to fetch liquidity from {cex}")
+                    continue
 
-        def get_range_liquidity(_e: CEX) -> float:
-            return liquidity[_e].depth_at(float(x[0])) + liquidity[_e].depth_at(float(x[-1]))
+                # only look at one pair for now
+                conv = liq.price / rpl_usd
+                depth[cex] = np.array(list(map(liq.depth_at, x * conv))) / conv
+                liquidity[cex] = liq.depth_at(float(x[0])) + liq.depth_at(float(x[-1]))
 
-        exchanges = list(sorted(depth, key=get_range_liquidity, reverse=True))
+        exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
         ret = []
 
         for exchange in exchanges[:max_unique]:
@@ -83,10 +89,7 @@ class Wall(commands.Cog):
                 depth[dex] += np.array(list(map(liq.depth_at, x * conv))) / conv
                 liquidity[dex] += liq.depth_at(float(x[0])) + liq.depth_at(float(x[-1]))
 
-        def get_range_liquidity(_e: DEX) -> float:
-            return liquidity[_e]
-
-        exchanges = list(sorted(depth, key=get_range_liquidity, reverse=True))
+        exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
         ret = []
 
         for exchange in exchanges[:max_unique]:
@@ -102,6 +105,7 @@ class Wall(commands.Cog):
     def _plot_data(
             x: np.ndarray,
             rpl_usd: float,
+            rpl_eth: float,
             cex_data: list[tuple[np.ndarray, str, str]],
             dex_data: list[tuple[np.ndarray, str, str]]
     ) -> figure.Figure:
@@ -110,16 +114,12 @@ class Wall(commands.Cog):
 
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.set_facecolor("#f8f9fa")
-        ax.set_title("RPL Market Depth", fontsize=14, fontweight='bold')
 
         ax.minorticks_on()
         ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
         ax.grid(True, which='minor', linestyle=':', linewidth=0.3, alpha=0.5)
 
         ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
-
-        ax.xaxis.set_major_formatter(ticker.StrMethodFormatter('${x:,.2f}'))
-        ax.yaxis.set_major_formatter(ticker.StrMethodFormatter('${x:,.0f}'))
 
         y_offset = 0
 
@@ -153,67 +153,107 @@ class Wall(commands.Cog):
 
         ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
 
+        def get_formatter(unit: str, conv: float, base_fmt: str):
+            def formatter(_x, _pos) -> str:
+                levels = [
+                    (1_000_000_000, "B"),
+                    (1_000_000, "M"),
+                    (1_000, "K")
+                ]
+                modifier = ""
+                base_value = _x * conv
+                log.info(f"{base_value = }")
+
+                for m, s in levels:
+                    if base_value >= (m - 0.5):
+                        modifier = s
+                        base_value /= m
+                        break
+
+                return unit + f"{base_value:{base_fmt}}".rstrip(".") + modifier
+            return ticker.FuncFormatter(formatter)
+
         x_ticks = ax.get_xticks()
         x_ticks = [t for t in x_ticks if abs(t - rpl_usd) > (x[-1] - x[0]) / 20] + [rpl_usd]
         ax.set_xticks(x_ticks)
         ax.set_xlim((x[0], x[-1]))
+        ax.xaxis.set_major_formatter("${x:,.2f}")
+        ax.yaxis.set_major_formatter(get_formatter("$", 1, "#.3g"))
+
+        ax_top = ax.twiny()
+        ax_top.minorticks_on()
+        ax_top.set_xticks(ax.get_xticks())
+        ax_top.set_xlim(ax.get_xlim())
+        ax_top.xaxis.set_major_formatter(get_formatter("Ξ ", rpl_eth / rpl_usd, ".5f"))
+
+        ax_right = ax.twinx()
+        ax_right.minorticks_on()
+        ax_right.set_yticks(ax.get_yticks())
+        ax_right.yaxis.set_major_formatter(get_formatter("Ξ ", rpl_eth / rpl_usd, "#.3g"))
 
         return fig
 
     @hybrid_command()
-    async def wall(self, ctx: Context, exchanges: Literal["All", "CEX", "DEX"] = "All"):
+    async def wall(self, ctx: Context, exchanges: Literal["All", "CEX", "DEX"] = "All") -> None:
         """Show the current RPL market depth across exchanges."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        embed = Embed()
-        embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
+        embed = Embed(title="RPL Market Depth")
 
-        cex_liquidity: dict[CEX, Liquidity] = {}
-        async with aiohttp.ClientSession() as session:
-            requests = [cex.get_liquidity(session) for cex in self.cex]
-            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
-                if not liq:
-                    log.warning(f"Failed to fetch liquidity from {cex}")
-                    continue
-
-                # only looking at one pair for now (RPL / USD-like)
-                cex_liquidity[cex] = liq
-
-        if not cex_liquidity:
-            log.error("Failed to fetch any CEX liquidity data")
+        async def on_fail() -> None:
             embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-            return
+            await ctx.send(embed=embed)
+            return None
 
-        rpl_usd = float(np.mean([liq.price for liq in cex_liquidity.values()]))
-        x = np.arange(0, 5 * rpl_usd, 0.01)
+        try:
+            async with aiohttp.ClientSession() as session:
+                # use Binance as price oracle
+                rpl_usd = (await Binance("RPL", "USDT").get_liquidity(session)).price
+                eth_usd = (await Binance("ETH", "USDT").get_liquidity(session)).price
+                rpl_eth = rpl_usd / eth_usd
+        except Exception as e:
+            await self.bot.report_error(e, ctx)
+            return await on_fail()
 
         sources = []
         cex_data, dex_data = [], []
         total_liquidity = 0
 
-        if exchanges != "CEX":
-            max_unique = 5 if (exchanges == "DEX") else 2
-            dex_data = self._get_dex_data(x, rpl_usd, max_unique)
-            sources.append(f"{len(self.dex)} DEX")
-            total_liquidity += sum(y[0] + y[-1] for y, _, _ in dex_data)
+        x = np.arange(0, 5 * rpl_usd, 0.01)
 
-        if exchanges != "DEX":
-            max_unique = 5 if (exchanges == "CEX") else 3
-            cex_data = self._get_cex_data(cex_liquidity, x, max_unique)
-            sources.append(f"{len(self.cex)} CEX")
-            total_liquidity += sum(y[0] + y[-1] for y, _, _ in cex_data)
+        try:
+            if exchanges != "CEX":
+                max_unique = 7 if (exchanges == "DEX") else 3
+                dex_data = self._get_dex_data(x, rpl_usd, max_unique)
+                sources.append(f"{len(self.dex)} DEX")
+                total_liquidity += sum(y[0] + y[-1] for y, _, _ in dex_data)
 
-        embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f}")
-        embed.add_field(name="Observed Liquidity", value=f"${total_liquidity:,.0f}")
-        embed.add_field(name="Sources", value=", ".join(sources))
+            if exchanges != "DEX":
+                max_unique = 7 if (exchanges == "CEX") else 3
+                cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
+                sources.append(f"{len(self.cex)} CEX")
+                total_liquidity += sum(y[0] + y[-1] for y, _, _ in cex_data)
+        except Exception as e:
+            await self.bot.report_error(e, ctx)
+            return await on_fail()
+
+        if (not cex_data) and (not dex_data):
+            log.error("No liquidity data found")
+            return await on_fail()
 
         buffer = BytesIO()
-        fig = self._plot_data(x, rpl_usd, cex_data, dex_data)
+        fig = self._plot_data(x, rpl_usd, rpl_eth, cex_data, dex_data)
         fig.savefig(buffer, format="png")
         buffer.seek(0)
+
+        embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
+        embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} (Ξ {rpl_eth:.5f})")
+        embed.add_field(name="Observed Liquidity", value=f"${total_liquidity:,.0f}")
+        embed.add_field(name="Sources", value=", ".join(sources))
 
         file_name = "wall.png"
         embed.set_image(url=f"attachment://{file_name}")
         await ctx.send(embed=embed, files=[File(buffer, file_name)])
+        return None
 
 
 async def setup(bot):
