@@ -111,9 +111,6 @@ class Wall(commands.Cog):
             cex_data: list[tuple[np.ndarray, str, str]],
             dex_data: list[tuple[np.ndarray, str, str]]
     ) -> figure.Figure:
-        y = []
-        colors = []
-
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.set_facecolor("#f8f9fa")
 
@@ -121,12 +118,16 @@ class Wall(commands.Cog):
         ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
         ax.grid(True, which='minor', linestyle=':', linewidth=0.3, alpha=0.5)
 
-        ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
+        ax.set_xlabel("price")
+        ax.set_ylabel("depth")
 
-        y_offset = 0
+        y = []
+        colors = []
+
+        y_offset = 0.0
         max_label_length: int = np.max([len(t[1]) for t in (cex_data + dex_data)])
 
-        def add_data(_data: list[tuple[np.ndarray, str, str]], _legend_title: Optional[str]) -> None:
+        def add_data(_data: list[tuple[np.ndarray, str, str]], _name: Optional[str]) -> None:
             labels, handles = [], []
             for y_values, label, color in _data:
                 y.append(y_values)
@@ -134,26 +135,28 @@ class Wall(commands.Cog):
                 colors.append(color)
                 handles.append(plt.Rectangle((0, 0), 1, 1, color=color))
 
+            nonlocal y_offset
             legend = ax.legend(
                 handles,
                 labels,
-                title=_legend_title,
+                title=_name,
                 loc="upper left",
                 bbox_to_anchor=(0, 1 - y_offset),
                 prop=fm.FontProperties(family="monospace", size=10)
             )
             ax.add_artist(legend)
+            y_offset += 0.025 + 0.055 * (len(_data) + int(title is not None))
 
         if dex_data:
             title = "DEX" if cex_data else None
             add_data(dex_data, title)
-            y_offset += 0.085 + 0.055 * len(dex_data)
 
         if cex_data:
             title = "CEX" if dex_data else None
             add_data(cex_data, title)
 
         ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
+        ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
 
         def get_formatter(base_fmt: str, *, scale=1.0, prefix="", suffix=""):
             def formatter(_x, _pos) -> str:
