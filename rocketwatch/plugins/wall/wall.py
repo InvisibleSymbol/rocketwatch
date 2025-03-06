@@ -19,8 +19,6 @@ from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 from utils.liquidity import *
 
-Pair = CEX.MarketPair
-
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
 
@@ -29,31 +27,32 @@ class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.cex: list[CEX] = [
-            Binance([Pair("RPL", "USDT")]),
-            Coinbase([Pair("RPL", "USDC")]),
-            Deepcoin([Pair("RPL", "USDT")]),
-            GateIO([Pair("RPL", "USDT")]),
-            OKX([Pair("RPL", "USDT")]),
-            Bitget([Pair("RPL", "USDT")]),
-            MEXC([Pair("RPL", "USDT")]),
-            Bybit([Pair("RPL", "USDT")]),
-            CryptoDotCom([Pair("RPL", "USD")]),
-            Kraken([Pair("RPL", "USD"), Pair("RPL", "EUR")]),
-            Kucoin([Pair("RPL", "USDT")]),
-            Bithumb([Pair("RPL", "KRW")]),
+            Binance([("RPL", "USDT")]),
+            Coinbase([("RPL", "USDC")]),
+            Deepcoin([("RPL", "USDT")]),
+            GateIO([("RPL", "USDT")]),
+            OKX([("RPL", "USDT")]),
+            Bitget([("RPL", "USDT")]),
+            MEXC([("RPL", "USDT")]),
+            Bybit([("RPL", "USDT")]),
+            CryptoDotCom([("RPL", "USD")]),
+            Kraken([("RPL", "USD"), ("RPL", "EUR")]),
+            Kucoin([("RPL", "USDT")]),
+            Bithumb([("RPL", "KRW")])
         ]
         self.dex: list[DEX] = [
             BalancerV2([
                 BalancerV2.WeightedPool(HexStr("0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462"))
             ]),
             UniswapV3([
-                cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45")
+                cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45"),
+                cast(ChecksumAddress, "0xcf15aD9bE9d33384B74b94D63D06B4A9Bd82f640")
             ])
         ]
 
     @staticmethod
     def _get_market_depth_and_liquidity(
-            markets: dict[Pair | DEX.LiquidityPool, Liquidity],
+            markets: dict[CEX.Market | DEX.LiquidityPool, Liquidity],
             x: np.ndarray,
             rpl_usd: float
     ) -> tuple[np.ndarray, float]:
@@ -72,9 +71,8 @@ class Wall(commands.Cog):
         liquidity: dict[CEX, float] = {}
         async with aiohttp.ClientSession() as session:
             requests = [cex.get_liquidity(session) for cex in self.cex]
-            for cex, liq in zip(self.cex, await asyncio.gather(*requests)):
-                if markets := await cex.get_liquidity(session):
-                    depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
+            for cex, markets in zip(self.cex, await asyncio.gather(*requests)):
+                depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
 
         exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
         ret = []
@@ -226,8 +224,8 @@ class Wall(commands.Cog):
         try:
             async with aiohttp.ClientSession() as session:
                 # use Binance as price oracle
-                rpl_usd = list((await Binance([Pair("RPL", "USDT")]).get_liquidity(session)).values())[0].price
-                eth_usd = list((await Binance([Pair("ETH", "USDT")]).get_liquidity(session)).values())[0].price
+                rpl_usd = list((await Binance([("RPL", "USDT")]).get_liquidity(session)).values())[0].price
+                eth_usd = list((await Binance([("ETH", "USDT")]).get_liquidity(session)).values())[0].price
                 rpl_eth = rpl_usd / eth_usd
         except Exception as e:
             await self.bot.report_error(e, ctx)
