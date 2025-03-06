@@ -195,8 +195,16 @@ class Wall(commands.Cog):
         return fig
 
     @hybrid_command()
+    @describe(min_price="lower end of price range to show in USD")
+    @describe(max_price="upper end of price range to show in USD")
     @describe(sources="choose places to pull liquidity data from")
-    async def wall(self, ctx: Context, sources: Literal["All", "CEX", "DEX"] = "All") -> None:
+    async def wall(
+            self,
+            ctx: Context,
+            min_price: float = 0.0,
+            max_price: float = None,
+            sources: Literal["All", "CEX", "DEX"] = "All"
+    ) -> None:
         """Show the current RPL market depth across exchanges"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         embed = Embed(title="RPL Market Depth")
@@ -220,7 +228,14 @@ class Wall(commands.Cog):
         cex_data, dex_data = [], []
         liquidity_usd = 0
 
-        x = np.arange(0, 5 * rpl_usd, 0.01)
+        step_size = 0.01
+        min_price = max(0.0, min(min_price, rpl_usd - 5 * step_size))
+        if max_price is None:
+            max_price = 5 * rpl_usd
+        else:
+            max_price = min(100 * rpl_usd, max(max_price, rpl_usd + 5 * step_size))
+
+        x = np.arange(min_price, max_price, step_size)
 
         try:
             if sources != "CEX":
