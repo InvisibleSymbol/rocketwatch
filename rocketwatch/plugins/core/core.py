@@ -177,19 +177,20 @@ class Core(commands.Cog):
                 self.bot.report_error(err)
                 return None
 
+        state_message = await self.db.state_messages.find_one({"_id": "state"})
+
         for channel_id in channels:
             db_events: list[dict] = await self.db.event_queue.find(
                 {"channel_id": channel_id, "message_id": None}
             ).sort("score", pymongo.ASCENDING).to_list(None)
-            channel = await self.bot.get_or_fetch_channel(channel_id)
 
             log.debug(f"Found {len(db_events)} events for channel {channel_id}.")
+            channel = await self.bot.get_or_fetch_channel(channel_id)
 
-            if channel_id == self.channels["default"] in channels:
-                if state_message := await self.db.state_messages.find_one({"_id": "state"}):
-                    msg = await channel.fetch_message(state_message["message_id"])
-                    await msg.delete()
-                    await self.db.state_messages.delete_one({"_id": "state"})
+            if state_message and (channel_id == state_message.get("channel_id", self.channels["default"])):
+                msg = await channel.fetch_message(state_message["message_id"])
+                await msg.delete()
+                await self.db.state_messages.delete_one({"_id": "state"})
 
             for event_entry in db_events:
                 embed = try_load(event_entry, "embed")
