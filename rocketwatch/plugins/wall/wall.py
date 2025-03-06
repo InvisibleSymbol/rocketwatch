@@ -218,7 +218,7 @@ class Wall(commands.Cog):
 
         source_desc = []
         cex_data, dex_data = [], []
-        total_liquidity = 0
+        liquidity_usd = 0
 
         x = np.arange(0, 5 * rpl_usd, 0.01)
 
@@ -227,13 +227,13 @@ class Wall(commands.Cog):
                 max_unique = 7 if (sources == "DEX") else 3
                 dex_data = self._get_dex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.dex)} DEX")
-                total_liquidity += sum(y[0] + y[-1] for y, _, _ in dex_data)
+                liquidity_usd += sum(y[0] + y[-1] for y, _, _ in dex_data)
 
             if sources != "DEX":
                 max_unique = 7 if (sources == "CEX") else 3
                 cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.cex)} CEX")
-                total_liquidity += sum(y[0] + y[-1] for y, _, _ in cex_data)
+                liquidity_usd += sum(y[0] + y[-1] for y, _, _ in cex_data)
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
@@ -242,14 +242,16 @@ class Wall(commands.Cog):
             log.error("No liquidity data found")
             return await on_fail()
 
+        liquidity_eth = liquidity_usd / eth_usd
+
         buffer = BytesIO()
         fig = self._plot_data(x, rpl_usd, rpl_eth, cex_data, dex_data)
         fig.savefig(buffer, format="png")
         buffer.seek(0)
 
         embed.set_author(name="🔗 Data from CEX APIs and Ethereum Mainnet")
-        embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} (Ξ {rpl_eth:.5f})")
-        embed.add_field(name="Observed Liquidity", value=f"${total_liquidity:,.0f}")
+        embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} | Ξ{rpl_eth:.5f}")
+        embed.add_field(name="Observed Liquidity", value=f"${liquidity_usd:,.0f} | {liquidity_eth:,.0f} ETH")
         embed.add_field(name="Sources", value=", ".join(source_desc))
 
         file_name = "wall.png"
