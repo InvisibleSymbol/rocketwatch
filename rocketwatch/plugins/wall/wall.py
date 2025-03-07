@@ -28,18 +28,20 @@ class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.cex: list[CEX] = [
-            Binance([("RPL", "USDT")]),
-            Coinbase([("RPL", "USDC")]),
-            Deepcoin([("RPL", "USDT")]),
-            GateIO([("RPL", "USDT")]),
-            OKX([("RPL", "USDT")]),
-            Bitget([("RPL", "USDT")]),
-            MEXC([("RPL", "USDT")]),
-            Bybit([("RPL", "USDT")]),
-            CryptoDotCom([("RPL", "USD")]),
-            Kraken([("RPL", "USD"), ("RPL", "EUR")]),
-            Kucoin([("RPL", "USDT")]),
-            Bithumb([("RPL", "KRW")])
+            Binance([Market("RPL", "USDT")]),
+            Coinbase([Market("RPL", "USDC")]),
+            Deepcoin([Market("RPL", "USDT")]),
+            GateIO([Market("RPL", "USDT")]),
+            OKX([Market("RPL", "USDT")]),
+            Bitget([Market("RPL", "USDT")]),
+            MEXC([Market("RPL", "USDT")]),
+            Bybit([Market("RPL", "USDT")]),
+            CryptoDotCom([Market("RPL", "USD")]),
+            Kraken([Market("RPL", "USD"), Market("RPL", "EUR")]),
+            Kucoin([Market("RPL", "USDT")]),
+            Bithumb([Market("RPL", "KRW")]),
+            BingX([Market("RPL", "USDT")]),
+            Bitvavo([Market("RPL", "EUR")]),
         ]
         self.dex: list[DEX] = [
             BalancerV2([
@@ -53,7 +55,7 @@ class Wall(commands.Cog):
 
     @staticmethod
     def _get_market_depth_and_liquidity(
-            markets: dict[CEX.Market | DEX.LiquidityPool, Liquidity],
+            markets: dict[Market | DEX.LiquidityPool, Liquidity],
             x: np.ndarray,
             rpl_usd: float
     ) -> tuple[np.ndarray, float]:
@@ -228,8 +230,8 @@ class Wall(commands.Cog):
         try:
             async with aiohttp.ClientSession() as session:
                 # use Binance as price oracle
-                rpl_usd = list((await Binance([("RPL", "USDT")]).get_liquidity(session)).values())[0].price
-                eth_usd = list((await Binance([("ETH", "USDT")]).get_liquidity(session)).values())[0].price
+                rpl_usd = list((await Binance([Market("RPL", "USDT")]).get_liquidity(session)).values())[0].price
+                eth_usd = list((await Binance([Market("ETH", "USDT")]).get_liquidity(session)).values())[0].price
                 rpl_eth = rpl_usd / eth_usd
         except Exception as e:
             await self.bot.report_error(e, ctx)
