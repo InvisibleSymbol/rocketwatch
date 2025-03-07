@@ -119,11 +119,13 @@ class Wall(commands.Cog):
         fig, ax = plt.subplots(figsize=(10, 5))
 
         ax.minorticks_on()
-        ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
-        ax.grid(True, which='minor', linestyle=':', linewidth=0.3, alpha=0.5)
+        ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.5)
+        ax.grid(True, which="minor", linestyle=":", linewidth=0.3, alpha=0.5)
 
         ax.set_xlabel("price")
+        ax.xaxis.labelpad = 8
         ax.set_ylabel("depth")
+        ax.yaxis.labelpad = 10
 
         y = []
         colors = []
