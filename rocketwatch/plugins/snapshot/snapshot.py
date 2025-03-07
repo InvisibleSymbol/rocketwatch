@@ -72,7 +72,7 @@ class Snapshot(EventPlugin):
             if with_title:
                 height = self._TITLE_SIZE + self._V_SPACE_LARGE
             height += len(self.choices) * (self._predict_choice_height() + self._V_SPACE_MEDIUM)
-            height += self._HEADER_SIZE + self._V_SPACE_MEDIUM
+            height += self._V_SPACE_MEDIUM + self._HEADER_SIZE + self._V_SPACE_SMALL
             height += max(self._TEXT_SIZE, self._PB_SIZE) + self._V_SPACE_LARGE
             height += self._TEXT_SIZE
             return height
@@ -86,7 +86,7 @@ class Snapshot(EventPlugin):
                 *,
                 include_title: bool = True
         ) -> int:
-            pb_offset_left = 60
+            pb_offset_left = 50
             perc_offset_right = 10
 
             def safe_div(x, y):
@@ -104,10 +104,10 @@ class Snapshot(EventPlugin):
 
                 # {choice}
                 canvas.dynamic_text(
-                    (_x_offset, _y_offset),
+                    (_x_offset + pb_offset_left, _y_offset),
                     _choice,
                     self._TEXT_SIZE,
-                    max_width=(width // 2),
+                    max_width=(width / 2),
                     anchor="lt"
                 )
                 # {choice}                                 {score}
@@ -115,7 +115,7 @@ class Snapshot(EventPlugin):
                     (_x_offset + width, _y_offset),
                     f"{_score:,.2f}",
                     self._TEXT_SIZE,
-                    max_width=(width // 2),
+                    max_width=(width / 2),
                     anchor="rt"
                 )
                 choice_height += self._TEXT_SIZE + self._V_SPACE_SMALL
@@ -125,13 +125,13 @@ class Snapshot(EventPlugin):
                     (_x_offset + pb_offset_left - perc_offset_right, _y_offset + choice_height),
                     f"{safe_div(_score, sum(self.scores)):.0%}",
                     self._TEXT_SIZE,
-                    max_width=(width // 2) - pb_offset_left,
+                    max_width=(pb_offset_left - perc_offset_right),
                     anchor="rt"
                 )
                 # {choice}                                 {score}
                 #   {perc}% ======================================
                 canvas.progress_bar(
-                    (_x_offset + pb_offset_left, _y_offset + choice_height),
+                    (_x_offset + pb_offset_left, _y_offset + choice_height + (self._TEXT_SIZE - self._PB_SIZE) / 2),
                     (self._PB_SIZE, width - pb_offset_left),
                     safe_div(_score, max_score),
                     primary=color
@@ -143,7 +143,7 @@ class Snapshot(EventPlugin):
 
             if include_title:
                 canvas.dynamic_text(
-                    (x_offset + width // 2, y_offset),
+                    (x_offset + width / 2, y_offset),
                     self.title,
                     self._TITLE_SIZE,
                     max_width=width,
@@ -158,12 +158,14 @@ class Snapshot(EventPlugin):
                 proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
                 proposal_height += self._V_SPACE_MEDIUM
 
+            proposal_height += self._V_SPACE_MEDIUM
+
             # quorum header
             canvas.dynamic_text(
-                (x_offset, y_offset + proposal_height),
+                (x_offset + pb_offset_left, y_offset + proposal_height),
                 "Quorum",
                 self._HEADER_SIZE,
-                max_width=(width // 2),
+                max_width=(width / 2),
                 anchor="lt"
             )
             # show quorum numbers
@@ -171,10 +173,10 @@ class Snapshot(EventPlugin):
                 (x_offset + width, y_offset + proposal_height + self._HEADER_SIZE - self._TEXT_SIZE),
                 f"{sum(self.scores):,.0f} / {self.quorum:,.0f}",
                 self._TEXT_SIZE,
-                max_width=(width // 2),
+                max_width=(width / 2),
                 anchor="rt"
             )
-            proposal_height += self._HEADER_SIZE + self._V_SPACE_MEDIUM
+            proposal_height += self._HEADER_SIZE + self._V_SPACE_SMALL
 
             # quorum progress bar
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
@@ -188,7 +190,7 @@ class Snapshot(EventPlugin):
             # dark gray, turns orange when quorum is met
             pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
             canvas.progress_bar(
-                (x_offset + pb_offset_left, y_offset + proposal_height),
+                (x_offset + pb_offset_left, y_offset + proposal_height + (self._TEXT_SIZE - self._PB_SIZE) / 2),
                 (self._PB_SIZE, width - pb_offset_left),
                 min(quorum_perc, 1),
                 primary=pb_color
