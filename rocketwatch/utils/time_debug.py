@@ -9,7 +9,7 @@ log.setLevel(cfg["log_level"])
 
 
 def timerun(func):
-    """ Calculate the execution time of a method and return it back"""
+    """Measure and log the execution time of a method"""
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -24,7 +24,7 @@ def timerun(func):
 
 
 def timerun_async(func):
-    """ Calculate the execution time of an async method and return it back"""
+    """Measure and log the execution time of an async method"""
 
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
