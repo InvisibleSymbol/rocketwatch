@@ -56,22 +56,25 @@ class Snapshot(EventPlugin):
         quorum: int
 
         _TEXT_SIZE = 15
-        _HEADER_SIZE = 20
-        _TITLE_SIZE = 25
-        _PB_SIZE = 20
+        _HEADER_SIZE = 18
+        _TITLE_SIZE = 22
+        _PB_SIZE = 10
 
         _V_SPACE_SMALL = 5
         _V_SPACE_MEDIUM = 10
         _V_SPACE_LARGE = 20
 
+        def _predict_choice_height(self):
+            return self._TEXT_SIZE + self._V_SPACE_SMALL + max(self._TEXT_SIZE, self._PB_SIZE)
+
         def predict_render_height(self, with_title: bool = True) -> int:
             height = 0
             if with_title:
                 height = self._TITLE_SIZE + self._V_SPACE_LARGE
-            height += len(self.choices) * (self._TEXT_SIZE + self._V_SPACE_SMALL + self._PB_SIZE)
-            height += self._V_SPACE_MEDIUM + self._HEADER_SIZE
-            height += self._V_SPACE_MEDIUM + self._PB_SIZE
-            height += self._V_SPACE_MEDIUM + self._TEXT_SIZE
+            height += len(self.choices) * (self._predict_choice_height() + self._V_SPACE_MEDIUM)
+            height += self._HEADER_SIZE + self._V_SPACE_MEDIUM
+            height += max(self._TEXT_SIZE, self._PB_SIZE) + self._V_SPACE_LARGE
+            height += self._TEXT_SIZE
             return height
 
         def render_to(
@@ -83,10 +86,8 @@ class Snapshot(EventPlugin):
                 *,
                 include_title: bool = True
         ) -> int:
-            default_margin = 10
-            pb_margin_left = 10
-            pb_margin_right = 20
-            perc_margin_left = 50
+            pb_offset_left = 60
+            perc_offset_right = 10
 
             def safe_div(x, y):
                 return (x / y) if y else 0
@@ -103,7 +104,7 @@ class Snapshot(EventPlugin):
 
                 # {choice}
                 canvas.dynamic_text(
-                    (_x_offset + default_margin, _y_offset),
+                    (_x_offset, _y_offset),
                     _choice,
                     self._TEXT_SIZE,
                     max_width=(width // 2),
@@ -111,7 +112,7 @@ class Snapshot(EventPlugin):
                 )
                 # {choice}                                 {score}
                 canvas.dynamic_text(
-                    (_x_offset + width - pb_margin_right, _y_offset),
+                    (_x_offset + width, _y_offset),
                     f"{_score:,.2f}",
                     self._TEXT_SIZE,
                     max_width=(width // 2),
@@ -121,31 +122,32 @@ class Snapshot(EventPlugin):
                 # {choice}                                 {score}
                 #   {perc}%
                 canvas.dynamic_text(
-                    (_x_offset + perc_margin_left, _y_offset + choice_height),
+                    (_x_offset + pb_offset_left - perc_offset_right, _y_offset + choice_height),
                     f"{safe_div(_score, sum(self.scores)):.0%}",
                     self._TEXT_SIZE,
-                    max_width=(width // 2) - perc_margin_left,
+                    max_width=(width // 2) - pb_offset_left,
                     anchor="rt"
                 )
                 # {choice}                                 {score}
                 #   {perc}% ======================================
                 canvas.progress_bar(
-                    (_x_offset + perc_margin_left + pb_margin_left, _y_offset + choice_height),
-                    (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
+                    (_x_offset + pb_offset_left, _y_offset + choice_height),
+                    (self._PB_SIZE, width - pb_offset_left),
                     safe_div(_score, max_score),
                     primary=color
                 )
-                choice_height += self._PB_SIZE
+                choice_height += max(self._TEXT_SIZE, self._PB_SIZE)
                 return choice_height
 
             proposal_height = 0
 
             if include_title:
                 canvas.dynamic_text(
-                    (x_offset + default_margin, y_offset),
+                    (x_offset + width // 2, y_offset),
                     self.title,
                     self._TITLE_SIZE,
-                    max_width=(width - 2 * default_margin)
+                    max_width=width,
+                    anchor="mt"
                 )
                 proposal_height += self._TITLE_SIZE + self._V_SPACE_LARGE
 
@@ -154,22 +156,22 @@ class Snapshot(EventPlugin):
             choice_scores.sort(key=lambda x: x[1], reverse=True)
             for choice, score in choice_scores:
                 proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
-
-            proposal_height += self._V_SPACE_MEDIUM
+                proposal_height += self._V_SPACE_MEDIUM
 
             # quorum header
             canvas.dynamic_text(
-                (x_offset + default_margin, y_offset + proposal_height),
+                (x_offset, y_offset + proposal_height),
                 "Quorum",
                 self._HEADER_SIZE,
-                max_width=(width // 2 - default_margin)
+                max_width=(width // 2),
+                anchor="lt"
             )
             # show quorum numbers
             canvas.dynamic_text(
-                (x_offset + width - pb_margin_right, y_offset + proposal_height + self._HEADER_SIZE - self._TEXT_SIZE),
+                (x_offset + width, y_offset + proposal_height + self._HEADER_SIZE - self._TEXT_SIZE),
                 f"{sum(self.scores):,.0f} / {self.quorum:,.0f}",
                 self._TEXT_SIZE,
-                max_width=(width // 2 - pb_margin_right),
+                max_width=(width // 2),
                 anchor="rt"
             )
             proposal_height += self._HEADER_SIZE + self._V_SPACE_MEDIUM
@@ -177,30 +179,29 @@ class Snapshot(EventPlugin):
             # quorum progress bar
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
             canvas.dynamic_text(
-                (x_offset + perc_margin_left, y_offset + proposal_height),
+                (x_offset + pb_offset_left - perc_offset_right, y_offset + proposal_height),
                 f"{quorum_perc:.0%}",
                 self._TEXT_SIZE,
-                max_width=(width // 2) - perc_margin_left,
+                max_width=(width / 2) - pb_offset_left,
                 anchor="rt"
             )
             # dark gray, turns orange when quorum is met
             pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
             canvas.progress_bar(
-                (x_offset + perc_margin_left + pb_margin_left, y_offset + proposal_height),
-                (self._PB_SIZE // 2, width - perc_margin_left - pb_margin_left - pb_margin_right - 10),
+                (x_offset + pb_offset_left, y_offset + proposal_height),
+                (self._PB_SIZE, width - pb_offset_left),
                 min(quorum_perc, 1),
                 primary=pb_color
             )
-            proposal_height += self._PB_SIZE + self._V_SPACE_MEDIUM
+            proposal_height += max(self._TEXT_SIZE, self._PB_SIZE) + self._V_SPACE_LARGE
 
             # show remaining time until the vote ends
             rem_time = self.end - datetime.now().timestamp()
-            time_label_width = (width - 2 * default_margin)
             canvas.dynamic_text(
-                (x_offset + time_label_width // 2, y_offset + proposal_height),
+                (x_offset + (width / 2), y_offset + proposal_height),
                 f"{uptime(rem_time)} left" if (rem_time >= 0) else "Final Result",
                 self._TEXT_SIZE,
-                max_width=time_label_width,
+                max_width=width,
                 anchor="mt"
             )
             proposal_height += self._TEXT_SIZE
@@ -215,11 +216,12 @@ class Snapshot(EventPlugin):
             return embed
 
         def create_image(self, *, include_title: bool) -> Image:
-            padding_top, padding_bottom = 10, 10
-            height = self.predict_render_height(include_title) + padding_top + padding_bottom
+            pad_top, pad_bottom = 10, 10
+            pad_left, pad_right = 10, 10
+            height = self.predict_render_height(include_title)
             width = max(500, height)
-            canvas = ImageCanvas(width, height)
-            self.render_to(canvas, width, 0, padding_top, include_title=include_title)
+            canvas = ImageCanvas(width + pad_left + pad_right, height + pad_top + pad_bottom)
+            self.render_to(canvas, width, pad_left, pad_top, include_title=include_title)
             return canvas.image
 
         def create_start_event(self) -> Event:
@@ -513,7 +515,7 @@ class Snapshot(EventPlugin):
         embed = Embed(title="Snapshot Proposals")
         embed.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net")
 
-        proposals = self.fetch_proposals("active", reverse=True)[::-1]
+        proposals = self.fetch_proposals("active", reverse=True)
         if not proposals:
             embed.description = "No active proposals."
             return await ctx.send(embed=embed)
@@ -524,10 +526,12 @@ class Snapshot(EventPlugin):
 
         v_spacing = 40
         h_spacing = 40
-        padding_top, padding_bottom = 10, 10
+
+        pad_top, pad_bottom = 10, 10
+        pad_left, pad_right = 10, 10
 
         # could potentially be smarter about arranging proposals with different proportions
-        total_height = v_spacing * (num_rows - 1) + padding_top + padding_bottom
+        total_height = v_spacing * (num_rows - 1)
         proposal_grid: list[list[Snapshot.Proposal]] = []
         for row_idx in range(num_rows):
             row = proposals[row_idx*num_cols:(row_idx+1)*num_cols]
@@ -540,14 +544,14 @@ class Snapshot(EventPlugin):
         # make sure proportions don't become too skewed
         if total_width < total_height:
             proposal_width = (total_height - h_spacing * (num_cols - 1)) // num_cols
-            total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
+            total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1) + pad_left + pad_right
 
-        canvas = ImageCanvas(total_width, total_height)
+        canvas = ImageCanvas(total_width + pad_top + pad_bottom, total_height + pad_left + pad_right)
 
         # draw proposals in num_rows x num_cols grid
-        y_offset = -h_spacing + padding_top
+        y_offset = -h_spacing + pad_top
         for row_idx in range(len(proposal_grid)):
-            x_offset = -h_spacing
+            x_offset = -h_spacing + pad_left
             y_offset += v_spacing
 
             max_height = 0
@@ -561,7 +565,7 @@ class Snapshot(EventPlugin):
             y_offset += max_height
 
         # write drawn image to buffer
-        file = canvas.image.to_file("votes.png")
+        file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
         await ctx.send(embed=embed, file=file)
         return None
