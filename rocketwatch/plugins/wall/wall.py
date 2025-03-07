@@ -117,7 +117,6 @@ class Wall(commands.Cog):
             dex_data: list[tuple[np.ndarray, str, str]]
     ) -> figure.Figure:
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.set_facecolor("#f8f9fa")
 
         ax.minorticks_on()
         ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.5)
@@ -150,15 +149,15 @@ class Wall(commands.Cog):
                 prop=fm.FontProperties(family="monospace", size=10)
             )
             ax.add_artist(legend)
-            y_offset += 0.025 + 0.055 * (len(_data) + int(title is not None))
+            y_offset += 0.025 + 0.055 * (len(_data) + int(_name is not None))
 
-        if dex_data:
-            title = "DEX" if cex_data else None
-            add_data(dex_data, title)
-
-        if cex_data:
-            title = "CEX" if dex_data else None
-            add_data(cex_data, title)
+        if dex_data and cex_data:
+            add_data(dex_data, "DEX")
+            add_data(cex_data, "CEX")
+        elif dex_data:
+            add_data(dex_data, None)
+        else:
+            add_data(cex_data, None)
 
         ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
         ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
