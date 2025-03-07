@@ -565,7 +565,8 @@ class UniswapV3(DEX):
 
                 range_share = abs(tick - liq_ticks[i - 1]) / abs(liq_ticks[i] - liq_ticks[i - 1])
                 range_liquidity = abs(liquidity_levels[i] - liquidity_levels[i - 1])
-                return float(liquidity_levels[i - 1] + range_share * range_liquidity)
+                # linear interpolation should be fine since ticks are exponential
+                return liquidity_levels[i - 1] + range_share * range_liquidity
 
             return Liquidity(balance_norm / price, depth_at)
 
