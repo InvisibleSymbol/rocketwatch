@@ -253,13 +253,13 @@ class Wall(commands.Cog):
 
         try:
             if sources != "CEX":
-                max_unique = 3 if (sources == "All") else 7
+                max_unique = 7 - min(len(self.cex), 4) if (sources == "All") else 9
                 dex_data = self._get_dex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.dex)} DEX")
                 liquidity_usd += sum(y[0] + y[-1] for y, _, _ in dex_data)
 
             if sources != "DEX":
-                max_unique = 3 if (sources == "All") else 7
+                max_unique = 7 - min(len(self.dex), 4) if (sources == "All") else 9
                 cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
                 source_desc.append(f"{len(self.cex)} CEX")
                 liquidity_usd += sum(y[0] + y[-1] for y, _, _ in cex_data)
