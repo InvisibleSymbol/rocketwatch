@@ -185,7 +185,7 @@ class Wall(commands.Cog):
         range_size = x[-1] - x[0]
 
         x_ticks = ax.get_xticks()
-        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 15] + [rpl_usd])
+        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 20] + [rpl_usd])
         ax.set_xlim((x[0], x[-1]))
         ax.xaxis.set_major_formatter(get_formatter(".2f" if (range_size >= 0.1) else ".3f", prefix="$"))
         ax.yaxis.set_major_formatter(get_formatter("#.3g", prefix="$"))
