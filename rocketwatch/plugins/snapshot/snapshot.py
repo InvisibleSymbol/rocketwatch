@@ -56,15 +56,15 @@ class Snapshot(EventPlugin):
         scores: list[float]
         quorum: int
 
-        _LABEL_SIZE = 10
-        _TEXT_SIZE = 15
-        _HEADER_SIZE = 18
-        _TITLE_SIZE = 22
-        _BAR_SIZE = 15
+        _LABEL_SIZE = 20
+        _TEXT_SIZE = 30
+        _HEADER_SIZE = 36
+        _TITLE_SIZE = 44
+        _BAR_SIZE = 30
 
-        _V_SPACE_SMALL = 5
-        _V_SPACE_MEDIUM = 10
-        _V_SPACE_LARGE = 20
+        _V_SPACE_SMALL = 10
+        _V_SPACE_MEDIUM = 20
+        _V_SPACE_LARGE = 40
 
         def _predict_choice_height(self):
             return self._TEXT_SIZE + self._V_SPACE_SMALL + max(self._TEXT_SIZE, self._BAR_SIZE)
@@ -125,7 +125,7 @@ class Snapshot(EventPlugin):
                     primary=color
                 )
                 canvas.dynamic_text(
-                    (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2) + 1),
+                    (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
                     f"{safe_div(_score, sum(self.scores)):.2%}",
                     self._LABEL_SIZE,
                     font_variant=label_font_variant,
@@ -133,7 +133,7 @@ class Snapshot(EventPlugin):
                     anchor="lm"
                 )
                 canvas.dynamic_text(
-                    (_x_offset + width - label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2) + 1),
+                    (_x_offset + width - label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
                     f"{_score:,.2f}",
                     self._LABEL_SIZE,
                     font_variant=label_font_variant,
@@ -222,10 +222,10 @@ class Snapshot(EventPlugin):
             return embed
 
         def create_image(self, *, include_title: bool) -> Image:
-            pad_top, pad_bottom = 10, 10
-            pad_left, pad_right = 10, 10
+            pad_top, pad_bottom = 20, 20
+            pad_left, pad_right = 20, 20
             height = self.predict_render_height(include_title)
-            width = min(600, max(400, self._TITLE_SIZE * len(self.title) * include_title // 2))
+            width = min(1200, max(800, self._TITLE_SIZE * len(self.title) * include_title // 2))
             canvas = ImageCanvas(width + pad_left + pad_right, height + pad_top + pad_bottom)
             self.render_to(canvas, width, pad_left, pad_top, include_title=include_title)
             return canvas.image
@@ -530,11 +530,11 @@ class Snapshot(EventPlugin):
         num_cols = min(int(math.ceil(math.sqrt(num_proposals))), 4)
         num_rows = int(math.ceil(num_proposals / num_cols))
 
-        v_spacing = 40
-        h_spacing = 40
+        v_spacing = 80
+        h_spacing = 80
 
-        pad_top, pad_bottom = 10, 10
-        pad_left, pad_right = 10, 10
+        pad_top, pad_bottom = 20, 20
+        pad_left, pad_right = 20, 20
 
         # could potentially be smarter about arranging proposals with different proportions
         total_height = v_spacing * (num_rows - 1)
@@ -545,7 +545,7 @@ class Snapshot(EventPlugin):
             # row height is equal to height of its tallest proposal
             total_height += max(p.predict_render_height() for p in row)
 
-        proposal_width = 400
+        proposal_width = 800
         total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
         # make sure proportions don't become too skewed
         if total_width < total_height:
