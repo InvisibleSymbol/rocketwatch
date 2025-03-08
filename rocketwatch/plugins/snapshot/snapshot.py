@@ -5,15 +5,15 @@ from datetime import datetime, timedelta
 from typing import Optional, Literal
 
 import numpy as np
-import pymongo
 import regex
 import requests
 import termplotlib as tpl
 from PIL.Image import Image
 from discord.ext.commands import Context, hybrid_command
-from eth_typing import ChecksumAddress
+from eth_typing import ChecksumAddress, BlockNumber
 from graphql_query import Operation, Query, Argument
 from web3.constants import ADDRESS_ZERO
+from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
@@ -32,7 +32,7 @@ log.setLevel(cfg["log_level"])
 class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=5))
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.version = 3
 
     @staticmethod
@@ -78,6 +78,9 @@ class Snapshot(EventPlugin):
             height += self._BAR_SIZE + self._V_SPACE_LARGE
             height += self._TEXT_SIZE
             return height
+
+        def reached_quorum(self) -> bool:
+            return sum(self.scores) >= self.quorum
 
         def render_to(
                 self,
@@ -239,6 +242,18 @@ class Snapshot(EventPlugin):
                 block_number=get_block_by_timestamp(self.start)[0],
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"snapshot_vote_start:{self.id}",
+                attachment=self.create_image(include_title=True)
+            )
+
+        def create_reached_quorum_event(self, block_number: BlockNumber) -> Event:
+            embed = self.get_embed_template()
+            embed.title = ":classical_building: Proposal Reached Quorum"
+            return Event(
+                embed=embed,
+                topic="snapshot",
+                block_number=block_number,
+                event_name="pdao_snapshot_vote_quorum",
+                unique_id=f"snapshot_vote_quorum:{self.id}",
                 attachment=self.create_image(include_title=True)
             )
 
@@ -435,19 +450,21 @@ class Snapshot(EventPlugin):
 
         now = datetime.now()
         events: list[Event] = []
-        db_updates: list[dict] = []
 
-        known_active_proposal_ids: set[str] = set()
+        proposal_db_updates: list[InsertOne | UpdateOne | DeleteOne] = []
+        vote_db_updates: list[UpdateOne] = []
+
+        known_active_proposals: dict[str, dict] = {}
         for stored_proposal in self.db.snapshot_proposals.find():
-            if stored_proposal["end"] > now.timestamp():
-                known_active_proposal_ids.add(stored_proposal["_id"])
+            if stored_proposal["end"] >= now.timestamp():
+                known_active_proposals[stored_proposal["_id"]] = stored_proposal
             else:
                 # stored proposal ended, emit event and delete from DB
                 log.info(f"Found expired proposal: {stored_proposal}")
                 # recover full proposal
                 proposal = self.fetch_proposals("closed", proposal_id=stored_proposal["_id"])[0]
                 event = proposal.create_end_event()
-                self.db.snapshot_proposals.delete_one(stored_proposal)
+                proposal_db_updates.append(DeleteOne(stored_proposal))
                 events.append(event)
 
         # fetch in descending order, then reverse to get latest results in chronological order
@@ -455,15 +472,24 @@ class Snapshot(EventPlugin):
         active_proposals = self.fetch_proposals("active", reverse=True)[::-1]
         for proposal in active_proposals:
             log.debug(f"Processing proposal {proposal}")
-            if proposal.id not in known_active_proposal_ids:
+            if proposal.id not in known_active_proposals:
                 # not aware of this proposal yet, emit event and insert into DB
                 log.info(f"Found new proposal: {proposal}")
                 event = proposal.create_start_event()
-                self.db.snapshot_proposals.insert_one({
+                proposal_db_updates.append(InsertOne({
                     "_id"  : proposal.id,
                     "start": proposal.start,
-                    "end"  : proposal.end
-                })
+                    "end"  : proposal.end,
+                    "quorum": proposal.reached_quorum()
+                }))
+                events.append(event)
+            elif proposal.reached_quorum() and (not known_active_proposals[proposal.id]["quorum"]):
+                log.info(f"Proposal {proposal} has reached quorum")
+                event = proposal.create_reached_quorum_event(self._pending_block)
+                proposal_db_updates.append(UpdateOne(
+                    {"_id": proposal.id},
+                    {"$set": {"quorum": True}}
+                ))
                 events.append(event)
 
             previous_votes: dict[ChecksumAddress, Snapshot.Vote] = {}
@@ -491,25 +517,25 @@ class Snapshot(EventPlugin):
                     continue
 
                 events.append(event)
-                db_update = {
-                    "_id"        : vote.id,
-                    "proposal_id": vote.proposal.id,
-                    "voter"      : vote.voter,
-                    "time"       : vote.created,
-                    "vp"         : vote.vp,
-                    "choice"     : vote.choice,
-                    "reason"     : vote.reason,
-                }
-                db_updates.append(db_update)
+                db_update = UpdateOne(
+                    {"proposal_id": proposal.id},
+                    {"$set": {
+                        "_id"        : vote.id,
+                        "proposal_id": vote.proposal.id,
+                        "voter"      : vote.voter,
+                        "time"       : vote.created,
+                        "vp"         : vote.vp,
+                        "choice"     : vote.choice,
+                        "reason"     : vote.reason,
+                    }}
+                )
+                vote_db_updates.append(db_update)
 
-        if db_updates:
-            self.db.snapshot_votes.bulk_write([
-                pymongo.UpdateOne(
-                    {"proposal_id": update["proposal_id"], "voter": update["voter"]},
-                    {"$set": update},
-                    upsert=True
-                ) for update in db_updates
-            ])
+        if proposal_db_updates:
+            self.db.snapshot_proposals.bulk_write(proposal_db_updates)
+
+        if vote_db_updates:
+            self.db.snapshot_votes.bulk_write(vote_db_updates)
 
         return events
 
