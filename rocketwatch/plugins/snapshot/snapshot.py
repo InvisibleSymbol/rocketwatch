@@ -17,7 +17,7 @@ from web3.constants import ADDRESS_ZERO
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
-from utils.image import ImageCanvas, Color
+from utils.image import ImageCanvas, Color, FontVariant
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.event import EventPlugin, Event
@@ -91,13 +91,13 @@ class Snapshot(EventPlugin):
                 return (x / y) if y else 0
 
             label_offset = 10
+            label_font_variant = FontVariant.BOLD
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
                 color: Color = {
-                    "for": (12, 181, 53),      # green
-                    "against": (222, 4, 5),    # red
-                    "abstain": (114, 121, 138) # slate gray
-                }.get(_choice.lower(), (192, 192, 192))
+                    "for": (4, 99, 7),       # green
+                    "against": (156, 0, 47), # red
+                }.get(_choice.lower(), (114, 121, 138)) # slate gray
                 choice_height = 0
 
                 canvas.dynamic_text(
@@ -116,18 +116,18 @@ class Snapshot(EventPlugin):
                     primary=color
                 )
                 canvas.dynamic_text(
-                    (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
-                    f"{safe_div(_score, sum(self.scores)):.0%}",
+                    (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2) + 1),
+                    f"{safe_div(_score, sum(self.scores)):.2%}",
                     self._LABEL_SIZE,
-                    font_variant="Black",
+                    font_variant=label_font_variant,
                     max_width=((width / 2) - label_offset),
                     anchor="lm"
                 )
                 canvas.dynamic_text(
-                    (_x_offset + width - label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
+                    (_x_offset + width - label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2) + 1),
                     f"{_score:,.2f}",
                     self._LABEL_SIZE,
-                    font_variant="Black",
+                    font_variant=label_font_variant,
                     max_width=((width / 2) - label_offset),
                     anchor="rm"
                 )
@@ -175,18 +175,18 @@ class Snapshot(EventPlugin):
                 primary=pb_color
             )
             canvas.dynamic_text(
-                (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
-                f"{quorum_perc:.0%}",
+                (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2) + 1),
+                f"{quorum_perc:.2%}",
                 self._LABEL_SIZE,
-                font_variant="Black",
+                font_variant=label_font_variant,
                 max_width=((width / 2) - label_offset),
                 anchor="lm"
             )
             canvas.dynamic_text(
-                (x_offset + width - label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
-                f"{sum(self.scores):,.0f} of {self.quorum:,.0f}",
+                (x_offset + width - label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2) + 1),
+                f"{sum(self.scores):,.0f} / {self.quorum:,.0f}",
                 self._LABEL_SIZE,
-                font_variant="Black",
+                font_variant=label_font_variant,
                 max_width=((width / 2) - label_offset),
                 anchor="rm"
             )
@@ -561,7 +561,6 @@ class Snapshot(EventPlugin):
 
             y_offset += max_height
 
-        # write drawn image to buffer
         file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
         await ctx.send(embed=embed, file=file)
