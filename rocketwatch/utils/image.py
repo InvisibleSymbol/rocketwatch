@@ -1,11 +1,12 @@
+from enum import Enum
 from io import BytesIO
-from typing import Optional, Literal
 from functools import cache
+from typing import Optional, Literal
 
-from PIL import ImageFont
-from PIL import Image as PillowImage
-from PIL.ImageDraw import ImageDraw
 from discord import File
+from PIL import ImageFont, Image as PillowImage
+from PIL.ImageDraw import ImageDraw
+
 
 Color = tuple[int, int, int]
 
@@ -18,6 +19,16 @@ class Image:
         self.__img.save(buffer, format="png")
         buffer.seek(0)
         return File(buffer, name)
+
+
+class Font(str, Enum):
+    INTER = "Inter"
+
+
+class FontVariant(str, Enum):
+    REGULAR = "Regular"
+    BOLD = "Bold"
+
 
 class ImageCanvas(ImageDraw):
     # default color matches Discord Desktop dark mode Embed color (#2b2d31)
@@ -57,20 +68,21 @@ class ImageCanvas(ImageDraw):
             self.circle((x1, y + radius), radius, fill=primary)
 
     @cache
-    def _get_font(self, variant: str, size: float) -> ImageFont:
-        return ImageFont.truetype(f"fonts/Inter-{variant}.ttf", size)
+    def _get_font(self, name: str, variant: FontVariant, size: float) -> ImageFont:
+        return ImageFont.truetype(f"fonts/{name}-{variant}.ttf", size)
 
     def dynamic_text(
             self,
             xy: tuple[float, float],
             text: str,
             font_size: float,
-            font_variant: Literal["Regular", "Bold", "Black"] = "Regular",
+            font_name: Font = Font.INTER,
+            font_variant: FontVariant = FontVariant.REGULAR,
             color: Color = (255, 255, 255),
             max_width: Optional[float] = None,
             anchor: str = "lt"
     ) -> None:
-        font = self._get_font(font_variant, font_size)
+        font = self._get_font(font_name, font_variant, font_size)
         if max_width is not None:
             # cut off the text if it's too long
             while text and (font.getbbox(text)[2] > max_width):
