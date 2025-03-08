@@ -28,24 +28,24 @@ class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.cex: set[CEX] = {
-            Binance([Market("RPL", "USDT")]),
-            Coinbase([Market("RPL", "USDC")]),
-            Deepcoin([Market("RPL", "USDT")]),
-            GateIO([Market("RPL", "USDT")]),
-            OKX([Market("RPL", "USDT")]),
-            Bitget([Market("RPL", "USDT")]),
-            MEXC([Market("RPL", "USDT")]),
-            Bybit([Market("RPL", "USDT")]),
-            CryptoDotCom([Market("RPL", "USD")]),
-            Kraken([Market("RPL", "USD"), Market("RPL", "EUR")]),
-            Kucoin([Market("RPL", "USDT")]),
-            Bithumb([Market("RPL", "KRW")]),
-            BingX([Market("RPL", "USDT")]),
-            Bitvavo([Market("RPL", "EUR")]),
-            HTX([Market("RPL", "USDT")]),
-            BitMart([Market("RPL", "USDT")]),
-            Bitrue([Market("RPL", "USDT")]),
-            CoinTR([Market("RPL", "USDT")]),
+            Binance("RPL", ["USDT"]),
+            Coinbase("RPL", ["USDC"]),
+            Deepcoin("RPL", ["USDT"]),
+            GateIO("RPL", ["USDT"]),
+            OKX("RPL", ["USDT"]),
+            Bitget("RPL", ["USDT"]),
+            MEXC("RPL", ["USDT"]),
+            Bybit("RPL", ["USDT"]),
+            CryptoDotCom("RPL", ["USD"]),
+            Kraken("RPL", ["USD", "EUR"]),
+            Kucoin("RPL", ["USDT"]),
+            Bithumb("RPL", ["KRW"]),
+            BingX("RPL", ["USDT"]),
+            Bitvavo("RPL", ["EUR"]),
+            HTX("RPL", ["USDT"]),
+            BitMart("RPL", ["USDT"]),
+            Bitrue("RPL", ["USDT"]),
+            CoinTR("RPL", ["USDT"]),
         }
         self.dex: set[DEX] = {
             BalancerV2([
@@ -74,43 +74,44 @@ class Wall(commands.Cog):
         return depth, liquidity
 
     @timerun_async
-    async def _get_cex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
+    async def _get_cex_data(self, x: np.ndarray, rpl_usd: float) -> OrderedDict[CEX, np.ndarray]:
         depth: dict[CEX, np.ndarray] = {}
         liquidity: dict[CEX, float] = {}
         async with aiohttp.ClientSession() as session:
             requests = [cex.get_liquidity(session) for cex in self.cex]
-            for cex, markets in zip(self.cex, await asyncio.gather(*requests)):
-                depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
+            for result in zip(self.cex, await asyncio.gather(*requests, return_exceptions=True)):
+                if not isinstance(result, Exception):
+                    cex, markets = result
+                    depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
+                else:
+                    log.error(f"Failed to get liquidity data for {cex}")
+                    await self.bot.report_error(result)
 
-        exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
-        ret = []
-
-        for exchange in exchanges[:max_unique]:
-            ret.append((depth[exchange], str(exchange), exchange.color))
-
-        if len(exchanges) > max_unique:
-            y = np.sum([depth[cex] for cex in exchanges[max_unique:]], axis=0)
-            ret.append((y, "Other", "#555555"))
-
-        return ret
+        return OrderedDict(sorted(depth.items(), key=lambda e: liquidity[e[0]], reverse=True))
 
     @timerun
-    def _get_dex_data(self, x: np.ndarray, rpl_usd: float, max_unique: int) -> list[tuple[np.ndarray, str, str]]:
+    def _get_dex_data(self, x: np.ndarray, rpl_usd: float) -> OrderedDict[DEX, np.ndarray]:
         depth: dict[DEX, np.ndarray] = {}
         liquidity: dict[DEX, float] = {}
         for dex in self.dex:
             if pools := dex.get_liquidity():
                 depth[dex], liquidity[dex] = self._get_market_depth_and_liquidity(pools, x, rpl_usd)
 
-        exchanges = list(sorted(depth, key=liquidity.get, reverse=True))
+        return OrderedDict(sorted(depth.items(), key=lambda e: liquidity[e[0]], reverse=True))
+
+    @staticmethod
+    def _label_exchange_data(
+            data: OrderedDict[Exchange, np.ndarray],
+            max_unique: int,
+            color_other: str
+    ) -> list[tuple[np.ndarray, str, str]]:
         ret = []
+        for exchange, depth in list(data.items())[:max_unique]:
+            ret.append((depth, str(exchange), exchange.color))
 
-        for exchange in exchanges[:max_unique]:
-            ret.append((depth[exchange], str(exchange), exchange.color))
-
-        if len(exchanges) > max_unique:
-            y = np.sum([depth[cex] for cex in exchanges[max_unique:]], axis=0)
-            ret.append((y, "Other", "#777777"))
+        if len(data) > max_unique:
+            y = np.sum([depth for depth in list(data.values())[max_unique:]], axis=0)
+            ret.append((y, "Other", color_other))
 
         return ret
 
@@ -119,8 +120,8 @@ class Wall(commands.Cog):
             x: np.ndarray,
             rpl_usd: float,
             rpl_eth: float,
-            cex_data: list[tuple[np.ndarray, str, str]],
-            dex_data: list[tuple[np.ndarray, str, str]]
+            cex_data: OrderedDict[CEX, np.ndarray],
+            dex_data: OrderedDict[DEX, np.ndarray],
     ) -> figure.Figure:
         fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -136,8 +137,13 @@ class Wall(commands.Cog):
         y = []
         colors = []
 
+        max_unique = 7 - min(len(dex_data), 4) if dex_data else 9
+        cex_data_aggr = Wall._label_exchange_data(cex_data, max_unique, "#555555")
+        max_unique = 7 - min(len(cex_data), 4) if cex_data else 9
+        dex_data_aggr = Wall._label_exchange_data(dex_data, max_unique, "#777777")
+
         y_offset = 0.0
-        max_label_length: int = np.max([len(t[1]) for t in (cex_data + dex_data)])
+        max_label_length: int = np.max([len(t[1]) for t in (cex_data_aggr + dex_data_aggr)])
 
         def add_data(_data: list[tuple[np.ndarray, str, str]], _name: Optional[str]) -> None:
             labels, handles = [], []
@@ -160,12 +166,12 @@ class Wall(commands.Cog):
             y_offset += 0.025 + 0.055 * (len(_data) + int(_name is not None))
 
         if dex_data and cex_data:
-            add_data(dex_data, "DEX")
-            add_data(cex_data, "CEX")
+            add_data(dex_data_aggr, "DEX")
+            add_data(cex_data_aggr, "CEX")
         elif dex_data:
-            add_data(dex_data, None)
+            add_data(dex_data_aggr, None)
         else:
-            add_data(cex_data, None)
+            add_data(cex_data_aggr, None)
 
         ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
         ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
@@ -234,8 +240,8 @@ class Wall(commands.Cog):
         try:
             async with aiohttp.ClientSession() as session:
                 # use Binance as price oracle
-                rpl_usd = list((await Binance([Market("RPL", "USDT")]).get_liquidity(session)).values())[0].price
-                eth_usd = list((await Binance([Market("ETH", "USDT")]).get_liquidity(session)).values())[0].price
+                rpl_usd = list((await Binance("RPL", ["USDT"]).get_liquidity(session)).values())[0].price
+                eth_usd = list((await Binance("ETH", ["USDT"]).get_liquidity(session)).values())[0].price
                 rpl_eth = rpl_usd / eth_usd
         except Exception as e:
             await self.bot.report_error(e, ctx)
@@ -255,21 +261,19 @@ class Wall(commands.Cog):
         x = np.arange(min_price, max_price + step_size, step_size)
 
         source_desc = []
-        cex_data, dex_data = [], []
+        cex_data, dex_data = {}, {}
         liquidity_usd = 0
 
         try:
             if sources != "CEX":
-                max_unique = 7 - min(len(self.cex), 4) if (sources == "All") else 9
-                dex_data = self._get_dex_data(x, rpl_usd, max_unique)
-                source_desc.append(f"{len(self.dex)} DEX")
-                liquidity_usd += sum(y[0] + y[-1] for y, _, _ in dex_data)
+                dex_data = self._get_dex_data(x, rpl_usd)
+                source_desc.append(f"{len(dex_data)} DEX")
+                liquidity_usd += sum(y[0] + y[-1] for y in dex_data.values())
 
             if sources != "DEX":
-                max_unique = 7 - min(len(self.dex), 4) if (sources == "All") else 9
-                cex_data = await self._get_cex_data(x, rpl_usd, max_unique)
-                source_desc.append(f"{len(self.cex)} CEX")
-                liquidity_usd += sum(y[0] + y[-1] for y, _, _ in cex_data)
+                cex_data = await self._get_cex_data(x, rpl_usd)
+                source_desc.append(f"{len(cex_data)} CEX")
+                liquidity_usd += sum(y[0] + y[-1] for y in dex_data.values())
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
