@@ -57,9 +57,9 @@ class Snapshot(EventPlugin):
         quorum: int
 
         _LABEL_SIZE = 20
-        _TEXT_SIZE = 30
-        _HEADER_SIZE = 36
-        _TITLE_SIZE = 44
+        _TEXT_SIZE = 25
+        _HEADER_SIZE = 30
+        _TITLE_SIZE = 38
         _BAR_SIZE = 30
 
         _V_SPACE_SMALL = 10
@@ -67,15 +67,15 @@ class Snapshot(EventPlugin):
         _V_SPACE_LARGE = 40
 
         def _predict_choice_height(self):
-            return self._TEXT_SIZE + self._V_SPACE_SMALL + max(self._TEXT_SIZE, self._BAR_SIZE)
+            return self._TEXT_SIZE + self._V_SPACE_SMALL + self._BAR_SIZE
 
         def predict_render_height(self, with_title: bool = True) -> int:
             height = 0
             if with_title:
                 height = self._TITLE_SIZE + self._V_SPACE_LARGE
             height += len(self.choices) * (self._predict_choice_height() + self._V_SPACE_MEDIUM)
-            height += self._V_SPACE_MEDIUM + self._HEADER_SIZE + self._V_SPACE_SMALL
-            height += max(self._TEXT_SIZE, self._BAR_SIZE) + self._V_SPACE_LARGE
+            height += self._V_SPACE_SMALL + self._HEADER_SIZE + self._V_SPACE_SMALL
+            height += self._BAR_SIZE + self._V_SPACE_LARGE
             height += self._TEXT_SIZE
             return height
 
@@ -147,11 +147,11 @@ class Snapshot(EventPlugin):
 
             if include_title:
                 canvas.dynamic_text(
-                    (x_offset, y_offset),
+                    (x_offset + (width / 2), y_offset),
                     self.title,
                     self._TITLE_SIZE,
                     max_width=width,
-                    anchor="lt"
+                    anchor="mt"
                 )
                 proposal_height += self._TITLE_SIZE + self._V_SPACE_LARGE
 
@@ -162,7 +162,7 @@ class Snapshot(EventPlugin):
                 proposal_height += render_choice(choice, score, x_offset, y_offset + proposal_height)
                 proposal_height += self._V_SPACE_MEDIUM
 
-            proposal_height += self._V_SPACE_MEDIUM
+            proposal_height += self._V_SPACE_SMALL
 
             # quorum header
             canvas.dynamic_text(
@@ -199,7 +199,7 @@ class Snapshot(EventPlugin):
                 max_width=((width / 2) - label_offset),
                 anchor="rm"
             )
-            proposal_height += max(self._TEXT_SIZE, self._BAR_SIZE) + self._V_SPACE_LARGE
+            proposal_height += self._BAR_SIZE + self._V_SPACE_LARGE
 
             # show remaining time until the vote ends
             rem_time = self.end - datetime.now().timestamp()
