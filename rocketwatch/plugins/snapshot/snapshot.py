@@ -91,7 +91,7 @@ class Snapshot(EventPlugin):
             def safe_div(x, y):
                 return (x / y) if y else 0
 
-            label_offset = 10
+            label_offset = self._BAR_SIZE / 2
             label_font_variant = FontVariant.BOLD
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
