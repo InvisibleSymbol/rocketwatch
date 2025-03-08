@@ -147,11 +147,11 @@ class Snapshot(EventPlugin):
 
             if include_title:
                 canvas.dynamic_text(
-                    (x_offset + (width / 2), y_offset),
+                    (x_offset, y_offset),
                     self.title,
                     self._TITLE_SIZE,
                     max_width=width,
-                    anchor="mt"
+                    anchor="lt"
                 )
                 proposal_height += self._TITLE_SIZE + self._V_SPACE_LARGE
 
