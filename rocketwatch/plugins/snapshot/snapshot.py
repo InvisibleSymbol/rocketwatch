@@ -6,6 +6,7 @@ from typing import Optional, Literal
 
 import numpy as np
 import pymongo
+import regex
 import requests
 import termplotlib as tpl
 from PIL.Image import Image
@@ -94,12 +95,19 @@ class Snapshot(EventPlugin):
             label_font_variant = FontVariant.BOLD
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
-                color: Color = {
+                color: Color = (128, 128, 128) # slate gray
+                choice_colors = {
                     "for": (4, 99, 7),       # green
                     "against": (156, 0, 47), # red
-                }.get(_choice.lower(), (114, 121, 138)) # slate gray
-                choice_height = 0
+                    "abstain": (114, 121, 138)
+                }
+                for k, v in choice_colors.items():
+                    # assign color based on keywords
+                    if regex.match(rf"^{k.lower()}\b", choice.lower()):
+                        color = v
+                        break
 
+                choice_height = 0
                 canvas.dynamic_text(
                     (_x_offset, _y_offset),
                     _choice,
