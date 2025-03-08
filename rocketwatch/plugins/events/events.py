@@ -11,6 +11,7 @@ from eth_typing import ChecksumAddress, BlockNumber
 from hexbytes import HexBytes
 from web3._utils.filters import Filter
 from web3.datastructures import MutableAttributeDict as aDict
+from web3.exceptions import ABIEventFunctionNotFound
 from web3.types import LogReceipt, EventData, FilterParams
 
 from rocketwatch import RocketWatch
@@ -38,8 +39,7 @@ class Events(EventPlugin):
         self.topic_map = topic_map
         self.active_filters: list[Filter] = []
 
-    @staticmethod
-    def _parse_event_config() -> tuple[list[PartialFilter], dict, dict]:
+    def _parse_event_config(self) -> tuple[list[PartialFilter], dict, dict]:
         with open("./plugins/events/events.json") as f:
             config = json.load(f)
 
@@ -61,7 +61,13 @@ class Events(EventPlugin):
 
             for event in group["events"]:
                 event_name = event["event_name"]
-                topic = contract.events[event_name].build_filter().topics[0]
+                try:
+                    topic = contract.events[event_name].build_filter().topics[0]
+                except ABIEventFunctionNotFound as e:
+                    self.bot.report_error(e)
+                    log.warning(f"Couldn't find event {event_name} ({event['name']}) in the contract")
+                    continue
+
                 aggregated_topics.add(topic)
                 event_map[f"{contract_name}.{event_name}"] = event["name"]
                 topic_map[topic] = event_name
