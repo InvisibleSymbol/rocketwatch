@@ -109,10 +109,11 @@ class Snapshot(EventPlugin):
                 )
                 choice_height += self._TEXT_SIZE + self._V_SPACE_SMALL
 
+                divisor = max(self.scores) if len(self.scores) >= 5 else sum(self.scores)
                 canvas.progress_bar(
                     (_x_offset, _y_offset + choice_height),
                     (self._BAR_SIZE, width),
-                    safe_div(_score,  max(self.scores)),
+                    safe_div(_score, divisor),
                     primary=color
                 )
                 canvas.dynamic_text(
