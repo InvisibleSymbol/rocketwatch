@@ -44,8 +44,8 @@ class Market:
 
 
 class CEX(Exchange, ABC):
-    def __init__(self, markets: list[Market]):
-        self.markets = markets
+    def __init__(self, major: str, minors: list[str]):
+        self.markets = {Market(major.upper(), minor.upper()) for minor in minors}
 
     @property
     @abstractmethod
