@@ -90,7 +90,7 @@ class Snapshot(EventPlugin):
             def safe_div(x, y):
                 return (x / y) if y else 0
 
-            perc_offset_right = 5
+            label_offset = 10
 
             def render_choice(_choice: str, _score: float, _x_offset: int, _y_offset: int) -> int:
                 color: Color = {
@@ -107,29 +107,31 @@ class Snapshot(EventPlugin):
                     max_width=(width / 2),
                     anchor="lt"
                 )
-                canvas.dynamic_text(
-                    (_x_offset + width, _y_offset),
-                    f"{_score:,.2f}",
-                    self._TEXT_SIZE,
-                    max_width=(width / 2),
-                    anchor="rt"
-                )
                 choice_height += self._TEXT_SIZE + self._V_SPACE_SMALL
+
                 canvas.progress_bar(
-                    (_x_offset, _y_offset + choice_height + (self._TEXT_SIZE - self._BAR_SIZE) / 2),
+                    (_x_offset, _y_offset + choice_height),
                     (self._BAR_SIZE, width),
                     safe_div(_score,  max(self.scores)),
                     primary=color
                 )
                 canvas.dynamic_text(
-                    (_x_offset + width - perc_offset_right, _y_offset + choice_height + (self._TEXT_SIZE / 2)),
+                    (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
                     f"{safe_div(_score, sum(self.scores)):.0%}",
                     self._LABEL_SIZE,
                     font_variant="Black",
-                    max_width=(width - perc_offset_right),
+                    max_width=((width / 2) - label_offset),
+                    anchor="lm"
+                )
+                canvas.dynamic_text(
+                    (_x_offset + width - label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
+                    f"{_score:,.2f}",
+                    self._LABEL_SIZE,
+                    font_variant="Black",
+                    max_width=((width / 2) - label_offset),
                     anchor="rm"
                 )
-                choice_height += max(self._TEXT_SIZE, self._BAR_SIZE)
+                choice_height += self._BAR_SIZE
                 return choice_height
 
             proposal_height = 0
@@ -161,32 +163,31 @@ class Snapshot(EventPlugin):
                 max_width=(width / 2),
                 anchor="lt"
             )
-            proposal_height += self._HEADER_SIZE
-            # show quorum numbers
+            proposal_height += self._HEADER_SIZE + self._V_SPACE_SMALL
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
-            canvas.dynamic_text(
-                (x_offset + width, y_offset + proposal_height - self._TEXT_SIZE),
-                f"{sum(self.scores):,.0f} of {self.quorum:,.0f}",
-                self._TEXT_SIZE,
-                max_width=(width / 2),
-                anchor="rt"
-            )
-            proposal_height += self._V_SPACE_SMALL
 
             # dark gray, turns orange when quorum is met
             pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
             canvas.progress_bar(
-                (x_offset, y_offset + proposal_height + (self._TEXT_SIZE - self._BAR_SIZE) / 2),
+                (x_offset, y_offset + proposal_height),
                 (self._BAR_SIZE, width),
                 min(quorum_perc, 1),
                 primary=pb_color
             )
             canvas.dynamic_text(
-                (x_offset + width - perc_offset_right, y_offset + proposal_height + (self._TEXT_SIZE / 2)),
+                (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
                 f"{quorum_perc:.0%}",
                 self._LABEL_SIZE,
                 font_variant="Black",
-                max_width=(width - perc_offset_right),
+                max_width=((width / 2) - label_offset),
+                anchor="lm"
+            )
+            canvas.dynamic_text(
+                (x_offset + width - label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
+                f"{sum(self.scores):,.0f} of {self.quorum:,.0f}",
+                self._LABEL_SIZE,
+                font_variant="Black",
+                max_width=((width / 2) - label_offset),
                 anchor="rm"
             )
             proposal_height += max(self._TEXT_SIZE, self._BAR_SIZE) + self._V_SPACE_LARGE
