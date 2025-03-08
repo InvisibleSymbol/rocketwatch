@@ -27,7 +27,7 @@ log.setLevel(cfg["log_level"])
 class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.cex: list[CEX] = [
+        self.cex: set[CEX] = {
             Binance([Market("RPL", "USDT")]),
             Coinbase([Market("RPL", "USDC")]),
             Deepcoin([Market("RPL", "USDT")]),
@@ -42,8 +42,12 @@ class Wall(commands.Cog):
             Bithumb([Market("RPL", "KRW")]),
             BingX([Market("RPL", "USDT")]),
             Bitvavo([Market("RPL", "EUR")]),
-        ]
-        self.dex: list[DEX] = [
+            HTX([Market("RPL", "USDT")]),
+            BitMart([Market("RPL", "USDT")]),
+            Bitrue([Market("RPL", "USDT")]),
+            CoinTR([Market("RPL", "USDT")]),
+        }
+        self.dex: set[DEX] = {
             BalancerV2([
                 BalancerV2.WeightedPool(HexStr("0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462"))
             ]),
@@ -51,7 +55,7 @@ class Wall(commands.Cog):
                 cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45"),
                 cast(ChecksumAddress, "0xcf15aD9bE9d33384B74b94D63D06B4A9Bd82f640")
             ])
-        ]
+        }
 
     @staticmethod
     def _get_market_depth_and_liquidity(

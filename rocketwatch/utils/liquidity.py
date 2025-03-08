@@ -26,6 +26,7 @@ class Liquidity:
     def depth_at(self, price: float) -> float:
         return self.__depth_fn(price)
 
+
 class Exchange(ABC):
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -80,6 +81,7 @@ class CEX(Exchange, ABC):
         params = self._get_request_params(market)
         url = self._api_endpoint + self._get_request_path(market)
         response = await session.get(url, params=params, headers={"User-Agent": "Rocket Watch"})
+        log.debug(f"response from {url}: {response}")
         data = await response.json()
         bids = OrderedDict(sorted(self._get_bids(data).items(), reverse=True))
         asks = OrderedDict(sorted(self._get_asks(data).items()))
@@ -459,6 +461,125 @@ class Bitvavo(CEX):
 
     def _get_asks(self, api_response: dict) -> dict[float, float]:
         return {float(price): float(size) for price, size in api_response["asks"]}
+
+
+class HTX(CEX):
+    @property
+    def color(self) -> str:
+        return "#3b86ca"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.huobi.pro"
+
+    @staticmethod
+    def _get_request_path(market: Market) -> str:
+        return "/market/depth"
+
+    @staticmethod
+    def _get_request_params(market: Market) -> dict[str, str | int]:
+        return {"symbol": f"{market.major.lower()}{market.minor.lower()}", "type": "step0"}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["tick"]["bids"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["tick"]["asks"]}
+
+class BitMart(CEX):
+    @property
+    def color(self) -> str:
+        return "#63d2d3"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api-cloud.bitmart.com"
+
+    @staticmethod
+    def _get_request_path(market: Market) -> str:
+        return "/spot/quotation/v3/books"
+
+    @staticmethod
+    def _get_request_params(market: Market) -> dict[str, str | int]:
+        return {"symbol": f"{market.major}_{market.minor}", "limit": 50}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["data"]["bids"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["data"]["asks"]}
+
+
+class Bitrue(CEX):
+    @property
+    def color(self) -> str:
+        return "#d5a740"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://b.bitrue.com/kline-api"
+
+    @staticmethod
+    def _get_request_path(market: Market) -> str:
+        return "/depths"
+
+    @staticmethod
+    def _get_request_params(market: Market) -> dict[str, str | int]:
+        return {"symbol": f"{market.major}{market.minor}"}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["data"]["tick"]["b"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {float(entry[0]): float(entry[1]) for entry in api_response["data"]["tick"]["a"]}
+
+
+class CoinTR(CEX):
+    @property
+    def color(self) -> str:
+        return "#76f05a"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://api.cointr.com/api/v2"
+
+    @staticmethod
+    def _get_request_path(market: Market) -> str:
+        return "/spot/market/orderbook"
+
+    @staticmethod
+    def _get_request_params(market: Market) -> dict[str, str | int]:
+        return {"symbol": f"{market.major}{market.minor}", "limit": 150}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {float(price): float(size) for price, size in api_response["data"]["bids"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {float(price): float(size) for price, size in api_response["data"]["asks"]}
+
+
+class DigiFinex(CEX):
+    @property
+    def color(self) -> str:
+        return "#6545ac"
+
+    @property
+    def _api_endpoint(self) -> str:
+        return "https://openapi.digifinex.com/v3"
+
+    @staticmethod
+    def _get_request_path(market: Market) -> str:
+        return "/order_book"
+
+    @staticmethod
+    def _get_request_params(market: Market) -> dict[str, str | int]:
+        return {"symbol": f"{market.major}_{market.minor}", "limit": 150}
+
+    def _get_bids(self, api_response: dict) -> dict[float, float]:
+        return {price: size for price, size in api_response["bids"]}
+
+    def _get_asks(self, api_response: dict) -> dict[float, float]:
+        return {price: size for price, size in api_response["bids"]}
 
 
 class ERC20Token:
