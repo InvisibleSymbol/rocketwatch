@@ -55,14 +55,23 @@ class Core(commands.Cog):
             await self.gather_new_events()
             await self.process_event_queue()
             await self.update_status_message()
-            if self.state == self.State.ERROR:
-                self.state = self.State.OK
-                self.run_loop.change_interval(seconds=12)
+            await self.on_success()
             self.monitor.ping(state="complete", series=p_id)
-            return
-        except Exception as err:
-            await self.bot.report_error(err)
+        except Exception as error:
+            await self.on_error(error)
+            self.monitor.ping(state="fail", series=p_id)
 
+    @run_loop.before_loop
+    async def before_loop(self) -> None:
+        await self.bot.wait_until_ready()
+
+    async def on_success(self) -> None:
+        if self.state == self.State.ERROR:
+            self.state = self.State.OK
+            self.run_loop.change_interval(seconds=12)
+
+    async def on_error(self, error: Exception) -> None:
+        await self.bot.report_error(error)
         if self.state == self.State.OK:
             self.state = self.State.ERROR
             self.run_loop.change_interval(seconds=30)
@@ -71,8 +80,6 @@ class Core(commands.Cog):
             await self.show_service_interrupt()
         except Exception as err:
             await self.bot.report_error(err)
-
-        self.monitor.ping(state="fail", series=p_id)
 
     async def gather_new_events(self) -> None:
         log.info("Gathering messages from submodules")
