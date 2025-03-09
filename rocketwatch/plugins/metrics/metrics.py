@@ -6,7 +6,7 @@ from io import BytesIO
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import SON
 from cachetools import TTLCache
-from discord import NotFound, File, app_commands
+from discord import File
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -27,8 +27,6 @@ class Metrics(commands.Cog):
         self.notice_ttl_cache = TTLCache(math.inf, ttl=60 * 15)
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
         self.collection = self.db.command_metrics
-
-        self.bot.tree.on_error = self.on_command_error
 
     @hybrid_command()
     async def metrics(self, ctx: Context):
@@ -209,52 +207,21 @@ class Metrics(commands.Cog):
             await self.bot.report_error(e)
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, excep):
-        try:
-            author = ctx.author
-        except AttributeError:
-            author = ctx.user
-        log.info(f"/{ctx.command.name} called by {author} in #{ctx.channel.name} ({ctx.guild}) failed")
-
-        msg = f'{author.mention} An unexpected error occurred. This Error has been automatically reported. Please try again later'
-        if isinstance(excep, commands.errors.MaxConcurrencyReached):
-            msg = f'{author.mention} Someone else is already using this command. Please try again later'
-        if isinstance(excep, app_commands.errors.CommandOnCooldown):
-            msg = f'Slow down! You are using this command too fast. Please try again in {excep.retry_after:.0f} seconds'
-        try:
-            # try to inform the user. this might fail if it took too long to respond
-            await ctx.send(content=msg, ephemeral=True)
-        except AttributeError:
-            await ctx.response.send_message(msg, ephemeral=True,
-                                            delete_after=excep.retry_after if "retry_after" in dir(excep) else 60)
-        except NotFound:
-            # so fall back to a normal channel message if that happens
-            try:
-                await ctx.channel.send(msg)
-            except Exception as e:
-                log.error(f"Failed to inform user of command error: {e}")
-                await self.bot.report_error(e)
-
+    async def on_command_error(self, ctx: Context, exception: Exception):
         try:
             # get the timestamp of when the command was called from the db
             data = await self.collection.find_one({'_id': ctx.interaction.id})
-            await self.collection.update_one({'_id': ctx.interaction.id},
-                                             {
-                                                 '$set': {
-                                                     'status': 'error',
-                                                     'took'  : (datetime.utcnow() - data['timestamp']).total_seconds(),
-                                                     'error' : str(excep)
-                                                 }
-                                             })
+            await self.collection.update_one(
+                {'_id': ctx.interaction.id},
+                {'$set': {
+                    'status': 'error',
+                    'took': (datetime.now() - data['timestamp']).total_seconds(),
+                    'error': str(exception)
+                }}
+            )
         except Exception as e:
-            log.error(f"Failed to update command status to error: {e}")
+            log.exception("Failed to update command status to error")
             await self.bot.report_error(e)
-
-        await self.bot.report_error(excep, ctx)
-
-    @commands.Cog.listener()
-    async def on_ready(self, ):
-        log.info(f'Logged in as {self.bot.user.name} ({self.bot.user.id})')
 
 
 async def setup(bot):

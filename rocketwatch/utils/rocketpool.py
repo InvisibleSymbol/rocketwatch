@@ -64,7 +64,7 @@ class RocketPool:
             try:
                 self.get_address_by_name(contract)
             except Exception:
-                log.exception(f"Skipping {contract} in function list generation")
+                log.warning(f"Skipping {contract} in function list generation")
                 continue
 
         cs_dir, cs_prefix = "ConstellationDirectory", "Constellation"

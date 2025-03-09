@@ -4,8 +4,9 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from discord import TextChannel, File
+from discord import TextChannel, File, app_commands, NotFound
 from discord.ext.commands import Bot, Context
+from discord.ext import commands
 
 from utils.cfg import cfg
 from utils.retry import retry_async
@@ -15,6 +16,9 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketWatch(Bot):
+    async def on_ready(self):
+        log.info(f'Logged in as {self.user.name} ({self.user.id})')
+
     async def setup_hook(self) -> None:
         chain = cfg["rocketpool.chain"]
         storage = cfg['rocketpool.manual_addresses.rocketStorage']
@@ -53,6 +57,21 @@ class RocketWatch(Bot):
                 log.exception(f"Failed to load plugin \"{plugin_name}\"")
 
         log.info('Finished loading plugins')
+
+    async def on_command_error(self, ctx: Context, exception: Exception) -> None:
+        log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
+        if isinstance(exception, commands.errors.MaxConcurrencyReached):
+            msg = f"Someone else is already using this command. Please try again later"
+        elif isinstance(exception, app_commands.errors.CommandOnCooldown):
+            msg = f"Slow down! You are using this command too fast. Please try again in {exception.retry_after:.0f} seconds"
+        else:
+            msg = f"An unexpected error occurred and has been reported to the developer. Please try again later"
+
+        try:
+            await self.report_error(exception, ctx)
+            await ctx.send(content=msg, ephemeral=True)
+        except Exception:
+            log.exception("Failed to alert user")
 
     async def get_or_fetch_channel(self, channel_id: int) -> TextChannel:
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
