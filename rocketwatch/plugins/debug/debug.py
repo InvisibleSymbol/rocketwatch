@@ -437,11 +437,11 @@ class Debug(Cog):
     @get_address_of_contract.autocomplete("contract")
     @get_abi_of_contract.autocomplete("contract")
     @decode_tnx.autocomplete("contract_name")
-    async def match_contract_names(self, _: Context, current: str):
+    async def match_contract_names(self, ctx: Context, current: str):
         return [Choice(name=name, value=name) for name in self.contract_files if current.lower() in name.lower()][:25]
 
     @call.autocomplete("function")
-    async def match_function_name(self, _: Context, current: str):
+    async def match_function_name(self, ctx: Context, current: str):
         return [Choice(name=name, value=name) for name in self.function_list if current.lower() in name.lower()][:25]
 
 
