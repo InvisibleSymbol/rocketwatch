@@ -134,7 +134,7 @@ class Core(commands.Cog):
                 futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
                 results = await asyncio.gather(*futures)
         except Exception as err:
-            log.exception("Failed to gather events from submodules")
+            log.exception("Failed to gather events")
             self.bot.report_error(err)
             raise err
 
