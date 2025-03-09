@@ -581,20 +581,17 @@ class Snapshot(EventPlugin):
         canvas = ImageCanvas(total_width + pad_top + pad_bottom, total_height + pad_left + pad_right)
 
         # draw proposals in num_rows x num_cols grid
-        y_offset = -v_spacing + pad_top
-        for row_idx in range(len(proposal_grid)):
-            x_offset = -h_spacing + pad_left
-            y_offset += v_spacing
-
+        y_offset = pad_top
+        for row in proposal_grid:
             max_height = 0
-            for col_idx in range(len(proposal_grid[row_idx])):
-                proposal = proposal_grid[row_idx][col_idx]
-                x_offset += h_spacing
+            x_offset = pad_left
+
+            for proposal in row:
                 height = proposal.render_to(canvas, proposal_width, x_offset, y_offset)
                 max_height = max(max_height, height)
-                x_offset += proposal_width
+                x_offset += proposal_width + h_spacing
 
-            y_offset += max_height
+            y_offset += max_height + v_spacing
 
         file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
