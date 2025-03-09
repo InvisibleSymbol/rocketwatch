@@ -556,7 +556,7 @@ class Snapshot(EventPlugin):
         num_cols = min(int(math.ceil(math.sqrt(num_proposals))), 4)
         num_rows = int(math.ceil(num_proposals / num_cols))
 
-        v_spacing = 80
+        v_spacing = 120
         h_spacing = 80
 
         pad_top, pad_bottom = 20, 20
@@ -581,7 +581,7 @@ class Snapshot(EventPlugin):
         canvas = ImageCanvas(total_width + pad_top + pad_bottom, total_height + pad_left + pad_right)
 
         # draw proposals in num_rows x num_cols grid
-        y_offset = -h_spacing + pad_top
+        y_offset = -v_spacing + pad_top
         for row_idx in range(len(proposal_grid)):
             x_offset = -h_spacing + pad_left
             y_offset += v_spacing
