@@ -1,12 +1,12 @@
-import logging
 import math
+import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from typing import Optional, Literal
+from datetime import datetime, timedelta
 
-import numpy as np
 import regex
 import requests
+import numpy as np
 import termplotlib as tpl
 from PIL.Image import Image
 from discord.ext.commands import Context, hybrid_command
@@ -32,8 +32,9 @@ log.setLevel(cfg["log_level"])
 class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=5))
-        self.db = MongoClient(cfg["mongodb_uri"]).rocketwatch
-        self.version = 3
+        client = MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.proposal_db = client.snapshot_proposals
+        self.vote_db = client.snapshot_votes
 
     @staticmethod
     def _query_api(query: Query) -> list[dict] | Optional[dict]:
@@ -433,7 +434,14 @@ class Snapshot(EventPlugin):
         return [Snapshot.Proposal(**d) for d in response]
 
     @staticmethod
-    def fetch_votes(proposal: Proposal, *, reverse: bool = False, limit: int = 100, skip: int = 0) -> list[Vote]:
+    def fetch_votes(
+            proposal: Proposal,
+            *,
+            created_after: int = 0,
+            reverse: bool = False,
+            limit: int = 100,
+            skip: int = 0
+    ) -> list[Vote]:
         query = Query(
             name="votes",
             arguments=[
@@ -441,7 +449,10 @@ class Snapshot(EventPlugin):
                 Argument(name="skip", value=skip),
                 Argument(
                     name="where",
-                    value=[Argument(name="proposal", value=f"\"{proposal.id}\"")]
+                    value=[
+                        Argument(name="proposal", value=f"\"{proposal.id}\""),
+                        Argument(name="created_gt", value=created_after)
+                    ]
                 ),
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc" if reverse else "asc")
@@ -452,19 +463,14 @@ class Snapshot(EventPlugin):
         return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
 
     def _get_new_events(self) -> list[Event]:
-        if not self.db.snapshot_votes.find_one({"_id": "version", "version": self.version}):
-            log.warning("Snapshot version changed, nuking db")
-            self.db.snapshot_votes.drop()
-            self.db.snapshot_votes.insert_one({"_id": "version", "version": self.version})
-
         now = datetime.now()
         events: list[Event] = []
 
-        proposal_db_updates: list[InsertOne | UpdateOne | DeleteOne] = []
-        vote_db_updates: list[UpdateOne] = []
+        proposal_db_changes: list[InsertOne | UpdateOne | DeleteOne] = []
+        vote_db_changes: list[InsertOne] = []
 
         known_active_proposals: dict[str, dict] = {}
-        for stored_proposal in self.db.snapshot_proposals.find():
+        for stored_proposal in self.proposal_db.find():
             if stored_proposal["end"] >= now.timestamp():
                 known_active_proposals[stored_proposal["_id"]] = stored_proposal
             else:
@@ -473,7 +479,7 @@ class Snapshot(EventPlugin):
                 # recover full proposal
                 if proposal := self.fetch_proposal(stored_proposal["_id"]):
                     event = proposal.create_end_event()
-                    proposal_db_updates.append(DeleteOne(stored_proposal))
+                    proposal_db_changes.append(DeleteOne(stored_proposal))
                     events.append(event)
 
         # fetch in descending order, then reverse to get latest results in chronological order
@@ -491,20 +497,20 @@ class Snapshot(EventPlugin):
                     "end"   : proposal.end,
                     "quorum": proposal.reached_quorum()
                 }
-                proposal_db_updates.append(InsertOne(proposal_dict))
+                proposal_db_changes.append(InsertOne(proposal_dict))
                 known_active_proposals[proposal.id] = proposal_dict
                 events.append(event)
             elif proposal.reached_quorum() and (not known_active_proposals[proposal.id]["quorum"]):
                 log.info(f"Proposal {proposal} has reached quorum")
                 event = proposal.create_reached_quorum_event(self._pending_block)
-                proposal_db_updates.append(UpdateOne(
+                proposal_db_changes.append(UpdateOne(
                     {"_id": proposal.id},
                     {"$set": {"quorum": True}}
                 ))
                 events.append(event)
 
             previous_votes: dict[ChecksumAddress, Snapshot.Vote] = {}
-            for stored_vote in self.db.snapshot_votes.find({"proposal_id": proposal.id}):
+            for stored_vote in self.vote_db.find({"proposal_id": proposal.id}):
                 vote = Snapshot.Vote(
                     id=stored_vote["_id"],
                     proposal=proposal,
@@ -516,41 +522,35 @@ class Snapshot(EventPlugin):
                 )
                 previous_votes[vote.voter] = vote
 
-            current_votes: list[Snapshot.Vote] = self.fetch_votes(proposal, reverse=True)[::-1]
+            last_fetched_ts = max(vote.created for vote in previous_votes.values()) if previous_votes else 0
+            current_votes: list[Snapshot.Vote] = self.fetch_votes(proposal, created_after=last_fetched_ts)
             for vote in current_votes:
                 log.debug(f"Processing vote {vote}")
 
                 prev_vote: Optional[Snapshot.Vote] = previous_votes.get(vote.voter)
                 previous_votes[vote.voter] = vote
 
-                if prev_vote and (vote.id == prev_vote.id or vote.created < prev_vote.created):
-                    log.debug(f"Skipping duplicate vote {vote}")
-                    continue
-
                 event = vote.create_event(prev_vote)
                 if event is None:
                     continue
 
                 events.append(event)
-                db_update = UpdateOne(
-                    {"_id": vote.id},
-                    {"$set": {
-                        "proposal_id": vote.proposal.id,
-                        "voter"      : vote.voter,
-                        "time"       : vote.created,
-                        "vp"         : vote.vp,
-                        "choice"     : vote.choice,
-                        "reason"     : vote.reason,
-                    }},
-                    upsert=True
-                )
-                vote_db_updates.append(db_update)
+                db_update = InsertOne({
+                    "_id"        : vote.id,
+                    "proposal_id": vote.proposal.id,
+                    "voter"      : vote.voter,
+                    "time"       : vote.created,
+                    "vp"         : vote.vp,
+                    "choice"     : vote.choice,
+                    "reason"     : vote.reason,
+                })
+                vote_db_changes.append(db_update)
 
-        if proposal_db_updates:
-            self.db.snapshot_proposals.bulk_write(proposal_db_updates)
+        if proposal_db_changes:
+            self.proposal_db.bulk_write(proposal_db_changes)
 
-        if vote_db_updates:
-            self.db.snapshot_votes.bulk_write(vote_db_updates)
+        if vote_db_changes:
+            self.vote_db.bulk_write(vote_db_changes)
 
         return events
 
