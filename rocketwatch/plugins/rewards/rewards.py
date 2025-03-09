@@ -1,5 +1,5 @@
 import logging
-import requests
+import aiohttp
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,6 +18,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
 from utils.rocketpool import rp
+from utils.retry import retry_async
 from utils.get_nearest_block import get_block_by_timestamp
 
 
@@ -41,13 +42,19 @@ class Rewards(commands.Cog):
         eth_rewards: float
         system_weight: float
 
+    @retry_async(tries=3, delay=1)
+    async def _make_request(self, address) -> dict:
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(f"https://sprocketpool.net/api/node/{address}")
+            return await response.json()
+
     async def get_estimated_rewards(self, ctx: Context, address: str) -> Optional[RewardEstimate]:
         if not rp.call("rocketNodeManager.getNodeExists", address):
             await ctx.send(f"{address} is not a registered node.")
             return None
 
         try:
-            patches_res = requests.get(f"https://sprocketpool.net/api/node/{address}").json()
+            patches_res = await self._make_request(address)
         except Exception as e:
             await self.bot.report_error(e, ctx)
             await ctx.send("Error fetching node data from Sprocket Pool API. Blame Patches.")
