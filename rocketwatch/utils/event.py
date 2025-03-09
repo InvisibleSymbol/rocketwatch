@@ -19,7 +19,7 @@ class Event:
     topic: str
     event_name: str
     unique_id: str
-    block_number: int
+    block_number: BlockNumber
     transaction_index: int = 999
     event_index: int = 999
     attachment: Optional[Image] = None
@@ -28,10 +28,10 @@ class Event:
         return (10**9 * self.block_number) + (10**5 * self.transaction_index) + self.event_index
 
 class EventPlugin(commands.Cog):
-    def __init__(self, bot: RocketWatch, rate_limit=timedelta()):
+    def __init__(self, bot: RocketWatch, rate_limit=timedelta(seconds=12)):
         self.bot = bot
         self.rate_limit = rate_limit
-        self.lookback_distance: int = cfg["events.look_back_distance"]
+        self.lookback_distance: int = cfg["events.lookback_distance"]
         self.last_served_block = w3.eth.get_block(cfg["events.genesis"]).number - 1
         self._pending_block = self.last_served_block
         self._last_run = datetime.now() - rate_limit

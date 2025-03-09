@@ -27,17 +27,15 @@ log.setLevel(cfg["log_level"])
 
 class Core(commands.Cog):
     class State(Enum):
-        PENDING = 0
-        OK = 1
-        ERROR = 2
-        STOPPED = 3
+        OK = 0
+        ERROR = 1
 
         def __str__(self) -> str:
             return self.name
 
     def __init__(self, bot):
         self.bot = bot
-        self.state = self.State.PENDING
+        self.state = self.State.OK
         self.channels = cfg["discord.channels"]
         self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
         self.head_block: BlockIdentifier = cfg["events.genesis"]
@@ -45,21 +43,29 @@ class Core(commands.Cog):
         self.monitor = cronitor.Monitor('gather-new-events', api_key=cfg["cronitor_secret"])
         self.run_loop.start()
 
+    def cog_unload(self) -> None:
+        self.run_loop.cancel()
+
     @tasks.loop(seconds=12.0)
     async def run_loop(self) -> None:
         p_id = time.time()
-        self.monitor.ping(state='run', series=p_id)
-        self.state = self.State.OK
+        self.monitor.ping(state="run", series=p_id)
 
         try:
             await self.gather_new_events()
             await self.process_event_queue()
             await self.update_status_message()
+            if self.state == self.State.ERROR:
+                self.state = self.State.OK
+                self.run_loop.change_interval(seconds=12)
             self.monitor.ping(state="complete", series=p_id)
             return
         except Exception as err:
-            self.state = self.State.ERROR
             await self.bot.report_error(err)
+
+        if self.state == self.State.OK:
+            self.state = self.State.ERROR
+            self.run_loop.change_interval(seconds=30)
 
         try:
             await self.show_service_interrupt()
@@ -67,7 +73,6 @@ class Core(commands.Cog):
             await self.bot.report_error(err)
 
         self.monitor.ping(state="fail", series=p_id)
-        await asyncio.sleep(30)
 
     async def gather_new_events(self) -> None:
         log.info("Gathering messages from submodules")
@@ -279,10 +284,6 @@ class Core(commands.Cog):
                 "sent_at": datetime.now(),
                 "state": str(self.state)
             })
-
-    def cog_unload(self) -> None:
-        self.state = self.State.STOPPED
-        self.run_loop.cancel()
 
 
 async def setup(bot):

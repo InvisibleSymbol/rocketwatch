@@ -44,7 +44,7 @@ services:
     volumes:
       - ./mongodb:/data/db
     restart: unless-stopped
-    # bellow prevents unnecessary data from being collected
+    # below prevents unnecessary data from being collected
     command: --setParameter diagnosticDataCollectionEnabled=false
     logging:
       driver: "json-file"
