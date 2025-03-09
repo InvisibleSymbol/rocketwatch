@@ -13,7 +13,7 @@ from discord.ext.commands import Context, hybrid_command
 from eth_typing import ChecksumAddress, BlockNumber
 from graphql_query import Operation, Query, Argument
 from web3.constants import ADDRESS_ZERO
-from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne
+from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne, DESCENDING
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
@@ -31,7 +31,7 @@ log.setLevel(cfg["log_level"])
 
 class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
-        super().__init__(bot, timedelta(minutes=5))
+        super().__init__(bot, timedelta(minutes=2))
         client = MongoClient(cfg["mongodb_uri"]).rocketwatch
         self.proposal_db = client.snapshot_proposals
         self.vote_db = client.snapshot_votes
@@ -482,9 +482,7 @@ class Snapshot(EventPlugin):
                     proposal_db_changes.append(DeleteOne(stored_proposal))
                     events.append(event)
 
-        # fetch in descending order, then reverse to get latest results in chronological order
-        # only relevant if potential results exceed limit
-        active_proposals = self.fetch_proposals("active", reverse=True)[::-1]
+        active_proposals = self.fetch_proposals("active")
         for proposal in active_proposals:
             log.debug(f"Processing proposal {proposal}")
             if proposal.id not in known_active_proposals:
@@ -509,26 +507,33 @@ class Snapshot(EventPlugin):
                 ))
                 events.append(event)
 
-            previous_votes: dict[ChecksumAddress, Snapshot.Vote] = {}
-            for stored_vote in self.vote_db.find({"proposal_id": proposal.id}):
-                vote = Snapshot.Vote(
-                    id=stored_vote["_id"],
-                    proposal=proposal,
-                    voter=stored_vote["voter"],
-                    created=stored_vote["time"],
-                    vp=stored_vote["vp"],
-                    choice=stored_vote["choice"],
-                    reason=stored_vote["reason"]
-                )
-                previous_votes[vote.voter] = vote
+            try:
+                last_vote_ts = self.vote_db.find(
+                    {"proposal_id": proposal.id}
+                ).sort({"created": DESCENDING}).limit(1)[0]["created"]
+            except IndexError:
+                last_vote_ts = 0
 
-            last_fetched_ts = max(vote.created for vote in previous_votes.values()) if previous_votes else 0
-            current_votes: list[Snapshot.Vote] = self.fetch_votes(proposal, created_after=last_fetched_ts)
+            current_votes: list[Snapshot.Vote] = self.fetch_votes(proposal, created_after=last_vote_ts)
             for vote in current_votes:
                 log.debug(f"Processing vote {vote}")
 
-                prev_vote: Optional[Snapshot.Vote] = previous_votes.get(vote.voter)
-                previous_votes[vote.voter] = vote
+                try:
+                    stored_vote = self.vote_db.find(
+                        {"proposal_id": proposal.id},
+                        {"voter": vote.voter}
+                    ).sort({"created": DESCENDING}).limit(1)[0]
+                    prev_vote = Snapshot.Vote(
+                        id=stored_vote["_id"],
+                        proposal=proposal,
+                        voter=stored_vote["voter"],
+                        created=stored_vote["created"],
+                        vp=stored_vote["vp"],
+                        choice=stored_vote["choice"],
+                        reason=stored_vote["reason"]
+                    )
+                except IndexError:
+                    prev_vote = None
 
                 event = vote.create_event(prev_vote)
                 if event is None:
@@ -539,7 +544,7 @@ class Snapshot(EventPlugin):
                     "_id"        : vote.id,
                     "proposal_id": vote.proposal.id,
                     "voter"      : vote.voter,
-                    "time"       : vote.created,
+                    "created"    : vote.created,
                     "vp"         : vote.vp,
                     "choice"     : vote.choice,
                     "reason"     : vote.reason,
