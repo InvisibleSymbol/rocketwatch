@@ -262,18 +262,15 @@ class Wall(commands.Cog):
 
         source_desc = []
         cex_data, dex_data = {}, {}
-        liquidity_usd = 0
 
         try:
             if sources != "CEX":
                 dex_data = self._get_dex_data(x, rpl_usd)
                 source_desc.append(f"{len(dex_data)} DEX")
-                liquidity_usd += sum(y[0] + y[-1] for y in dex_data.values())
 
             if sources != "DEX":
                 cex_data = await self._get_cex_data(x, rpl_usd)
                 source_desc.append(f"{len(cex_data)} CEX")
-                liquidity_usd += sum(y[0] + y[-1] for y in dex_data.values())
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
@@ -282,6 +279,7 @@ class Wall(commands.Cog):
             log.error("No liquidity data found")
             return await on_fail()
 
+        liquidity_usd = sum((y[0] + y[-1]) for y in (dex_data | cex_data).values())
         liquidity_eth = liquidity_usd / eth_usd
 
         buffer = BytesIO()
