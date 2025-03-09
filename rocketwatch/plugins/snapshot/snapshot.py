@@ -247,7 +247,7 @@ class Snapshot(EventPlugin):
 
         def create_reached_quorum_event(self, block_number: BlockNumber) -> Event:
             embed = self.get_embed_template()
-            embed.title = ":classical_building: Proposal Reached Quorum"
+            embed.title = ":checkered_flag: Proposal Reached Quorum"
             return Event(
                 embed=embed,
                 topic="snapshot",
@@ -412,16 +412,18 @@ class Snapshot(EventPlugin):
             limit: int = 25,
             skip: int = 0
     ) -> list[Proposal]:
-        proposal_filter = [
-            Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
-            Argument(name="state", value=f"\"{state}\"")
-        ]
         query = Query(
             name="proposals",
             arguments=[
                 Argument(name="first", value=limit),
                 Argument(name="skip", value=skip),
-                Argument(name="where", value=proposal_filter),
+                Argument(
+                    name="where",
+                    value=[
+                        Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
+                        Argument(name="state", value=f"\"{state}\"")
+                    ]
+                ),
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc" if reverse else "asc")
             ],
@@ -531,16 +533,16 @@ class Snapshot(EventPlugin):
 
                 events.append(event)
                 db_update = UpdateOne(
-                    {"proposal_id": proposal.id},
+                    {"_id": vote.id},
                     {"$set": {
-                        "_id"        : vote.id,
                         "proposal_id": vote.proposal.id,
                         "voter"      : vote.voter,
                         "time"       : vote.created,
                         "vp"         : vote.vp,
                         "choice"     : vote.choice,
                         "reason"     : vote.reason,
-                    }}
+                    }},
+                    upsert=True
                 )
                 vote_db_updates.append(db_update)
 
