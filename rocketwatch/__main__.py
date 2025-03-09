@@ -26,9 +26,9 @@ def main() -> None:
     prefix = str(uuid.uuid4())
     log.info(f"Using command prefix {prefix}")
     bot = RocketWatch(intents=intents, command_prefix=prefix)
-    log.info('Starting bot')
+    log.info("Starting bot")
     bot.run(cfg["discord.secret"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
