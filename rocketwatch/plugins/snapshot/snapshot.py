@@ -36,10 +36,10 @@ class Snapshot(EventPlugin):
         self.version = 3
 
     @staticmethod
-    def _query_api(query: Query) -> list[dict]:
+    def _query_api(query: Query) -> list[dict] | Optional[dict]:
         query_json = {"query": Operation(type="query", queries=[query]).render()}
         log.debug(f"Snapshot query: {query_json}")
-        response = requests.post("https://hub.snapshot.org/graphql", json=query_json).json()
+        response = requests.get("https://hub.snapshot.org/graphql", json=query_json).json()
         if "errors" in response:
             raise Exception(response["errors"])
         return response["data"][query.name]
@@ -395,25 +395,32 @@ class Snapshot(EventPlugin):
             )
 
     @staticmethod
+    def fetch_proposal(proposal_id: str) -> Optional[Proposal]:
+        query = Query(
+            name="proposal",
+            arguments=[Argument(name="id", value=f"\"{proposal_id}\"")],
+            fields=["id", "title", "choices", "start", "end", "scores", "quorum"]
+        )
+        response: Optional[dict] = Snapshot._query_api(query)
+        return Snapshot.Proposal(**response) if response else None
+
+    @staticmethod
     def fetch_proposals(
             state: Proposal.State,
             *,
             reverse: bool = False,
             limit: int = 25,
-            proposal_id: Optional[str] = None
+            skip: int = 0
     ) -> list[Proposal]:
         proposal_filter = [
             Argument(name="space_in", value=["\"rocketpool-dao.eth\""]),
             Argument(name="state", value=f"\"{state}\"")
         ]
-        if proposal_id:
-            proposal_filter.append(Argument(name="id", value=f"\"{proposal_id}\""))
-
         query = Query(
             name="proposals",
             arguments=[
                 Argument(name="first", value=limit),
-                Argument(name="skip", value=0),
+                Argument(name="skip", value=skip),
                 Argument(name="where", value=proposal_filter),
                 Argument(name="orderBy", value="\"created\""),
                 Argument(name="orderDirection", value="desc" if reverse else "asc")
@@ -424,12 +431,12 @@ class Snapshot(EventPlugin):
         return [Snapshot.Proposal(**d) for d in response]
 
     @staticmethod
-    def fetch_votes(proposal: Proposal, *, reverse: bool = True, limit: int = 100) -> list[Vote]:
+    def fetch_votes(proposal: Proposal, *, reverse: bool = False, limit: int = 100, skip: int = 0) -> list[Vote]:
         query = Query(
             name="votes",
             arguments=[
                 Argument(name="first", value=limit),
-                Argument(name="skip", value=0),
+                Argument(name="skip", value=skip),
                 Argument(
                     name="where",
                     value=[Argument(name="proposal", value=f"\"{proposal.id}\"")]
@@ -462,10 +469,10 @@ class Snapshot(EventPlugin):
                 # stored proposal ended, emit event and delete from DB
                 log.info(f"Found expired proposal: {stored_proposal}")
                 # recover full proposal
-                proposal = self.fetch_proposals("closed", proposal_id=stored_proposal["_id"])[0]
-                event = proposal.create_end_event()
-                proposal_db_updates.append(DeleteOne(stored_proposal))
-                events.append(event)
+                if proposal := self.fetch_proposal(stored_proposal["_id"]):
+                    event = proposal.create_end_event()
+                    proposal_db_updates.append(DeleteOne(stored_proposal))
+                    events.append(event)
 
         # fetch in descending order, then reverse to get latest results in chronological order
         # only relevant if potential results exceed limit
@@ -476,12 +483,14 @@ class Snapshot(EventPlugin):
                 # not aware of this proposal yet, emit event and insert into DB
                 log.info(f"Found new proposal: {proposal}")
                 event = proposal.create_start_event()
-                proposal_db_updates.append(InsertOne({
-                    "_id"  : proposal.id,
-                    "start": proposal.start,
-                    "end"  : proposal.end,
+                proposal_dict = {
+                    "_id"   : proposal.id,
+                    "start" : proposal.start,
+                    "end"   : proposal.end,
                     "quorum": proposal.reached_quorum()
-                }))
+                }
+                proposal_db_updates.append(InsertOne(proposal_dict))
+                known_active_proposals[proposal.id] = proposal_dict
                 events.append(event)
             elif proposal.reached_quorum() and (not known_active_proposals[proposal.id]["quorum"]):
                 log.info(f"Proposal {proposal} has reached quorum")
@@ -511,6 +520,10 @@ class Snapshot(EventPlugin):
 
                 prev_vote: Optional[Snapshot.Vote] = previous_votes.get(vote.voter)
                 previous_votes[vote.voter] = vote
+
+                if prev_vote and (vote.id == prev_vote.id or vote.created < prev_vote.created):
+                    log.debug(f"Skipping duplicate vote {vote}")
+                    continue
 
                 event = vote.create_event(prev_vote)
                 if event is None:
