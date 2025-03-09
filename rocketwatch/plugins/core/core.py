@@ -208,16 +208,14 @@ class Core(commands.Cog):
                 embed = try_load(event_entry, "embed")
                 attachment = try_load(event_entry, "attachment")
 
+                file = None
                 if embed and attachment:
-                    file_name = event_entry["event_name"] + ".png"
+                    file_name = f"{event_entry['event_name']}.png"
                     file = attachment.to_file(file_name)
                     embed.set_image(url=f"attachment://{file_name}")
-                else:
-                    file = None
 
                 # post event message
-                send_silent: bool = ("debug" in event_entry["event_name"])
-                msg = await channel.send(embed=embed, file=file, silent=send_silent)
+                msg = await channel.send(embed=embed, file=file)
                 # add message id to event
                 await self.db.event_queue.update_one(
                     {"_id": event_entry["_id"]},
