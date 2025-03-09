@@ -520,8 +520,7 @@ class Snapshot(EventPlugin):
 
                 try:
                     stored_vote = self.vote_db.find(
-                        {"proposal_id": proposal.id},
-                        {"voter": vote.voter}
+                        {"proposal_id": proposal.id, "voter": vote.voter}
                     ).sort({"created": DESCENDING}).limit(1)[0]
                     prev_vote = Snapshot.Vote(
                         id=stored_vote["_id"],
