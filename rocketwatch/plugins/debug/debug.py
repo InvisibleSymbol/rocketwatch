@@ -242,23 +242,19 @@ class Debug(Cog):
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
     async def fix_past_events_fuckup(self, ctx: Context):
+        await ctx.defer(ephemeral=True)
+
         duplicated_events = await self.db.event_queue.find(
-            {"message_id": {"$exists": True}, "block_number": {"$lte": 17270351}}
+            {"message_id": {"gt": 0}, "block_number": {"$lte": 17313349}}
         ).to_list(None)
         for event in duplicated_events:
             channel = await self.bot.get_or_fetch_channel(event["channel_id"])
             msg = await channel.fetch_message(event["message_id"])
             assert msg.created_at.year == 2025
             await msg.delete()
+            await self.db.event_queue.update({"message_id": event["message_id"]}, {"set": {"message_id": 0}})
 
-        await self.db.event_queue.update(
-            {"message_id": {"$exists": True}, "block_number": {"$lte": 17270351}},
-            {"set": {"message_id": 0}}
-        )
-        await self.db.event_queue.update(
-            {"message_id": {"$exists": False}},
-            {"set": {"message_id": 0}}
-        )
+        await ctx.send("Done.")
 
     # --------- PUBLIC COMMANDS --------- #
 
