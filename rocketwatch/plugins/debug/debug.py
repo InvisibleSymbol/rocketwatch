@@ -257,7 +257,7 @@ class Debug(Cog):
             except discord.errors.NotFound:
                 log.exception(f"Couldn't fetch message {event['message_id']}")
 
-            await self.db.event_queue.update({"message_id": event["message_id"]}, {"set": {"message_id": 0}})
+            await self.db.event_queue.update_one({"message_id": event["message_id"]}, {"$set": {"message_id": 0}})
 
         await ctx.send("Done.")
 
