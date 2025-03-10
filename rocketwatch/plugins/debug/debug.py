@@ -243,15 +243,19 @@ class Debug(Cog):
     @is_owner()
     async def fix_past_events_fuckup(self, ctx: Context):
         await ctx.defer(ephemeral=True)
-
         duplicated_events = await self.db.event_queue.find(
-            {"message_id": {"gt": 0}, "block_number": {"$lte": 17313349}}
+            {"message_id": {"$gt": 0}, "block_number": {"$lte": 17313349}}
         ).to_list(None)
         for event in duplicated_events:
             channel = await self.bot.get_or_fetch_channel(event["channel_id"])
             msg = await channel.fetch_message(event["message_id"])
             assert msg.created_at.year == 2025
-            await msg.delete()
+
+            try:
+                await msg.delete()
+            except Exception:
+                log.exception(f"Couldn't delete message {msg}")
+
             await self.db.event_queue.update({"message_id": event["message_id"]}, {"set": {"message_id": 0}})
 
         await ctx.send("Done.")
