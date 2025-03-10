@@ -1,35 +1,24 @@
 import asyncio
-import contextlib
-import logging
-import math
-from asyncio import run
-from datetime import datetime, timezone, timedelta
 from io import BytesIO
+from typing import cast, Literal
 
-import aiohttp
-import humanize
-import matplotlib.pyplot as plt
-import numpy as np
-from aiohttp import ContentTypeError
 from discord import File
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
-from matplotlib import ticker, image as mpimg
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from matplotlib.ticker import AutoMinorLocator
-from motor.motor_asyncio import AsyncIOMotorClient
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-from scipy.interpolate import interp1d
+from discord.app_commands import describe
+from matplotlib import (
+    pyplot as plt,
+    font_manager as fm,
+    ticker,
+    figure
+)
 
 from rocketwatch import RocketWatch
-from utils import solidity
-from utils.cfg import cfg
+from utils.time_debug import timerun, timerun_async
 from utils.embeds import Embed
-from utils.rocketpool import rp
-from utils.sampler import CurveSampler
-from utils.thegraph import get_uniswap_pool_depth, get_uniswap_pool_stats
 from utils.visibility import is_hidden_weak
+from utils.liquidity import *
 
 log = logging.getLogger("wall")
 log.setLevel(cfg["log_level"])
@@ -38,405 +27,275 @@ log.setLevel(cfg["log_level"])
 class Wall(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-        self.sell_sampler = CurveSampler(
-            max_step_size=2000,
-            max_y_space=0.02,
-            max_y_wanted=0.26,
-            max_steps=7,
-            max_attempts=7
-        )
-        self.buy_sampler = CurveSampler(
-            max_step_size=400,
-            max_y_space=0.02,
-            max_y_wanted=0.26,
-            max_steps=7
-        )
-        self.api_calls_count = 0
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
-
-    @tasks.loop(seconds=60 * 30)
-    async def run_loop(self):
-        return
-        try:
-            await self.gather_new_data()
-        except Exception as err:
-            await self.bot.report_error(err)
-
-    async def cow_get_exchange(self, sell_token, buy_token, sell_amount):
-        # this gets a quote from the cow api
-        api_url = "https://cow-proxy.invis.workers.dev/mainnet/api/v1/quote"
-        params = {
-            "sellToken"          : sell_token,
-            "buyToken"           : buy_token,
-            "receiver"           : "0x0000000000000000000000000000000000000000",
-            "appData"            : "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "partiallyFillable"  : False,
-            "sellTokenBalance"   : "erc20",
-            "buyTokenBalance"    : "erc20",
-            "from"               : "0x0000000000000000000000000000000000000000",
-            "signingScheme"      : "eip1271",
-            "onchainOrder"       : True,
-            "priceQuality"       : "optimal",
-            "kind"               : "sell",
-            "sellAmountBeforeFee": str(int(sell_amount*10**18))
+        self.cex: set[CEX] = {
+            Binance("RPL", ["USDT"]),
+            Coinbase("RPL", ["USDC"]),
+            Deepcoin("RPL", ["USDT"]),
+            GateIO("RPL", ["USDT"]),
+            OKX("RPL", ["USDT"]),
+            Bitget("RPL", ["USDT"]),
+            MEXC("RPL", ["USDT"]),
+            Bybit("RPL", ["USDT"]),
+            CryptoDotCom("RPL", ["USD"]),
+            Kraken("RPL", ["USD", "EUR"]),
+            Kucoin("RPL", ["USDT"]),
+            Bithumb("RPL", ["KRW"]),
+            BingX("RPL", ["USDT"]),
+            Bitvavo("RPL", ["EUR"]),
+            HTX("RPL", ["USDT"]),
+            BitMart("RPL", ["USDT"]),
+            Bitrue("RPL", ["USDT"]),
+            CoinTR("RPL", ["USDT"]),
         }
-        self.api_calls_count += 1
-        async with aiohttp.ClientSession() as session:
-            async with session.post(api_url, json=params) as resp:
-                try:
-                    data = await resp.json()
-                except ContentTypeError:
-                    raise Exception(f"Could not get sell depth for {sell_amount} RPL, response: {resp}")
-        try:
-            return solidity.to_float(data["quote"]["buyAmount"])
-        except KeyError:
-            raise Exception(f"Could not get sell depth for {sell_amount} RPL, json: {data}")
-
-    async def cow_get_effective_exchange_rate_using_delta(self, sell_token, buy_token, sell_amount):
-        # this method calculates the effective exchange rate using the delta between the 2 token exchanges close by
-        scale = max(1, sell_amount / 50)
-        # gather surrounding quotes
-        numbers = await asyncio.gather(
-            self.cow_get_exchange(sell_token, buy_token, sell_amount - scale),
-            self.cow_get_exchange(sell_token, buy_token, sell_amount + scale)
-        )
-        delta = numbers[1] - numbers[0]
-        delta_scale = sell_amount / (scale * 2)
-        effective_buy_amount = delta * delta_scale
-        effective_ratio = sell_amount / effective_buy_amount
-        # calculate the effective exchange rate
-        return {
-            "sell_amount": sell_amount,
-            "buy_amount" : effective_buy_amount,
-            "rate"       : effective_ratio
+        self.dex: set[DEX] = {
+            BalancerV2([
+                BalancerV2.WeightedPool(HexStr("0x9f9d900462492d4c21e9523ca95a7cd86142f298000200000000000000000462"))
+            ]),
+            UniswapV3([
+                cast(ChecksumAddress, "0xe42318eA3b998e8355a3Da364EB9D48eC725Eb45"),
+                cast(ChecksumAddress, "0xcf15aD9bE9d33384B74b94D63D06B4A9Bd82f640")
+            ])
         }
 
-    async def get_slippage_at_price_or_whatever(self, sell_amount, sell_token, buy_token, rate, inverse=False):
-        # this method calculates the slippage at a given rate
-        buy_amount = sell_amount / rate
-        effective_rate = await self.cow_get_effective_exchange_rate_using_delta(sell_token, buy_token, sell_amount)
-        slippage = (effective_rate["rate"] - rate) / rate
-        return slippage
+    @staticmethod
+    def _get_market_depth_and_liquidity(
+            markets: dict[Market | DEX.LiquidityPool, Liquidity],
+            x: np.ndarray,
+            rpl_usd: float
+    ) -> tuple[np.ndarray, float]:
+        depth = np.zeros_like(x)
+        liquidity = 0
 
-    async def gather_new_data(self):
-        return
-        self.api_calls_count = 0
-        # gather depth sell / buy values
-        tmp = []
-        ts = datetime.utcnow()
-        rpl_address = rp.get_address_by_name("rocketTokenRPL")
-        weth_address = rp.get_address_by_name("wrappedETH")
-        d_ref = await self.cow_get_exchange(weth_address, rpl_address, 1)
-        reference_point = 1 / d_ref
+        for liq in markets.values():
+            conv = liq.price / rpl_usd
+            depth += np.array(list(map(liq.depth_at, x * conv))) / conv
+            liquidity += (liq.depth_at(float(x[0] * conv)) + liq.depth_at(float(x[-1] * conv))) / conv
 
-        buy_samples = await self.buy_sampler.sample_curve(lambda x: self.get_slippage_at_price_or_whatever(x, weth_address, rpl_address, reference_point))
-        for sample in buy_samples:
-            # store data
-            tmp.append({
-                "ts"         : ts,
-                "sell_amount": sample[0],
-                "sell_token" : "weth",
-                "buy_amount" : None,
-                "buy_token"  : "rpl",
-                "rate"       : None,
-                "slippage"   : sample[1]
-            })
+        return depth, liquidity
 
-        sell_samples = await self.sell_sampler.sample_curve(lambda x: self.get_slippage_at_price_or_whatever(x, rpl_address, weth_address, 1/reference_point))
-
-        for sample in sell_samples:
-            # store data
-            tmp.append({
-                "ts"         : ts,
-                "sell_amount": sample[0],
-                "sell_token" : "rpl",
-                "buy_amount" : None,
-                "buy_token"  : "weth",
-                "rate"       : None,
-                "slippage"   : sample[1]
-            })
-
-        await self.db["wall"].insert_many(tmp)
-
-        log.info(f"Wall data gathered, {self.api_calls_count} api calls made")
-
-    """
-    @hybrid_command()
-    async def depth(self, ctx: Context):
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        # get latest data from db
-        latest_ts = await self.db["wall"].find_one(sort=[("ts", -1)])
-        if latest_ts is None:
-            return await ctx.send("No data available")
-        latest_ts = latest_ts["ts"]
-        # make ts utc aware
-        latest_ts = latest_ts.replace(tzinfo=timezone.utc)
-        # get data from db
-        data = await self.db["wall"].find({"ts": latest_ts}).to_list(length=None)
-        # create plot using matplotlib. x axis should be slippage, y axis should be amount. use 2 y axis, one for sell amount, one for buy amount
-        fig, ax = plt.subplots()
-        # create second y axis for it
-        ax2 = ax.twinx()
-        # sell amount
-        x_green = [x["slippage"] for x in data if x["sell_token"] == "weth"]
-        x_green.insert(0, 0)
-        y_green = [x["sell_amount"] for x in data if x["sell_token"] == "weth"]
-        y_green.insert(0, 0)
-        # interpolate
-        x_green, y_green = zip(*sorted(zip(x_green, y_green)))
-        # turn into dict and back to list to remove duplicates
-        tmp = list(dict(zip(x_green, y_green)).items())
-        x_green, y_green = zip(*tmp)
-        inter_green = interp1d(x_green, y_green, kind="linear")
-        x_green_inter = [x / 100 for x in range(26)]
-        y_green_inter = inter_green(x_green_inter)
-        ax2.plot(x_green_inter, y_green_inter, color="green")
-        # fill
-        ax2.fill_between(x_green_inter, y_green_inter, color="green", alpha=0.2)
-        # debug: plot the raw data
-        ax2.plot(x_green, y_green, color="green", marker="+", linestyle="")
-
-        # buy amount
-        x_red = [x["slippage"] for x in data if x["buy_token"] == "weth"]
-        x_red.insert(0, 0)
-        y_red = [x["sell_amount"] for x in data if x["buy_token"] == "weth"]
-        y_red.insert(0, 0)
-        # interpolate
-        x_red, y_red = zip(*sorted(zip(x_red, y_red)))
-        # turn into dict and back to list to remove duplicates
-        tmp = list(dict(zip(x_red, y_red)).items())
-        x_red, y_red = zip(*tmp)
-        # turn x negative
-        x_red = [-x for x in x_red]
-        inter_red = interp1d(x_red, y_red, kind="linear")
-        x_red_inter = [-x / 100 for x in range(26)]
-        y_red_inter = inter_red(x_red_inter)
-        # put y axis on right
-        # make sure the second y axis is on the left
-        ax.plot(x_red_inter, y_red_inter, color="red")
-        # fill
-        ax.fill_between(x_red_inter, y_red_inter, color="red", alpha=0.2)
-        # debug: plot the raw data
-        ax.plot(x_red, y_red, color="red", marker="+", linestyle="")
-
-        # set labels
-        ax.set_xlabel("Slippage")
-        ax2.set_ylabel("ETH")
-        ax.set_ylabel("RPL")
-        # enable subticks for x axis
-        ax.xaxis.set_minor_locator(AutoMinorLocator())
-        # show x axis grid lines, also for minor ticks
-        ax.grid()
-        # format y axis with thousands separator
-        ax.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-        ax2.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-        # format x axis with percentage
-        ax.get_xaxis().set_major_formatter(ticker.PercentFormatter(xmax=1))
-        # set x limit to -100% and 100%
-        ax.set_xlim(-0.25, 0.25)
-        ax.set_ylim(0, None)
-        ax2.set_ylim(0, None)
-
-        # use minimal whitespace
-        plt.tight_layout()
-
-        # store the graph in an file object
-        file = BytesIO()
-        # make sure to increase the dpi to make the graph look better
-        plt.savefig(file, format='png', dpi=300)
-        file.seek(0)
-
-        # clear plot from memory
-        plt.clf()
-        plt.close()
-
-        e = Embed()
-        e.title = "RPL Sell and Buy depth"
-        e.description = f"Data from <t:{int(latest_ts.timestamp())}:R>"
-        e.set_image(url="attachment://depth.png")
-        await ctx.send(file=File(file, "depth.png"), embed=e)
-    """
-
-    @hybrid_command()
-    async def wall(self, ctx: Context):
-        """
-        Show the current limit order sell wall on 1inch
-        """
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        """
-        wall_address = "0xD779bB0F68F54f7521aA5b35dD88352771843764"
-        rpl = rp.get_address_by_name("rocketTokenRPL").lower()
-        url = f"https://limit-orders.1inch.io/v3.0/1/limit-order/address/{wall_address}"
+    @timerun_async
+    async def _get_cex_data(self, x: np.ndarray, rpl_usd: float) -> OrderedDict[CEX, np.ndarray]:
+        depth: dict[CEX, np.ndarray] = {}
+        liquidity: dict[CEX, float] = {}
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                data = await resp.json()
-        data = []
-        total_volume_left = 0
-        total_volume_rpl = 0
-        maker_rate_min = 1
-        maker_rate_max = 0
-        for d in data:
-            if d["data"]["makerAsset"] != rpl:
-                continue
-            total_volume_left += solidity.to_float(d["remainingMakerAmount"])
-            total_volume_rpl += solidity.to_float(d["data"]["makingAmount"])
-            rate = float(d["makerRate"])
-            if rate < maker_rate_min:
-                maker_rate_min = rate
-            if rate > maker_rate_max:
-                maker_rate_max = rate
+            requests = [cex.get_liquidity(session) for cex in self.cex]
+            for result in zip(self.cex, await asyncio.gather(*requests, return_exceptions=True)):
+                if not isinstance(result, Exception):
+                    cex, markets = result
+                    depth[cex], liquidity[cex] = self._get_market_depth_and_liquidity(markets, x, rpl_usd)
+                else:
+                    log.error(f"Failed to get liquidity data for {cex}")
+                    await self.bot.report_error(result)
 
-        e = Embed()
-        if total_volume_left == 0:
-            # fallback to alternative method
-            try:
-                alternative = self._get_alternative_wall()
-                e.set_image(url="attachment://wall.png")
-                await ctx.send(
-                    embed=e,
-                    file=File(
-                        alternative, filename="wall.png"
-                    ))
-                return
-            except Exception as err:
-                log.exception(err)
-            e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-            await ctx.send(embed=e)
-            return
+        return OrderedDict(sorted(depth.items(), key=lambda e: liquidity[e[0]], reverse=True))
 
-        rpl_balance = 0
-        with contextlib.suppress(Exception):
-            resp = rp.multicall.aggregate(
-                rp.get_contract_by_name(name).functions.balanceOf(wall_address)
-                for name in ["rocketTokenRPL", "rocketTokenRPLFixedSupply"]
+    @timerun
+    def _get_dex_data(self, x: np.ndarray, rpl_usd: float) -> OrderedDict[DEX, np.ndarray]:
+        depth: dict[DEX, np.ndarray] = {}
+        liquidity: dict[DEX, float] = {}
+        for dex in self.dex:
+            if pools := dex.get_liquidity():
+                depth[dex], liquidity[dex] = self._get_market_depth_and_liquidity(pools, x, rpl_usd)
+
+        return OrderedDict(sorted(depth.items(), key=lambda e: liquidity[e[0]], reverse=True))
+
+    @staticmethod
+    def _label_exchange_data(
+            data: OrderedDict[Exchange, np.ndarray],
+            max_unique: int,
+            color_other: str
+    ) -> list[tuple[np.ndarray, str, str]]:
+        ret = []
+        for exchange, depth in list(data.items())[:max_unique]:
+            ret.append((depth, str(exchange), exchange.color))
+
+        if len(data) > max_unique:
+            y = np.sum([depth for depth in list(data.values())[max_unique:]], axis=0)
+            ret.append((y, "Other", color_other))
+
+        return ret
+
+    @staticmethod
+    def _plot_data(
+            x: np.ndarray,
+            rpl_usd: float,
+            rpl_eth: float,
+            cex_data: OrderedDict[CEX, np.ndarray],
+            dex_data: OrderedDict[DEX, np.ndarray],
+    ) -> figure.Figure:
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        ax.minorticks_on()
+        ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.5)
+        ax.grid(True, which="minor", linestyle=":", linewidth=0.3, alpha=0.5)
+
+        ax.set_xlabel("price")
+        ax.xaxis.labelpad = 8
+        ax.set_ylabel("depth")
+        ax.yaxis.labelpad = 10
+
+        y = []
+        colors = []
+
+        max_unique = 7 - min(len(dex_data), 4) if dex_data else 9
+        cex_data_aggr = Wall._label_exchange_data(cex_data, max_unique, "#555555")
+        max_unique = 7 - min(len(cex_data), 4) if cex_data else 9
+        dex_data_aggr = Wall._label_exchange_data(dex_data, max_unique, "#777777")
+
+        y_offset = 0.0
+        max_label_length: int = np.max([len(t[1]) for t in (cex_data_aggr + dex_data_aggr)])
+
+        def add_data(_data: list[tuple[np.ndarray, str, str]], _name: Optional[str]) -> None:
+            labels, handles = [], []
+            for y_values, label, color in _data:
+                y.append(y_values)
+                labels.append(f"{label:\u00A0<{max_label_length}}")
+                colors.append(color)
+                handles.append(plt.Rectangle((0, 0), 1, 1, color=color))
+
+            nonlocal y_offset
+            legend = ax.legend(
+                handles,
+                labels,
+                title=_name,
+                loc="upper left",
+                bbox_to_anchor=(0, 1 - y_offset),
+                prop=fm.FontProperties(family="monospace", size=10)
             )
-            for token in resp.results:
-                contract_name = rp.get_name_by_address(token.contract_address)
-                if "RPL" in contract_name:
-                    rpl_balance += solidity.to_float(token.results[0])
+            ax.add_artist(legend)
+            y_offset += 0.025 + 0.055 * (len(_data) + int(_name is not None))
 
-        e.title = "1inch Sell Wall"
-        e.set_author(name="🔗 Data from 1inch.io", url="https://1inch.io/")
-        percent = 100 * total_volume_left / total_volume_rpl
-        e.add_field(
-            name="Liquidity", value=f"{humanize.intcomma(total_volume_left, 0)} RPL"
-        )
-        e.add_field(
-            name="Range", value=f"{maker_rate_min:,.4f} - {maker_rate_max:,.4f}"
-        )
-        e.add_field(name="Status", value=f"{percent:,.2f}% left", inline=False)
-        e.add_field(name="Wallet RPL Balance", value=humanize.intcomma(rpl_balance, 0))
-        e.add_field(name="Wallet Address", value=f"[{s_hex(wall_address)}](https://rocketscan.io/address/{wall_address})")
-        """
-        e = Embed()
-        c = await self.db["wall_command"].find_one({"_id": "wall_counter"})
-        c = 0 if c is None else c["count"]
-        c += 1
-        e.description = f"Disabled by LFO to save RPL: has been called {c} times since"
-        await self.db["wall_command"].update_one({"_id": "wall_counter"}, {"$inc": {"count": 1}}, upsert=True)
-        await ctx.send(embed=e)
+        if dex_data and cex_data:
+            add_data(dex_data_aggr, "DEX")
+            add_data(cex_data_aggr, "CEX")
+        elif dex_data:
+            add_data(dex_data_aggr, None)
+        else:
+            add_data(cex_data_aggr, None)
 
-    def _get_alternative_wall(self):
-        # test the get_uniswap_pool_depth function
-        a = get_uniswap_pool_depth("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")
-        # get current price from the pool stats
-        sqrt_price = get_uniswap_pool_stats("0xe42318ea3b998e8355a3da364eb9d48ec725eb45")["sqrtPrice"]
-        price = 1 / (int(sqrt_price) ** 2 / 2 ** 192)
+        ax.stackplot(x, np.array(y[::-1]), colors=colors[::-1], edgecolor="black", linewidth=0.3)
+        ax.axvline(rpl_usd, color="black", linestyle="--", linewidth=1)
 
-        plt.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-pre", color="black", linewidth=1)
+        def get_formatter(base_fmt: str, *, scale=1.0, prefix="", suffix=""):
+            def formatter(_x, _pos) -> str:
+                levels = [
+                    (1_000_000_000, "B"),
+                    (1_000_000, "M"),
+                    (1_000, "K")
+                ]
+                modifier = ""
+                base_value = _x * scale
 
-        # color everything above the current tick red, below green
-        # get the closest tick to the current price
-        idx = min(range(len(a)), key=lambda i: abs(a[i][0] - price))
-        above = a[idx:]
-        below = a[:idx + 1]
-        # plot the two lists
-        plt.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="pre")
-        plt.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="pre")
-        # plot the current price as a vertical line
-        plt.axvline(price, color="black", linestyle="--", linewidth=1)
+                for m, s in levels:
+                    if base_value >= round(m):
+                        modifier = s
+                        base_value /= m
+                        break
 
-        # hide y axis
-        plt.gca().axes.get_yaxis().set_visible(False)
+                return prefix + f"{base_value:{base_fmt}}".rstrip(".") + modifier + suffix
+            return ticker.FuncFormatter(formatter)
 
-        # minor ticks for the x axis
-        plt.gca().xaxis.set_minor_locator(plt.MultipleLocator(0.001))
+        range_size = x[-1] - x[0]
 
-        # set x axis ticks to numbers
-        plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.3f}"))
+        x_ticks = ax.get_xticks()
+        ax.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 20] + [rpl_usd])
+        ax.set_xlim((x[0], x[-1]))
+        ax.xaxis.set_major_formatter(get_formatter(".2f" if (range_size >= 0.1) else ".3f", prefix="$"))
+        ax.yaxis.set_major_formatter(get_formatter("#.3g", prefix="$"))
 
-        # set y axis min to 0
-        plt.ylim(bottom=0)
+        ax_top = ax.twiny()
+        ax_top.minorticks_on()
+        ax_top.set_xticks([t for t in x_ticks if abs(t - rpl_usd) >= range_size / 10] + [rpl_usd])
+        ax_top.set_xlim(ax.get_xlim())
+        ax_top.xaxis.set_major_formatter(get_formatter(".5f", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
-        # vertical grid lines
-        plt.gca().xaxis.grid(True, which="major", linestyle="--")
-        plt.gca().xaxis.grid(True, which="minor", linestyle=":")
+        ax_right = ax.twinx()
+        ax_right.minorticks_on()
+        ax_right.set_yticks(ax.get_yticks())
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.yaxis.set_major_formatter(get_formatter("#.3g", prefix="Ξ ", scale=(rpl_eth / rpl_usd)))
 
-        # center the plot around the current price, make the x axis 4x as wide
-        plt.xlim(price * 0.25, price * 1.75)
+        return fig
 
-        # use minimal whitespace
-        plt.tight_layout()
+    @hybrid_command()
+    @describe(min_price="lower end of price range in USD")
+    @describe(max_price="upper end of price range in USD")
+    @describe(sources="choose places to pull liquidity data from")
+    async def wall(
+            self,
+            ctx: Context,
+            min_price: float = 0.0,
+            max_price: float = None,
+            sources: Literal["All", "CEX", "DEX"] = "All"
+    ) -> None:
+        """Show the current RPL market depth across exchanges"""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        embed = Embed(title="RPL Market Depth")
 
-        max_y = max(x[1] for x in a)
-        if a[idx][1] < max_y * 0.05:
-            # generate surrounding indexes
-            left = 8
-            right = 2
-            x_min = a[idx - left][0]
-            x_max = a[idx + right][0]
-            # get y max
-            y_max = max(x[1] for x in a[idx - left:idx + right])
-            y_min = 0
-            # zoomed inset
-            axins = plt.gca().axes.inset_axes([0.02, 0.78, 0.2, 0.2])
-            # set yaxis bottom to 0
-            axins.plot([x[0] for x in a], [x[1] for x in a], drawstyle="steps-pre", color="black", linewidth=1)
-            # red fill
-            axins.fill_between([x[0] for x in above], [x[1] for x in above], color="red", alpha=0.5, interpolate=False, step="pre")
-            # green fill
-            axins.fill_between([x[0] for x in below], [x[1] for x in below], color="green", alpha=0.5, interpolate=False, step="pre")
-            # draw line for current price
-            axins.axvline(price, color="black", linestyle="--", linewidth=1)
-            # set x limits
-            axins.set_xlim(x_min, x_max)
-            # set y limits
-            axins.set_ylim(y_min, y_max * 1.2)
-            # hide y axis
-            axins.yaxis.set_visible(False)
-            # hide x axis
-            axins.xaxis.set_visible(False)
-            # indicate zoomin using .indicate
-            plt.gca().axes.indicate_inset_zoom(axins, edgecolor="black")
+        async def on_fail() -> None:
+            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+            await ctx.send(embed=embed)
+            return None
 
-        #overlay png
-        if price < 0.009:
-            img = mpimg.imread('./plugins/wall/waq.png')
-            imagebox = OffsetImage(img, zoom=0.08)  # Adjust zoom level if necessary
-            x_total_min = price * 0.25
-            y_total_min = 0
-            ab = AnnotationBbox(imagebox, (x_total_min, y_total_min), frameon=False, xycoords='data', box_alignment=(0, 0))
-            plt.gca().add_artist(ab)
+        try:
+            async with aiohttp.ClientSession() as session:
+                # use Binance as price oracle
+                rpl_usd = list((await Binance("RPL", ["USDT"]).get_liquidity(session)).values())[0].price
+                eth_usd = list((await Binance("ETH", ["USDT"]).get_liquidity(session)).values())[0].price
+                rpl_eth = rpl_usd / eth_usd
+        except Exception as e:
+            await self.bot.report_error(e, ctx)
+            return await on_fail()
 
-        # store the graph in an file object
-        file = BytesIO()
-        # make sure to increase the dpi to make the graph look better
-        plt.savefig(file, format='png', dpi=300)
-        file.seek(0)
+        if min_price < 0:
+            min_price = rpl_usd + min_price
 
-        # clear plot from memory
-        plt.clf()
-        plt.close()
+        if max_price is None:
+            max_price = 5 * rpl_usd
+        elif max_price < 0:
+            max_price = rpl_usd - max_price
 
-        return file
+        step_size = 0.001
+        min_price = max(0.0, min(min_price, rpl_usd - 5 * step_size))
+        max_price = min(100 * rpl_usd, max(max_price, rpl_usd + 5 * step_size))
+        x = np.arange(min_price, max_price + step_size, step_size)
+
+        source_desc = []
+        cex_data, dex_data = {}, {}
+
+        try:
+            if sources != "CEX":
+                dex_data = self._get_dex_data(x, rpl_usd)
+                source_desc.append(f"{len(dex_data)} DEX")
+
+            if sources != "DEX":
+                cex_data = await self._get_cex_data(x, rpl_usd)
+                source_desc.append(f"{len(cex_data)} CEX")
+        except Exception as e:
+            await self.bot.report_error(e, ctx)
+            return await on_fail()
+
+        if (not cex_data) and (not dex_data):
+            log.error("No liquidity data found")
+            return await on_fail()
+
+        liquidity_usd = sum((y[0] + y[-1]) for y in (dex_data | cex_data).values())
+        liquidity_eth = liquidity_usd / eth_usd
+
+        buffer = BytesIO()
+        fig = self._plot_data(x, rpl_usd, rpl_eth, cex_data, dex_data)
+        fig.savefig(buffer, format="png")
+        buffer.seek(0)
+
+        embed.set_author(name="🔗 Data from CEX APIs and Mainnet")
+        embed.add_field(name="Current Price", value=f"${rpl_usd:,.2f} | Ξ{rpl_eth:.5f}")
+        embed.add_field(name="Observed Liquidity", value=f"${liquidity_usd:,.0f} | Ξ{liquidity_eth:,.0f}")
+        embed.add_field(name="Sources", value=", ".join(source_desc))
+
+        file_name = "wall.png"
+        embed.set_image(url=f"attachment://{file_name}")
+        await ctx.send(embed=embed, files=[File(buffer, file_name)])
+        return None
 
 
 async def setup(bot):
