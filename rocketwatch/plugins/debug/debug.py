@@ -246,15 +246,16 @@ class Debug(Cog):
         duplicated_events = await self.db.event_queue.find(
             {"message_id": {"$gt": 0}, "block_number": {"$lte": 17313349}}
         ).to_list(None)
-        for event in duplicated_events:
-            channel = await self.bot.get_or_fetch_channel(event["channel_id"])
-            msg = await channel.fetch_message(event["message_id"])
-            assert msg.created_at.year == 2025
+        import discord
 
+        for event in duplicated_events:
             try:
+                channel = await self.bot.get_or_fetch_channel(event["channel_id"])
+                msg = await channel.fetch_message(event["message_id"])
+                assert msg.created_at.year == 2025
                 await msg.delete()
-            except Exception:
-                log.exception(f"Couldn't delete message {msg}")
+            except discord.errors.NotFound:
+                log.exception(f"Couldn't fetch message {event['message_id']}")
 
             await self.db.event_queue.update({"message_id": event["message_id"]}, {"set": {"message_id": 0}})
 
