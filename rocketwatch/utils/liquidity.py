@@ -49,7 +49,7 @@ class CEX(Exchange, ABC):
 
     @property
     @abstractmethod
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         pass
 
     @staticmethod
@@ -79,7 +79,7 @@ class CEX(Exchange, ABC):
             session: aiohttp.ClientSession
     ) -> tuple[dict[float, float], dict[float, float]]:
         params = self._get_request_params(market)
-        url = self._api_endpoint + self._get_request_path(market)
+        url = self._api_base_url + self._get_request_path(market)
         response = await session.get(url, params=params, headers={"User-Agent": "Rocket Watch"})
         log.debug(f"response from {url}: {response}")
         data = await response.json()
@@ -130,7 +130,7 @@ class Binance(CEX):
         return "#E6B800"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.binance.com/api/v3"
 
     @staticmethod
@@ -154,7 +154,7 @@ class Coinbase(CEX):
         return "#0B3EF4"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.coinbase.com/api/v3"
 
     @staticmethod
@@ -178,7 +178,7 @@ class Deepcoin(CEX):
         return "#D36F3F"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.deepcoin.com/deepcoin"
 
     @staticmethod
@@ -202,7 +202,7 @@ class GateIO(CEX):
         return "#00B383"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.gateio.ws/api/v4"
 
     @staticmethod
@@ -226,7 +226,7 @@ class OKX(CEX):
         return "#080808"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://www.okx.com/api/v5"
 
     @staticmethod
@@ -250,7 +250,7 @@ class Bitget(CEX):
         return "#00C1D6"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.bitget.com/api/v2"
 
     @staticmethod
@@ -274,7 +274,7 @@ class MEXC(CEX):
         return "#003366"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.mexc.com/api/v3"
 
     @staticmethod
@@ -298,7 +298,7 @@ class Bybit(CEX):
         return "#E89C20"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.bybit.com/v5"
 
     @staticmethod
@@ -325,7 +325,7 @@ class CryptoDotCom(CEX):
         return "#172B4D"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.crypto.com/exchange/v1/public"
 
     @staticmethod
@@ -349,7 +349,7 @@ class Kraken(CEX):
         return "#8055E5"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.kraken.com/0/public"
 
     @staticmethod
@@ -373,7 +373,7 @@ class Kucoin(CEX):
         return "#2E8B57"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.kucoin.com/api/v1"
 
     @staticmethod
@@ -397,7 +397,7 @@ class Bithumb(CEX):
         return "#E36200"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.bithumb.com/v1"
 
     @staticmethod
@@ -421,7 +421,7 @@ class BingX(CEX):
         return "#0084D6"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://open-api.bingx.com/openApi/spot/v1"
 
     @staticmethod
@@ -445,7 +445,7 @@ class Bitvavo(CEX):
         return "#2323C2"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.bitvavo.com/v2"
 
     @staticmethod
@@ -469,7 +469,7 @@ class HTX(CEX):
         return "#297BBF"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.huobi.pro"
 
     @staticmethod
@@ -492,7 +492,7 @@ class BitMart(CEX):
         return "#19C39C"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api-cloud.bitmart.com"
 
     @staticmethod
@@ -516,7 +516,7 @@ class Bitrue(CEX):
         return "#C5972D"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://b.bitrue.com/kline-api"
 
     @staticmethod
@@ -540,7 +540,7 @@ class CoinTR(CEX):
         return "#42A036"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://api.cointr.com/api/v2"
 
     @staticmethod
@@ -564,7 +564,7 @@ class DigiFinex(CEX):
         return "#5E4EB3"
 
     @property
-    def _api_endpoint(self) -> str:
+    def _api_base_url(self) -> str:
         return "https://openapi.digifinex.com/v3"
 
     @staticmethod
