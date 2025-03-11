@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 import pymongo
 import requests
@@ -95,10 +95,10 @@ class BeaconEvents(EventPlugin):
                 continue
 
             unique_id = (
-                f"{timestamp}"
-                f":slash-{slash['minipool']}"
+                f"slash-{slash['minipool']}"
                 f":slasher-{slash['slasher']}"
                 f":slashing-type-{slash['slashing_type']}"
+                f":{timestamp}"
             )
             slash["minipool"] = cl_explorer_url(slash["minipool"])
             slash["slasher"] = cl_explorer_url(slash["slasher"])
@@ -118,7 +118,7 @@ class BeaconEvents(EventPlugin):
         return events
 
     def _get_proposal(self, beacon_block: dict) -> Optional[Event]:
-        if not "execution_payload" in beacon_block["body"]:
+        if not (payload := beacon_block["body"].get("execution_payload")):
             # no proposed block
             return None
 
@@ -126,8 +126,8 @@ class BeaconEvents(EventPlugin):
             # not proposed by a minipool
             return None
 
-        timestamp = beacon_block["body"]["execution_payload"]["timestamp"]
-        block_number = beacon_block["body"]["execution_payload"]["block_number"]
+        timestamp = int(payload["timestamp"])
+        block_number = cast(BlockNumber, int(payload["block_number"]))
 
         # fetch from beaconcha.in because beacon node is unaware of MEV bribes
         response = requests.get(
@@ -183,7 +183,7 @@ class BeaconEvents(EventPlugin):
             topic="mev_proposals",
             embed=embed,
             event_name=args["event_name"],
-            unique_id=f"{timestamp}:mev_proposal-{block_number}",
+            unique_id=f"mev_proposal:{block_number}:{timestamp}",
             block_number=block_number
         )
 
@@ -229,7 +229,7 @@ class BeaconEvents(EventPlugin):
                 topic="finality",
                 embed=embed,
                 event_name=event_name,
-                unique_id=f"{epoch_number}:finality_delay_recover",
+                unique_id=f"finality_delay_recover:{epoch_number}",
                 block_number=get_block_by_timestamp(timestamp)[0]
             )
             return event
