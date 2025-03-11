@@ -283,11 +283,11 @@ class Core(commands.Cog):
             channel = await self.bot.get_or_fetch_channel(target_channel_id)
             msg = await channel.send(embed=embed)
             await self.db.state_messages.insert_one({
-                "_id": "state",
+                "_id"       : "state",
                 "channel_id": target_channel_id,
                 "message_id": msg.id,
-                "sent_at": datetime.now(),
-                "state": str(self.state)
+                "sent_at"   : datetime.now(),
+                "state"     : str(self.state)
             })
 
 
