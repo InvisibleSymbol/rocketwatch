@@ -22,6 +22,9 @@ log = logging.getLogger("minipools_upkeep_task")
 log.setLevel(cfg["log_level"])
 
 
+def div_32(i: int):
+    return solidity.to_float(i) / 32
+
 class MinipoolsUpkeepTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
@@ -53,7 +56,7 @@ class MinipoolsUpkeepTask(commands.Cog):
             lambda x: (x, rp.seth_sig(m.abi, "getEffectiveDelegate"), [((x, "Delegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getPreviousDelegate"), [((x, "PreviousDelegate"), None)]),
             lambda x: (x, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((x, "UseLatestDelegate"), None)]),
-            lambda x: (x, rp.seth_sig(m.abi, "getNodeDepositBalance"), [((x, "NodeOperatorShare"), lambda i: solidity.to_float(i) / 32)]),
+            lambda x: (x, rp.seth_sig(m.abi, "getNodeDepositBalance"), [((x, "NodeOperatorShare"), div_32)]),
             # get balances of minipool as well
             lambda x: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), x], [((x, "EthBalance"), solidity.to_float)])
         ]

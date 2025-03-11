@@ -18,16 +18,26 @@ from utils.time_debug import timerun
 log = logging.getLogger("rocketnode")
 log.setLevel(cfg["log_level"])
 
-def func_if_success(func):
-    def _func(_, data):
-        res = None
-        try:
-            res = func(data)
-        except Exception as err:
-            _ = err
-        return res
+def safe_to_float(_, num: int):
+    try:
+        return solidity.to_float(num)
+    except Exception:
+        return None
 
-    return _func
+def safe_state_to_str(_, state: int):
+    try:
+        return solidity.mp_state_to_str(state)
+    except Exception:
+        return None
+
+def safe_inv(_, num: int):
+    try:
+        return 1 / solidity.to_float(num)
+    except Exception:
+        return None
+
+def is_true(_, b):
+    return b is True
 
 
 class Task:
@@ -114,21 +124,21 @@ class Task:
         m = rp.assemble_contract("rocketMinipool")
         mc = rp.get_contract_by_name("multicall3")
         lambs = [
-            lambda a: (a, rp.seth_sig(m.abi, "getStatus"), [((a, "status"), func_if_success(solidity.mp_state_to_str))]),
+            lambda a: (a, rp.seth_sig(m.abi, "getStatus"), [((a, "status"), safe_state_to_str)]),
             lambda a: (a, rp.seth_sig(m.abi, "getStatusTime"), [((a, "status_time"), None)]),
-            lambda a: (a, rp.seth_sig(m.abi, "getVacant"), [((a, "vacant"), lambda _, b: b is True)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getVacant"), [((a, "vacant"), is_true)]),
             lambda a: (a, rp.seth_sig(m.abi, "getNodeDepositBalance"),
-                       [((a, "node_deposit_balance"), func_if_success(solidity.to_float))]),
+                       [((a, "node_deposit_balance"), safe_to_float)]),
             lambda a: (
                 a, rp.seth_sig(m.abi, "getNodeRefundBalance"),
-                [((a, "node_refund_balance"), func_if_success(solidity.to_float))]),
+                [((a, "node_refund_balance"), safe_to_float)]),
             lambda a: (a, rp.seth_sig(m.abi, "getPreMigrationBalance"),
-                       [((a, "pre_migration_balance"), func_if_success(solidity.to_float))]),
-            lambda a: (a, rp.seth_sig(m.abi, "getNodeFee"), [((a, "node_fee"), func_if_success(solidity.to_float))]),
+                       [((a, "pre_migration_balance"), safe_to_float)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getNodeFee"), [((a, "node_fee"), safe_to_float)]),
             lambda a: (a, rp.seth_sig(m.abi, "getEffectiveDelegate"), [((a, "effective_delegate"), None)]),
             lambda a: (a, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((a, "use_latest_delegate"), None)]),
             lambda a: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), a],
-                       [((a, "execution_balance"), func_if_success(solidity.to_float))])
+                       [((a, "execution_balance"), safe_to_float)])
         ]
         # get all minipool addresses from db
         minipool_addresses = self.db.minipools_new.distinct("address")
@@ -411,19 +421,19 @@ class Task:
             lambda n: (nm.address, [rp.seth_sig(nm.abi, "getSmoothingPoolRegistrationState"), n["address"]],
                        [((n["address"], "smoothing_pool_registration_state"), None)]),
             lambda n: (nm.address, [rp.seth_sig(nm.abi, "getAverageNodeFee"), n["address"]],
-                       [((n["address"], "average_node_fee"), func_if_success(solidity.to_float))]),
+                       [((n["address"], "average_node_fee"), safe_to_float)]),
             lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeRPLStake"), n["address"]],
-                       [((n["address"], "rpl_stake"), func_if_success(solidity.to_float))]),
+                       [((n["address"], "rpl_stake"), safe_to_float)]),
             lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeEffectiveRPLStake"), n["address"]],
-                       [((n["address"], "effective_rpl_stake"), func_if_success(solidity.to_float))]),
+                       [((n["address"], "effective_rpl_stake"), safe_to_float)]),
             lambda n: (ns.address, [rp.seth_sig(ns.abi, "getNodeETHCollateralisationRatio"), n["address"]],
-                       [((n["address"], "effective_node_share"), func_if_success(lambda x: 1 / solidity.to_float(x)))]),
+                       [((n["address"], "effective_node_share"), safe_inv)]),
             lambda n: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), n["fee_distributor_address"]],
-                       [((n["address"], "fee_distributor_eth_balance"), func_if_success(solidity.to_float))]),
+                       [((n["address"], "fee_distributor_eth_balance"), safe_to_float)]),
             lambda n: (mm.address, [rp.seth_sig(mm.abi, "getNodeStakingMinipoolCount"), n["address"]],
                        [((n["address"], "staking_minipool_count"), None)]),
             lambda n: (nd.address, [rp.seth_sig(nd.abi, "getNodeDepositCredit"), n["address"]],
-                          [((n["address"], "deposit_credit"), func_if_success(solidity.to_float))])
+                          [((n["address"], "deposit_credit"), safe_to_float)])
         ]
         # get all node operators from db, but we only care about the address and the fee_distributor_address
         nodes = list(self.db.node_operators_new.find({}, {"address": 1, "fee_distributor_address": 1}))
