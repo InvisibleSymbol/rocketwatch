@@ -760,10 +760,12 @@ class UniswapV3(DEX):
                 return liquidity
 
             ask_ticks = [t for t in reversed(ticks) if t <= current_tick] + [UniswapV3.MIN_TICK]
-            ask_liquidity = get_cumulative_liquidity(ask_ticks)
+            ask_liquidity = [0] + get_cumulative_liquidity(ask_ticks)
+            ask_ticks = [calculated_tick] + ask_ticks
 
             bid_ticks = [t for t in ticks if t > current_tick] + [UniswapV3.MAX_TICK]
-            bid_liquidity = get_cumulative_liquidity(bid_ticks)
+            bid_liquidity = [0] + get_cumulative_liquidity(bid_ticks)
+            bid_ticks = [calculated_tick] + bid_ticks
 
             balance_norm = 10 ** (self.token_1.decimals - self.token_0.decimals)
 
@@ -774,17 +776,15 @@ class UniswapV3(DEX):
                     tick = -UniswapV3.price_to_tick(_price / balance_norm)
 
                 if tick <= calculated_tick:
-                    i = int(np.searchsorted(-np.array(ask_ticks), -tick))
+                    i = int(np.searchsorted(-np.array(ask_ticks), -tick, "right"))
                     liq_ticks = ask_ticks
                     liquidity_levels = ask_liquidity
                 else:
-                    i = int(np.searchsorted(np.array(bid_ticks), tick))
+                    i = int(np.searchsorted(np.array(bid_ticks), tick, "right"))
                     liq_ticks = bid_ticks
                     liquidity_levels = bid_liquidity
 
-                if i <= 0:
-                    return 0
-                elif i >= len(liquidity_levels):
+                if i >= len(liquidity_levels):
                     return liquidity_levels[-1]
 
                 range_share = abs(tick - liq_ticks[i - 1]) / abs(liq_ticks[i] - liq_ticks[i - 1])
