@@ -127,7 +127,7 @@ class CEX(Exchange, ABC):
 class Binance(CEX):
     @property
     def color(self) -> str:
-        return "#e6b800"
+        return "#E6B800"
 
     @property
     def _api_endpoint(self) -> str:
@@ -151,7 +151,7 @@ class Binance(CEX):
 class Coinbase(CEX):
     @property
     def color(self) -> str:
-        return "#0b3ef4"
+        return "#0B3EF4"
 
     @property
     def _api_endpoint(self) -> str:
@@ -175,7 +175,7 @@ class Coinbase(CEX):
 class Deepcoin(CEX):
     @property
     def color(self) -> str:
-        return "#d36f3f"
+        return "#D36F3F"
 
     @property
     def _api_endpoint(self) -> str:
@@ -199,7 +199,7 @@ class Deepcoin(CEX):
 class GateIO(CEX):
     @property
     def color(self) -> str:
-        return "#00b383"
+        return "#00B383"
 
     @property
     def _api_endpoint(self) -> str:
@@ -247,7 +247,7 @@ class OKX(CEX):
 class Bitget(CEX):
     @property
     def color(self) -> str:
-        return "#00c1d6"
+        return "#00C1D6"
 
     @property
     def _api_endpoint(self) -> str:
@@ -295,7 +295,7 @@ class MEXC(CEX):
 class Bybit(CEX):
     @property
     def color(self) -> str:
-        return "#e89c20"
+        return "#E89C20"
 
     @property
     def _api_endpoint(self) -> str:
@@ -322,7 +322,7 @@ class CryptoDotCom(CEX):
 
     @property
     def color(self) -> str:
-        return "#172b4d"
+        return "#172B4D"
 
     @property
     def _api_endpoint(self) -> str:
@@ -346,7 +346,7 @@ class CryptoDotCom(CEX):
 class Kraken(CEX):
     @property
     def color(self) -> str:
-        return "#8055e5"
+        return "#8055E5"
 
     @property
     def _api_endpoint(self) -> str:
@@ -370,7 +370,7 @@ class Kraken(CEX):
 class Kucoin(CEX):
     @property
     def color(self) -> str:
-        return "#2e8b57"
+        return "#2E8B57"
 
     @property
     def _api_endpoint(self) -> str:
@@ -394,7 +394,7 @@ class Kucoin(CEX):
 class Bithumb(CEX):
     @property
     def color(self) -> str:
-        return "#e36200"
+        return "#E36200"
 
     @property
     def _api_endpoint(self) -> str:
@@ -418,7 +418,7 @@ class Bithumb(CEX):
 class BingX(CEX):
     @property
     def color(self) -> str:
-        return "#0084d6"
+        return "#0084D6"
 
     @property
     def _api_endpoint(self) -> str:
@@ -442,7 +442,7 @@ class BingX(CEX):
 class Bitvavo(CEX):
     @property
     def color(self) -> str:
-        return "#2323c2"
+        return "#2323C2"
 
     @property
     def _api_endpoint(self) -> str:
@@ -466,7 +466,7 @@ class Bitvavo(CEX):
 class HTX(CEX):
     @property
     def color(self) -> str:
-        return "#297bbf"
+        return "#297BBF"
 
     @property
     def _api_endpoint(self) -> str:
@@ -489,7 +489,7 @@ class HTX(CEX):
 class BitMart(CEX):
     @property
     def color(self) -> str:
-        return "#19c39c"
+        return "#19C39C"
 
     @property
     def _api_endpoint(self) -> str:
@@ -513,7 +513,7 @@ class BitMart(CEX):
 class Bitrue(CEX):
     @property
     def color(self) -> str:
-        return "#c5972d"
+        return "#C5972D"
 
     @property
     def _api_endpoint(self) -> str:
@@ -537,7 +537,7 @@ class Bitrue(CEX):
 class CoinTR(CEX):
     @property
     def color(self) -> str:
-        return "#42a036"
+        return "#42A036"
 
     @property
     def _api_endpoint(self) -> str:
@@ -561,7 +561,7 @@ class CoinTR(CEX):
 class DigiFinex(CEX):
     @property
     def color(self) -> str:
-        return "#5e4eb3"
+        return "#5E4EB3"
 
     @property
     def _api_endpoint(self) -> str:
@@ -648,7 +648,7 @@ class BalancerV2(DEX):
 
     @property
     def color(self) -> str:
-        return "#c0c0c0"
+        return "#C0C0C0"
 
 
 class UniswapV3(DEX):
@@ -802,4 +802,4 @@ class UniswapV3(DEX):
 
     @property
     def color(self) -> str:
-        return "#a02c6c"
+        return "#A02C6C"
