@@ -121,9 +121,10 @@ class Core(commands.Cog):
             log.info(f"Checking block range [{from_block}, {to_block}]")
 
             gather_fns = []
-            for sm in submodules:
-                fn = partial(sm.get_past_events, from_block=from_block, to_block=to_block)
-                gather_fns.append(fn)
+            if from_block <= to_block:
+                for sm in submodules:
+                    fn = partial(sm.get_past_events, from_block=from_block, to_block=to_block)
+                    gather_fns.append(fn)
 
         log.debug(f"{target_block = }")
 
