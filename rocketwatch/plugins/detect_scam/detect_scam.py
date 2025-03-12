@@ -221,13 +221,13 @@ class DetectScam(commands.Cog):
         report = await self.db["scam_reports"].find_one({"guild_id": message.guild.id, "message_id": message.id})
         if report:
             # delete warning message
-            ch = await get_or_fetch_channel(self.bot, report["channel_id"])
+            ch = await self.bot.get_or_fetch_channel(report["channel_id"])
             with contextlib.suppress(errors.NotFound):
                 msg = await ch.fetch_message(report["warning_id"])
                 await ch.delete_messages([msg])
             # try to update report message to indicate that the message was deleted
             with contextlib.suppress(errors.NotFound):
-                ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
+                ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
                 msg = await ch.fetch_message(report["report_id"])
                 e = msg.embeds[0]
                 e.description += "\n\n**Original message has been deleted.**"
@@ -243,7 +243,7 @@ class DetectScam(commands.Cog):
                             f"**Channel:** {message.channel.mention} ({message.channel.id})\n" \
                             f"**Message:**\n{get_text_of_message(message)[:1000]}"
             e.set_footer(text=f"Message ID: {message.id}")
-            ch = await get_or_fetch_channel(self.bot, 895367217288466482)
+            ch = await self.bot.get_or_fetch_channel(895367217288466482)
             await ch.send(embed=e)
 
 
@@ -254,13 +254,13 @@ class DetectScam(commands.Cog):
         reports = await self.db["scam_reports"].find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
         for report in reports:
             # delete warning message
-            ch = await get_or_fetch_channel(self.bot, report["channel_id"])
+            ch = await self.bot.get_or_fetch_channel(report["channel_id"])
             with contextlib.suppress(errors.NotFound):
                 msg = await ch.fetch_message(report["warning_id"])
                 await ch.delete_messages([msg])
             # try to update report message to indicate that the message was deleted
             with contextlib.suppress(errors.NotFound):
-                ch = await get_or_fetch_channel(self.bot, cfg["discord.channels.report_scams"])
+                ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
                 msg = await ch.fetch_message(report["report_id"])
                 e = msg.embeds[0]
                 e.description += "\n\n**User has been banned.**"
