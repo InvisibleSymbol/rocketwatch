@@ -179,8 +179,9 @@ class Snapshot(EventPlugin):
             proposal_height += self._HEADER_SIZE + self._V_SPACE_SMALL
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
 
-            # dark gray, turns orange when quorum is met
-            pb_color = (242, 110, 52) if (quorum_perc >= 1) else (82, 81, 80)
+            # dark gray, turns light with inverted labels when quorum is met
+            pb_color = (192, 192, 192) if (quorum_perc >= 1) else (82, 81, 80)
+            label_color = (15, 15, 15) if (quorum_perc >= 1) else (255, 255, 255)
             canvas.progress_bar(
                 (x_offset, y_offset + proposal_height),
                 (self._BAR_SIZE, width),
@@ -188,20 +189,22 @@ class Snapshot(EventPlugin):
                 primary=pb_color
             )
             canvas.dynamic_text(
-                (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2) + 1),
+                (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
                 f"{quorum_perc:.2%}",
                 self._LABEL_SIZE,
                 font_variant=label_font_variant,
                 max_width=((width / 2) - label_offset),
-                anchor="lm"
+                anchor="lm",
+                color=label_color
             )
             canvas.dynamic_text(
-                (x_offset + width - label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2) + 1),
+                (x_offset + width - label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
                 f"{sum(self.scores):,.0f} / {self.quorum:,.0f}",
                 self._LABEL_SIZE,
                 font_variant=label_font_variant,
                 max_width=((width / 2) - label_offset),
-                anchor="rm"
+                anchor="rm",
+                color=label_color
             )
             proposal_height += self._BAR_SIZE + self._V_SPACE_LARGE
 
