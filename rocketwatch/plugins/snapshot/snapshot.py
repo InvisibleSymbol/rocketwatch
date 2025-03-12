@@ -180,7 +180,7 @@ class Snapshot(EventPlugin):
             quorum_perc: float = safe_div(sum(self.scores), self.quorum)
 
             # dark gray, turns white with inverted labels when quorum is met
-            pb_color = (255, 255, 255) if (quorum_perc >= 1) else (82, 81, 80)
+            pb_color = (223, 223, 223) if (quorum_perc >= 1) else (82, 81, 80)
             label_color = (0, 0, 0) if (quorum_perc >= 1) else (255, 255, 255)
             canvas.progress_bar(
                 (x_offset, y_offset + proposal_height),
