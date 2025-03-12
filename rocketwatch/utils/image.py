@@ -43,7 +43,7 @@ class ImageCanvas(ImageDraw):
             size: tuple[float, float],
             progress: float,
             primary: Color,
-            secondary : Color = (15, 15, 15)
+            secondary : Color = (0, 0, 0)
     ) -> None:
         x, y = xy
         height, width = size
