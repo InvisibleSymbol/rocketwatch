@@ -14,22 +14,18 @@ log.setLevel(cfg["log_level"])
 class RichActivity(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.monitor = cronitor.Monitor('update-activity', api_key=cfg["cronitor_secret"])
+        self.monitor = cronitor.Monitor("update-activity", api_key=cfg["cronitor_secret"])
+        self.loop.start()
 
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
+    def cog_unload(self):
+        self.loop.cancel()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if not self.run_loop.is_running():
-            self.run_loop.start()
-
-    @tasks.loop(seconds=60.0)
-    async def run_loop(self):
+    @tasks.loop(seconds=60)
+    async def loop(self):
         self.monitor.ping()
         try:
             log.debug("Updating Discord activity")
-            mp_count = rp.call("rocketMinipoolManager.getMinipoolCount")
+            mp_count = rp.call("rocketMinipoolManager.getActiveMinipoolCount")
             await self.bot.change_presence(
                 activity=Activity(
                     type=ActivityType.watching,
@@ -39,8 +35,9 @@ class RichActivity(commands.Cog):
         except Exception as err:
             await self.bot.report_error(err)
 
-    def cog_unload(self):
-        self.run_loop.cancel()
+    @loop.before_loop
+    async def before_loop(self):
+        await self.bot.wait_until_ready()
 
 
 async def setup(bot):
