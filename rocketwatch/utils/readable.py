@@ -1,11 +1,11 @@
 import base64
 import contextlib
 import json
+import zlib
 
 from colorama import Style, Fore
 
 import utils.solidity as units
-from utils import pako
 from utils.cfg import cfg
 from utils.shared_w3 import bacon
 
@@ -15,7 +15,10 @@ def prettify_json_string(data):
 
 
 def decode_abi(compressed_string):
-    inflated = pako.pako_inflate(base64.b64decode(compressed_string))
+    decompress = zlib.decompressobj(15)
+    data = base64.b64decode(compressed_string)
+    inflated = decompress.decompress(data)
+    inflated += decompress.flush()
     return inflated.decode("ascii")
 
 
