@@ -130,8 +130,8 @@ class Events(EventPlugin):
         if not (event_name := self.event_map.get(event, None)):
             event_name = self.event_map[f"{contract}.{event}"]
 
-        if response := self.handle_event(event_name, event_obj):
-            await ctx.send(embed=response.embed)
+        if embed := self.handle_event(event_name, event_obj):
+            await ctx.send(embed=embed)
         else:
             await ctx.send(content="No events triggered.")
 
@@ -248,6 +248,7 @@ class Events(EventPlugin):
 
                 if event_name := self.event_map.get(f"{n}.{event.event}"):
                     embed = self.handle_event(event_name, event)
+                    event_name = event.args.event_name
                 else:
                     log.warning(f"Skipping unknown event {n}.{event.event}")
 
@@ -261,6 +262,7 @@ class Events(EventPlugin):
                     event.args = aDict(event.args)
                     hash_args(event.args)
                     embed = self.handle_global_event(event_name, event)
+                    event_name = event.args.event_name
 
             if (event_name is None) or (embed is None):
                 continue
@@ -838,6 +840,7 @@ class Events(EventPlugin):
 
         args.event_name = event_name
         args = prepare_args(args)
+        event.args = args
         return assemble(args)
 
 async def setup(bot):
