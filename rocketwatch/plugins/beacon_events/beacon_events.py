@@ -16,7 +16,6 @@ from utils.shared_w3 import bacon, w3
 from utils.solidity import date_to_beacon_block, beacon_block_to_date
 from utils.event import EventPlugin, Event
 from utils.get_nearest_block import get_block_by_timestamp
-from utils.retry import retry
 
 log = logging.getLogger("beacon_events")
 log.setLevel(cfg["log_level"])
@@ -118,29 +117,26 @@ class BeaconEvents(EventPlugin):
 
         return events
 
-    @retry(tries=3, delay=5)
     def _get_proposal(self, beacon_block: dict) -> Optional[Event]:
         if not (payload := beacon_block["body"].get("execution_payload")):
             # no proposed block
             return None
 
-        validator_index = int(beacon_block["proposer_index"])
-        if not (minipool := self.db.minipools.find_one({"validator": validator_index})):
+        if not (minipool := self.db.minipools.find_one({"validator": int(beacon_block["proposer_index"])})):
             # not proposed by a minipool
             return None
-
-        log.info(f"Rocket Pool validator {validator_index} proposed a block")
 
         timestamp = int(payload["timestamp"])
         block_number = cast(BlockNumber, int(payload["block_number"]))
 
         # fetch from beaconcha.in because beacon node is unaware of MEV bribes
-        api_key = cfg["beaconchain_explorer"]["api_key"]
-        endpoint = f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{block_number}"
-        response = requests.get(endpoint, headers={"apikey": api_key})
+        response = requests.get(
+            f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{block_number}",
+               headers={"apikey": cfg["beaconchain_explorer"]["api_key"]}
+        )
 
+        log.info(f"Rocket Pool validator {beacon_block['proposer_index']} made a proposal")
         if response.status_code != 200:
-            log.warning(f"Error code {response.status_code} from {endpoint}")
             return None
 
         response_body = response.json()
@@ -201,7 +197,7 @@ class BeaconEvents(EventPlugin):
             finality_checkpoint = bacon.get_finality_checkpoint(state_id=str(slot_number))
             last_finalized_epoch = int(finality_checkpoint["data"]["finalized"]["epoch"])
             finality_delay = epoch_number - last_finalized_epoch
-        except requests.exceptions.HTTPError:
+        except requests.exceptions.HTTPError as e:
             log.exception("Failed to get finality checkpoints")
             return None
 
