@@ -238,29 +238,6 @@ class Debug(Cog):
         await channel.send(embed=e)
         await ctx.send(content="Done", ephemeral=True)
 
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def fix_past_events_fuckup(self, ctx: Context):
-        await ctx.defer(ephemeral=True)
-        duplicated_events = await self.db.event_queue.find(
-            {"message_id": {"$gt": 0}, "block_number": {"$lte": 17313349}}
-        ).to_list(None)
-        import discord
-
-        for event in duplicated_events:
-            try:
-                channel = await self.bot.get_or_fetch_channel(event["channel_id"])
-                msg = await channel.fetch_message(event["message_id"])
-                assert msg.created_at.year == 2025
-                await msg.delete()
-            except discord.errors.NotFound:
-                log.exception(f"Couldn't fetch message {event['message_id']}")
-
-            await self.db.event_queue.update_one({"message_id": event["message_id"]}, {"$set": {"message_id": 0}})
-
-        await ctx.send("Done.")
-
     # --------- PUBLIC COMMANDS --------- #
 
     @hybrid_command()
