@@ -4,7 +4,7 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from discord import TextChannel, File, app_commands, NotFound
+from discord import TextChannel, File, app_commands
 from discord.ext.commands import Bot, Context
 from discord.ext import commands
 
@@ -95,14 +95,9 @@ class RocketWatch(Bot):
         err_trace = "".join(traceback.format_exception(type(error), error, error.__traceback__))
         log.error(err_trace)
 
-        channel = await self.get_or_fetch_channel(cfg["discord.channels.errors"])
-
-        @retry_async(tries=5, delay=5)
-        async def _send_error_message():
-            fp = io.BytesIO(err_trace.encode())
-            await channel.send(err_description, file=File(fp, "exception.txt"))
-
         try:
-            await _send_error_message()
+            channel = await self.get_or_fetch_channel(cfg["discord.channels.errors"])
+            file = File(io.BytesIO(err_trace.encode()), "exception.txt")
+            await retry_async(tries=5, delay=5)(channel.send)(err_description, file=file)
         except Exception:
             log.exception(f"Failed to send message. Max retries reached.")
