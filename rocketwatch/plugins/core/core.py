@@ -46,7 +46,7 @@ class Core(commands.Cog):
     def cog_unload(self) -> None:
         self.run_loop.cancel()
 
-    @tasks.loop(seconds=12.0)
+    @tasks.loop(seconds=12)
     async def run_loop(self) -> None:
         p_id = time.time()
         self.monitor.ping(state="run", series=p_id)
