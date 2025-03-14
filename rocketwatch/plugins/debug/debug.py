@@ -57,7 +57,7 @@ class Debug(Cog):
             await self.db.state.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
             log.info("Commands updated!")
 
-        for contract in rp.addresses:
+        for contract in rp.addresses.copy():
             self.contract_files.append(contract)
             for function in rp.get_contract_by_name(contract).functions:
                 self.function_list.append(f"{contract}.{function}")
