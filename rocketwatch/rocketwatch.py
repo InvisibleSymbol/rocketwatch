@@ -17,11 +17,11 @@ log.setLevel(cfg["log_level"])
 
 class RocketWatch(Bot):
     async def on_ready(self):
-        log.info(f'Logged in as {self.user.name} ({self.user.id})')
+        log.info(f"Logged in as {self.user.name} ({self.user.id})")
 
     async def setup_hook(self) -> None:
         chain = cfg["rocketpool.chain"]
-        storage = cfg['rocketpool.manual_addresses.rocketStorage']
+        storage = cfg["rocketpool.manual_addresses.rocketStorage"]
         log.info(f"Running using storage contract {storage} (Chain: {chain})")
 
         log.info('Loading plugins')
