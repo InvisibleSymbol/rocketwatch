@@ -126,7 +126,7 @@ class Snapshot(EventPlugin):
                     (_x_offset, _y_offset + choice_height),
                     (self._BAR_SIZE, width),
                     safe_div(_score, divisor),
-                    primary=color
+                    fill_color=color
                 )
                 canvas.dynamic_text(
                     (_x_offset + label_offset, _y_offset + choice_height + (self._BAR_SIZE / 2)),
@@ -186,7 +186,7 @@ class Snapshot(EventPlugin):
                 (x_offset, y_offset + proposal_height),
                 (self._BAR_SIZE, width),
                 min(quorum_perc, 1),
-                primary=pb_color
+                fill_color=pb_color
             )
             canvas.dynamic_text(
                 (x_offset + label_offset, y_offset + proposal_height + (self._BAR_SIZE / 2)),
