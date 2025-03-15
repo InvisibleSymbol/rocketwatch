@@ -86,8 +86,7 @@ class ImageCanvas(ImageDraw):
         if max_width is not None:
             # cut off the text if it's too long
             while text and (font.getbbox(text)[2] > max_width):
-                text = text[:-1]
                 # replace last character with an ellipsis
-                text = f"{text[:-1]}…"
+                text = f"{text[:-2]}…"
 
         self.text(xy, text, font=font, fill=color, anchor=anchor)
