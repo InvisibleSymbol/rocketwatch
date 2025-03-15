@@ -42,30 +42,30 @@ class ImageCanvas(ImageDraw):
             xy: tuple[float, float],
             size: tuple[float, float],
             progress: float,
-            primary: Color,
-            secondary : Color = (0, 0, 0)
+            fill_color: Color,
+            bg_color : Color = (0, 0, 0)
     ) -> None:
         x, y = xy
         height, width = size
         if width <= 2 * height:
             raise ValueError("Progress bar width must be at least twice its height")
 
-        # background
         radius = height / 2
         x0 = x + radius
         x1 = x + width - radius
-        self.circle((x0, y + radius), radius, fill=secondary)
-        self.rectangle((x0, y, x1, y + height), fill=secondary)
-        self.circle((x1, y + radius), radius, fill=secondary)
 
-        # fill
-        x1 = x + round(progress * width) - radius
+        self.circle((x0, y + radius), radius, fill=bg_color)
         if progress > 0:
-            self.circle((x0, y + radius), radius, fill=primary)
-        if x1 >= x0 + radius:
-            self.rectangle((x0, y, x1, y + height), fill=primary)
+            self.circle((x0, y + radius), radius, fill=fill_color)
+
+        self.rectangle((x0, y, x1, y + height), fill=bg_color)
+        self.circle((x1, y + radius), radius, fill=bg_color)
+
+        x1 = x + round(progress * width) - radius
+        if x1 >= x0:
+            self.rectangle((x0, y, x1, y + height), fill=fill_color)
         if progress == 1:
-            self.circle((x1, y + radius), radius, fill=primary)
+            self.circle((x1, y + radius), radius, fill=fill_color)
 
     @cache
     def _get_font(self, name: str, variant: FontVariant, size: float) -> ImageFont:
