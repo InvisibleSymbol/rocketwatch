@@ -4,9 +4,11 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from discord import TextChannel, File, app_commands
+from checksumdir import dirhash
+from discord import TextChannel, File, app_commands, Object
 from discord.ext.commands import Bot, Context
 from discord.ext import commands
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.retry import retry_async
@@ -16,10 +18,7 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketWatch(Bot):
-    async def on_ready(self):
-        log.info(f"Logged in as {self.user.name} ({self.user.id})")
-
-    async def setup_hook(self) -> None:
+    async def _load_plugins(self):
         chain = cfg["rocketpool.chain"]
         storage = cfg["rocketpool.manual_addresses.rocketStorage"]
         log.info(f"Running using storage contract {storage} (Chain: {chain})")
@@ -57,6 +56,30 @@ class RocketWatch(Bot):
                 log.exception(f"Failed to load plugin \"{plugin_name}\"")
 
         log.info('Finished loading plugins')
+
+    async def _sync_commands(self):
+        log.info("Checking if plugins have changed")
+        plugins_hash = dirhash("plugins")
+        log.debug(f"Plugin folder hash: {plugins_hash}")
+
+        state_db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch.state
+        # check if hash in db matches
+        db_entry = await state_db.find_one({"_id": "plugins_hash"})
+        if db_entry and plugins_hash == db_entry.get("hash"):
+            log.info("Plugins have not changed!")
+        else:
+            log.info("Plugins have changed! Updating commands...")
+            await self.tree.sync()
+            await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
+            await state_db.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
+            log.info("Commands updated!")
+
+    async def setup_hook(self) -> None:
+        await self._load_plugins()
+        await self._sync_commands()
+
+    async def on_ready(self):
+        log.info(f"Logged in as {self.user.name} ({self.user.id})")
 
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
