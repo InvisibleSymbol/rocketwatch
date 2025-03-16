@@ -260,12 +260,11 @@ class Core(commands.Cog):
         await self._replace_or_add_status(channel_name, embed, state_message)
 
     async def show_service_interrupt(self) -> None:
-        state_message = await self.db.state_messages.find_one({"_id": "default"})
-        if state_message and (state_message["state"] == str(self.state.ERROR)):
-            return
-
         embed = assemble(aDict({"event_name": "service_interrupted"}))
-        await self._replace_or_add_status("default", embed, state_message)
+        for channel_name in cfg.get("status_message", {}).keys():
+            state_message = await self.db.state_messages.find_one({"_id": channel_name})
+            if (not state_message) or (state_message["state"] != str(self.state.ERROR)):
+                await self._replace_or_add_status(channel_name, embed, state_message)
 
     async def _replace_or_add_status(
             self,
