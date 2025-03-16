@@ -24,6 +24,7 @@ from utils.rocketpool import rp
 from utils.event import EventPlugin, Event
 from utils.visibility import is_hidden_weak
 from utils.get_nearest_block import get_block_by_timestamp
+from utils.retry import retry
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -37,6 +38,7 @@ class Snapshot(EventPlugin):
         self.vote_db = client.snapshot_votes
 
     @staticmethod
+    @retry(tries=3, delay=1)
     def _query_api(query: Query) -> list[dict] | Optional[dict]:
         query_json = {"query": Operation(type="query", queries=[query]).render()}
         log.debug(f"Snapshot query: {query_json}")

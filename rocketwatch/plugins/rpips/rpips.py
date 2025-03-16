@@ -12,6 +12,7 @@ from cachetools.func import ttl_cache
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
+from utils.retry import retry
 
 log = logging.getLogger("rpips")
 log.setLevel(cfg["log_level"])
@@ -55,6 +56,7 @@ class RPIPS(commands.Cog):
             self.status = status
 
         @ttl_cache(ttl=300)
+        @retry(tries=3, delay=1)
         def __fetch_data(self) -> dict[str, Optional[str | list[str]]]:
             soup = BeautifulSoup(requests.get(self.url).text, "html.parser")
             metadata = {}
@@ -99,6 +101,7 @@ class RPIPS(commands.Cog):
 
     @staticmethod
     @ttl_cache(ttl=60)
+    @retry(tries=3, delay=1)
     def get_all_rpips() -> list['RPIPS.RPIP']:
         html_doc = requests.get("https://rpips.rocketpool.net/all").text
         soup = BeautifulSoup(html_doc, "html.parser")

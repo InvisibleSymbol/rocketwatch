@@ -78,9 +78,8 @@ class DepositPool(StatusPlugin):
         embed = self.get_deposit_pool_stats()
         await ctx.send(embed=embed)
 
-    @staticmethod
-    async def get_status_message() -> Embed:
-        embed = DepositPool.get_deposit_pool_stats()
+    async def get_status(self) -> Embed:
+        embed = self.get_deposit_pool_stats()
         embed.title = ":rocket: Live Deposit Pool Status"
         return embed
 

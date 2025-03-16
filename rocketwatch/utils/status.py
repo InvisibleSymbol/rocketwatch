@@ -10,7 +10,6 @@ class StatusPlugin(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
 
-    @staticmethod
     @abstractmethod
-    async def get_status_message() -> Embed:
+    async def get_status(self) -> Embed:
         pass
