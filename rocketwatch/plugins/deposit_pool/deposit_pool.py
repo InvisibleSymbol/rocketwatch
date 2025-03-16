@@ -38,11 +38,11 @@ class DepositPool(StatusPlugin):
         deposit_cap = solidity.to_int(multicall["getMaximumDepositPoolSize"])
 
         if deposit_cap - dp_balance < 0.01:
-            dp_status = "Deposit Pool Cap Reached!"
+            dp_status = "Capacity reached!"
         else:
             fill_perc = dp_balance / deposit_cap
             free_capacity = solidity.to_float(multicall["getMaximumDepositAmount"])
-            dp_status = f"Buffer {fill_perc:.2%} full. Enough space for **{free_capacity:.2f}** more ETH."
+            dp_status = f"{fill_perc:.2%} full, enough space for **{free_capacity:.2f}** more ETH."
 
         embed = Embed(title="Deposit Pool Stats")
         embed.add_field(name="Current Size", value=f"{dp_balance:.2f} ETH")
