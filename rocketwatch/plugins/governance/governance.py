@@ -77,12 +77,11 @@ class Governance(StatusPlugin):
     async def get_digest(self) -> Embed:
         embed = Embed(title="Governance Digest", description="")
 
-        def sanitize(text: str) -> str:
+        def sanitize(text: str, max_length=50) -> str:
             text = text.strip()
             text = text.replace("https://", "")
             text = text.replace("http://", "")
             text = escape_markdown(text)
-            max_length = 50
             if len(text) > max_length:
                 text = text[:(max_length - 1)] + "…"
             return text
@@ -99,11 +98,11 @@ class Governance(StatusPlugin):
 
         if proposals:
             embed.description = "- **Active on-chain proposals**\n"
-            for i, proposal in enumerate(proposals):
+            for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
                 tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
-                embed.description += f"  {i+1}. [{title}]({url})\n"
+                embed.description += f"  {i}. [{title}]({url})\n"
 
         if snapshot_proposals:
             embed.description += "- **Active Snapshot proposals**\n"
@@ -114,7 +113,7 @@ class Governance(StatusPlugin):
         if draft_rpips:
             embed.description += "- **RPIPs in draft status**\n"
             for i, rpip in enumerate(draft_rpips, start=1):
-                title = sanitize(rpip.title)
+                title = f"{sanitize(rpip.title, 40)} (RPIP-{rpip.number})"
                 embed.description += f"  {i}. [{title}]({rpip.url})\n"
 
         # --------- ORACLE DAO --------- #
