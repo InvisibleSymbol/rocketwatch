@@ -22,14 +22,14 @@ rocketpool: {
   }
   chain: "mainnet",
   execution_layer: {
-    explorer: "etherscan.io",
+    explorer: "https://etherscan.io",
     endpoint: {
       current: "http://node1:8545",
       mainnet: "http://node1:8545"
     }
   },
   consensus_layer: {
-    explorer: "beaconcha.in",
+    explorer: "https://beaconcha.in",
     endpoints: [
       "http://node1:5052",
       "http://node2:5052"
