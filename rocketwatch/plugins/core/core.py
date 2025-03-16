@@ -239,8 +239,7 @@ class Core(commands.Cog):
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
-            embed = await deposit_pool.get_dp()
-            embed.title = ":rocket: Live Deposit Pool Status"
+            embed = deposit_pool.DepositPool.get_status_message()
 
         embed.timestamp = datetime.now()
         embed.set_footer(text=(
