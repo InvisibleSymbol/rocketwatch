@@ -3,6 +3,8 @@ from datetime import datetime
 
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
+from eth_typing import HexStr
+from web3.constants import HASH_ZERO
 
 from rocketwatch import RocketWatch
 from plugins.snapshot.snapshot import Snapshot
@@ -11,6 +13,7 @@ from utils.cfg import cfg
 from utils.dao import DAO, DefaultDAO, ProtocolDAO
 from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
+from utils.get_nearest_block import get_block_by_timestamp
 
 log = logging.getLogger("governance")
 log.setLevel(cfg["log_level"])
@@ -21,8 +24,7 @@ class Governance(commands.Cog):
         self.bot = bot
 
     @staticmethod
-    def _get_active_pdao_proposals() -> list[ProtocolDAO.Proposal]:
-        dao = ProtocolDAO()
+    def _get_active_pdao_proposals(dao: ProtocolDAO) -> list[ProtocolDAO.Proposal]:
         proposals = dao.get_proposals_by_state()
         active_proposal_ids = []
         active_proposal_ids += proposals[dao.ProposalState.ActivePhase1]
@@ -30,18 +32,23 @@ class Governance(commands.Cog):
         return [dao.fetch_proposal(proposal_id) for proposal_id in active_proposal_ids]
 
     @staticmethod
-    def _get_active_odao_proposals() -> list[DefaultDAO.Proposal]:
-        dao = DefaultDAO("rocketDAONodeTrustedProposals")
+    def _get_active_dao_proposals(dao: DefaultDAO) -> list[DefaultDAO.Proposal]:
         proposals = dao.get_proposals_by_state()
         active_proposal_ids = proposals[dao.ProposalState.Active]
         return [dao.fetch_proposal(proposal_id) for proposal_id in active_proposal_ids]
 
     @staticmethod
-    def _get_active_security_proposals() -> list[DefaultDAO.Proposal]:
-        dao = DefaultDAO("rocketDAOSecurityProposals")
-        proposals = dao.get_proposals_by_state()
-        active_proposal_ids = proposals[dao.ProposalState.Active]
-        return [dao.fetch_proposal(proposal_id) for proposal_id in active_proposal_ids]
+    def _get_tx_hash_for_proposal(dao: DAO, proposal: DAO.Proposal) -> HexStr:
+        from_block = get_block_by_timestamp(proposal.created)[0] - 1
+        to_block = get_block_by_timestamp(proposal.created)[0] + 1
+
+        log.info(f"Looking for proposal {proposal} in [{from_block},{to_block}]")
+        for receipt in dao.proposal_contract.events.ProposalAdded().get_logs(fromBlock=from_block, toBlock=to_block):
+            log.info(f"Found receipt {receipt}")
+            if receipt.args.proposalID == proposal.id:
+                return receipt.transactionHash.hex()
+
+        return HASH_ZERO
 
     @staticmethod
     def _get_active_snapshot_proposals() -> list[Snapshot.Proposal]:
@@ -65,19 +72,19 @@ class Governance(commands.Cog):
         # --------- PROTOCOL DAO --------- #
 
         embed.description += "### Protocol DAO\n"
-        proposals = self._get_active_pdao_proposals()
-        if proposals:
+
+        dao = ProtocolDAO()
+        if proposals := self._get_active_pdao_proposals(dao):
             embed.description = "- **Active on-chain proposals**\n"
             for i, proposal in enumerate(proposals):
                 title = DAO.sanitize(proposal.message)
-                tx_hash = "0x94d1bb675e2278e221daabc1e3f2564bc33fa2ce01f29e94e0165fbcd46e654f" # TODO
+                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i+1}. [{title}]({url})\n"
         else:
             embed.description += f"- **No active on-chain proposals**\n"
 
-        snapshot_proposals = self._get_active_snapshot_proposals()
-        if snapshot_proposals:
+        if snapshot_proposals := self._get_active_snapshot_proposals():
             embed.description += "- **Active Snapshot proposals**\n"
             for i, proposal in enumerate(snapshot_proposals, start=1):
                 title = DAO.sanitize(proposal.title)
@@ -88,12 +95,13 @@ class Governance(commands.Cog):
         # --------- ORACLE DAO --------- #
 
         embed.description += "### Oracle DAO\n"
-        proposals = self._get_active_odao_proposals()
-        if proposals:
+
+        dao = DefaultDAO("rocketDAONodeTrustedProposals")
+        if proposals := self._get_active_dao_proposals(dao):
             embed.description += "- **Active proposals**\n"
             for i, proposal in enumerate(proposals, start=1):
                 title = DAO.sanitize(proposal.message)
-                tx_hash = "0x94d1bb675e2278e221daabc1e3f2564bc33fa2ce01f29e94e0165fbcd46e654f" # TODO
+                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
         else:
@@ -102,12 +110,13 @@ class Governance(commands.Cog):
         # --------- SECURITY COUNCIL --------- #
 
         embed.description += "### Security Council\n"
-        proposals = self._get_active_security_proposals()
-        if proposals:
+
+        dao = DefaultDAO("rocketDAOSecurityProposals")
+        if proposals := self._get_active_dao_proposals(dao):
             embed.description += "- **Active proposals**\n"
             for i, proposal in enumerate(proposals, start=1):
                 title = DAO.sanitize(proposal.message)
-                tx_hash = "0x94d1bb675e2278e221daabc1e3f2564bc33fa2ce01f29e94e0165fbcd46e654f"  # TODO
+                tx_hash = self._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
         else:
@@ -116,8 +125,8 @@ class Governance(commands.Cog):
         # --------- DAO FORUM --------- #
 
         embed.description += "### Forum\n"
-        topics = await self._get_latest_forum_topics()
-        if topics:
+
+        if topics := await self._get_latest_forum_topics():
             embed.description += "- **Recently active topics**\n"
             for i, topic in enumerate(topics[:10], start=1):
                 title = DAO.sanitize(topic.title)
