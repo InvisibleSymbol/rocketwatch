@@ -47,7 +47,7 @@ class ImageCanvas(ImageDraw):
     ) -> None:
         x, y = xy
         height, width = size
-        if width <= 2 * height:
+        if width < 2 * height:
             raise ValueError("Progress bar width must be at least twice its height")
 
         radius = height / 2

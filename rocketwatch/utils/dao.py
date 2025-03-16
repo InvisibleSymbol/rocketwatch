@@ -45,8 +45,6 @@ class DAO(ABC):
     @staticmethod
     def sanitize(message: str) -> str:
         max_length = 150
-        message = message.replace("https://", "").replace("http://", "")
-        message = escape_markdown(message)
         if len(message) > max_length:
             message = message[:(max_length - 1)] + "…"
         return message
