@@ -7,7 +7,7 @@ import importlib
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from enum import Enum
-from functools import partial
+from functools import partial, cache
 from typing import Optional, cast, Any
 
 import pymongo
@@ -200,8 +200,7 @@ class Core(commands.Cog):
             log.debug(f"Found {len(db_events)} events for channel {channel_id}.")
             channel = await self.bot.get_or_fetch_channel(channel_id)
 
-            state_message = await self.db.state_messages.find_one({"channel_id": channel_id})
-            if state_message:
+            for state_message in await self.db.state_messages.find_all({"channel_id": channel_id}).to_list(None):
                 msg = await channel.fetch_message(state_message["message_id"])
                 await msg.delete()
                 await self.db.state_messages.delete_one({"channel_id": channel_id})
@@ -230,14 +229,17 @@ class Core(commands.Cog):
         configs = cfg.get("status_message", {})
         for state_message in (await self.db.state_messages.find().to_list(None)):
             if state_message["_id"] not in configs:
+                log.debug(f"No config for state message ID {state_message['_id']}, removing message")
                 await self._replace_or_add_status("", None, state_message)
 
         for channel_name, config in configs.items():
+            log.debug(f"Updating state message for channel {channel_name}")
             await self._update_status_message(channel_name, config)
 
     @staticmethod
     async def _get_status_message_from_config(config: dict) -> Embed:
         module_name = config["module"]
+        log.debug(f"Getting new status message from module {module_name}")
         module = importlib.import_module(f"plugins.{module_name}.{module_name}")
         status_plugin = getattr(module, config["plugin"])
         return await status_plugin.get_status_message()
@@ -246,7 +248,9 @@ class Core(commands.Cog):
         state_message = await self.db.state_messages.find_one({"_id": channel_name})
         if state_message:
             age = datetime.now() - state_message["sent_at"]
-            if (age < timedelta(seconds=config["cooldown"])) and (state_message["state"] == str(self.State.OK)):
+            cooldown = timedelta(seconds=config["cooldown"])
+            if (age < cooldown) and (state_message["state"] == str(self.State.OK)):
+                log.debug(f"State message for {channel_name} not past cooldown: {age} < {cooldown}")
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
@@ -275,6 +279,7 @@ class Core(commands.Cog):
         target_channel_id = self.channels.get(target_channel) or self.channels["default"]
 
         if embed and prev_status and (prev_status["channel_id"] == target_channel_id):
+            log.debug(f"Replacing existing status message for channel {target_channel}")
             channel = await self.bot.get_or_fetch_channel(target_channel_id)
             msg = await channel.fetch_message(prev_status["message_id"])
             await msg.edit(embed=embed)
@@ -285,12 +290,14 @@ class Core(commands.Cog):
             return
 
         if prev_status:
+            log.debug(f"Deleting status message for channel {target_channel}")
             channel = await self.bot.get_or_fetch_channel(prev_status["channel_id"])
             msg = await channel.fetch_message(prev_status["message_id"])
             await msg.delete()
             await self.db.state_messages.delete_one(prev_status)
 
         if embed:
+            log.debug(f"Creating new status message for channel {target_channel}")
             channel = await self.bot.get_or_fetch_channel(target_channel_id)
             msg = await channel.send(embed=embed)
             await self.db.state_messages.insert_one({
