@@ -45,11 +45,7 @@ modules: {
 "wakatime.secret" = "secret"
 mongodb_uri = "mongodb://mongodb:27017"
 cronitor_secret = "a"
-events: {
-  lookback_distance: 8,
-  genesis: 13325233,
-  block_batch_size: 1000
-}
+
 discord: {
   secret: "secret",
   owner: {
@@ -63,16 +59,21 @@ discord: {
     errors: -1,
   }
 }
+events: {
+  lookback_distance: 8,
+  genesis: 13325233,
+  block_batch_size: 1000
+}
 status_message: {
     default: {
-        plugin: "deposit_pool",
-        cog: "DepositPool",
+        module: "deposit_pool",
+        plugin: "DepositPool",
         cooldown: 60,
         fields: []
     },
     dao: {
-        plugin: "governance",
-        cog: "Governance",
+        module: "governance",
+        plugin: "Governance",
         cooldown: 300,
         fields: []
     }
