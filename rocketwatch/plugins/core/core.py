@@ -237,10 +237,10 @@ class Core(commands.Cog):
 
     @staticmethod
     async def _get_status_message_from_config(config: dict) -> Embed:
-        plugin_name = config["plugin"]
-        module = importlib.import_module(f"plugins.{plugin_name}.{plugin_name}")
-        cog = getattr(module, config["cog"])
-        return await cog.get_status_message()
+        module_name = config["module"]
+        module = importlib.import_module(f"plugins.{module_name}.{module_name}")
+        status_plugin = getattr(module, config["plugin"])
+        return await status_plugin.get_status_message()
 
     async def _update_status_message(self, channel_name: str, config: dict) -> None:
         state_message = await self.db.state_messages.find_one({"_id": channel_name})
