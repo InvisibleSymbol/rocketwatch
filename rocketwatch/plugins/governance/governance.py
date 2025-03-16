@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from discord.ext.commands import Context, hybrid_command
+from discord.utils import escape_markdown
 from eth_typing import HexStr
 from web3.constants import HASH_ZERO
 
@@ -63,70 +64,75 @@ class Governance(StatusPlugin):
     async def get_digest() -> Embed:
         embed = Embed(title="Governance Digest", description="")
 
+        def sanitize(text: str) -> str:
+            text = text.strip()
+            text = text.replace("https://", "")
+            text = text.replace("http://", "")
+            text = escape_markdown(text)
+            if len(text) > 80:
+                text = text[:79] + "…"
+            return text
+
         # --------- PROTOCOL DAO --------- #
 
-        embed.description += "### Protocol DAO\n"
-
         dao = ProtocolDAO()
-        if proposals := Governance._get_active_pdao_proposals(dao):
+        proposals = Governance._get_active_pdao_proposals(dao)
+        snapshot_proposals = Governance._get_active_snapshot_proposals()
+
+        if proposals or snapshot_proposals:
+            embed.description += "### Protocol DAO\n"
+
+        if proposals:
             embed.description = "- **Active on-chain proposals**\n"
             for i, proposal in enumerate(proposals):
-                title = DAO.sanitize(proposal.message)
+                title = sanitize(proposal.message)
                 tx_hash = Governance._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i+1}. [{title}]({url})\n"
-        else:
-            embed.description += f"- **No active on-chain proposals**\n"
 
-        if snapshot_proposals := Governance._get_active_snapshot_proposals():
+        if snapshot_proposals:
             embed.description += "- **Active Snapshot proposals**\n"
             for i, proposal in enumerate(snapshot_proposals, start=1):
-                title = DAO.sanitize(proposal.title)
+                title = sanitize(proposal.title)
                 embed.description += f"  {i}. [{title}]({proposal.url})\n"
-        else:
-            embed.description += "- **No active Snapshot proposals**\n"
 
         # --------- ORACLE DAO --------- #
 
-        embed.description += "### Oracle DAO\n"
-
         dao = DefaultDAO("rocketDAONodeTrustedProposals")
         if proposals := Governance._get_active_dao_proposals(dao):
+            embed.description += "### Oracle DAO\n"
             embed.description += "- **Active proposals**\n"
+
             for i, proposal in enumerate(proposals, start=1):
-                title = DAO.sanitize(proposal.message)
+                title = sanitize(proposal.message)
                 tx_hash = Governance._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
-        else:
-            embed.description += "- **No active proposals**\n"
 
         # --------- SECURITY COUNCIL --------- #
 
-        embed.description += "### Security Council\n"
-
         dao = DefaultDAO("rocketDAOSecurityProposals")
         if proposals := Governance._get_active_dao_proposals(dao):
+            embed.description += "### Security Council\n"
             embed.description += "- **Active proposals**\n"
+
             for i, proposal in enumerate(proposals, start=1):
-                title = DAO.sanitize(proposal.message)
+                title = sanitize(proposal.message)
                 tx_hash = Governance._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
-        else:
-            embed.description += "- **No active proposals**\n"
 
         # --------- DAO FORUM --------- #
 
-        embed.description += "### Forum\n"
-
         if topics := await Governance._get_latest_forum_topics():
+            embed.description += "### Forum\n"
             embed.description += "- **Recently active topics**\n"
             for i, topic in enumerate(topics[:10], start=1):
-                title = DAO.sanitize(topic.title)
+                title = sanitize(topic.title)
                 embed.description += f"  {i}. [{title}]({topic.url})\n"
-        else:
-            embed.description += "- **No recently active topics**\n"
+
+        if not embed.description:
+            embed.set_image(url="https://c.tenor.com/PVf-csSHmu8AAAAd/tenor.gif")
 
         return embed
 

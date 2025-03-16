@@ -1,14 +1,13 @@
 import logging
 
 import humanize
-from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from rocketwatch import RocketWatch
 from plugins.queue import queue
-from status import StatusPlugin
+from utils.status import StatusPlugin
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
