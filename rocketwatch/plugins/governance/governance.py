@@ -82,8 +82,9 @@ class Governance(StatusPlugin):
             text = text.replace("https://", "")
             text = text.replace("http://", "")
             text = escape_markdown(text)
-            if len(text) > 80:
-                text = text[:79] + "…"
+            max_length = 50
+            if len(text) > max_length:
+                text = text[:(max_length - 1)] + "…"
             return text
 
         # --------- PROTOCOL DAO --------- #
