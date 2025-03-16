@@ -1,6 +1,6 @@
 import logging
 import requests
-from typing import Optional
+from typing import Optional, Any
 
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -29,7 +29,8 @@ class RPIPS(commands.Cog):
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
 
-        if rpip := self.get_rpips().get(name):
+        rpips_by_name: dict[str, RPIPS.RPIP] = {str(rpip): rpip for rpip in self.get_all_rpips()}
+        if rpip := rpips_by_name.get(name):
             embed.title = name
             embed.url = rpip.url
             embed.description = rpip.description
@@ -48,10 +49,12 @@ class RPIPS(commands.Cog):
         await ctx.send(embed=embed)
 
     class RPIP:
-        def __init__(self, url: str):
-            self.url = url
+        def __init__(self, title: str, number: int, status:str):
+            self.title = title
+            self.number = number
+            self.status = status
 
-        @ttl_cache(ttl=900)
+        @ttl_cache(ttl=300)
         def __fetch_data(self) -> dict[str, Optional[str | list[str]]]:
             soup = BeautifulSoup(requests.get(self.url).text, "html.parser")
             metadata = {}
@@ -67,35 +70,45 @@ class RPIPS(commands.Cog):
 
             return {
                 "type": metadata.get("Type"),
-                "status": metadata.get("Status"),
                 "authors": metadata.get("Author"),
                 "created": metadata.get("Created"),
                 "discussion": metadata.get("Discussion"),
                 "description": soup.find("big", {"class": "rpip-description"}).text
             }
 
-        def __getattr__(self, item):
+        @property
+        def url(self) -> str:
+            return f"https://rpips.rocketpool.net/RPIPs/RPIP-{self.number}"
+
+        def __str__(self) -> str:
+            return f"RPIP-{self.number}: {self.title}"
+
+        def __getattr__(self, key: str) -> Any:
             try:
-                return self.__fetch_data()[item] or "N/A"
+                return self.__fetch_data()[key] or "N/A"
             except KeyError:
-                raise AttributeError(f"RPIP has no attribute '{item}'")
+                raise AttributeError(f"RPIP has no attribute '{key}'")
 
     @rpip.autocomplete("name")
-    async def get_rpip_names(self, _: Context, current: str):
-        names = self.get_rpips().keys()
-        return [Choice(name=name, value=name) for name in names if current.lower() in name.lower()][:-26:-1]
+    async def _get_rpip_names(self, ctx: Context, current: str) -> list[Choice[str]]:
+        choices = []
+        for rpip in self.get_all_rpips():
+            if current.lower() in (name := str(rpip)).lower():
+                choices.append(Choice(name=name, value=name))
+        return choices[:-26:-1]
 
-    @ttl_cache(ttl=300)
-    def get_rpips(self) -> dict[str, 'RPIPS.RPIP']:
+    @staticmethod
+    @ttl_cache(ttl=60)
+    def get_all_rpips() -> list['RPIPS.RPIP']:
         html_doc = requests.get("https://rpips.rocketpool.net/all").text
         soup = BeautifulSoup(html_doc, "html.parser")
-        rpips: dict[str, 'RPIPS.RPIP'] = {}
+        rpips: list['RPIPS.RPIP'] = []
 
         for row in soup.table.find_all("tr", recursive=False):
-            rpip_num = int(row.find("td", {"class": "rpipnum"}).text)
-            url = f"https://rpips.rocketpool.net/RPIPs/RPIP-{rpip_num}"
             title = row.find("td", {"class": "title"}).text.strip()
-            rpips[f"RPIP-{rpip_num}: {title}"] = self.RPIP(url)
+            rpip_num = int(row.find("td", {"class": "rpipnum"}).text)
+            status = row.find("td", {"class": "status"}).text.strip()
+            rpips.append(RPIPS.RPIP(title, rpip_num, status))
 
         return rpips
 
