@@ -15,44 +15,50 @@ log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
 
-def get_queue(l=15):
-    # Get the next n minipools per category
-    minipools = rp.get_minipools(limit=l)
-    description = ""
-    matchings = [
-        ["variable", "Variable Minipool Queue"],
-    ]
-    for category, label in matchings:
-        data = minipools[category]
-        if data[1]:
-            if description:
-                description += "\n"
-            description += f"**{label}:** ({data[0]} Minipools)"
-            for m in data[1]:
-                n = rp.call("rocketMinipool.getNodeAddress", address=m)
-                t = rp.call("rocketMinipool.getStatusTime", address=m)
-                description += f"\n{el_explorer_url(m, make_code=True, prefix=-1)}, created <t:{t}:R> by {el_explorer_url(n)}"
-            if data[0] > 10:
-                description += "\n`...`"
-
-    return description
-
-
 class Queue(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
+
+    @staticmethod
+    def get_minipool_queue(limit: int = 15) -> Embed:
+        """Get the next {limit} minipools in the queue"""
+
+        embed = Embed(title="Minipool Queue")
+
+        mp_count, queue = rp.get_minipools(limit=limit)["variable"]
+        if not queue:
+            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
+            return embed
+
+        mp_contracts = [rp.assemble_contract("rocketMinipool", address=minipool) for minipool in queue]
+        nodes = [
+            res.results[0] for res in rp.multicall.aggregate([
+                contract.functions.getNodeAddress() for contract in mp_contracts
+            ]).results
+        ]
+        status_times = [
+            res.results[0] for res in rp.multicall.aggregate([
+                contract.functions.getStatusTime() for contract in mp_contracts
+            ]).results
+        ]
+
+        embed.description = f"**Minipool Queue** ({mp_count})"
+        for i, minipool in enumerate(queue):
+            mp_label = el_explorer_url(minipool, make_code=True, prefix=-1)
+            node_label = el_explorer_url(nodes[i])
+            embed.description += f"\n{mp_label}, created <t:{status_times[i]}:R> by {node_label}"
+
+        if mp_count > len(queue):
+            embed.description += "\n`...`"
+
+        return embed
 
     @hybrid_command()
     async def queue(self, ctx: Context):
         """Show the next 10 minipools in the queue."""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        e = Embed()
-        e.title = "Minipool queue"
-        e.description = get_queue()
-        # set gif if all queues are empty
-        if not e.description:
-            e.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-        await ctx.send(embed=e)
+        embed = self.get_minipool_queue()
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
