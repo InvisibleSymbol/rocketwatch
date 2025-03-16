@@ -17,7 +17,6 @@ from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 from utils.get_nearest_block import get_block_by_timestamp
 
-
 log = logging.getLogger("governance")
 log.setLevel(cfg["log_level"])
 
@@ -59,7 +58,7 @@ class Governance(StatusPlugin):
 
     async def _get_draft_rpips(self) -> list[RPIPS.RPIP]:
         try:
-            return [rpip for rpip in RPIPS.get_all_rpips() if (rpip.status == "Draft")]
+            return [rpip for rpip in RPIPS.get_all_rpips() if (rpip.status == "Draft")][::-1]
         except Exception as e:
             await self.bot.report_error(e)
             return []
