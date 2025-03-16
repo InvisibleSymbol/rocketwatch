@@ -28,13 +28,13 @@ class Governance(StatusPlugin):
         active_proposal_ids = []
         active_proposal_ids += proposals[dao.ProposalState.ActivePhase1]
         active_proposal_ids += proposals[dao.ProposalState.ActivePhase2]
-        return [dao.fetch_proposal(proposal_id) for proposal_id in active_proposal_ids]
+        return [dao.fetch_proposal(proposal_id) for proposal_id in reversed(active_proposal_ids)]
 
     @staticmethod
     def _get_active_dao_proposals(dao: DefaultDAO) -> list[DefaultDAO.Proposal]:
         proposals = dao.get_proposals_by_state()
         active_proposal_ids = proposals[dao.ProposalState.Active]
-        return [dao.fetch_proposal(proposal_id) for proposal_id in active_proposal_ids]
+        return [dao.fetch_proposal(proposal_id) for proposal_id in reversed(active_proposal_ids)]
 
     @staticmethod
     def _get_tx_hash_for_proposal(dao: DAO, proposal: DAO.Proposal) -> HexStr:
@@ -51,7 +51,7 @@ class Governance(StatusPlugin):
 
     async def _get_active_snapshot_proposals(self) -> list[Snapshot.Proposal]:
         try:
-            return Snapshot.fetch_proposals("active")
+            return Snapshot.fetch_proposals("active", reverse=True)
         except Exception as e:
             await self.bot.report_error(e)
             return []
