@@ -1,85 +1,171 @@
 import logging
 from datetime import datetime
+from dataclasses import dataclass
+from typing import Optional, Literal, cast
 
 import aiohttp
-from discord.app_commands import Choice, choices
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
+from discord.app_commands import Choice, choices
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.visibility import is_hidden
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("forum")
 log.setLevel(cfg["log_level"])
 
 
 class Forum(commands.Cog):
+    DOMAIN = "https://dao.rocketpool.net"
+
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.domain = "https://dao.rocketpool.net"
+
+    @dataclass(frozen=True, slots=True)
+    class Topic:
+        id: int
+        title: str
+        slug: str
+        post_count: int
+        created_at: int
+        last_post_at: int
+        views: int
+        like_count: int
+
+        @property
+        def url(self) -> str:
+            return f"{Forum.DOMAIN}/t/{self.slug}"
+
+        def __str__(self) -> str:
+            return self.title
+
+    @dataclass(frozen=True, slots=True)
+    class User:
+        id: int
+        username: str
+        name: Optional[str]
+        topic_count: int
+        post_count: int
+        likes_received: int
+
+        @property
+        def url(self):
+            return f"{Forum.DOMAIN}/u/{self.username}"
+
+        def __str__(self) -> str:
+            return self.name or self.username
+
+    Period = Literal["all", "yearly", "quarterly", "monthly", "weekly", "daily"]
+    UserMetric = Literal["topic_count", "post_count", "likes_received"]
+
+    @staticmethod
+    def _parse_topics(topic_list: list[dict]) -> list[Topic]:
+        def datetime_to_epoch(_dt: str) -> int:
+            return int(datetime.fromisoformat(_dt.replace("Z", "+00:00")).timestamp())
+
+        topics = []
+        for topic_dict in topic_list:
+            topics.append(Forum.Topic(
+                id=topic_dict["id"],
+                title=topic_dict["fancy_title"],
+                slug=topic_dict["slug"],
+                post_count=topic_dict["posts_count"],
+                created_at=datetime_to_epoch(topic_dict["created_at"]),
+                last_post_at=datetime_to_epoch(topic_dict["last_posted_at"]),
+                views=topic_dict["views"],
+                like_count=topic_dict["like_count"]
+            ))
+        return topics
+
+    @staticmethod
+    async def get_popular_topics(period: Period) -> list[Topic]:
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(f"{Forum.DOMAIN}/top.json?period={period}")
+            data = await response.json()
+
+        return Forum._parse_topics(data["topic_list"]["topics"])
+
+    @staticmethod
+    async def get_recent_topics() -> list[Topic]:
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(f"{Forum.DOMAIN}/latest.json")
+            data = await response.json()
+
+        return Forum._parse_topics(data["topic_list"]["topics"])
+
+    @staticmethod
+    async def get_top_users(period: Period, order_by: UserMetric) -> list[User]:
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(f"{Forum.DOMAIN}/directory_items.json?period={period}&order={order_by}")
+            data = await response.json()
+
+        users = []
+        for user_dict in data["directory_items"]:
+            users.append(Forum.User(
+                id=user_dict["id"],
+                username=user_dict["user"]["username"],
+                name=user_dict["user"]["name"] if user_dict["user"]["name"] else None,
+                topic_count=user_dict["topic_count"],
+                post_count=user_dict["post_count"] - user_dict["topic_count"],
+                likes_received=user_dict["likes_received"]
+            ))
+        return users
 
     @hybrid_command()
-    @choices(
-        period=[
-            Choice(name="all time", value="all"),
-            Choice(name="yearly", value="yearly"),
-            Choice(name="quarterly", value="quarterly"),
-            Choice(name="monthly", value="monthly"),
-            Choice(name="weekly", value="weekly"),
-            Choice(name="daily", value="daily")
-        ],
-        user_order_by=[
-            Choice(name="likes", value="likes_received"),
-            Choice(name="replies sent", value="post_count"),
-            Choice(name="posts created", value="topic_count"),
-        ]
-    )
-    async def top_forum_posts(self, ctx: Context, period: Choice[str] = "monthly",
-                              user_order_by: Choice[str] = "likes_received"):
-        """
-        Get the top posts from the forum.
-        """
-        await ctx.defer(ephemeral=is_hidden(ctx))
+    async def top_forum_posts(
+        self,
+        ctx: Context,
+        period: Period = "monthly",
+    ) -> None:
+        """Get the most popular topics from the forum"""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+
         if isinstance(period, Choice):
-            period = period.value
-        if isinstance(user_order_by, Choice):
-            user_order_by = user_order_by.value
+            period: Forum.Period = cast(Forum.Period, period.value)
 
-        # retrieve the top posts from the forum for the specified period
-        async with aiohttp.ClientSession() as session:
-            res = await session.get(f"{self.domain}/top.json?period={period}")
-            res = await res.json()
+        embed = Embed(title=f"Top Forum Posts ({period.capitalize()})", description="")
 
-        # create the embed
-        e = Embed()
-        e.title = f"Top Forum Stats ({period})"
-        # top 10 topics
-        tmp_desc = "\n".join(
-            f"{i + 1}. [{topic['fancy_title']}]({self.domain}/t/{topic['slug']})\n"
-            f"Last Reply: <t:{int(datetime.fromisoformat(topic['last_posted_at'].replace('Z', '+00:00')).timestamp())}:R>\n"
-            f"`{topic['like_count']:>4}` 🤍\t "
-            f"`{topic['posts_count'] - 1:>4}` 💬\t"
-            f"`{topic['views']:>4}` 👀\n "
-            for i, topic in enumerate(res["topic_list"]["topics"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['topic_list']['topics']))} Topics", value=tmp_desc or "No topics found.", inline=False)
+        if topics := await self.get_popular_topics(period):
+            for i, topic in enumerate(topics[:10], start=1):
+                embed.description += (
+                    f"{i}. [{topic}]({topic.url})\n"
+                    f"Last reply: <t:{topic.last_post_at}:R>\n"
+                    f"`{topic.like_count:>4}` 🤍\t`{topic.post_count:>4}` 💬\t`{topic.views:>4}` 👀\n"
+                )
+        else:
+            embed.description = "No topics found."
 
-        async with aiohttp.ClientSession() as session:
-            res = await session.get(f"{self.domain}/directory_items.json?period={period}&order={user_order_by}")
-            res = await res.json()
-        # top 5 users
-        tmp_desc = "".join(
-            f"{i + 1}. [{meta['user']['name'] or meta['user']['username']}]"
-            f"({self.domain}/u/{meta['user']['username']})\n"
-            f"`{meta['likes_received']:>4}` 🤍\t "
-            f"`{meta['post_count'] - meta['topic_count']:>4}` 💬\t "
-            f"`{meta['topic_count']:>4}` 📝\n"
-            for i, meta in enumerate(res["directory_items"][:5]))
-        e.add_field(name=f"Top {min(5, len(res['directory_items']))} Users by {user_order_by.replace('_', ' ')}", value=tmp_desc or "No users found.", inline=False)
+        await ctx.send(embed=embed)
 
-        await ctx.send(embed=e)
+    @hybrid_command()
+    async def top_forum_users(
+        self,
+        ctx: Context,
+        period: Period = "monthly",
+        order_by: UserMetric = "likes_received"
+    ) -> None:
+        """Get the most active forum users"""
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+
+        embed = Embed(
+            title=f"Top Forum Users ({period.capitalize()})",
+            description=""
+        )
+
+        users = await self.get_top_users(period, order_by)
+        if users:
+            for i, user in enumerate(users[:10], start=1):
+                embed.description += (
+                    f"{i}. [{user}]({user.url})\n"
+                    f"`{user.likes_received:>4}` 🤍\t`{user.topic_count:>4}` 📝\t`{user.post_count:>4}` 💬\n"
+                )
+        else:
+            embed.description = "No users found."
+
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
