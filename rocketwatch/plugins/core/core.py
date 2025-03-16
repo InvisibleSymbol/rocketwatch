@@ -17,8 +17,9 @@ from eth_typing import BlockIdentifier, BlockNumber
 from motor.motor_asyncio import AsyncIOMotorClient
 from web3.datastructures import MutableAttributeDict as aDict
 
-from plugins.deposit_pool import deposit_pool
+from rocketwatch import RocketWatch
 from plugins.support_utils.support_utils import generate_template_embed
+from utils.status import StatusPlugin
 from utils.cfg import cfg
 from utils.embeds import assemble, Embed
 from utils.event import EventPlugin
@@ -35,7 +36,7 @@ class Core(commands.Cog):
         def __str__(self) -> str:
             return self.name
 
-    def __init__(self, bot):
+    def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.state = self.State.OK
         self.channels = cfg["discord.channels"]
@@ -226,7 +227,7 @@ class Core(commands.Cog):
         log.info("Processed all events in queue")
 
     async def update_status_messages(self) -> None:
-        configs = cfg.get("status_message", {})
+        configs = cfg.get("events.status_message", {})
         for state_message in (await self.db.state_messages.find().to_list(None)):
             if state_message["_id"] not in configs:
                 log.debug(f"No config for state message ID {state_message['_id']}, removing message")
@@ -235,14 +236,6 @@ class Core(commands.Cog):
         for channel_name, config in configs.items():
             log.debug(f"Updating state message for channel {channel_name}")
             await self._update_status_message(channel_name, config)
-
-    @staticmethod
-    async def _get_status_message_from_config(config: dict) -> Embed:
-        module_name = config["module"]
-        log.debug(f"Getting new status message from module {module_name}")
-        module = importlib.import_module(f"plugins.{module_name}.{module_name}")
-        status_plugin = getattr(module, config["plugin"])
-        return await status_plugin.get_status_message()
 
     async def _update_status_message(self, channel_name: str, config: dict) -> None:
         state_message = await self.db.state_messages.find_one({"_id": channel_name})
@@ -254,7 +247,8 @@ class Core(commands.Cog):
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
-            embed = await self._get_status_message_from_config(config)
+            plugin: StatusPlugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
+            embed = await plugin.get_status()
 
         embed.timestamp = datetime.now()
         embed.set_footer(text=f"Tracking {cfg['rocketpool.chain']} using {len(self.bot.cogs)} plugins")
@@ -265,7 +259,7 @@ class Core(commands.Cog):
 
     async def show_service_interrupt(self) -> None:
         embed = assemble(aDict({"event_name": "service_interrupted"}))
-        for channel_name in cfg.get("status_message", {}).keys():
+        for channel_name in cfg.get("events.status_message", {}).keys():
             state_message = await self.db.state_messages.find_one({"_id": channel_name})
             if (not state_message) or (state_message["state"] != str(self.state.ERROR)):
                 await self._replace_or_add_status(channel_name, embed, state_message)

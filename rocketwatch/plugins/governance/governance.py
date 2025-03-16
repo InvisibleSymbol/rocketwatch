@@ -50,28 +50,32 @@ class Governance(StatusPlugin):
 
         return HASH_ZERO
 
-    @staticmethod
-    def _get_active_snapshot_proposals() -> list[Snapshot.Proposal]:
-        return Snapshot.fetch_proposals("active")
+    async def _get_active_snapshot_proposals(self) -> list[Snapshot.Proposal]:
+        try:
+            return Snapshot.fetch_proposals("active")
+        except Exception as e:
+            await self.bot.report_error(e)
+            return []
 
-    @staticmethod
-    def _get_draft_rpips() -> list[RPIPS.RPIP]:
-        draft_rpip_list = []
-        for rpip in RPIPS.get_all_rpips():
-            if rpip.status == "Draft":
-                draft_rpip_list.append(rpip)
-        return draft_rpip_list
+    async def _get_draft_rpips(self) -> list[RPIPS.RPIP]:
+        try:
+            return [rpip for rpip in RPIPS.get_all_rpips() if (rpip.status == "Draft")]
+        except Exception as e:
+            await self.bot.report_error(e)
+            return []
 
-    @staticmethod
-    async def _get_latest_forum_topics() -> list[Forum.Topic]:
-        topics = await Forum.get_recent_topics()
-        now = datetime.now().timestamp()
-        # only get topics from within a week
-        topics = [t for t in topics if (now - t.last_post_at) <= (7 * 24 * 60 * 60)]
-        return topics
+    async def _get_latest_forum_topics(self) -> list[Forum.Topic]:
+        try:
+            topics = await Forum.get_recent_topics()
+            now = datetime.now().timestamp()
+            # only get topics from within a week
+            topics = [t for t in topics if (now - t.last_post_at) <= (7 * 24 * 60 * 60)]
+            return topics
+        except Exception as e:
+            await self.bot.report_error(e)
+            return []
 
-    @staticmethod
-    async def get_digest() -> Embed:
+    async def get_digest(self) -> Embed:
         embed = Embed(title="Governance Digest", description="")
 
         def sanitize(text: str) -> str:
@@ -86,9 +90,9 @@ class Governance(StatusPlugin):
         # --------- PROTOCOL DAO --------- #
 
         dao = ProtocolDAO()
-        proposals = Governance._get_active_pdao_proposals(dao)
-        snapshot_proposals = Governance._get_active_snapshot_proposals()
-        draft_rpips = Governance._get_draft_rpips()
+        proposals = self._get_active_pdao_proposals(dao)
+        snapshot_proposals = await self._get_active_snapshot_proposals()
+        draft_rpips = await self._get_draft_rpips()
 
         if proposals or snapshot_proposals or draft_rpips:
             embed.description += "### Protocol DAO\n"
@@ -97,7 +101,7 @@ class Governance(StatusPlugin):
             embed.description = "- **Active on-chain proposals**\n"
             for i, proposal in enumerate(proposals):
                 title = sanitize(proposal.message)
-                tx_hash = Governance._get_tx_hash_for_proposal(dao, proposal)
+                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i+1}. [{title}]({url})\n"
 
@@ -116,32 +120,32 @@ class Governance(StatusPlugin):
         # --------- ORACLE DAO --------- #
 
         dao = DefaultDAO("rocketDAONodeTrustedProposals")
-        if proposals := Governance._get_active_dao_proposals(dao):
+        if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Oracle DAO\n"
             embed.description += "- **Active proposals**\n"
 
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
-                tx_hash = Governance._get_tx_hash_for_proposal(dao, proposal)
+                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
         # --------- SECURITY COUNCIL --------- #
 
         dao = DefaultDAO("rocketDAOSecurityProposals")
-        if proposals := Governance._get_active_dao_proposals(dao):
+        if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Security Council\n"
             embed.description += "- **Active proposals**\n"
 
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
-                tx_hash = Governance._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
+                tx_hash = self._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
                 url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
         # --------- DAO FORUM --------- #
 
-        if topics := await Governance._get_latest_forum_topics():
+        if topics := await self._get_latest_forum_topics():
             embed.description += "### Forum\n"
             embed.description += "- **Recently active topics**\n"
             for i, topic in enumerate(topics[:10], start=1):
@@ -160,9 +164,8 @@ class Governance(StatusPlugin):
         embed = await self.get_digest()
         await ctx.send(embed=embed)
 
-    @staticmethod
-    async def get_status_message() -> Embed:
-        embed = await Governance.get_digest()
+    async def get_status(self) -> Embed:
+        embed = await self.get_digest()
         embed.title = ":classical_building: Live Governance Digest"
         return embed
 

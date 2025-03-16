@@ -76,7 +76,8 @@ class RocketWatch(Bot):
 
     async def setup_hook(self) -> None:
         await self._load_plugins()
-        await self._sync_commands()
+        if cfg["enable_commands"]:
+            await self._sync_commands()
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} ({self.user.id})")
