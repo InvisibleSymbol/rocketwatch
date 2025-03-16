@@ -8,6 +8,8 @@ from web3.constants import HASH_ZERO
 
 from plugins.snapshot.snapshot import Snapshot
 from plugins.forum.forum import Forum
+from plugins.rpips.rpips import RPIPS
+
 from utils.status import StatusPlugin
 from utils.cfg import cfg
 from utils.dao import DAO, DefaultDAO, ProtocolDAO
@@ -53,6 +55,14 @@ class Governance(StatusPlugin):
         return Snapshot.fetch_proposals("active")
 
     @staticmethod
+    def _get_draft_rpips() -> list[RPIPS.RPIP]:
+        draft_rpip_list = []
+        for rpip in RPIPS.get_all_rpips():
+            if rpip.status == "Draft":
+                draft_rpip_list.append(rpip)
+        return draft_rpip_list
+
+    @staticmethod
     async def _get_latest_forum_topics() -> list[Forum.Topic]:
         topics = await Forum.get_recent_topics()
         now = datetime.now().timestamp()
@@ -78,8 +88,9 @@ class Governance(StatusPlugin):
         dao = ProtocolDAO()
         proposals = Governance._get_active_pdao_proposals(dao)
         snapshot_proposals = Governance._get_active_snapshot_proposals()
+        draft_rpips = Governance._get_draft_rpips()
 
-        if proposals or snapshot_proposals:
+        if proposals or snapshot_proposals or draft_rpips:
             embed.description += "### Protocol DAO\n"
 
         if proposals:
@@ -95,6 +106,12 @@ class Governance(StatusPlugin):
             for i, proposal in enumerate(snapshot_proposals, start=1):
                 title = sanitize(proposal.title)
                 embed.description += f"  {i}. [{title}]({proposal.url})\n"
+
+        if draft_rpips:
+            embed.description += "- **RPIPs in draft status**\n"
+            for i, rpip in enumerate(draft_rpips, start=1):
+                title = sanitize(rpip.title)
+                embed.description += f"  {i}. [{title}]({rpip.url})\n"
 
         # --------- ORACLE DAO --------- #
 
