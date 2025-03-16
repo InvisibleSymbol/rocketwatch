@@ -37,8 +37,8 @@ class Constellation(Cog):
         def _fetch_interval(_from: int, _to: int) -> int:
             _operators = 0
 
-            _operators += len(whitelist_contract.events.OperatorAdded().getLogs(fromBlock=_from, toBlock=_to))
-            _operators -= len(whitelist_contract.events.OperatorRemoved().getLogs(fromBlock=_from, toBlock=_to))
+            _operators += len(whitelist_contract.events.OperatorAdded().get_logs(fromBlock=_from, toBlock=_to))
+            _operators -= len(whitelist_contract.events.OperatorRemoved().get_logs(fromBlock=_from, toBlock=_to))
             for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
                 _operators += len(event_log.args.operators)
             for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):

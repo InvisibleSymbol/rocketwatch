@@ -8,6 +8,7 @@ from typing import Literal, cast
 
 import termplotlib as tpl
 from eth_typing import ChecksumAddress
+from discord.utils import escape_markdown
 
 from utils import solidity
 from utils.cfg import cfg
@@ -44,6 +45,8 @@ class DAO(ABC):
     @staticmethod
     def sanitize(message: str) -> str:
         max_length = 150
+        message = message.replace("https://", "").replace("http://", "")
+        message = escape_markdown(message)
         if len(message) > max_length:
             message = message[:(max_length - 1)] + "…"
         return message
