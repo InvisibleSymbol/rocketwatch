@@ -265,12 +265,15 @@ class Snapshot(EventPlugin):
             )
 
         def create_end_event(self) -> Event:
-            reached_quorum = sum(self.scores) >= self.quorum
-            winning_choice = self.choices[np.argmax(self.scores)]
+            max_for, max_against = 0, 0
+            for choice, score in zip(self.choices, self.scores):
+                if "against" in choice.lower():
+                    max_against = max(max_against, score)
+                elif "abstain" not in choice.lower():
+                    max_for = max(max_for, score)
 
             embed = self.get_embed_template()
-            if reached_quorum and ("against" not in winning_choice.lower()):
-                # potentially fails if abstain > against > for
+            if self.reached_quorum() and (max_for >= max_against):
                 embed.title = ":white_check_mark: Snapshot Proposal Passed"
             else:
                 embed.title = ":x: Snapshot Proposal Failed"
