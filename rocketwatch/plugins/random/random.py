@@ -96,7 +96,7 @@ class Random(commands.Cog):
                 url = cfg["rocketpool.execution_layer.explorer"]
                 if not entry["name"]:
                     entry["name"] = s_hex(entry["address"])
-                target = f"[{entry['name']}](https://{url}/search?q={entry['address']})"
+                target = f"[{entry['name']}]({url}/search?q={entry['address']})"
                 description += f" {target}"
             if entry.get("category"):
                 description += f" `[{entry['category'].upper()}]`"

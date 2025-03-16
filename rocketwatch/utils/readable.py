@@ -58,7 +58,7 @@ def cl_explorer_url(target, name=None):
     if not name:
         name = target
     url = cfg["rocketpool.consensus_layer.explorer"]
-    return f"[{name}](https://{url}/validator/{target})"
+    return f"[{name}]({url}/validator/{target})"
 
 
 def advanced_tnx_url(tx_hash):

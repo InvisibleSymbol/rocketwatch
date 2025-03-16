@@ -89,7 +89,7 @@ def get_pdao_delegates() -> dict[str, str]:
 
 
 def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
-    url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
+    url = f"{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
         # sanitize address
         target = w3.toChecksumAddress(target)
@@ -454,12 +454,12 @@ def assemble(args) -> Embed:
     el_explorer = cfg["rocketpool.execution_layer.explorer"]
     if "blockNumber" in args:
         e.add_field(name="Block Number",
-                    value=f"[{args.blockNumber}](https://{el_explorer}/block/{args.blockNumber})")
+                    value=f"[{args.blockNumber}]({el_explorer}/block/{args.blockNumber})")
 
     cl_explorer = cfg["rocketpool.consensus_layer.explorer"]
     if "slot" in args:
         e.add_field(name="Slot",
-                    value=f"[{args.slot}](https://{cl_explorer}/slot/{args.slot})")
+                    value=f"[{args.slot}]({cl_explorer}/slot/{args.slot})")
 
     if "smoothie_amount" in args:
         e.add_field(name="Smoothing Pool Balance",
