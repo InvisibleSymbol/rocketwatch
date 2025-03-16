@@ -220,12 +220,13 @@ class Snapshot(EventPlugin):
             proposal_height += self._TEXT_SIZE
             return proposal_height
 
+        @property
+        def url(self) -> str:
+            return f"https://vote.rocketpool.net/#/proposal/{self.id}"
+
         def get_embed_template(self) -> Embed:
             embed = Embed()
-            embed.set_author(
-                name="🔗 Data from snapshot.org",
-                url=f"https://vote.rocketpool.net/#/proposal/{self.id}"
-            )
+            embed.set_author(name="🔗 Data from snapshot.org", url=self.url)
             return embed
 
         def create_image(self, *, include_title: bool) -> Image:

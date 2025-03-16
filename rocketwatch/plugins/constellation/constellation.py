@@ -168,9 +168,11 @@ class Constellation(Cog):
 
         embed.add_field(
             name="Distributor Balances",
-            value=f"`{balance_eth:,.2f}` ETH ({balance_status_eth})\n"
-                  f"`{balance_rpl:,.2f}` RPL ({balance_status_rpl})\n"
-                  f"{balance_status}",
+            value=(
+                f"`{balance_eth:,.2f}` ETH ({balance_status_eth})\n"
+                f"`{balance_rpl:,.2f}` RPL ({balance_status_rpl})\n"
+                f"{balance_status}"
+            ),
             inline=False
         )
         embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):,.2f} gwei")
