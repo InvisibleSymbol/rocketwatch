@@ -22,7 +22,8 @@ class Event:
     block_number: BlockNumber
     transaction_index: int = 999
     event_index: int = 999
-    attachment: Optional[Image] = None
+    image: Optional[Image] = None
+    thumbnail: Optional[Image] = None
 
     def get_score(self):
         return (10**9 * self.block_number) + (10**5 * self.transaction_index) + self.event_index

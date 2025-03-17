@@ -249,7 +249,7 @@ class Snapshot(EventPlugin):
                 block_number=get_block_by_timestamp(self.start)[0],
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"snapshot_vote_start:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
         def create_reached_quorum_event(self, block_number: BlockNumber) -> Event:
@@ -261,7 +261,7 @@ class Snapshot(EventPlugin):
                 block_number=block_number,
                 event_name="pdao_snapshot_vote_quorum",
                 unique_id=f"snapshot_vote_quorum:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
         def create_end_event(self) -> Event:
@@ -284,7 +284,7 @@ class Snapshot(EventPlugin):
                 block_number=get_block_by_timestamp(self.end)[0],
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"snapshot_vote_end:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
     @dataclass(frozen=True, slots=True)
@@ -394,14 +394,23 @@ class Snapshot(EventPlugin):
             embed.add_field(name="Vote Power", value=f"{self.vp:,.2f}")
             embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
 
-            event_name = "pdao_snapshot_vote" if (self.vp >= 250) else "snapshot_vote"
+            if self.vp >= 250:
+                conditional_args = {
+                    "event_name": "pdao_snapshot_vote",
+                    "image": self.proposal.create_image(include_title=False)
+                }
+            else:
+                conditional_args = {
+                    "event_name": "snapshot_vote",
+                    "thumbnail": self.proposal.create_image(include_title=False)
+                }
+
             return Event(
                 embed=embed,
                 topic="snapshot",
                 block_number=get_block_by_timestamp(self.created)[0],
-                event_name=event_name,
                 unique_id=f"snapshot_vote:{self.proposal.id}:{self.voter}:{self.created}",
-                attachment=self.proposal.create_image(include_title=False)
+                **conditional_args
             )
 
     @staticmethod
