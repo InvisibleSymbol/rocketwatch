@@ -158,7 +158,7 @@ class Governance(StatusPlugin):
 
     @hybrid_command()
     async def governance_digest(self, ctx: Context) -> None:
-        """Get a summary of current activity in protocol governance"""
+        """Get a summary of recent activity in protocol governance"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         embed = await self.get_digest()
         await ctx.send(embed=embed)

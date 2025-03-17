@@ -160,7 +160,8 @@ class EventCore(commands.Cog):
                     "block_number": event.block_number,
                     "score": event.get_score(),
                     "time_seen": datetime.now(),
-                    "attachment": pickle.dumps(event.attachment) if event.attachment else None,
+                    "image": pickle.dumps(event.image) if event.image else None,
+                    "thumbnail": pickle.dumps(event.thumbnail) if event.thumbnail else None,
                     "channel_id": channel_id,
                     "message_id": None
                 })
@@ -200,23 +201,27 @@ class EventCore(commands.Cog):
             log.debug(f"Found {len(db_events)} events for channel {channel_id}.")
             channel = await self.bot.get_or_fetch_channel(channel_id)
 
-            for state_message in await self.db.state_messages.find_all({"channel_id": channel_id}).to_list(None):
+            for state_message in await self.db.state_messages.find({"channel_id": channel_id}).to_list(None):
                 msg = await channel.fetch_message(state_message["message_id"])
                 await msg.delete()
                 await self.db.state_messages.delete_one({"channel_id": channel_id})
 
             for event_entry in db_events:
-                embed = try_load(event_entry, "embed")
-                attachment = try_load(event_entry, "attachment")
+                embed: Optional[Embed] = try_load(event_entry, "embed")
+                files = []
 
-                file = None
-                if embed and attachment:
-                    file_name = f"{event_entry['event_name']}.png"
-                    file = attachment.to_file(file_name)
+                if embed and (image := try_load(event_entry, "image")):
+                    file_name = f"{event_entry['event_name']}_img.png"
+                    files.append(image.to_file(file_name))
                     embed.set_image(url=f"attachment://{file_name}")
 
+                if embed and (thumbnail := try_load(event_entry, "thumbnail")):
+                    file_name = f"{event_entry['event_name']}_thumb.png"
+                    files.append(thumbnail.to_file(file_name))
+                    embed.set_thumbnail(url=f"attachment://{file_name}")
+
                 # post event message
-                msg = await channel.send(embed=embed, file=file)
+                msg = await channel.send(embed=embed, files=files)
                 # add message id to event
                 await self.db.event_queue.update_one(
                     {"_id": event_entry["_id"]},
