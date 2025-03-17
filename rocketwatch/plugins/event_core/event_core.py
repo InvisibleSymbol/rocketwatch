@@ -137,7 +137,7 @@ class EventCore(commands.Cog):
                 results = await asyncio.gather(*futures)
         except Exception as err:
             log.exception("Failed to gather events")
-            self.bot.report_error(err)
+            await self.bot.report_error(err)
             raise err
 
         channels = cfg["discord.channels"]
