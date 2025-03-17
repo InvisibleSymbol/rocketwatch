@@ -8,7 +8,7 @@ from web3.constants import HASH_ZERO
 
 from plugins.snapshot.snapshot import Snapshot
 from plugins.forum.forum import Forum
-from plugins.rpips.rpips import RPIPS
+from plugins.rpips.rpips import RPIPs
 
 from utils.status import StatusPlugin
 from utils.cfg import cfg
@@ -56,9 +56,9 @@ class Governance(StatusPlugin):
             await self.bot.report_error(e)
             return []
 
-    async def _get_draft_rpips(self) -> list[RPIPS.RPIP]:
+    async def _get_draft_rpips(self) -> list[RPIPs.RPIP]:
         try:
-            return [rpip for rpip in RPIPS.get_all_rpips() if (rpip.status == "Draft")][::-1]
+            return [rpip for rpip in RPIPs.get_all_rpips() if (rpip.status == "Draft")][::-1]
         except Exception as e:
             await self.bot.report_error(e)
             return []

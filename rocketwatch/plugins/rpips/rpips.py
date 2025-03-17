@@ -18,7 +18,7 @@ log = logging.getLogger("rpips")
 log.setLevel(cfg["log_level"])
 
 
-class RPIPS(commands.Cog):
+class RPIPs(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
 
@@ -30,7 +30,7 @@ class RPIPS(commands.Cog):
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
 
-        rpips_by_name: dict[str, RPIPS.RPIP] = {str(rpip): rpip for rpip in self.get_all_rpips()}
+        rpips_by_name: dict[str, RPIPs.RPIP] = {str(rpip): rpip for rpip in self.get_all_rpips()}
         if rpip := rpips_by_name.get(name):
             embed.title = name
             embed.url = rpip.url
@@ -102,19 +102,19 @@ class RPIPS(commands.Cog):
     @staticmethod
     @ttl_cache(ttl=60)
     @retry(tries=3, delay=1)
-    def get_all_rpips() -> list['RPIPS.RPIP']:
+    def get_all_rpips() -> list['RPIPs.RPIP']:
         html_doc = requests.get("https://rpips.rocketpool.net/all").text
         soup = BeautifulSoup(html_doc, "html.parser")
-        rpips: list['RPIPS.RPIP'] = []
+        rpips: list['RPIPs.RPIP'] = []
 
         for row in soup.table.find_all("tr", recursive=False):
             title = row.find("td", {"class": "title"}).text.strip()
             rpip_num = int(row.find("td", {"class": "rpipnum"}).text)
             status = row.find("td", {"class": "status"}).text.strip()
-            rpips.append(RPIPS.RPIP(title, rpip_num, status))
+            rpips.append(RPIPs.RPIP(title, rpip_num, status))
 
         return rpips
 
 
 async def setup(bot):
-    await bot.add_cog(RPIPS(bot))
+    await bot.add_cog(RPIPs(bot))
