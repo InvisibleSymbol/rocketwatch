@@ -1,3 +1,3 @@
 import config
 
-cfg = config.Config('main.cfg')
+cfg = config.Config("main.cfg")

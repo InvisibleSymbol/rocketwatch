@@ -75,8 +75,7 @@ class DepositPool(StatusPlugin):
     async def deposit_pool(self, ctx: Context):
         """Deposit Pool Stats"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        embed = self.get_deposit_pool_stats()
-        await ctx.send(embed=embed)
+        await ctx.send(embed=self.get_deposit_pool_stats())
 
     async def get_status(self) -> Embed:
         embed = self.get_deposit_pool_stats()

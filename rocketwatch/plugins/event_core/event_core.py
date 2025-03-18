@@ -297,7 +297,7 @@ class EventCore(commands.Cog):
         if embed:
             log.debug(f"Creating new status message for channel {target_channel}")
             channel = await self.bot.get_or_fetch_channel(target_channel_id)
-            msg = await channel.send(embed=embed)
+            msg = await channel.send(embed=embed, silent=True)
             await self.db.state_messages.insert_one({
                 "_id"       : target_channel,
                 "channel_id": target_channel_id,

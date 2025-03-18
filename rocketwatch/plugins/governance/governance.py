@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from discord.ext.commands import Context, hybrid_command
 from discord.utils import escape_markdown
@@ -68,7 +68,7 @@ class Governance(StatusPlugin):
             topics = await Forum.get_recent_topics()
             now = datetime.now().timestamp()
             # only get topics from within a week
-            topics = [t for t in topics if (now - t.last_post_at) <= (days * 24 * 60 * 60)]
+            topics = [t for t in topics if (now - t.last_post_at) <= timedelta(days=days).total_seconds()]
             return topics
         except Exception as e:
             await self.bot.report_error(e)
