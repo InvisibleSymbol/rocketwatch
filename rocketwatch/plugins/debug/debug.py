@@ -44,9 +44,12 @@ class Debug(Cog):
         self.initialized = True
 
         for contract in rp.addresses.copy():
-            self.contract_files.append(contract)
-            for function in rp.get_contract_by_name(contract).functions:
-                self.function_list.append(f"{contract}.{function}")
+            try:
+                for function in rp.get_contract_by_name(contract).functions:
+                    self.function_list.append(f"{contract}.{function}")
+                self.contract_files.append(contract)
+            except Exception:
+                log.exception(f"Could not get function list for {contract}")
 
     # --------- PRIVATE OWNER COMMANDS --------- #
 

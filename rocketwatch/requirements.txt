@@ -47,3 +47,4 @@ numpy==1.26.4
 beautifulsoup4==4.13.3
 eth-typing==2.2.1
 hexbytes==0.3.1
+eth-utils==1.10.0

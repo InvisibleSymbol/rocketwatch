@@ -57,27 +57,22 @@ class RocketWatch(Bot):
 
         log.info('Finished loading plugins')
 
-    async def _sync_commands(self):
-        log.info("Checking if plugins have changed")
-        plugins_hash = dirhash("plugins")
-        log.debug(f"Plugin folder hash: {plugins_hash}")
-
-        state_db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch.state
-        # check if hash in db matches
-        db_entry = await state_db.find_one({"_id": "plugins_hash"})
-        if db_entry and plugins_hash == db_entry.get("hash"):
-            log.info("Plugins have not changed!")
-        else:
-            log.info("Plugins have changed! Updating commands...")
-            await self.tree.sync()
-            await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-            await state_db.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
-            log.info("Commands updated!")
-
     async def setup_hook(self) -> None:
         await self._load_plugins()
-        if cfg["modules.enable_commands"]:
-            await self._sync_commands()
+        if cfg["modules.enable_commands"] is None:
+            log.info("Command sync behavior not specified, skipping")
+            return
+
+        owner_guild = Object(id=cfg["discord.owner.server_id"])
+        if not cfg["modules.enable_commands"]:
+            log.info("Commands disabled, clearing tree...")
+            self.tree.clear_commands(guild=None)
+
+        log.info("Syncing command tree...")
+        await self.tree.sync()
+        # use faster local sync
+        await self.tree.sync(guild=owner_guild)
+
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} ({self.user.id})")

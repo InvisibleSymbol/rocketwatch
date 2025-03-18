@@ -721,11 +721,14 @@ class UniswapV3(DEX):
 
             return balance_0, balance_1
 
-        def get_liquidity(self) -> Optional[Liquidity]:
+        def get_price(self) -> float:
             sqrt96x = self.contract.functions.slot0().call()[0]
+            return (sqrt96x ** 2) / (2 ** 192)
+
+        def get_liquidity(self) -> Optional[Liquidity]:
+            price = self.get_price()
             initial_liquidity = self.contract.functions.liquidity().call()
 
-            price = (sqrt96x / 2**96) ** 2
             calculated_tick = UniswapV3.price_to_tick(price)
             current_tick = int(calculated_tick)
             ticks = self.get_initialized_ticks(current_tick)

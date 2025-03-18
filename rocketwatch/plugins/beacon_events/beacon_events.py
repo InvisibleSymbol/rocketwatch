@@ -3,6 +3,7 @@ from typing import Optional, cast
 
 import pymongo
 import requests
+import eth_utils
 from eth_typing import BlockNumber
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -172,13 +173,9 @@ class BeaconEvents(EventPlugin):
             "timestamp": timestamp,
         }
 
-        if fee_recipient.lower() == rp.get_address_by_name("rocketSmoothingPool").lower():
+        if eth_utils.is_same_address(fee_recipient, rp.get_address_by_name("rocketSmoothingPool")):
             args["event_name"] = "mev_proposal_smoothie_event"
-            args["smoothie_amount"] = rp.call(
-                "multicall3.getEthBalance",
-                w3.toChecksumAddress(fee_recipient),
-                block=block_number
-            )
+            args["smoothie_amount"] = w3.eth.get_balance(fee_recipient, block=block_number)
         else:
             args["event_name"] = "mev_proposal_event"
 
