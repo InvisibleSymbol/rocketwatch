@@ -44,7 +44,7 @@ def get_duration(d1, d2):
 class RETHAPR(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()

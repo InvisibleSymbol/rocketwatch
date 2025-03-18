@@ -19,7 +19,7 @@ async def get_recent_account_transactions(address, block_count=44800):
     async with aiohttp.ClientSession() as session:
         resp = await session.get(ETHERSCAN_URL, params={"address"   : address,
                                                         "page"      : page,
-                                                        "apikey"    : cfg["rocketpool.etherscan_secret"],
+                                                        "apikey"    : cfg["execution_layer.etherscan_secret"],
                                                         "module"    : "account",
                                                         "action"    : "txlist",
                                                         "sort"      : "desc",

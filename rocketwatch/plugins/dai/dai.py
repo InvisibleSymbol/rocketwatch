@@ -24,7 +24,7 @@ class MakerAPI:
         self.password = cfg["makerdao.password"]
         self.email = cfg["makerdao.email"]
         self.api_url = cfg["makerdao.api"]
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.col = self.db["makerdao_api_tokens"]
         self.initialized = False
 

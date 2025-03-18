@@ -33,7 +33,7 @@ log.setLevel(cfg["log_level"])
 class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=2))
-        client = MongoClient(cfg["mongodb_uri"]).rocketwatch
+        client = MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.proposal_db = client.snapshot_proposals
         self.vote_db = client.snapshot_votes
 

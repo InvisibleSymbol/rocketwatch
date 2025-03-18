@@ -120,7 +120,7 @@ class Proposals(commands.Cog):
         self.rocketscan_proposals_url = "https://rocketscan.io/api/mainnet/beacon/blocks/all"
         self.last_chore_run = 0
         # connect to local mongodb
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.created_view = False
 
     async def create_minipool_proposal_view(self):

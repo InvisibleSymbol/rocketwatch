@@ -30,7 +30,7 @@ log.setLevel(cfg["log_level"])
 class Debug(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
         self.initialized = False
         self.contract_files = []
         self.function_list = []

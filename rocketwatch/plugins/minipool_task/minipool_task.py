@@ -4,8 +4,8 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-import cronitor
-import pymongo
+from cronitor import Monitor
+from pymongo import MongoClient
 from discord.ext import commands, tasks
 from requests.exceptions import HTTPError
 
@@ -22,9 +22,9 @@ log.setLevel(cfg["log_level"])
 class MinipoolTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-        self.monitor = cronitor.Monitor('gather-minipools', api_key=cfg["cronitor_secret"])
+        self.monitor = Monitor('gather-minipools', api_key=cfg["other.cronitor_secret"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()

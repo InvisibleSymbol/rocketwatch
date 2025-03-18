@@ -25,7 +25,7 @@ log.setLevel(cfg["log_level"])
 class BeaconEvents(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.finality_delay_threshold = 3
 
     def _get_new_events(self) -> list[Event]:
@@ -135,8 +135,11 @@ class BeaconEvents(EventPlugin):
         block_number = cast(BlockNumber, int(payload["block_number"]))
 
         # fetch from beaconcha.in because beacon node is unaware of MEV bribes
-        api_key = cfg["beaconchain_explorer"]["api_key"]
-        endpoint = f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{block_number}"
+        if not (api_key := cfg["consensus_layer.beaconcha_secret"]):
+            log.warning(f"Missing beaconcha.in API key")
+            return None
+
+        endpoint = f"https://beaconcha.in/api/v1/execution/block/{block_number}"
         response = requests.get(endpoint, headers={"apikey": api_key})
 
         if response.status_code != 200:

@@ -21,7 +21,7 @@ log.setLevel(cfg["log_level"])
 class Constellation(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     async def _fetch_num_operators(self) -> int:
         current_block = w3.eth.get_block_number()

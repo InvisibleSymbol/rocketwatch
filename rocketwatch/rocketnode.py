@@ -2,10 +2,10 @@ import asyncio
 import logging
 import time
 
-import cronitor
 import pymongo
 import schedule
 from multicall import Call
+from cronitor import Monitor
 from pymongo import UpdateOne, UpdateMany
 
 from utils import solidity
@@ -43,8 +43,8 @@ def is_true(_, b):
 class Task:
     def __init__(self):
         self.event_loop = None
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
-        self.monitor = cronitor.Monitor('rocketnode-task', api_key=cfg["cronitor_secret"])
+        self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
+        self.monitor = Monitor('rocketnode-task', api_key=cfg["other.cronitor_secret"])
         self.batch_size = 10_000
 
     @timerun

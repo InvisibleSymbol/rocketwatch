@@ -23,7 +23,7 @@ p = inflect.engine()
 class Liquidity(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def withdrawable_rpl(self,

@@ -51,7 +51,7 @@ def split_rewards_logic(balance, node_share, commission, force_base=False):
 class TVL(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     @describe(show_all="Also show entries with 0 value")

@@ -89,7 +89,7 @@ def get_pdao_delegates() -> dict[str, str]:
 
 
 def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
-    url = f"{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
+    url = f"{cfg['execution_layer.explorer']}/search?q={target}"
     if w3.isAddress(target):
         # sanitize address
         target = w3.toChecksumAddress(target)
@@ -147,7 +147,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
             if (
                     not name
                     and w3.keccak(text=code.hex()).hex()
-                    in cfg["mev.hashes"]
+                    in cfg["other.mev_hashes"]
             ):
                 name = "MEV Bot Contract"
             if not name:
@@ -331,7 +331,7 @@ def assemble(args) -> Embed:
 
     if "epoch" in args:
         e.add_field(name="Epoch",
-                    value=f"[{args.epoch}](https://{cfg['rocketpool']['consensus_layer']['explorer']}/epoch/{args.epoch})")
+                    value=f"[{args.epoch}](https://{cfg['consensus_layer.explorer']}/epoch/{args.epoch})")
 
     if "timezone" in args:
         e.add_field(name="Timezone",
@@ -451,12 +451,12 @@ def assemble(args) -> Embed:
                     value=v)
 
     # show block number
-    el_explorer = cfg["rocketpool.execution_layer.explorer"]
+    el_explorer = cfg["execution_layer.explorer"]
     if "blockNumber" in args:
         e.add_field(name="Block Number",
                     value=f"[{args.blockNumber}]({el_explorer}/block/{args.blockNumber})")
 
-    cl_explorer = cfg["rocketpool.consensus_layer.explorer"]
+    cl_explorer = cfg["consensus_layer.explorer"]
     if "slot" in args:
         e.add_field(name="Slot",
                     value=f"[{args.slot}]({cl_explorer}/slot/{args.slot})")

@@ -184,7 +184,7 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
 class SupportGlobal(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @app_commands.command(name="use")
     async def _use_1(self, interaction: Interaction, name: str, mention: User | None):
@@ -219,7 +219,7 @@ class SupportUtils(GroupCog, name="support"):
 
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.ctx_menu = app_commands.ContextMenu(
             name='New Support Thread',
             callback=self.my_cool_context_menu,

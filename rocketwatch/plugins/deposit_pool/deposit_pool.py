@@ -21,7 +21,7 @@ log.setLevel(cfg["log_level"])
 class DepositPool(StatusPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     @staticmethod
     def get_deposit_pool_stats() -> Embed:

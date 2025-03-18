@@ -110,7 +110,7 @@ class PoapSignatureModal(ui.Modal, title='Enable POAP Automatic Claim'):
 class Poap(commands.GroupCog, name="poap-autoclaim"):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.cached_commands = None
         self.session_headers = {
             "user-agent"  : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
