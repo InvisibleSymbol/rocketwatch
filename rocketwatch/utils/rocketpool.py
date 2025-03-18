@@ -16,6 +16,7 @@ from utils.cfg import cfg
 from utils.readable import decode_abi
 from utils.shared_w3 import w3, mainnet_w3, historical_w3
 from utils.time_debug import timerun
+from utils.liquidity import UniswapV3
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
@@ -246,11 +247,9 @@ class RocketPool:
         }
 
     @ttl_cache(ttl=60)
-    def get_dai_eth_price(self):
+    def get_dai_eth_price(self) -> float:
         pool_address = self.get_address_by_name("DAIETH_UniV3")
-        pool_contract = self.assemble_contract("UniswapV3Pool", pool_address, mainnet=True)
-        sqrt_96x = pool_contract.functions.slot0().call()[0]
-        return (2 ** 192) / (sqrt_96x ** 2)
+        return 1 / UniswapV3.Pool(pool_address).get_price()
 
     @timerun
     def get_minipool_count_per_status(self):
