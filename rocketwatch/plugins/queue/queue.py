@@ -25,7 +25,7 @@ class Queue(commands.Cog):
 
         embed = Embed(title="Minipool Queue")
 
-        mp_count, queue = rp.get_minipools(limit=limit)["variable"]
+        mp_count, queue = rp.get_minipools(limit=limit)
         if not queue:
             embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
             return embed
