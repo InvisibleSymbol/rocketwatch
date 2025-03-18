@@ -34,13 +34,13 @@ class About(commands.Cog):
         g = self.bot.guilds
         code_time = None
 
-        if cfg.get("wakatime.secret"):
+        if api_key := cfg.get("other.wakatime_secret"):
             try:
                 code_time = requests.get(
                     "https://wakatime.com/api/v1/users/current/all_time_since_today",
                      params={
                          "project": "rocketwatch",
-                         "api_key": cfg["wakatime.secret"]
+                         "api_key": api_key
                      }
                 ).json()["data"]["text"]
             except Exception as err:

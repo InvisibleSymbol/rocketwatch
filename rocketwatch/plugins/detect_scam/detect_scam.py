@@ -33,7 +33,7 @@ def get_text_of_message(message):
 class DetectScam(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.reported_ids = set()
         self.report_lock = asyncio.Lock()
         self.reaction_lock = asyncio.Lock()

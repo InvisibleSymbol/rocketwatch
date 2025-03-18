@@ -1,10 +1,49 @@
 log_level: `logging:DEBUG`
+discord: {
+    secret: ""
+    owner: {
+        user_id: -1
+        server_id: -1
+    },
+    guilds: [-1]
+    channels: {
+        default: -1
+        dao: -1
+        errors: -1
+  }
+}
+execution_layer: {
+    explorer: "https://etherscan.io"
+    endpoint: {
+        current: "http://node1:8545"
+        mainnet: "http://node1:8545"
+        archive: "http://node1:8545"
+    }
+    etherscan_secret: ""
+}
+consensus_layer: {
+    explorer: "https://beaconcha.in"
+    endpoints: [
+        "http://node1:5052",
+        "http://node2:5052"
+    ],
+    beaconcha_secret: ""
+}
+mongodb: {
+    uri: "mongodb://mongodb:27017"
+}
 rocketpool: {
+    chain: "mainnet"
     support: {
         role_ids: [708268619867619338]
         server_id: 544295541849456651
         channel_id: 912434217118498876
     }
+    dao_multisigs: [
+        "0x778c08fC151D7AB10042334B6A0929D4fa2983cA",
+        "0x6efD08303F42EDb68F2D6464BCdCA0824e1C813a",
+        "0xb867EA3bBC909954d737019FEf5AB25dFDb38CB9"
+    ]
     manual_addresses: {
         rocketStorage:          "0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46"
         rocketSignerRegistry:   "0xc1062617d10Ae99E09D941b60746182A87eAB38F"
@@ -20,47 +59,12 @@ rocketpool: {
         LUSD:                   "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
         BalancerVault:          "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
     }
-    chain: "mainnet"
-    execution_layer: {
-        explorer: "https://etherscan.io"
-        endpoint: {
-            current: "http://node1:8545"
-            mainnet: "http://node1:8545"
-        }
-    },
-    consensus_layer: {
-        explorer: "https://beaconcha.in",
-        endpoints: [
-            "http://node1:5052",
-            "http://node2:5052"
-        ]
-    }
-    etherscan_secret: "<secret>"
 }
-mongodb_uri = "mongodb://mongodb:27017"
-
-"mev.hashes": []
-"wakatime.secret" = "<secret>"
-cronitor_secret = "<secret>"
-
 modules: {
     include: []
     exclude: []
+    enable_commands: true
 }
-discord: {
-    secret: "secret"
-    owner: {
-        user_id: -1
-        server_id: -1
-    },
-    guilds: [-1]
-    channels: {
-        default: -1
-        dao: -1
-        errors: -1
-  }
-}
-enable_commands: true
 events: {
     lookback_distance: 8
     genesis: 13325233
@@ -78,4 +82,8 @@ events: {
         }
     }
 }
-
+other: {
+    mev_hashes: []
+    wakatime_secret: ""
+    cronitor_secret: ""
+}

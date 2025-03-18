@@ -29,7 +29,7 @@ class OpenAi(commands.Cog):
         )
         # log all possible engines
         self.tokenizer = tiktoken.encoding_for_model("gpt-4-turbo")
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @classmethod
     def message_to_text(cls, message, index):

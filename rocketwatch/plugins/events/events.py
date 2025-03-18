@@ -667,7 +667,7 @@ class Events(EventPlugin):
         if "transfer_event" in event_name:
             token_prefix = event_name.split("_", 1)[0]
             args.amount = args.value / 10**18
-            if args["from"] in cfg["dao_multsigs"]:
+            if args["from"] in cfg["rocketpool.dao_multsigs"]:
                 event_name = "pdao_erc20_transfer_event"
                 token_contract = rp.assemble_contract(name="ERC20", address=event["address"])
                 args.symbol = token_contract.functions.symbol().call()

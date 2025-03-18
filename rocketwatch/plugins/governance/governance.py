@@ -47,7 +47,7 @@ class Governance(StatusPlugin):
             if receipt.args.proposalID == proposal.id:
                 return receipt.transactionHash.hex()
 
-        return HASH_ZERO
+        return HexStr(HASH_ZERO)
 
     async def _get_active_snapshot_proposals(self) -> list[Snapshot.Proposal]:
         try:
@@ -63,12 +63,12 @@ class Governance(StatusPlugin):
             await self.bot.report_error(e)
             return []
 
-    async def _get_latest_forum_topics(self) -> list[Forum.Topic]:
+    async def _get_latest_forum_topics(self, days: int) -> list[Forum.Topic]:
         try:
             topics = await Forum.get_recent_topics()
             now = datetime.now().timestamp()
             # only get topics from within a week
-            topics = [t for t in topics if (now - t.last_post_at) <= (7 * 24 * 60 * 60)]
+            topics = [t for t in topics if (now - t.last_post_at) <= (days * 24 * 60 * 60)]
             return topics
         except Exception as e:
             await self.bot.report_error(e)
@@ -79,8 +79,8 @@ class Governance(StatusPlugin):
 
         def sanitize(text: str, max_length=50) -> str:
             text = text.strip()
-            text = text.replace("https://", "")
             text = text.replace("http://", "")
+            text = text.replace("https://", "")
             text = escape_markdown(text)
             if len(text) > max_length:
                 text = text[:(max_length - 1)] + "…"
@@ -101,7 +101,7 @@ class Governance(StatusPlugin):
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
                 tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
-                url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
+                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
         if snapshot_proposals:
@@ -126,7 +126,7 @@ class Governance(StatusPlugin):
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
                 tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
-                url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
+                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
         # --------- SECURITY COUNCIL --------- #
@@ -139,14 +139,14 @@ class Governance(StatusPlugin):
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
                 tx_hash = self._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
-                url = f"{cfg['rocketpool.execution_layer.explorer']}/tx/{tx_hash}"
+                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
         # --------- DAO FORUM --------- #
 
-        if topics := await self._get_latest_forum_topics():
+        if topics := await self._get_latest_forum_topics(days=7):
             embed.description += "### Forum\n"
-            embed.description += "- **Recently active topics**\n"
+            embed.description += "- **Recently active topics (7d)**\n"
             for i, topic in enumerate(topics[:10], start=1):
                 title = sanitize(topic.title)
                 embed.description += f"  {i}. [{title}]({topic.url})\n"

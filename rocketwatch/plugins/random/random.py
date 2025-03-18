@@ -29,7 +29,7 @@ log.setLevel(cfg["log_level"])
 class Random(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def dice(self, ctx: Context, dice_string: str = "1d6"):
@@ -93,7 +93,7 @@ class Random(commands.Cog):
             if "address" not in entry:
                 description += f" {entry['name']}"
             else:
-                url = cfg["rocketpool.execution_layer.explorer"]
+                url = cfg["execution_layer.explorer"]
                 if not entry["name"]:
                     entry["name"] = s_hex(entry["address"])
                 target = f"[{entry['name']}]({url}/search?q={entry['address']})"

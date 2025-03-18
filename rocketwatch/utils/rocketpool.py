@@ -247,9 +247,10 @@ class RocketPool:
 
     @ttl_cache(ttl=60)
     def get_dai_eth_price(self):
-        data = self.call("DAIETH_univ3.slot0", mainnet=True)
-        value_dai = data[0] ** 2 / 2 ** 192
-        return 1 / value_dai
+        pool_address = self.get_address_by_name("DAIETH_UniV3")
+        pool_contract = self.assemble_contract("UniswapV3Pool", pool_address, mainnet=True)
+        sqrt_96x = pool_contract.functions.slot0().call()[0]
+        return (2 ** 192) / (sqrt_96x ** 2)
 
     @timerun
     def get_minipool_count_per_status(self):

@@ -6,11 +6,11 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from enum import Enum
-from functools import partial, cache
+from functools import partial
 from typing import Optional, cast, Any
 
 import pymongo
-import cronitor
+from cronitor import Monitor
 from discord.ext import commands, tasks
 from eth_typing import BlockIdentifier, BlockNumber
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -39,10 +39,10 @@ class EventCore(commands.Cog):
         self.bot = bot
         self.state = self.State.OK
         self.channels = cfg["discord.channels"]
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
         self.head_block: BlockIdentifier = cfg["events.genesis"]
         self.block_batch_size = cfg["events.block_batch_size"]
-        self.monitor = cronitor.Monitor("gather-new-events", api_key=cfg["cronitor_secret"])
+        self.monitor = Monitor("gather-new-events", api_key=cfg["other.cronitor_secret"])
         self.loop.start()
 
     def cog_unload(self) -> None:

@@ -62,7 +62,7 @@ class RocketWatch(Bot):
         plugins_hash = dirhash("plugins")
         log.debug(f"Plugin folder hash: {plugins_hash}")
 
-        state_db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch.state
+        state_db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch.state
         # check if hash in db matches
         db_entry = await state_db.find_one({"_id": "plugins_hash"})
         if db_entry and plugins_hash == db_entry.get("hash"):
@@ -76,7 +76,7 @@ class RocketWatch(Bot):
 
     async def setup_hook(self) -> None:
         await self._load_plugins()
-        if cfg["enable_commands"]:
+        if cfg["modules.enable_commands"]:
             await self._sync_commands()
 
     async def on_ready(self):
