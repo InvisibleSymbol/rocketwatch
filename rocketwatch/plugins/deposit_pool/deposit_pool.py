@@ -42,10 +42,10 @@ class DepositPool(StatusPlugin):
         else:
             fill_perc = dp_balance / deposit_cap
             free_capacity = solidity.to_float(multicall["getMaximumDepositAmount"])
-            dp_status = f"{fill_perc:.2%} full, enough space for **{free_capacity:.2f}** more ETH."
+            dp_status = f"{fill_perc:.2%} full, enough space for **{free_capacity:,.2f}** more ETH."
 
         embed = Embed(title="Deposit Pool Stats")
-        embed.add_field(name="Current Size", value=f"{dp_balance:.2f} ETH")
+        embed.add_field(name="Current Size", value=f"{dp_balance:,.2f} ETH")
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
@@ -53,13 +53,13 @@ class DepositPool(StatusPlugin):
         if queue_length > 0:
             embed.description = Queue.get_minipool_queue(limit=5).description
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
-            embed.description += f"\nNeed **{queue_capacity:.2f}** more ETH to dequeue all minipools."
+            embed.description += f"\nNeed **{queue_capacity:,.2f}** more ETH to dequeue all minipools."
         else:
             lines = []
-            if (num_leb8 := dp_balance // 24) > 0:
-                lines.append(f"**`{num_leb8:>4.0f}`** 8 ETH minipools (24 ETH from DP)")
-            if (num_credit := dp_balance // 32) > 0:
-                lines.append(f"**`{num_credit:>4.0f}`** credit minipools (32 ETH from DP)")
+            if (num_leb8 := int(dp_balance // 24)) > 0:
+                lines.append(f"**`{num_leb8:>4}`** 8 ETH minipools (24 ETH from DP)")
+            if (num_credit := int(dp_balance // 32)) > 0:
+                lines.append(f"**`{num_credit:>4}`** credit minipools (32 ETH from DP)")
 
             if lines:
                 embed.add_field(name="Enough For", value="\n".join(lines), inline=False)
