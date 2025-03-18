@@ -6,6 +6,7 @@ from pathlib import Path
 from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
+from eth_typing import ChecksumAddress
 from multicall import Call
 from multicall import Multicall
 from web3.exceptions import ContractLogicError
@@ -16,7 +17,6 @@ from utils.cfg import cfg
 from utils.readable import decode_abi
 from utils.shared_w3 import w3, mainnet_w3, historical_w3
 from utils.time_debug import timerun
-from utils.liquidity import UniswapV3
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
@@ -231,23 +231,18 @@ class RocketPool:
         percentage = (value / 18_000_000) * 100
         return round(percentage, 2)
 
-    def get_minipools_by_type(self, minipool_type, limit=10):
-        key = w3.soliditySha3(["string"], [minipool_type])
+    def get_minipools(self, limit=10) -> tuple[int, list[ChecksumAddress]]:
+        key = w3.soliditySha3(["string"], ["minipools.available.variable"])
         cap = self.call("addressQueueStorage.getLength", key)
         limit = min(cap, limit)
         results = [
             self.call("addressQueueStorage.getItem", key, i) for i in range(limit)
         ]
-
         return cap, results
-
-    def get_minipools(self, limit=10):
-        return {
-            "variable": self.get_minipools_by_type("minipools.available.variable", limit)
-        }
 
     @ttl_cache(ttl=60)
     def get_dai_eth_price(self) -> float:
+        from utils.liquidity import UniswapV3
         pool_address = self.get_address_by_name("DAIETH_UniV3")
         return 1 / UniswapV3.Pool(pool_address).get_price()
 
