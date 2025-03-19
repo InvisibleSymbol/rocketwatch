@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 import regex
 import requests
-import numpy as np
 import termplotlib as tpl
 from PIL.Image import Image
 from discord.ext.commands import Context, hybrid_command
@@ -478,7 +477,7 @@ class Snapshot(EventPlugin):
             fields=["id", "voter", "created", "vp", "choice", "reason"]
         )
         response: list[dict] = Snapshot._query_api(query)
-        return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
+        return [Snapshot.Vote(proposal=proposal, **d) for d in response]
 
     def _get_new_events(self) -> list[Event]:
         now = datetime.now()
