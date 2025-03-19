@@ -24,6 +24,9 @@ def safe_to_float(_, num: int):
     except Exception:
         return None
 
+def safe_to_hex(_, b: bytes):
+    return f"0x{b.hex()}" if b else None
+
 def safe_state_to_str(_, state: int):
     try:
         return solidity.mp_state_to_str(state)
@@ -83,8 +86,7 @@ class Task:
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         lambs = [
             lambda a: (a, rp.seth_sig(m.abi, "getNodeAddress"), [((a, "node_operator"), None)]),
-            lambda a: (mm.address, [rp.seth_sig(mm.abi, "getMinipoolPubkey"), a],
-                       [((a, "pubkey"), lambda _, b: f"0x{b.hex()}" if b else None)]),
+            lambda a: (mm.address, [rp.seth_sig(mm.abi, "getMinipoolPubkey"), a], [((a, "pubkey"), safe_to_hex)]),
         ]
         # get all minipool addresses from db that do not have a node operator assigned
         minipool_addresses = self.db.minipools_new.distinct("address", {"node_operator": {"$exists": False}})
