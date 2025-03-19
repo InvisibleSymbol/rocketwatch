@@ -52,7 +52,7 @@ class Random(commands.Cog):
         e.title = f"🎲 {dice_string}"
         if len(str(result)) >= 2000:
             e.description = "Result too long to display, attaching as file."
-            file = File(io.StringIO(str(result)), filename="dice_result.txt")
+            file = File(io.BytesIO(str(result).encode()), filename="dice_result.txt")
             await ctx.send(embed=e, file=file)
         else:
             e.description = f"Result: `{result}`"
@@ -60,15 +60,7 @@ class Random(commands.Cog):
 
     @hybrid_command()
     async def burn_reason(self, ctx: Context):
-        """Show the current burn reason"""
-        await self._burn_reason(ctx)
-
-    @hybrid_command()
-    async def br(self, ctx: Context):
-        """Show the current burn reason"""
-        await self._burn_reason(ctx)
-
-    async def _burn_reason(self, ctx: Context):
+        """Show the largest sources of burned ETH"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         url = "https://ultrasound.money/api/fees/grouped-analysis-1"
         # get data from url using aiohttp
@@ -172,8 +164,9 @@ class Random(commands.Cog):
         await ctx.send(embed=e)
         return
 
-    async def _smoothie(self, ctx: Context):
-        """Show smoothing pool information."""
+    @hybrid_command()
+    async def smoothie(self, ctx: Context):
+        """Show smoothing pool information"""
         try:
             rp.get_address_by_name("rocketSmoothingPool")
         except Exception as err:
@@ -285,27 +278,8 @@ class Random(commands.Cog):
         await ctx.send(embed=e)
 
     @hybrid_command()
-    async def smoothie(self, ctx: Context):
-        await self._smoothie(ctx)
-
-    @hybrid_command()
-    async def smoothing_pool(self, ctx: Context):
-        await self._smoothie(ctx)
-
-    @hybrid_command()
-    async def cow(self, ctx: Context, tnx: str):
-        # https://etherscan.io/tx/0x47d96c6310f08b473f2c9948d6fbeef1084f0b393c2263d2fc8d5dc624f97fe3
-        if "etherscan.io/tx/" not in tnx:
-            await ctx.send("nop", ephemeral=True)
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        e = Embed()
-        url = tnx.replace("etherscan.io", "explorer.cow.fi")
-        e.description = f"[cow explorer]({url})"
-        await ctx.send(embed=e)
-
-    @hybrid_command()
     async def odao_challenges(self, ctx: Context):
-        """Shows the current oDAO challenges."""
+        """Shows the current oDAO challenges"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         c = rp.get_contract_by_name("rocketDAONodeTrustedActions")
         # get challenges made

@@ -4,15 +4,19 @@ from datetime import datetime, timedelta
 import pymongo
 import requests
 from datetime import timezone
+
+from discord.ext.commands import Context
+from discord.ext.commands import hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 
 from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.embeds import assemble, prepare_args
+from utils.embeds import assemble, prepare_args, Embed
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.event import EventPlugin, Event
+from utils.visibility import is_hidden_weak
 
 log = logging.getLogger("cow_orders")
 log.setLevel(cfg["log_level"])
@@ -35,6 +39,17 @@ class CowOrders(EventPlugin):
             str(rp.get_address_by_name("rocketTokenRPL")).lower(),
             str(rp.get_address_by_name("rocketTokenRETH")).lower()
         ]
+
+    @hybrid_command()
+    async def cow(self, ctx: Context, tnx: str):
+        # https://etherscan.io/tx/0x47d96c6310f08b473f2c9948d6fbeef1084f0b393c2263d2fc8d5dc624f97fe3
+        if "etherscan.io/tx/" not in tnx:
+            await ctx.send("nop", ephemeral=True)
+        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        e = Embed()
+        url = tnx.replace("etherscan.io", "explorer.cow.fi")
+        e.description = f"[cow explorer]({url})"
+        await ctx.send(embed=e)
 
     def _get_new_events(self) -> list[Event]:
         if self.state == "RUNNING":
@@ -131,7 +146,6 @@ class CowOrders(EventPlugin):
         # generate payloads
         for order in cow_orders:
             data = aDict({})
-            token = None
 
             data["cow_uid"] = order["uid"]
             data["cow_owner"] = w3.toChecksumAddress(order["owner"])
@@ -175,7 +189,6 @@ class CowOrders(EventPlugin):
                 continue
 
             # request more data from the api
-            extra = None
             try:
                 t = requests.get(f"https://cow-proxy.invis.workers.dev/mainnet/api/v1/orders/{order['uid']}")
                 if t.status_code != 200:
@@ -206,7 +219,7 @@ class CowOrders(EventPlugin):
                 event_name=data["event_name"],
                 unique_id=f"cow_order_found_{order['uid']}"
             ))
-        # dont emit if the db collection is empty - this is to prevent the bot from spamming the channel with stale data
+        # don't emit if the db collection is empty - this is to prevent the bot from spamming the channel with stale data
         if not self.collection.count_documents({}):
             payload = []
 
