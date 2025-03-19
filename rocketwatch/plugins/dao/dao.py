@@ -53,13 +53,13 @@ class DAOCommand(Cog):
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
                         f"Ends <t:{proposal['end']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Active]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]
@@ -96,19 +96,19 @@ class DAOCommand(Cog):
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 1)\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
                         f"Next phase <t:{proposal['end_phase1']}:R>, voting ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase1]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Active (Phase 2)\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
                         f"Ends <t:{proposal['end_phase2']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase2]
                 ] + [
                     (
                         f"**Proposal #{proposal['id']}** - Succeeded (Not Yet Executed)\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
                         f"Expires <t:{proposal['expires']}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]

@@ -1,10 +1,12 @@
+from enum import Enum
 from io import BytesIO
-from typing import Optional
+from functools import cache
+from typing import Optional, Literal
 
-from PIL import ImageFont
-from PIL import Image as PillowImage
-from PIL.ImageDraw import ImageDraw
 from discord import File
+from PIL import ImageFont, Image as PillowImage
+from PIL.ImageDraw import ImageDraw
+
 
 Color = tuple[int, int, int]
 
@@ -18,54 +20,73 @@ class Image:
         buffer.seek(0)
         return File(buffer, name)
 
+
+class Font(str, Enum):
+    INTER = "Inter"
+
+
+class FontVariant(str, Enum):
+    REGULAR = "Regular"
+    BOLD = "Bold"
+
+
 class ImageCanvas(ImageDraw):
     # default color matches Discord Desktop dark mode Embed color (#2b2d31)
     def __init__(self, width: int, height: int, bg_color: Color = (43, 45, 49)):
         p_img = PillowImage.new('RGB', (width, height), color=bg_color)
         super().__init__(p_img)
         self.image = Image(p_img)
-        self._fonts_cache: dict[int, ImageFont] = {}
 
     def progress_bar(
             self,
-            xy: tuple[int, int],
-            size: tuple[int, int],
+            xy: tuple[float, float],
+            size: tuple[float, float],
             progress: float,
-            primary: Color = (211, 211, 211),
-            secondary : Color = (15, 15, 15)
+            fill_color: Color,
+            bg_color : Color = (0, 0, 0)
     ) -> None:
         x, y = xy
         height, width = size
-        # Draw the background
-        self.rectangle((x + (height / 2), y, x + width + (height / 2), y + height), fill=secondary, width=10)
-        self.ellipse((x + width, y, x + height + width, y + height), fill=secondary)
-        self.ellipse((x, y, x + height, y + height), fill=secondary)
-        width = int(width * progress)
-        # Draw the part of the progress bar that is actually filled
-        self.rectangle((x + (height / 2), y, x + width + (height / 2), y + height), fill=primary, width=10)
-        self.ellipse((x + width, y, x + height + width, y + height), fill=primary)
-        self.ellipse((x, y, x + height, y + height), fill=primary)
+        if width <= 2 * height:
+            raise ValueError("Progress bar width must be at least twice its height")
 
-    def _get_font(self, font_size: int) -> ImageFont:
-        if font_size not in self._fonts_cache:
-            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
-            self._fonts_cache[font_size] = font
-        return self._fonts_cache[font_size]
+        radius = height / 2
+        x0 = x + radius
+        x1 = x + width - radius
+
+        self.circle((x0, y + radius), radius, fill=bg_color)
+        if progress > 0:
+            self.circle((x0, y + radius), radius, fill=fill_color)
+
+        self.rectangle((x0, y, x1, y + height), fill=bg_color)
+        self.circle((x1, y + radius), radius, fill=bg_color)
+
+        x1 = x + round(progress * width) - radius
+        if x1 >= x0:
+            self.rectangle((x0, y, x1, y + height), fill=fill_color)
+        if progress == 1:
+            self.circle((x1, y + radius), radius, fill=fill_color)
+
+    @cache
+    def _get_font(self, name: str, variant: FontVariant, size: float) -> ImageFont:
+        return ImageFont.truetype(f"fonts/{name}-{variant}.ttf", size)
 
     def dynamic_text(
             self,
-            xy: tuple[int, int],
+            xy: tuple[float, float],
             text: str,
-            font_size: int,
-            color: Color = (211, 211, 211),
-            max_width: Optional[int] = None,
+            font_size: float,
+            font_name: Font = Font.INTER,
+            font_variant: FontVariant = FontVariant.REGULAR,
+            color: Color = (255, 255, 255),
+            max_width: Optional[float] = None,
             anchor: str = "lt"
-    ):
-        font = self._get_font(font_size)
+    ) -> None:
+        font = self._get_font(font_name, font_variant, font_size)
         if max_width is not None:
             # cut off the text if it's too long
-            while font.getbbox(text)[2] > max_width and text:
-                text = text[:-1]
+            while text and (font.getbbox(text)[2] > max_width):
                 # replace last character with an ellipsis
-                text = f"{text[:-1]}…"
+                text = f"{text[:-2]}…"
+
         self.text(xy, text, font=font, fill=color, anchor=anchor)
