@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import logging
 import math
+from typing import Optional, Callable, Literal
 
 import discord
 import humanize
@@ -88,8 +89,14 @@ def get_pdao_delegates() -> dict[str, str]:
         return {}
 
 
-def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
-    url = f"{cfg['execution_layer.explorer']}/search?q={target}"
+def el_explorer_url(
+        target: str,
+        name: str = "",
+        prefix: str | Literal[-1] = "",
+        name_fmt: Optional[Callable[[str], str]] = None,
+        block="latest"
+):
+    url = f"{cfg['execution_layer.explorer']}/address/{target}"
     if w3.isAddress(target):
         # sanitize address
         target = w3.toChecksumAddress(target)
@@ -174,8 +181,8 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
     if not name:
         # fall back to shortened address
         name = s_hex(target)
-    if make_code:
-        name = f"`{name}`"
+    if name_fmt:
+        name = name_fmt(name)
     if prefix == -1:
         prefix = ""
     return f"{prefix}[{name}]({url})"

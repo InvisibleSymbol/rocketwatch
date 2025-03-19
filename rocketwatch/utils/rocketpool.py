@@ -6,7 +6,6 @@ from pathlib import Path
 from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
-from eth_typing import ChecksumAddress
 from multicall import Call
 from multicall import Multicall
 from web3.exceptions import ContractLogicError
@@ -230,15 +229,6 @@ class RocketPool:
         value = solidity.to_float(self.call("rocketTokenRPL.totalSwappedRPL"))
         percentage = (value / 18_000_000) * 100
         return round(percentage, 2)
-
-    def get_minipools(self, limit=10) -> tuple[int, list[ChecksumAddress]]:
-        key = w3.soliditySha3(["string"], ["minipools.available.variable"])
-        cap = self.call("addressQueueStorage.getLength", key)
-        limit = min(cap, limit)
-        results = [
-            self.call("addressQueueStorage.getItem", key, i) for i in range(limit)
-        ]
-        return cap, results
 
     @ttl_cache(ttl=60)
     def get_dai_eth_price(self) -> float:

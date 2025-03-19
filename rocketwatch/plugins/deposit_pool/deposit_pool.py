@@ -1,6 +1,5 @@
 import logging
 
-import humanize
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -30,7 +29,7 @@ class DepositPool(StatusPlugin):
                 rp.get_contract_by_name("rocketDepositPool").functions.getBalance(),
                 rp.get_contract_by_name("rocketDAOProtocolSettingsDeposit").functions.getMaximumDepositPoolSize(),
                 rp.get_contract_by_name("rocketDepositPool").functions.getMaximumDepositAmount(),
-                rp.get_contract_by_name("rocketMinipoolQueue").functions.getTotalLength(),
+                rp.get_contract_by_name("rocketMinipoolQueue").functions.getLength(),
             ]).results
         }
 
@@ -42,18 +41,18 @@ class DepositPool(StatusPlugin):
         else:
             fill_perc = dp_balance / deposit_cap
             free_capacity = solidity.to_float(multicall["getMaximumDepositAmount"])
-            dp_status = f"{fill_perc:.2%} full, enough space for **{free_capacity:,.2f}** more ETH."
+            dp_status = f"Enough space for **{free_capacity:,.2f}** more ETH ({fill_perc:.2%} full)"
 
         embed = Embed(title="Deposit Pool Stats")
         embed.add_field(name="Current Size", value=f"{dp_balance:,.2f} ETH")
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
-        queue_length = multicall["getTotalLength"]
-        if queue_length > 0:
-            embed.description = Queue.get_minipool_queue(limit=5).description
+        if (queue_length := multicall["getLength"]) > 0:
+            embed.description = f"**Minipool Queue** ({queue_length})\n"
+            embed.description += Queue.get_minipool_queue(limit=5).description
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
-            embed.description += f"\nNeed **{queue_capacity:,.2f}** more ETH to dequeue all minipools."
+            embed.description += f"\nNeed **{queue_capacity:,.2f}** ETH to dequeue all minipools."
         else:
             lines = []
             if (num_leb8 := int(dp_balance // 24)) > 0:
@@ -65,41 +64,67 @@ class DepositPool(StatusPlugin):
                 embed.add_field(name="Enough For", value="\n".join(lines), inline=False)
 
         return embed
+    
+    @staticmethod
+    def get_contract_collateral_stats() -> Embed:
+        multicall: dict[str, int] = {
+            res.function_name: res.results[0] for res in rp.multicall.aggregate([
+                rp.get_contract_by_name("rocketTokenRETH").functions.getExchangeRate(),
+                rp.get_contract_by_name("rocketTokenRETH").functions.totalSupply(),
+                rp.get_contract_by_name("rocketTokenRETH").functions.getCollateralRate(),
+                rp.get_contract_by_name("rocketDAOProtocolSettingsNetwork").functions.getTargetRethCollateralRate(),
+            ]).results
+        }
 
-    @hybrid_command()
-    async def dp(self, ctx: Context):
-        """Deposit Pool Stats"""
-        await self.deposit_pool(ctx)
+        total_eth_in_reth: float = multicall["totalSupply"] * multicall["getExchangeRate"] / 10**36
+        collateral_rate: float = solidity.to_float(multicall["getCollateralRate"])
+        collateral_rate_target: float = solidity.to_float(multicall["getTargetRethCollateralRate"])
 
+        collateral_in_eth = total_eth_in_reth * collateral_rate
+        collateral_target_in_eth = total_eth_in_reth * collateral_rate_target
+        collateral_used = collateral_in_eth / collateral_target_in_eth
+
+        if collateral_in_eth >= 0.01:
+            description = (
+                f"**{collateral_in_eth:,.2f}** ETH of liquidity in the rETH contract\n"
+                f"**{collateral_used:.2%}** of the **{collateral_target_in_eth:,.2f}** ETH target"
+                f" ({collateral_rate:.2%}/{collateral_rate_target:.2%})"
+            )
+        else:
+            description = (
+                f"No liquidity in the rETH contract.\n"
+                f"Target set to **{collateral_target_in_eth:,.2f}** ETH"
+                f" ({collateral_rate_target:.2%} of supply)."
+            )
+
+        return Embed(title="rETH Extra Collateral", description=description)
+    
     @hybrid_command()
-    async def deposit_pool(self, ctx: Context):
-        """Deposit Pool Stats"""
+    async def deposit_pool(self, ctx: Context) -> None:
+        """Show the current deposit pool status"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
         await ctx.send(embed=self.get_deposit_pool_stats())
 
-    async def get_status(self) -> Embed:
-        embed = self.get_deposit_pool_stats()
-        embed.title = ":rocket: Live Deposit Pool Status"
-        return embed
-
     @hybrid_command()
-    async def reth_extra_collateral(self, ctx: Context):
+    async def reth_extra_collateral(self, ctx: Context) -> None:
+        """Show the amount of tokens held in the rETH contract for exit liquidity"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        await ctx.send(embed=self.get_contract_collateral_stats())
+        
+    async def get_status(self) -> Embed:
+        embed = Embed(title=":rocket: Live Deposit Status")
 
-        current_reth_value = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", rp.call("rocketTokenRETH.totalSupply")))
-        current_collateral_rate = solidity.to_float(rp.call("rocketTokenRETH.getCollateralRate"))
-        current_collateral_in_eth = current_reth_value * current_collateral_rate
-        collateral_rate_target = solidity.to_float(rp.call("rocketDAOProtocolSettingsNetwork.getTargetRethCollateralRate"))
-        collateral_target_in_eth = current_reth_value * collateral_rate_target
-        collateral_used = current_collateral_in_eth / collateral_target_in_eth
+        dp_embed = self.get_deposit_pool_stats()
+        embed.description = dp_embed.description
+        for field in dp_embed.fields:
+            if field.name == "Status":
+                field.name = "Deposits"
+            embed.add_field(name=field.name, value=field.value, inline=field.inline)
 
-        e = Embed()
-        e.title = "rETH Extra Collateral"
+        collateral_embed = self.get_contract_collateral_stats()
+        embed.add_field(name="Withdrawals", value=collateral_embed.description, inline=False)
 
-        e.description = f"Current Extra Collateral stored in the rETH Contract is **{humanize.intcomma(round(current_collateral_in_eth, 2))}** ETH\n" \
-                        f"That is **{collateral_used:.2%}** of the configured target of **{humanize.intcomma(round(collateral_target_in_eth, 2))}** ETH ({current_collateral_rate:.2%}/{collateral_rate_target:.2%})\n"
-
-        await ctx.send(embed=e)
+        return embed
 
     @hybrid_command()
     async def atlas_queue(self, ctx):
