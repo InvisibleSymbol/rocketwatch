@@ -41,7 +41,7 @@ class DepositPool(StatusPlugin):
         else:
             fill_perc = dp_balance / deposit_cap
             free_capacity = solidity.to_float(multicall["getMaximumDepositAmount"])
-            dp_status = f"Enough space for **{free_capacity:,.2f}** more ETH ({fill_perc:.2%} full)"
+            dp_status = f"Enough space for **{free_capacity:,.2f}** more ETH ({fill_perc:.2%} full)."
 
         embed = Embed(title="Deposit Pool Stats")
         embed.add_field(name="Current Size", value=f"{dp_balance:,.2f} ETH")
@@ -116,10 +116,19 @@ class DepositPool(StatusPlugin):
 
         dp_embed = self.get_deposit_pool_stats()
         embed.description = dp_embed.description
-        for field in dp_embed.fields:
-            if field.name == "Status":
-                field.name = "Deposits"
-            embed.add_field(name=field.name, value=field.value, inline=field.inline)
+        dp_fields = {field.name: field for field in dp_embed.fields}
+
+        embed.add_field(
+            name="DP Balance",
+            value=dp_fields["Current Size"].value,
+            inline=dp_fields["Current Size"].inline
+        )
+        embed.add_field(
+            name="Max DP Balance",
+            value=dp_fields["Maximum Size"].value,
+            inline=dp_fields["Maximum Size"].inline
+        )
+        embed.add_field(name="Deposits", value=dp_fields["Status"].value, inline=dp_fields["Status"].inline)
 
         collateral_embed = self.get_contract_collateral_stats()
         embed.add_field(name="Withdrawals", value=collateral_embed.description, inline=False)

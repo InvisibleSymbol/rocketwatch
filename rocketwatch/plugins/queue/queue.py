@@ -53,7 +53,7 @@ class Queue(commands.Cog):
         embed.description = ""
         for i, minipool in enumerate(queue[:limit]):
             mp_label = el_explorer_url(minipool, name_fmt=as_code, prefix=-1)
-            node_label = el_explorer_url(nodes[i], name_fmt=as_code)
+            node_label = el_explorer_url(nodes[i])
             embed.description += f"{i+1}. {mp_label} :construction_site: <t:{status_times[i]}:R> `by` {node_label}\n"
 
         if q_len > len(queue):
