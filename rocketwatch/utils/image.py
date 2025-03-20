@@ -1,7 +1,7 @@
 from enum import Enum
 from io import BytesIO
 from functools import cache
-from typing import Optional, Literal
+from typing import Optional
 
 from discord import File
 from PIL import ImageFont, Image as PillowImage
@@ -47,25 +47,27 @@ class ImageCanvas(ImageDraw):
     ) -> None:
         x, y = xy
         width, height = size
-        if width < 2 * height:
-            raise ValueError("Progress bar width must be at least twice its height")
+        if width <= height:
+            raise ValueError("Progress bar must be wider than it is tall")
 
         radius = height / 2
-        x0 = x + radius
-        x1 = x + width - radius
+        self.rounded_rectangle((x, y, x + width, y + height), radius, bg_color)
 
-        self.circle((x0, y + radius), radius, fill=bg_color)
-        if progress > 0:
-            self.circle((x0, y + radius), radius, fill=fill_color)
+        fill_width = progress * width
+        if fill_width > 0:
+            # left semicircle
+            fill_perc: float = min(1.0, fill_width / radius)
+            self.chord((x, y, x + 2 * radius, y + height), 180 - 90 * fill_perc, 180 + 90 * fill_perc, fill_color)
 
-        self.rectangle((x0, y, x1, y + height), fill=bg_color)
-        self.circle((x1, y + radius), radius, fill=bg_color)
+        if fill_width > radius:
+            # main bar
+            self.rectangle((x + radius, y, x + min(fill_width, width - radius), y + height), fill_color)
 
-        x1 = x + round(progress * width) - radius
-        if x1 >= x0:
-            self.rectangle((x0, y, x1, y + height), fill=fill_color)
-        if progress == 1:
-            self.circle((x1, y + radius), radius, fill=fill_color)
+        if fill_width > width - radius:
+            # right semicircle
+            x0 = x + width - 2 * radius
+            fill_perc: float = min(1.0, (fill_width - width + radius) / radius)
+            self.chord((x0, y, x + width, y + height), 90 - 90 * fill_perc, 270 + 90 * fill_perc, fill_color)
 
     @cache
     def _get_font(self, name: str, variant: FontVariant, size: float) -> ImageFont:
