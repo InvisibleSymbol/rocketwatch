@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from io import BytesIO
 from functools import cache
@@ -56,18 +57,19 @@ class ImageCanvas(ImageDraw):
         fill_width = progress * width
         if fill_width > 0:
             # left semicircle
-            fill_perc: float = min(1.0, fill_width / radius)
-            self.chord((x, y, x + 2 * radius, y + height), 180 - 90 * fill_perc, 180 + 90 * fill_perc, fill_color)
+            fill_perc = min(1.0, fill_width / radius)
+            angle = 90 * (1 + 2 * math.acos(fill_perc) / math.pi)
+            self.chord((x, y, x + 2 * radius, y + height), angle, 360 - angle, fill_color)
 
         if fill_width > radius:
             # main bar
             self.rectangle((x + radius, y, x + min(fill_width, width - radius), y + height), fill_color)
 
-        if fill_width > width - radius:
+        if fill_width > (width - radius):
             # right semicircle
-            x0 = x + width - 2 * radius
-            fill_perc: float = min(1.0, (fill_width - width + radius) / radius)
-            self.chord((x0, y, x + width, y + height), 90 - 90 * fill_perc, 270 + 90 * fill_perc, fill_color)
+            fill_perc = min(1.0, (fill_width - width + radius) / radius)
+            angle = 90 * (2 * math.acos(fill_perc) / math.pi)
+            self.chord((x + width - 2 * radius, y, x + width, y + height), angle, 360 - angle, fill_color)
 
     @cache
     def _get_font(self, name: str, variant: FontVariant, size: float) -> ImageFont:
