@@ -233,8 +233,8 @@ class Snapshot(EventPlugin):
         def create_image(self, *, include_title: bool) -> Image:
             pad_top, pad_bottom = 20, 20
             pad_left, pad_right = 20, 20
+            width = 800
             height = self.predict_render_height(include_title)
-            width = min(1200, max(800, self._TITLE_SIZE * len(self.title) * include_title // 2))
             canvas = ImageCanvas(width + pad_left + pad_right, height + pad_top + pad_bottom)
             self.render_to(canvas, width, pad_left, pad_top, include_title=include_title)
             return canvas.image
@@ -598,6 +598,9 @@ class Snapshot(EventPlugin):
         pad_top, pad_bottom = 20, 20
         pad_left, pad_right = 20, 20
 
+        proposal_width = 800
+        total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
+
         # could potentially be smarter about arranging proposals with different proportions
         total_height = v_spacing * (num_rows - 1)
         proposal_grid: list[list[Snapshot.Proposal]] = []
@@ -607,8 +610,6 @@ class Snapshot(EventPlugin):
             # row height is equal to height of its tallest proposal
             total_height += max(p.predict_render_height() for p in row)
 
-        proposal_width = 800
-        total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
         # make sure proportions don't become too skewed
         if total_width < total_height:
             proposal_width = (total_height - h_spacing * (num_cols - 1)) // num_cols
