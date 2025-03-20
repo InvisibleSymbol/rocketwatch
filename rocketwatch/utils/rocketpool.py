@@ -6,8 +6,7 @@ from pathlib import Path
 from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
-from multicall import Call
-from multicall import Multicall
+from multicall import Call, Multicall
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall as Web3Multicall
 
@@ -31,7 +30,7 @@ class RocketPool:
 
     def __init__(self):
         self.addresses = bidict()
-        self.multicall = None
+        self.multicall = Web3Multicall(w3.eth)
         self.flush()
 
     def flush(self):
@@ -40,20 +39,14 @@ class RocketPool:
         self.ABI_CACHE.clear()
         self.ADDRESS_CACHE.clear()
         self.addresses = bidict()
-        try:
-            # add multicall3 address
-            multicall_address = Multicall([], _w3=w3).multicall_address
-            self.addresses["multicall3"] = multicall_address
-            self.multicall = Web3Multicall(w3.eth, multicall_address)
-        except Exception as err:
-            log.error(f"Failed to initialize Web3Multicall: {err}")
-            self.multicall = None
         self._init_contract_addresses()
 
     def _init_contract_addresses(self) -> None:
         manual_addresses = cfg["rocketpool.manual_addresses"]
         for name, address in manual_addresses.items():
             self.addresses[name] = address
+
+        self.addresses["multicall3"] = self.multicall.address
 
         log.info("Indexing Rocket Pool contracts...")
         # generate list of all file names with the .sol extension from the rocketpool submodule
@@ -235,21 +228,6 @@ class RocketPool:
         from utils.liquidity import UniswapV3
         pool_address = self.get_address_by_name("DAIETH_UniV3")
         return 1 / UniswapV3.Pool(pool_address).get_price()
-
-    @timerun
-    def get_minipool_count_per_status(self):
-        offset, limit = 0, 10000
-        minipool_count_per_status = [0, 0, 0, 0, 0]
-        while True:
-            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
-            tmp = self.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
-            for i in range(len(tmp)):
-                minipool_count_per_status[i] += tmp[i]
-            if sum(tmp) < limit:
-                break
-            offset += limit
-        return dict(zip(["initialisedCount", "prelaunchCount", "stakingCount", "withdrawableCount", "dissolvedCount"],
-                        minipool_count_per_status))
 
 
 rp = RocketPool()

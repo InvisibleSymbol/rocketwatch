@@ -46,7 +46,7 @@ class ImageCanvas(ImageDraw):
             bg_color : Color = (0, 0, 0)
     ) -> None:
         x, y = xy
-        height, width = size
+        width, height = size
         if width < 2 * height:
             raise ValueError("Progress bar width must be at least twice its height")
 
