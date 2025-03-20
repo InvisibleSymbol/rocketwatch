@@ -125,7 +125,7 @@ class Snapshot(EventPlugin):
                 divisor = max(self.scores) if len(self.scores) >= 5 else sum(self.scores)
                 canvas.progress_bar(
                     (_x_offset, _y_offset + choice_height),
-                    (self._BAR_SIZE, width),
+                    (width, self._BAR_SIZE),
                     safe_div(_score, divisor),
                     fill_color=color
                 )
@@ -185,7 +185,7 @@ class Snapshot(EventPlugin):
             label_color = (0, 0, 0) if (quorum_perc >= 1) else (255, 255, 255)
             canvas.progress_bar(
                 (x_offset, y_offset + proposal_height),
-                (self._BAR_SIZE, width),
+                (width, self._BAR_SIZE),
                 min(quorum_perc, 1),
                 fill_color=pb_color
             )
