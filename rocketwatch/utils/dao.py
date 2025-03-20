@@ -8,12 +8,10 @@ from typing import Literal, cast
 
 import termplotlib as tpl
 from eth_typing import ChecksumAddress
-from discord.utils import escape_markdown
 
 from utils import solidity
 from utils.cfg import cfg
 from utils.rocketpool import rp
-
 
 log = logging.getLogger("dao")
 log.setLevel(cfg["log_level"])
@@ -129,36 +127,34 @@ class DefaultDAO(DAO):
 
         return proposals
 
-    @staticmethod
-    def fetch_proposal(proposal_id: int) -> Proposal:
-        proposal_contract = rp.get_contract_by_name("rocketDAOProposal")
+    def fetch_proposal(self, proposal_id: int) -> Proposal:
         # map results of functions calls to function name
-        metadata_calls: dict[str, str | bytes | int] = {
+        multicall: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([
-                proposal_contract.functions.getProposer(proposal_id),
-                proposal_contract.functions.getMessage(proposal_id),
-                proposal_contract.functions.getPayload(proposal_id),
-                proposal_contract.functions.getCreated(proposal_id),
-                proposal_contract.functions.getStart(proposal_id),
-                proposal_contract.functions.getEnd(proposal_id),
-                proposal_contract.functions.getExpires(proposal_id),
-                proposal_contract.functions.getVotesFor(proposal_id),
-                proposal_contract.functions.getVotesAgainst(proposal_id),
-                proposal_contract.functions.getVotesRequired(proposal_id)
+                self.proposal_contract.functions.getProposer(proposal_id),
+                self.proposal_contract.functions.getMessage(proposal_id),
+                self.proposal_contract.functions.getPayload(proposal_id),
+                self.proposal_contract.functions.getCreated(proposal_id),
+                self.proposal_contract.functions.getStart(proposal_id),
+                self.proposal_contract.functions.getEnd(proposal_id),
+                self.proposal_contract.functions.getExpires(proposal_id),
+                self.proposal_contract.functions.getVotesFor(proposal_id),
+                self.proposal_contract.functions.getVotesAgainst(proposal_id),
+                self.proposal_contract.functions.getVotesRequired(proposal_id)
             ]).results
         }
         return DefaultDAO.Proposal(
             id=proposal_id,
-            proposer=cast(ChecksumAddress, metadata_calls["getProposer"]),
-            message=metadata_calls["getMessage"],
-            payload=metadata_calls["getPayload"],
-            created=metadata_calls["getCreated"],
-            start=metadata_calls["getStart"],
-            end=metadata_calls["getEnd"],
-            expires=metadata_calls["getExpires"],
-            votes_for=solidity.to_int(metadata_calls["getVotesFor"]),
-            votes_against=solidity.to_int(metadata_calls["getVotesAgainst"]),
-            votes_required=solidity.to_float(metadata_calls["getVotesRequired"])
+            proposer=cast(ChecksumAddress, multicall["getProposer"]),
+            message=multicall["getMessage"],
+            payload=multicall["getPayload"],
+            created=multicall["getCreated"],
+            start=multicall["getStart"],
+            end=multicall["getEnd"],
+            expires=multicall["getExpires"],
+            votes_for=solidity.to_int(multicall["getVotesFor"]),
+            votes_against=solidity.to_int(multicall["getVotesAgainst"]),
+            votes_required=solidity.to_float(multicall["getVotesRequired"])
         )
 
     def _build_vote_graph(self, proposal: Proposal) -> str:
@@ -230,44 +226,42 @@ class ProtocolDAO(DAO):
         return proposals
 
 
-    @staticmethod
-    def fetch_proposal(proposal_id: int) -> Proposal:
-        proposal_contract = rp.get_contract_by_name("rocketDAOProtocolProposal")
+    def fetch_proposal(self, proposal_id: int) -> Proposal:
         # map results of functions calls to function name
-        proposal_data: dict[str, str | bytes | int] = {
+        multicall: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([
-                proposal_contract.functions.getProposer(proposal_id),
-                proposal_contract.functions.getMessage(proposal_id),
-                proposal_contract.functions.getPayload(proposal_id),
-                proposal_contract.functions.getCreated(proposal_id),
-                proposal_contract.functions.getStart(proposal_id),
-                proposal_contract.functions.getPhase1End(proposal_id),
-                proposal_contract.functions.getPhase2End(proposal_id),
-                proposal_contract.functions.getExpires(proposal_id),
-                proposal_contract.functions.getVotingPowerFor(proposal_id),
-                proposal_contract.functions.getVotingPowerAgainst(proposal_id),
-                proposal_contract.functions.getVotingPowerVeto(proposal_id),
-                proposal_contract.functions.getVotingPowerAbstained(proposal_id),
-                proposal_contract.functions.getVotingPowerRequired(proposal_id),
-                proposal_contract.functions.getVetoQuorum(proposal_id)
+                self.proposal_contract.functions.getProposer(proposal_id),
+                self.proposal_contract.functions.getMessage(proposal_id),
+                self.proposal_contract.functions.getPayload(proposal_id),
+                self.proposal_contract.functions.getCreated(proposal_id),
+                self.proposal_contract.functions.getStart(proposal_id),
+                self.proposal_contract.functions.getPhase1End(proposal_id),
+                self.proposal_contract.functions.getPhase2End(proposal_id),
+                self.proposal_contract.functions.getExpires(proposal_id),
+                self.proposal_contract.functions.getVotingPowerFor(proposal_id),
+                self.proposal_contract.functions.getVotingPowerAgainst(proposal_id),
+                self.proposal_contract.functions.getVotingPowerVeto(proposal_id),
+                self.proposal_contract.functions.getVotingPowerAbstained(proposal_id),
+                self.proposal_contract.functions.getVotingPowerRequired(proposal_id),
+                self.proposal_contract.functions.getVetoQuorum(proposal_id)
             ]).results
         }
         return ProtocolDAO.Proposal(
             id=proposal_id,
-            proposer=cast(ChecksumAddress, proposal_data["getProposer"]),
-            message=proposal_data["getMessage"],
-            payload=proposal_data["getPayload"],
-            created=proposal_data["getCreated"],
-            start=proposal_data["getStart"],
-            end_phase_1=proposal_data["getPhase1End"],
-            end_phase_2= proposal_data["getPhase2End"],
-            expires=proposal_data["getExpires"],
-            votes_for=solidity.to_float(proposal_data["getVotingPowerFor"]),
-            votes_against=solidity.to_float(proposal_data["getVotingPowerAgainst"]),
-            votes_veto=solidity.to_float(proposal_data["getVotingPowerVeto"]),
-            votes_abstain=solidity.to_float(proposal_data["getVotingPowerAbstained"]),
-            quorum=solidity.to_float(proposal_data["getVotingPowerRequired"]),
-            veto_quorum=solidity.to_float(proposal_data["getVetoQuorum"])
+            proposer=cast(ChecksumAddress, multicall["getProposer"]),
+            message=multicall["getMessage"],
+            payload=multicall["getPayload"],
+            created=multicall["getCreated"],
+            start=multicall["getStart"],
+            end_phase_1=multicall["getPhase1End"],
+            end_phase_2= multicall["getPhase2End"],
+            expires=multicall["getExpires"],
+            votes_for=solidity.to_float(multicall["getVotingPowerFor"]),
+            votes_against=solidity.to_float(multicall["getVotingPowerAgainst"]),
+            votes_veto=solidity.to_float(multicall["getVotingPowerVeto"]),
+            votes_abstain=solidity.to_float(multicall["getVotingPowerAbstained"]),
+            quorum=solidity.to_float(multicall["getVotingPowerRequired"]),
+            veto_quorum=solidity.to_float(multicall["getVetoQuorum"])
         )
 
     def _build_vote_graph(self, proposal: Proposal) -> str:
