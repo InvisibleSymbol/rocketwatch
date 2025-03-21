@@ -50,10 +50,24 @@ class RPIPs(commands.Cog):
         await ctx.send(embed=embed)
 
     class RPIP:
+        __slots__ = (
+            "title",
+            "number",
+            "status",
+            "type",
+            "authors",
+            "created",
+            "discussion",
+            "description"
+        )
+
         def __init__(self, title: str, number: int, status:str):
             self.title = title
             self.number = number
             self.status = status
+
+        def __str__(self) -> str:
+            return f"RPIP-{self.number}: {self.title}"
 
         @ttl_cache(ttl=300)
         @retry(tries=3, delay=1)
@@ -81,9 +95,6 @@ class RPIPs(commands.Cog):
         @property
         def url(self) -> str:
             return f"https://rpips.rocketpool.net/RPIPs/RPIP-{self.number}"
-
-        def __str__(self) -> str:
-            return f"RPIP-{self.number}: {self.title}"
 
         def __getattr__(self, key: str) -> Any:
             try:
