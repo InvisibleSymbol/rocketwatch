@@ -13,7 +13,7 @@ from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
-log = logging.getLogger("support-threads")
+log = logging.getLogger("support_utils")
 log.setLevel(cfg["log_level"])
 
 
