@@ -24,9 +24,7 @@ log.setLevel(cfg["log_level"])
 class ChatSummary(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.client = anthropic.AsyncAnthropic(
-            api_key=cfg["other.secrets.anthropic"],  # Ensure you have this in your configuration
-        )
+        self.client = anthropic.AsyncAnthropic(api_key=cfg["other.secrets.anthropic"])
         # log all possible engines
         self.tokenizer = tiktoken.encoding_for_model("gpt-4-turbo")
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
@@ -158,5 +156,5 @@ class ChatSummary(commands.Cog):
         return response, prompt, len(messages)
 
 
-async def setup(self):
-    await self.add_cog(ChatSummary(self))
+async def setup(bot):
+    await bot.add_cog(ChatSummary(bot))

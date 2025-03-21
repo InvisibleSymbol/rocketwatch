@@ -96,9 +96,10 @@ def el_explorer_url(
         name_fmt: Optional[Callable[[str], str]] = None,
         block="latest"
 ):
-    url = f"{cfg['execution_layer.explorer']}/address/{target}"
+
     if w3.isAddress(target):
         # sanitize address
+        url = f"{cfg['execution_layer.explorer']}/address/{target}"
         target = w3.toChecksumAddress(target)
 
         # rocketscan url stuff
@@ -177,6 +178,9 @@ def el_explorer_url(
                         log.warning(f"Contract {target} has a suspicious name: {n}")
                     else:
                         name = f"{discord.utils.remove_markdown(n, ignore_links=False)}*"
+    else:
+        # transaction_hash
+        url = f"{cfg['execution_layer.explorer']}/tx/{target}"
 
     if not name:
         # fall back to shortened address
@@ -494,7 +498,7 @@ def assemble(args) -> Embed:
     # show the transaction fees
     if "tnx_fee" in args:
         e.add_field(name="Transaction Fee",
-                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
+                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_usd} USD)",
                     inline=False)
 
     return e

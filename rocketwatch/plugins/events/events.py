@@ -116,7 +116,7 @@ class Events(EventPlugin):
         try:
             default_args = {
                 "tnx_fee": 0,
-                "tnx_fee_dai": 0
+                "tnx_fee_usd": 0
             }
             event_obj = aDict({
                 "event": event,
@@ -416,7 +416,15 @@ class Events(EventPlugin):
 
         # maybe it's in the transaction?
         if not pubkey:
-            pubkey = rp.get_pubkey_using_transaction(receipt)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                deposit_contract = rp.get_contract_by_name("casperDeposit")
+                processed_logs = deposit_contract.events.DepositEvent().processReceipt(receipt)
+
+            # attempt to retrieve the pubkey
+            if processed_logs:
+                deposit_event = processed_logs[0]
+                pubkey = deposit_event.args.pubkey.hex()
 
         if pubkey:
             event.args.pubkey = "0x" + pubkey
@@ -429,10 +437,6 @@ class Events(EventPlugin):
 
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
-
-        # and add the transaction fee
-        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
         return self.handle_event(event_name, event)
 
@@ -570,10 +574,10 @@ class Events(EventPlugin):
                 args.discountAmount = (1 - args.exchangeRate / solidity.to_float(args.marketExchangeRate)) * 100
 
         receipt = None
-        if "tnx_fee" not in args and cfg["rocketpool.chain"] == "mainnet":
+        if cfg["rocketpool.chain"] == "mainnet":
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-            args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
+            args.tnx_fee_usd = round(rp.get_eth_usdc_price() * args.tnx_fee, 2)
             args.caller = receipt["from"]
 
         # add transaction hash and block number to args

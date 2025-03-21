@@ -197,19 +197,6 @@ class RocketPool:
         log.debug(f"Calling {path} (block={block})")
         return self.get_function(path, *args, historical=block != "latest", address=address, mainnet=mainnet).call(block_identifier=block)
 
-    def get_pubkey_using_transaction(self, receipt):
-        # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            processed_logs = self.get_contract_by_name("casperDeposit").events.DepositEvent().processReceipt(receipt)
-
-        # attempt to retrieve the pubkey
-        if processed_logs:
-            deposit_event = processed_logs[0]
-            return deposit_event.args.pubkey.hex()
-
-        return None
-
     def get_annual_rpl_inflation(self):
         inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))
         if not inflation_per_interval:
@@ -224,10 +211,10 @@ class RocketPool:
         return round(percentage, 2)
 
     @ttl_cache(ttl=60)
-    def get_dai_eth_price(self) -> float:
+    def get_eth_usdc_price(self) -> float:
         from utils.liquidity import UniswapV3
-        pool_address = self.get_address_by_name("DAIETH_UniV3")
-        return 1 / UniswapV3.Pool(pool_address).get_price()
+        pool_address = self.get_address_by_name("UniV3_ETHUSDC")
+        return 1 / UniswapV3.Pool(pool_address).get_normalized_price()
 
 
 rp = RocketPool()
