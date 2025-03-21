@@ -24,7 +24,7 @@ class MinipoolTask(commands.Cog):
         self.bot = bot
         self.db = MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-        self.monitor = Monitor('gather-minipools', api_key=cfg["other.cronitor_secret"])
+        self.monitor = Monitor('gather-minipools', api_key=cfg["other.secrets.cronitor"])
 
         if not self.run_loop.is_running() and bot.is_ready():
             self.run_loop.start()

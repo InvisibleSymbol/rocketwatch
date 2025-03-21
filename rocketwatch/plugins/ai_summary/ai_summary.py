@@ -9,7 +9,7 @@ import tiktoken
 from discord import File, DeletedReferencedMessage
 from discord.channel import TextChannel
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import Context, is_owner
 from discord.ext.commands import hybrid_command
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -17,19 +17,19 @@ from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
-log = logging.getLogger("openai")
+log = logging.getLogger("ai_summary")
 log.setLevel(cfg["log_level"])
 
 
-class OpenAi(commands.Cog):
+class AISummary(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.client = anthropic.AsyncAnthropic(
-            api_key=cfg["anthropic.api_key"],  # Ensure you have this in your configuration
+            api_key=cfg["other.secrets.anthropic"],  # Ensure you have this in your configuration
         )
         # log all possible engines
         self.tokenizer = tiktoken.encoding_for_model("gpt-4-turbo")
-        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     @classmethod
     def message_to_text(cls, message, index):
@@ -58,6 +58,7 @@ class OpenAi(commands.Cog):
         return text
 
     @hybrid_command()
+    @is_owner()
     async def summarize_chat(self, ctx: Context):
         await ctx.defer(ephemeral=True)
         last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
@@ -158,4 +159,4 @@ class OpenAi(commands.Cog):
 
 
 async def setup(self):
-    await self.add_cog(OpenAi(self))
+    await self.add_cog(AISummary(self))

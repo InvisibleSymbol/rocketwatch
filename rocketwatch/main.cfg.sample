@@ -2,14 +2,14 @@ log_level: `logging:DEBUG`
 discord: {
     secret: ""
     owner: {
-        user_id: -1
+        user_id:   -1
         server_id: -1
     }
-    guilds: [-1]
+    guilds: []
     channels: {
         default: -1
-        dao: -1
-        errors: -1
+        dao:     -1
+        errors:  -1
   }
 }
 execution_layer: {
@@ -84,6 +84,9 @@ events: {
 }
 other: {
     mev_hashes: []
-    wakatime_secret: ""
-    cronitor_secret: ""
+    secrets: {
+        wakatime: ""
+        cronitor: ""
+        anthropic: ""
+    }
 }

@@ -34,7 +34,7 @@ class About(commands.Cog):
         g = self.bot.guilds
         code_time = None
 
-        if api_key := cfg.get("other.wakatime_secret"):
+        if api_key := cfg.get("other.secrets.wakatime"):
             try:
                 code_time = requests.get(
                     "https://wakatime.com/api/v1/users/current/all_time_since_today",
