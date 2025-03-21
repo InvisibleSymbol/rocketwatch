@@ -111,7 +111,7 @@ class DAOCommand(Cog):
             full: bool = False
     ) -> None:
         """
-        Show currently active on-chain votes
+        Show currently active on-chain proposals
         """
         await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 

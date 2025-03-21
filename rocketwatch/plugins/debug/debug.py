@@ -31,23 +31,21 @@ class Debug(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
-        self.initialized = False
-        self.contract_files = []
-        self.function_list = []
+        self.contract_names = []
+        self.function_names = []
 
     # --------- LISTENERS --------- #
 
     @Cog.listener()
     async def on_ready(self):
-        if self.initialized:
+        if self.function_names:
             return
-        self.initialized = True
 
         for contract in rp.addresses.copy():
             try:
                 for function in rp.get_contract_by_name(contract).functions:
-                    self.function_list.append(f"{contract}.{function}")
-                self.contract_files.append(contract)
+                    self.function_names.append(f"{contract}.{function}")
+                self.contract_names.append(contract)
             except Exception:
                 log.exception(f"Could not get function list for {contract}")
 
@@ -441,11 +439,11 @@ class Debug(Cog):
     @get_abi_of_contract.autocomplete("contract")
     @decode_tnx.autocomplete("contract_name")
     async def match_contract_names(self, ctx: Context, current: str):
-        return [Choice(name=name, value=name) for name in self.contract_files if current.lower() in name.lower()][:25]
+        return [Choice(name=name, value=name) for name in self.contract_names if current.lower() in name.lower()][:25]
 
     @call.autocomplete("function")
     async def match_function_name(self, ctx: Context, current: str):
-        return [Choice(name=name, value=name) for name in self.function_list if current.lower() in name.lower()][:25]
+        return [Choice(name=name, value=name) for name in self.function_names if current.lower() in name.lower()][:25]
 
 
 async def setup(bot):

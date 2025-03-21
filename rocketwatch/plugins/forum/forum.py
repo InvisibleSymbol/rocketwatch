@@ -122,7 +122,7 @@ class Forum(commands.Cog):
     async def top_forum_posts(
         self,
         ctx: Context,
-        period: Period = "monthly",
+        period: Period = "monthly"
     ) -> None:
         """Get the most popular topics from the forum"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))

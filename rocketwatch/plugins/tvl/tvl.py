@@ -118,7 +118,7 @@ class TVL(commands.Cog):
         }
         # note: _value in each dict will store the final string that gets rendered in the render
 
-        eth_price = rp.get_eth_usdc_price()
+        eth_price = rp.get_eth_usd_price()
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
 

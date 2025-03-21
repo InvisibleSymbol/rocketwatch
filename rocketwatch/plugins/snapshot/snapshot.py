@@ -576,7 +576,7 @@ class Snapshot(EventPlugin):
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
-        """Show currently active Snapshot votes"""
+        """Show currently active Snapshot proposals"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         embed = Embed(title="Snapshot Proposals")

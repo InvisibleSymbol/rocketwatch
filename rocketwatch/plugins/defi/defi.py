@@ -49,7 +49,7 @@ class DeFi(commands.Cog):
             value=f"`{wsteth:,.2f} wstETH ({wsteth_s:.0%})`",
         )
         total_locked = reth_v + wsteth_v
-        total_locked_usd = total_locked * rp.get_eth_usdc_price()
+        total_locked_usd = total_locked * rp.get_eth_usd_price()
         e.add_field(
             name="Total Value Locked",
             value=f"`{total_locked:,.2f} ETH ({total_locked_usd:,.2f} USD)",
@@ -101,7 +101,7 @@ class DeFi(commands.Cog):
         reth_v = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", reth_r))
         wsteth_v = solidity.to_float(rp.call("wstETHToken.getStETHByWstETH", wsteth_r))
         yearn_locked = (reth_v + wsteth_v) * (rp.call("yearnPool.totalAssets") / rp.call("curvePool.totalSupply"))
-        yearn_locked_usd = yearn_locked * rp.get_eth_usdc_price()
+        yearn_locked_usd = yearn_locked * rp.get_eth_usd_price()
         e.add_field(
             name="Total Value Locked",
             value=f"`{yearn_locked:,.2f} ETH ({yearn_locked_usd:,.2f} USD)`",

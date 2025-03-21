@@ -5,8 +5,7 @@ import pymongo
 import requests
 from datetime import timezone
 
-from discord.ext.commands import Context
-from discord.ext.commands import hybrid_command
+from discord.ext.commands import Context, hybrid_command
 from web3.datastructures import MutableAttributeDict as aDict
 
 from rocketwatch import RocketWatch
@@ -140,8 +139,8 @@ class CowOrders(EventPlugin):
         # get rpl price in dai
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         reth_ratio = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
-        rpl_price = rpl_ratio * rp.get_eth_usdc_price()
-        reth_price = reth_ratio * rp.get_eth_usdc_price()
+        rpl_price = rpl_ratio * rp.get_eth_usd_price()
+        reth_price = reth_ratio * rp.get_eth_usd_price()
 
         # generate payloads
         for order in cow_orders:
