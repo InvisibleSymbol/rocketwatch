@@ -4,7 +4,7 @@ discord: {
     owner: {
         user_id: -1
         server_id: -1
-    },
+    }
     guilds: [-1]
     channels: {
         default: -1
@@ -62,7 +62,7 @@ rocketpool: {
 }
 modules: {
     include: []
-    exclude: []
+    exclude: ["sleep"]
     enable_commands: true
 }
 events: {
