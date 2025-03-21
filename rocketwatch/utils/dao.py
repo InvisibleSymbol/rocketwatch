@@ -166,7 +166,7 @@ class DefaultDAO(DAO):
         graph.barh(
             [votes_for, votes_against, max([votes_for, votes_against, votes_required])],
             ["For", "Against", ""],
-            max_width=20
+            max_width=12
         )
         graph_bars = graph.get_string().split("\n")
         quorum_pct = round(100 * max(votes_for, votes_against) / votes_required)
@@ -274,7 +274,7 @@ class ProtocolDAO(DAO):
                 round(max(proposal.votes_total, proposal.quorum))
             ],
             ["For", "Against", "Abstain", ""],
-            max_width=20
+            max_width=12
         )
         main_graph_repr = "\n".join(graph.get_string().split("\n")[:-1])
 
@@ -285,7 +285,7 @@ class ProtocolDAO(DAO):
                 round(max(proposal.votes_veto, proposal.veto_quorum)),
             ],
             [f"{'Veto' : <{len('Against')}}", ""],
-            max_width=20
+            max_width=12
         )
         veto_graph_bars = graph.get_string().split("\n")
         veto_graph_repr = f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏"

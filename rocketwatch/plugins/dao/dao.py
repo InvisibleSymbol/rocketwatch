@@ -76,7 +76,7 @@ class DAOCommand(Cog):
                 [
                     (
                         f"**Proposal #{proposal.id}** - Pending\n"
-                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=False)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=True)}```"
                         f"Starts <t:{proposal.start}:R>, ends <t:{proposal.end_phase_2}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
