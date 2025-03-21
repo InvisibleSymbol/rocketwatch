@@ -115,15 +115,18 @@ class DAOCommand(Cog):
         """
         await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 
-        if dao_name == "pDAO":
-            dao = ProtocolDAO()
-            embed = self.get_pdao_votes_embed(dao, full)
-        else:
-            dao = DefaultDAO({
-                "oDAO": "rocketDAONodeTrustedProposals",
-                "Security Council": "rocketDAOSecurityProposals"
-            }[dao_name])
-            embed = self.get_dao_votes_embed(dao, full)
+        match dao_name:
+            case "pDAO":
+                dao = ProtocolDAO()
+                embed = self.get_pdao_votes_embed(dao, full)
+            case "oDAO":
+                dao = DefaultDAO("rocketDAONodeTrustedProposals")
+                embed = self.get_dao_votes_embed(dao, full)
+            case "Security Council":
+                dao = DefaultDAO("rocketDAOSecurityProposals")
+                embed = self.get_dao_votes_embed(dao, full)
+            case _:
+                raise ValueError(f"Invalid DAO name: {dao_name}")
 
         await ctx.send(embed=embed)
 
