@@ -7,17 +7,16 @@ from datetime import datetime, timedelta
 import regex
 import requests
 import termplotlib as tpl
-from PIL.Image import Image
-from discord.ext.commands import Context, hybrid_command
+from web3.constants import ADDRESS_ZERO
 from eth_typing import ChecksumAddress, BlockNumber
 from graphql_query import Operation, Query, Argument
-from web3.constants import ADDRESS_ZERO
+from discord.ext.commands import Context, hybrid_command
 from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne, DESCENDING
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
-from utils.image import ImageCanvas, Color, FontVariant
+from utils.image import Image, ImageCanvas, Color, FontVariant
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.event import EventPlugin, Event
