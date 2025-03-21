@@ -118,7 +118,7 @@ class TVL(commands.Cog):
         }
         # note: _value in each dict will store the final string that gets rendered in the render
 
-        eth_price = rp.get_dai_eth_price()
+        eth_price = rp.get_eth_usdc_price()
         rpl_price = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
         rpl_address = rp.get_address_by_name("rocketTokenRPL")
 
@@ -446,12 +446,12 @@ class TVL(commands.Cog):
         set_val_of_branch(data["Total RPL Locked"], "RPL")
         # calculate total tvl
         total_tvl = data["Total ETH Locked"]["_val"] + (data["Total RPL Locked"]["_val"] * rpl_price)
-        dai_total_tvl = total_tvl * eth_price
+        usdc_total_tvl = total_tvl * eth_price
         data["_value"] = f"{total_tvl:,.2f} ETH"
         test = render_tree(data, "Total Locked Value", max_depth=0 if show_all else 2)
         # send embed with tvl
         e = Embed()
-        closer = f"or about {Style.BRIGHT}{humanize.intword(dai_total_tvl, format='%.3f')} DAI{Style.RESET_ALL}".rjust(max([len(line) for line in test.split("\n")])-1)
+        closer = f"or about {Style.BRIGHT}{humanize.intword(usdc_total_tvl, format='%.3f')} USD{Style.RESET_ALL}".rjust(max([len(line) for line in test.split("\n")])-1)
         e.description = f"```ansi\n{test}\n{closer}```"
         e.set_footer(text="\"that looks good to me\" - invis 2023")
         await ctx.send(embed=e)

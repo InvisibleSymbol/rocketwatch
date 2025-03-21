@@ -49,10 +49,10 @@ class DeFi(commands.Cog):
             value=f"`{wsteth:,.2f} wstETH ({wsteth_s:.0%})`",
         )
         total_locked = reth_v + wsteth_v
-        total_locked_usd = total_locked * rp.get_dai_eth_price()
+        total_locked_usd = total_locked * rp.get_eth_usdc_price()
         e.add_field(
             name="Total Value Locked",
-            value=f"`{total_locked:,.2f} ETH ({total_locked_usd:,.2f} DAI)`",
+            value=f"`{total_locked:,.2f} ETH ({total_locked_usd:,.2f} USD)",
             inline=False,
         )
         # rETH => wstETH premium
@@ -101,11 +101,11 @@ class DeFi(commands.Cog):
         reth_v = solidity.to_float(rp.call("rocketTokenRETH.getEthValue", reth_r))
         wsteth_v = solidity.to_float(rp.call("wstETHToken.getStETHByWstETH", wsteth_r))
         yearn_locked = (reth_v + wsteth_v) * (rp.call("yearnPool.totalAssets") / rp.call("curvePool.totalSupply"))
-        yearn_locked_usd = yearn_locked * rp.get_dai_eth_price()
+        yearn_locked_usd = yearn_locked * rp.get_eth_usdc_price()
         e.add_field(
             name="Total Value Locked",
-            value=f"`{yearn_locked:,.2f} ETH ({yearn_locked_usd:,.2f} DAI)`",
-            inline=False,
+            value=f"`{yearn_locked:,.2f} ETH ({yearn_locked_usd:,.2f} USD)`",
+            inline=False
         )
         token_name = rp.call("yearnPool.symbol")
         link = el_explorer_url(rp.get_address_by_name("yearnPool"), token_name)

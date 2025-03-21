@@ -725,6 +725,9 @@ class UniswapV3(DEX):
             sqrt96x = self.contract.functions.slot0().call()[0]
             return (sqrt96x ** 2) / (2 ** 192)
 
+        def get_normalized_price(self) -> float:
+            return self.get_price() * 10**(self.token_0.decimals - self.token_1.decimals)
+
         def get_liquidity(self) -> Optional[Liquidity]:
             price = self.get_price()
             initial_liquidity = self.contract.functions.liquidity().call()
