@@ -22,7 +22,7 @@ class DAOCommand(Cog):
 
     @staticmethod
     def get_dao_votes_embed(dao: DefaultDAO, full: bool) -> Embed:
-        current_proposals: dict[DefaultDAO.ProposalState, list[DefaultDAO.Proposal]] = {
+        current_proposals: dict[dao.ProposalState, list[dao.Proposal]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.Active: [],
             dao.ProposalState.Succeeded: [],
@@ -38,7 +38,7 @@ class DAOCommand(Cog):
                 [
                     (
                         f"**Proposal #{proposal.id}** - Pending\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full, include_votes=False)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=False)}```"
                         f"Starts <t:{proposal.start}:R>, ends <t:{proposal.end}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
@@ -59,7 +59,7 @@ class DAOCommand(Cog):
 
     @staticmethod
     def get_pdao_votes_embed(dao: ProtocolDAO, full: bool) -> Embed:
-        current_proposals: dict[ProtocolDAO.ProposalState, list[ProtocolDAO.Proposal]] = {
+        current_proposals: dict[dao.ProposalState, list[dao.Proposal]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.ActivePhase1: [],
             dao.ProposalState.ActivePhase2: [],
@@ -76,7 +76,7 @@ class DAOCommand(Cog):
                 [
                     (
                         f"**Proposal #{proposal.id}** - Pending\n"
-                        f"```{dao.build_proposal_body(proposal, include_payload=full, include_votes=False)}```"
+                        f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=False)}```"
                         f"Starts <t:{proposal.start}:R>, ends <t:{proposal.end_phase_2}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
@@ -102,16 +102,16 @@ class DAOCommand(Cog):
         )
 
     @hybrid_command()
-    @describe(dao_name="DAO to show votes for")
+    @describe(dao_name="DAO to show proposals for")
     @describe(full="show all information (e.g. payload)")
     async def dao_votes(
             self,
             ctx: Context,
             dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pDAO",
             full: bool = False
-    ):
+    ) -> None:
         """
-        Show currently active onchain votes
+        Show currently active on-chain votes
         """
         await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 

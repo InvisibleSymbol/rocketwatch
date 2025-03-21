@@ -633,7 +633,6 @@ class Snapshot(EventPlugin):
         file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
         await ctx.send(embed=embed, file=file)
-        return None
 
 
 async def setup(bot):
