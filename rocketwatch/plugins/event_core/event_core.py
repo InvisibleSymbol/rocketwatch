@@ -42,7 +42,7 @@ class EventCore(commands.Cog):
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
         self.head_block: BlockIdentifier = cfg["events.genesis"]
         self.block_batch_size = cfg["events.block_batch_size"]
-        self.monitor = Monitor("gather-new-events", api_key=cfg["other.cronitor_secret"])
+        self.monitor = Monitor("gather-new-events", api_key=cfg["other.secrets.cronitor"])
         self.loop.start()
 
     def cog_unload(self) -> None:

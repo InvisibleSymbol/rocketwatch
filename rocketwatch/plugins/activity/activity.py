@@ -14,7 +14,7 @@ log.setLevel(cfg["log_level"])
 class RichActivity(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.monitor = Monitor("update-activity", api_key=cfg["other.cronitor_secret"])
+        self.monitor = Monitor("update-activity", api_key=cfg["other.secrets.cronitor"])
         self.loop.start()
 
     def cog_unload(self):

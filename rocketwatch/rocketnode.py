@@ -47,7 +47,7 @@ class Task:
     def __init__(self):
         self.event_loop = None
         self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
-        self.monitor = Monitor('rocketnode-task', api_key=cfg["other.cronitor_secret"])
+        self.monitor = Monitor('rocketnode-task', api_key=cfg["other.secrets.cronitor"])
         self.batch_size = 10_000
 
     @timerun
