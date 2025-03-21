@@ -17,11 +17,11 @@ from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
-log = logging.getLogger("ai_summary")
+log = logging.getLogger("chat_summary")
 log.setLevel(cfg["log_level"])
 
 
-class AISummary(commands.Cog):
+class ChatSummary(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.client = anthropic.AsyncAnthropic(
@@ -159,4 +159,4 @@ class AISummary(commands.Cog):
 
 
 async def setup(self):
-    await self.add_cog(AISummary(self))
+    await self.add_cog(ChatSummary(self))
