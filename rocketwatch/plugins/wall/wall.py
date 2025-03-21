@@ -239,10 +239,9 @@ class Wall(commands.Cog):
 
         try:
             async with aiohttp.ClientSession() as session:
-                # use Binance as price oracle
+                # use Binance as USD price oracle
                 rpl_usd = list((await Binance("RPL", ["USDT"]).get_liquidity(session)).values())[0].price
-                eth_usd = list((await Binance("ETH", ["USDT"]).get_liquidity(session)).values())[0].price
-                rpl_eth = rpl_usd / eth_usd
+                rpl_eth = rpl_usd / rp.get_eth_usd_price()
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
@@ -267,7 +266,6 @@ class Wall(commands.Cog):
             if sources != "CEX":
                 dex_data = self._get_dex_data(x, rpl_usd)
                 source_desc.append(f"{len(dex_data)} DEX")
-
             if sources != "DEX":
                 cex_data = await self._get_cex_data(x, rpl_usd)
                 source_desc.append(f"{len(cex_data)} CEX")

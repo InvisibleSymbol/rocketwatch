@@ -29,7 +29,6 @@ class DepositPool(StatusPlugin):
                 rp.get_contract_by_name("rocketDepositPool").functions.getBalance(),
                 rp.get_contract_by_name("rocketDAOProtocolSettingsDeposit").functions.getMaximumDepositPoolSize(),
                 rp.get_contract_by_name("rocketDepositPool").functions.getMaximumDepositAmount(),
-                rp.get_contract_by_name("rocketMinipoolQueue").functions.getLength(),
             ]).results
         }
 
@@ -47,9 +46,10 @@ class DepositPool(StatusPlugin):
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
-        if (queue_length := multicall["getLength"]) > 0:
+        queue_length, queue_description = Queue.get_minipool_queue(limit=5)
+        if queue_length > 0:
             embed.description = f"**Minipool Queue** ({queue_length})\n"
-            embed.description += Queue.get_minipool_queue(limit=5).description
+            embed.description += queue_description
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
             embed.description += f"\nNeed **{queue_capacity:,.2f}** ETH to dequeue all minipools."
         else:

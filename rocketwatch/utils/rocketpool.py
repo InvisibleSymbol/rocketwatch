@@ -211,7 +211,7 @@ class RocketPool:
         return round(percentage, 2)
 
     @ttl_cache(ttl=60)
-    def get_eth_usdc_price(self) -> float:
+    def get_eth_usd_price(self) -> float:
         from utils.liquidity import UniswapV3
         pool_address = self.get_address_by_name("UniV3_ETHUSDC")
         return 1 / UniswapV3.Pool(pool_address).get_normalized_price()
