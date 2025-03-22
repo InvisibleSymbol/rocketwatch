@@ -53,12 +53,12 @@ class Queue(commands.Cog):
 
             return embed
 
-        @ui.button(emoji="⬅", label="Prev", style=ButtonStyle.gray, custom_id="prev")
+        @ui.button(emoji="⬅", label="Prev", style=ButtonStyle.gray)
         async def prev_page(self, interaction: Interaction, _) -> None:
             embed = await self.load(self.page_index - 1)
             await interaction.response.edit_message(embed=embed, view=self)
 
-        @ui.button(emoji="➡", label="Next", style=ButtonStyle.gray, custom_id="next")
+        @ui.button(emoji="➡", label="Next", style=ButtonStyle.gray)
         async def next_page(self, interaction: Interaction, _) -> None:
             embed = await self.load(self.page_index + 1)
             await interaction.response.edit_message(embed=embed, view=self)
