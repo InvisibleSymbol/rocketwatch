@@ -176,6 +176,13 @@ class DefaultDAO(DAO):
             f"Quorum: {quorum_pct}%{' ✔' if quorum_pct >= 100 else ''}"
         )
 
+class OracleDAO(DefaultDAO):
+    def __init__(self):
+        super().__init__("rocketDAONodeTrustedProposals")
+
+class SecurityCouncil(DefaultDAO):
+    def __init__(self):
+        super().__init__("rocketDAOSecurityProposals")
 
 class ProtocolDAO(DAO):
     def __init__(self):

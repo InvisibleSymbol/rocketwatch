@@ -12,7 +12,7 @@ from plugins.rpips.rpips import RPIPs
 
 from utils.status import StatusPlugin
 from utils.cfg import cfg
-from utils.dao import DAO, DefaultDAO, ProtocolDAO
+from utils.dao import DAO, DefaultDAO, OracleDAO, SecurityCouncil, ProtocolDAO
 from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
 from utils.get_nearest_block import get_block_by_timestamp
@@ -118,7 +118,7 @@ class Governance(StatusPlugin):
 
         # --------- ORACLE DAO --------- #
 
-        dao = DefaultDAO("rocketDAONodeTrustedProposals")
+        dao = OracleDAO()
         if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Oracle DAO\n"
             embed.description += "- **Active proposals**\n"
@@ -131,14 +131,14 @@ class Governance(StatusPlugin):
 
         # --------- SECURITY COUNCIL --------- #
 
-        dao = DefaultDAO("rocketDAOSecurityProposals")
+        dao = SecurityCouncil()
         if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Security Council\n"
             embed.description += "- **Active proposals**\n"
 
             for i, proposal in enumerate(proposals, start=1):
                 title = sanitize(proposal.message)
-                tx_hash = self._get_tx_hash_for_proposal(DefaultDAO("rocketDAOSecurityProposals"), proposal)
+                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
                 url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
                 embed.description += f"  {i}. [{title}]({url})\n"
 
