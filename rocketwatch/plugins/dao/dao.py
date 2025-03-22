@@ -9,7 +9,7 @@ from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 from utils.visibility import is_hidden, is_hidden_weak
-from utils.dao import DefaultDAO, ProtocolDAO
+from utils.dao import DefaultDAO, OracleDAO, SecurityCouncil, ProtocolDAO
 
 
 log = logging.getLogger("dao")
@@ -22,7 +22,7 @@ class DAOCommand(Cog):
 
     @staticmethod
     def get_dao_votes_embed(dao: DefaultDAO, full: bool) -> Embed:
-        current_proposals: dict[dao.ProposalState, list[dao.Proposal]] = {
+        current_proposals: dict[DefaultDAO.ProposalState, list[DefaultDAO.Proposal]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.Active: [],
             dao.ProposalState.Succeeded: [],
@@ -59,7 +59,7 @@ class DAOCommand(Cog):
 
     @staticmethod
     def get_pdao_votes_embed(dao: ProtocolDAO, full: bool) -> Embed:
-        current_proposals: dict[dao.ProposalState, list[dao.Proposal]] = {
+        current_proposals: dict[ProtocolDAO.ProposalState, list[ProtocolDAO.Proposal]] = {
             dao.ProposalState.Pending: [],
             dao.ProposalState.ActivePhase1: [],
             dao.ProposalState.ActivePhase2: [],
@@ -110,9 +110,7 @@ class DAOCommand(Cog):
             dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pDAO",
             full: bool = False
     ) -> None:
-        """
-        Show currently active on-chain proposals
-        """
+        """Show currently active on-chain proposals"""
         await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
 
         match dao_name:
@@ -120,15 +118,15 @@ class DAOCommand(Cog):
                 dao = ProtocolDAO()
                 embed = self.get_pdao_votes_embed(dao, full)
             case "oDAO":
-                dao = DefaultDAO("rocketDAONodeTrustedProposals")
+                dao = OracleDAO()
                 embed = self.get_dao_votes_embed(dao, full)
             case "Security Council":
-                dao = DefaultDAO("rocketDAOSecurityProposals")
+                dao = SecurityCouncil()
                 embed = self.get_dao_votes_embed(dao, full)
             case _:
                 raise ValueError(f"Invalid DAO name: {dao_name}")
 
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed)        
 
 
 async def setup(bot):

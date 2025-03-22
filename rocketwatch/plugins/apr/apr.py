@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime
 from decimal import Decimal
@@ -20,7 +19,7 @@ from utils.rocketpool import rp
 from utils.shared_w3 import w3, historical_w3
 from utils.visibility import is_hidden
 
-log = logging.getLogger("reth_apr")
+log = logging.getLogger("apr")
 log.setLevel(cfg["log_level"])
 
 
@@ -41,32 +40,17 @@ def get_duration(d1, d2):
     return d2["time"] - d1["time"]
 
 
-class RETHAPR(commands.Cog):
+class APR(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
+        self.loop.start()
+    
+    def cog_unload(self):
+        self.loop.cancel()
 
     @tasks.loop(seconds=60)
-    async def run_loop(self):
-        try:
-            await self.gather_new_data()
-        except Exception as err:
-            await self.bot.report_error(err)
-
-    def get_time_of_block(self, block_number):
-        block = w3.eth.getBlock(block_number)
-        return datetime.fromtimestamp(block["timestamp"])
-
-    async def gather_new_data(self):
+    async def loop(self):
         # get latest block update from the db
         latest_db_block = await self.db.reth_apr.find_one(sort=[("block", -1)])
         latest_db_block = 0 if latest_db_block is None else latest_db_block["block"]
@@ -91,13 +75,22 @@ class RETHAPR(commands.Cog):
                 "effectiveness": effectiveness
             })
             cursor_block = balance_block - 1
-            await asyncio.sleep(0.01)
+            
+    @loop.before_loop
+    async def before_loop(self):
+        await self.bot.wait_until_ready()
+        
+    @loop.error
+    async def on_error(self, err: Exception):
+        await self.bot.report_error(err)
+
+    def get_time_of_block(self, block_number):
+        block = w3.eth.getBlock(block_number)
+        return datetime.fromtimestamp(block["timestamp"])
 
     @hybrid_command()
-    async def current_reth_apr(self, ctx: Context):
-        """
-        Show the current rETH APR.
-        """
+    async def reth_apr(self, ctx: Context):
+        """Show the current rETH APR"""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Current rETH APR"
@@ -266,10 +259,8 @@ class RETHAPR(commands.Cog):
         await ctx.send(embed=e, file=File(img, "reth_apr.png"))
 
     @hybrid_command()
-    async def current_no_apr(self, ctx: Context):
-        """
-        Show the current NO APR.
-        """
+    async def node_apr(self, ctx: Context):
+        """Show the current node operator APR"""
         await ctx.defer(ephemeral=is_hidden(ctx))
         e = Embed()
         e.title = "Current NO APR"
@@ -440,4 +431,4 @@ class RETHAPR(commands.Cog):
         await ctx.send(embed=e, file=File(img, "no_apr.png"))
 
 async def setup(bot):
-    await bot.add_cog(RETHAPR(bot))
+    await bot.add_cog(APR(bot))
