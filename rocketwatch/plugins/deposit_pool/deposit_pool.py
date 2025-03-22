@@ -46,12 +46,14 @@ class DepositPool(StatusPlugin):
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
-        queue_length, queue_description = Queue.get_minipool_queue(limit=5)
+        queue_length, queue_content = Queue.get_minipool_queue(limit=5)
         if queue_length > 0:
             embed.description = f"**Minipool Queue** ({queue_length})\n"
-            embed.description += queue_description
+            embed.description += queue_content
+            if queue_length > 5:
+                embed.description += "`...`\n"
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
-            embed.description += f"\nNeed **{queue_capacity:,.2f}** ETH to dequeue all minipools."
+            embed.description += f"Need **{queue_capacity:,.2f}** ETH to dequeue all minipools."
         else:
             lines = []
             if (num_leb8 := int(dp_balance // 24)) > 0:

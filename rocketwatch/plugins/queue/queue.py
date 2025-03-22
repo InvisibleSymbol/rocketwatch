@@ -1,5 +1,7 @@
 import logging
 
+from functools import cache
+from discord import ui, ButtonStyle, Interaction
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ext.commands import hybrid_command
@@ -16,10 +18,60 @@ from utils.shared_w3 import w3
 log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
-
 class Queue(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
+
+    class PageView(ui.View):
+        PAGE_SIZE = 15
+
+        def __init__(self):
+            super().__init__()
+            self.page_index = 0
+
+        async def load(self, page: int = 0) -> Embed:
+            queue_length, queue_content = Queue.get_minipool_queue(
+                limit=self.PAGE_SIZE, start=(page * self.PAGE_SIZE)
+            )
+
+            max_page_index = (queue_length - 1) // self.PAGE_SIZE
+            self.page_index = max(0, min(max_page_index, page))
+            if self.page_index != page:
+                queue_length, queue_content = Queue.get_minipool_queue(
+                    limit=self.PAGE_SIZE, start=(self.page_index * self.PAGE_SIZE)
+                )
+
+            self.prev_page.disabled = (self.page_index <= 0)
+            self.next_page.disabled = (self.page_index >= max_page_index)
+
+            embed = Embed(title="Minipool Queue")
+            if queue_content:
+                embed.description = queue_content
+            else:
+                embed.set_image(url="https://c.tenor.com/1rQLxWiCtiIAAAAd/tenor.gif")
+                self.clear_items() # remove buttons on empty queue
+
+            return embed
+
+        @ui.button(emoji="⬅", label="Prev", style=ButtonStyle.gray, custom_id="prev")
+        async def prev_page(self, interaction: Interaction, _) -> None:
+            embed = await self.load(self.page_index - 1)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+        @ui.button(emoji="➡", label="Next", style=ButtonStyle.gray, custom_id="next")
+        async def next_page(self, interaction: Interaction, _) -> None:
+            embed = await self.load(self.page_index + 1)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @staticmethod
+    @cache
+    def _cached_node_url(address: str) -> str:
+        return el_explorer_url(address)
+
+    @staticmethod
+    @cache
+    def _cached_minipool_url(address: str) -> str:
+        return el_explorer_url(address, name_fmt=lambda n: f"`{n}`", prefix=-1)
 
     @staticmethod
     def get_minipool_queue(limit: int, start: int = 0) -> tuple[int, str]:
@@ -52,33 +104,21 @@ class Queue(commands.Cog):
             ]).results
         ]
 
-        def as_code(label: str) -> str:
-            return f"`{label}`"
-
-        description = ""
+        content = ""
         for i, minipool in enumerate(queue[:limit]):
-            mp_label = el_explorer_url(minipool, name_fmt=as_code, prefix=-1)
-            node_label = el_explorer_url(nodes[i])
-            description += f"{i+1}. {mp_label} :construction_site: <t:{status_times[i]}:R> by {node_label}\n"
+            mp_label = Queue._cached_minipool_url(minipool)
+            node_label = Queue._cached_node_url(nodes[i])
+            content += f"{start+i+1}. {mp_label} :construction_site: <t:{status_times[i]}:R> by {node_label}\n"
 
-        if q_len > len(queue):
-            description += "`...`"
-
-        return q_len, description
+        return q_len, content
 
     @hybrid_command()
     async def queue(self, ctx: Context):
-        """Show the next 15 minipools in the queue"""
+        """Show the minipool queue"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
-
-        embed = Embed(title="Minipool Queue")
-        queue_length, queue_description = self.get_minipool_queue(15)
-        if queue_length:
-            embed.description = queue_description
-        else:
-            embed.set_image(url="https://media1.giphy.com/media/hEc4k5pN17GZq/giphy.gif")
-
-        await ctx.send(embed=embed)
+        view = Queue.PageView()
+        embed = await view.load()
+        await ctx.send(embed=embed, view=view)
 
 
 async def setup(bot):
