@@ -1,3 +1,4 @@
+import math
 import logging
 
 from functools import cache
@@ -29,38 +30,38 @@ class Queue(commands.Cog):
             super().__init__()
             self.page_index = 0
 
-        async def load(self, page: int = 0) -> Embed:
+        async def load(self) -> Embed:
             queue_length, queue_content = Queue.get_minipool_queue(
-                limit=self.PAGE_SIZE, start=(page * self.PAGE_SIZE)
+                limit=self.PAGE_SIZE, start=(self.page_index * self.PAGE_SIZE)
             )
+            max_page_index = int(math.floor(queue_length / self.PAGE_SIZE))
 
-            max_page_index = (queue_length - 1) // self.PAGE_SIZE
-            self.page_index = max(0, min(max_page_index, page))
-            if self.page_index != page:
-                queue_length, queue_content = Queue.get_minipool_queue(
-                    limit=self.PAGE_SIZE, start=(self.page_index * self.PAGE_SIZE)
-                )
-
-            self.prev_page.disabled = (self.page_index <= 0)
-            self.next_page.disabled = (self.page_index >= max_page_index)
+            if self.page_index > max_page_index:
+                # if the queue changed and this is out of bounds, try again
+                self.page_index = max_page_index
+                return await self.load()
 
             embed = Embed(title="Minipool Queue")
-            if queue_content:
+            if queue_length > 0:
                 embed.description = queue_content
+                self.prev_page.disabled = (self.page_index <= 0)
+                self.next_page.disabled = (self.page_index >= max_page_index)
             else:
                 embed.set_image(url="https://c.tenor.com/1rQLxWiCtiIAAAAd/tenor.gif")
-                self.clear_items() # remove buttons on empty queue
+                self.clear_items() # remove buttons
 
             return embed
 
         @ui.button(emoji="⬅", label="Prev", style=ButtonStyle.gray)
         async def prev_page(self, interaction: Interaction, _) -> None:
-            embed = await self.load(self.page_index - 1)
+            self.page_index -= 1
+            embed = await self.load()
             await interaction.response.edit_message(embed=embed, view=self)
 
         @ui.button(emoji="➡", label="Next", style=ButtonStyle.gray)
         async def next_page(self, interaction: Interaction, _) -> None:
-            embed = await self.load(self.page_index + 1)
+            self.page_index += 1
+            embed = await self.load()
             await interaction.response.edit_message(embed=embed, view=self)
 
     @staticmethod
