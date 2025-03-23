@@ -19,6 +19,7 @@ from utils.shared_w3 import w3
 log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
+
 class Queue(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot

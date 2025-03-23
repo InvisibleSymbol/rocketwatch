@@ -599,6 +599,14 @@ class ERC20Token:
 class DEX(Exchange, ABC):
     class LiquidityPool(ABC):
         @abstractmethod
+        def get_price(self) -> float:
+            pass
+
+        @abstractmethod
+        def get_normalized_price(self) -> float:
+            pass
+
+        @abstractmethod
         def get_liquidity(self) -> Optional[Liquidity]:
             pass
 
@@ -616,11 +624,18 @@ class DEX(Exchange, ABC):
 class BalancerV2(DEX):
     class WeightedPool(DEX.LiquidityPool):
         def __init__(self, pool_id: HexStr):
-            self.vault = rp.get_contract_by_name("BalancerVault")
             self.id = pool_id
+            self.vault = rp.get_contract_by_name("BalancerVault", mainnet=True)
             tokens = self.vault.functions.getPoolTokens(self.id).call()[0]
             self.token_0 = ERC20Token(tokens[0])
             self.token_1 = ERC20Token(tokens[1])
+
+        def get_price(self) -> float:
+            balances = self.vault.functions.getPoolTokens(self.id).call()[1]
+            return balances[1] / balances[0] if (balances[0] > 0) else 0
+
+        def get_normalized_price(self) -> float:
+            return self.get_price() * 10 ** (self.token_0.decimals - self.token_1.decimals)
 
         def get_liquidity(self) -> Optional[Liquidity]:
             balance_0, balance_1 = self.vault.functions.getPoolTokens(self.id).call()[1]
@@ -666,7 +681,7 @@ class UniswapV3(DEX):
 
     class Pool(DEX.LiquidityPool):
         def __init__(self, pool_address: ChecksumAddress):
-            self.contract = rp.assemble_contract("UniswapV3Pool", pool_address)
+            self.contract = rp.assemble_contract("UniswapV3Pool", pool_address, mainnet=True)
             self.tick_spacing: int = self.contract.functions.tickSpacing().call()
             self.token_0 = ERC20Token(self.contract.functions.token0().call())
             self.token_1 = ERC20Token(self.contract.functions.token1().call())
@@ -726,7 +741,7 @@ class UniswapV3(DEX):
             return (sqrt96x ** 2) / (2 ** 192)
 
         def get_normalized_price(self) -> float:
-            return self.get_price() * 10**(self.token_0.decimals - self.token_1.decimals)
+            return self.get_price() * 10 ** (self.token_0.decimals - self.token_1.decimals)
 
         def get_liquidity(self) -> Optional[Liquidity]:
             price = self.get_price()

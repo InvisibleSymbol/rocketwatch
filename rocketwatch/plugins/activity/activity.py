@@ -11,6 +11,7 @@ from utils.rocketpool import rp
 log = logging.getLogger("rich_activity")
 log.setLevel(cfg["log_level"])
 
+
 class RichActivity(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot

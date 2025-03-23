@@ -46,12 +46,13 @@ class DepositPool(StatusPlugin):
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
-        queue_length, queue_content = Queue.get_minipool_queue(limit=5)
+        display_limit = 5
+        queue_length, queue_content = Queue.get_minipool_queue(display_limit)
         if queue_length > 0:
             embed.description = f"**Minipool Queue** ({queue_length})\n"
             embed.description += queue_content
-            if queue_length > 5:
-                embed.description += "`...`\n"
+            if queue_length > display_limit:
+                embed.description += f"{display_limit + 1}. `...`\n"
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
             embed.description += f"Need **{queue_capacity:,.2f}** ETH to dequeue all minipools."
         else:
@@ -81,21 +82,20 @@ class DepositPool(StatusPlugin):
         collateral_rate: float = solidity.to_float(multicall["getCollateralRate"])
         collateral_rate_target: float = solidity.to_float(multicall["getTargetRethCollateralRate"])
 
-        collateral_in_eth = total_eth_in_reth * collateral_rate
-        collateral_target_in_eth = total_eth_in_reth * collateral_rate_target
-        collateral_used = collateral_in_eth / collateral_target_in_eth
+        collateral_eth: float = total_eth_in_reth * collateral_rate
+        collateral_target_eth: float = total_eth_in_reth * collateral_rate_target
 
-        if collateral_in_eth < 0.01:
+        if collateral_eth < 0.01:
             description = (
-                f"No liquidity in the rETH contract.\n"
-                f"Target set to **{collateral_target_in_eth:,.2f}** ETH"
-                f" ({collateral_rate_target:.2%} of supply)."
+                f"No liquidity in the rETH contract!\n"
+                f"Target set to **{collateral_target_eth:,.0f}** ETH ({collateral_rate_target:.2%} of supply)."
             )
         else:
+            collateral_target_perc = collateral_eth / collateral_target_eth
             description = (
-                f"**{collateral_in_eth:,.2f}** ETH of liquidity in the rETH contract\n"
-                f"**{collateral_used:.2%}** of the **{collateral_target_in_eth:,.2f}** ETH target"
-                f" ({collateral_rate:.2%}/{collateral_rate_target:.2%})"
+                f"**{collateral_eth:,.2f}** ETH of liquidity in the rETH contract.\n"
+                f"**{collateral_target_perc:.2%}** of the **{collateral_target_eth:,.0f}** ETH target"
+                f" ({collateral_rate:.2%} of {collateral_rate_target:.2%})."
             )
 
         return Embed(title="rETH Extra Collateral", description=description)
@@ -113,26 +113,36 @@ class DepositPool(StatusPlugin):
         await ctx.send(embed=self.get_contract_collateral_stats())
         
     async def get_status(self) -> Embed:
-        embed = Embed(title=":rocket: Live Deposit Status")
+        embed = Embed(title=":rocket: Live Protocol Status")
 
         dp_embed = self.get_deposit_pool_stats()
         embed.description = dp_embed.description
         dp_fields = {field.name: field for field in dp_embed.fields}
 
-        embed.add_field(
-            name="Pool Balance",
-            value=dp_fields["Current Size"].value,
-            inline=dp_fields["Current Size"].inline
-        )
-        embed.add_field(
-            name="Max Balance",
-            value=dp_fields["Maximum Size"].value,
-            inline=dp_fields["Maximum Size"].inline
-        )
-        embed.add_field(name="Deposits", value=dp_fields["Status"].value, inline=dp_fields["Status"].inline)
+        if field := dp_fields.get("Current Size"):
+            embed.add_field(name="Pool Balance", value=field.value, inline=True)
+        if field := dp_fields.get("Maximum Size"):
+            embed.add_field(name="Max Balance", value=field.value, inline=True)
+        if field := dp_fields.get("Enough For"):
+            embed.add_field(name=field.name, value=field.value, inline=False)
+        if field := dp_fields.get("Status"):
+            embed.add_field(name="Deposits", value=field.value, inline=False)
 
         collateral_embed = self.get_contract_collateral_stats()
         embed.add_field(name="Withdrawals", value=collateral_embed.description, inline=False)
+
+        reth_price = rp.get_reth_eth_price()
+        protocol_rate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
+        relative_dev = (reth_price / protocol_rate - 1)
+
+        if abs(relative_dev) <= 0.0005:
+            rate_status = "within 0.05% of protocol rate"
+        elif relative_dev > 0:
+            rate_status = f"at a **{relative_dev:.2%} premium**"
+        else:
+            rate_status = f"at a **{-relative_dev:.2%} discount**"
+
+        embed.add_field(name="Market Rate", value=f"rETH is trading {rate_status}.", inline=False)
 
         return embed
 
