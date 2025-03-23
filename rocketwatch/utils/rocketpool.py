@@ -1,7 +1,7 @@
 import logging
 import os
-import warnings
 from pathlib import Path
+from typing import Optional
 
 from bidict import bidict
 from cachetools import cached, FIFOCache
@@ -70,7 +70,8 @@ class RocketPool:
             "WETH": self.call(f"{cs_dir}.getWETHAddress")
         }
 
-    def seth_sig(self, abi, function_name):
+    @staticmethod
+    def seth_sig(abi, function_name):
         # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
         for item in abi:
             if item.get("name") == function_name:
@@ -107,7 +108,8 @@ class RocketPool:
         log.debug(f"Retrieved address for {name} Contract: {address}")
         return address
 
-    def get_revert_reason(self, tnx):
+    @staticmethod
+    def get_revert_reason(tnx):
         try:
             w3.eth.call(
                 {
@@ -168,9 +170,9 @@ class RocketPool:
     def get_name_by_address(self, address):
         return self.addresses.inverse.get(address, None)
 
-    def get_contract_by_name(self, name, historical=False):
+    def get_contract_by_name(self, name, historical=False, mainnet=False):
         address = self.get_address_by_name(name)
-        return self.assemble_contract(name, address, historical=historical)
+        return self.assemble_contract(name, address, historical=historical, mainnet=mainnet)
 
     def get_contract_by_address(self, address):
         """
@@ -213,8 +215,14 @@ class RocketPool:
     @ttl_cache(ttl=60)
     def get_eth_usd_price(self) -> float:
         from utils.liquidity import UniswapV3
-        pool_address = self.get_address_by_name("UniV3_ETHUSDC")
+        pool_address = self.get_address_by_name("UniV3_USDC_ETH")
         return 1 / UniswapV3.Pool(pool_address).get_normalized_price()
+
+    @ttl_cache(ttl=60)
+    def get_reth_eth_price(self) -> Optional[float]:
+        from utils.liquidity import UniswapV3
+        pool_address = self.get_address_by_name("UniV3_rETH_ETH")
+        return UniswapV3.Pool(pool_address).get_normalized_price()
 
 
 rp = RocketPool()

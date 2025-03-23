@@ -48,7 +48,6 @@ rocketpool: {
         rocketStorage:          "0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46"
         rocketSignerRegistry:   "0xc1062617d10Ae99E09D941b60746182A87eAB38F"
         rocketExitArbitrage:    "0x2631618408497d27D455aBA9c99A6f61eF305559"
-        UniV3_ETHUSDC:          "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
         AirSwap:                "0x4572f2554421Bd64Bef1c22c8a81840E8D496BeA"
         yearnPool:              "0x5c0A86A32c129538D62C106Eb8115a8b02358d57"
         curvePool:              "0x447Ddd4960d9fdBF6af9a790560d0AF76795CB08"
@@ -58,6 +57,8 @@ rocketpool: {
         ConstellationDirectory: "0x4343743dBc46F67D3340b45286D8cdC13c8575DE"
         LUSD:                   "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0"
         BalancerVault:          "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
+        UniV3_USDC_ETH:         "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
+        UniV3_rETH_ETH:         "0x553e9C493678d8606d6a5ba284643dB2110Df823"
     }
 }
 modules: {

@@ -172,7 +172,7 @@ class DefaultDAO(DAO):
         quorum_pct = round(100 * max(votes_for, votes_against) / votes_required)
         return (
             f"{graph_bars[0] : <{len(graph_bars[2])}}{'▏' if votes_for >= votes_against else ''}\n"
-            f"{graph_bars[1] : <{len(graph_bars[2])}}{'▏' if votes_against >= votes_for else ''}\n"
+            f"{graph_bars[1] : <{len(graph_bars[2])}}{'▏' if votes_for <= votes_against else ''}\n"
             f"Quorum: {quorum_pct}%{' ✔' if quorum_pct >= 100 else ''}"
         )
 
