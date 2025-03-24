@@ -260,7 +260,7 @@ class Debug(Cog):
         for event in events:
             channel_candidates = [value for key, value in channels.items() if event.event_name.startswith(key)]
             channel_id = channel_candidates[0] if channel_candidates else channels["default"]
-            await self.db.event_queue.insert({
+            await self.db.event_queue.insert_one({
                 "_id": event.unique_id,
                 "embed": pickle.dumps(event.embed),
                 "topic": event.topic,
