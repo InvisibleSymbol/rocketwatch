@@ -498,7 +498,7 @@ def assemble(args) -> Embed:
     # show the transaction fees
     if "tnx_fee" in args:
         e.add_field(name="Transaction Fee",
-                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_usd} USD)",
+                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_usd} USDC)",
                     inline=False)
 
     return e

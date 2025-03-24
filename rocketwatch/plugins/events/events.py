@@ -579,7 +579,7 @@ class Events(EventPlugin):
         if cfg["rocketpool.chain"] == "mainnet":
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-            args.tnx_fee_usd = round(rp.get_eth_usd_price() * args.tnx_fee, 2)
+            args.tnx_fee_usd = round(rp.get_eth_usdc_price() * args.tnx_fee, 2)
             args.caller = receipt["from"]
 
         # add transaction hash and block number to args

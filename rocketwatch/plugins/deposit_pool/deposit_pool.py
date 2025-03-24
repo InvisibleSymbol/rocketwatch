@@ -46,7 +46,7 @@ class DepositPool(StatusPlugin):
         embed.add_field(name="Maximum Size", value=f"{deposit_cap:,} ETH")
         embed.add_field(name="Status", value=dp_status, inline=False)
 
-        display_limit = 5
+        display_limit = 3
         queue_length, queue_content = Queue.get_minipool_queue(display_limit)
         if queue_length > 0:
             embed.description = f"**Minipool Queue** ({queue_length})\n"
@@ -133,14 +133,14 @@ class DepositPool(StatusPlugin):
 
         reth_price = rp.get_reth_eth_price()
         protocol_rate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
-        relative_dev = (reth_price / protocol_rate - 1)
+        relative_rate_diff = (reth_price / protocol_rate - 1)
 
-        if abs(relative_dev) <= 0.0005:
+        if abs(relative_rate_diff) <= 0.0005:
             rate_status = "within 0.05% of the protocol rate"
-        elif relative_dev > 0:
-            rate_status = f"at a **{relative_dev:.2%} premium**"
+        elif relative_rate_diff > 0:
+            rate_status = f"at a **{relative_rate_diff:.2%} premium**"
         else:
-            rate_status = f"at a **{-relative_dev:.2%} discount**"
+            rate_status = f"at a **{-relative_rate_diff:.2%} discount**"
 
         embed.add_field(name="Secondary Market", value=f"rETH is trading {rate_status}.", inline=False)
         return embed
