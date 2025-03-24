@@ -238,6 +238,43 @@ class Debug(Cog):
         await channel.send(embed=e)
         await ctx.send(content="Done", ephemeral=True)
 
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def restore_missed_events(self, ctx: Context, tx_hash: str):
+        import pickle
+        from datetime import datetime
+        from plugins.events.events import Events
+
+        await ctx.defer(ephemeral=True)
+
+        events_plugin: Events = self.bot.cogs["Events"]
+
+        filtered_events = []
+        for event_log in w3.eth.get_transaction_receipt(tx_hash).logs:
+            if ("topics" in event_log) and (event_log["topics"][0].hex() in events_plugin.topic_map):
+                filtered_events.append(event_log)
+
+        channels = cfg["discord.channels"]
+        events, _ = events_plugin.process_events(filtered_events)
+        for event in events:
+            channel_candidates = [value for key, value in channels.items() if event.event_name.startswith(key)]
+            channel_id = channel_candidates[0] if channel_candidates else channels["default"]
+            self.db.event_queue.insert({
+                "_id": event.unique_id,
+                "embed": pickle.dumps(event.embed),
+                "topic": event.topic,
+                "event_name": event.event_name,
+                "block_number": event.block_number,
+                "score": event.get_score(),
+                "time_seen": datetime.now(),
+                "attachment": pickle.dumps(event.attachment) if event.attachment else None,
+                "channel_id": channel_id,
+                "message_id": None
+            })
+            await ctx.send(embed=event.embed)
+        await ctx.send(content="Done")
+
     # --------- PUBLIC COMMANDS --------- #
 
     @hybrid_command()
