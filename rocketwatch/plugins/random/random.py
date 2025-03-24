@@ -74,7 +74,7 @@ class Random(commands.Cog):
         feesburned = data["feesBurned"]
         for span in ["5m", "1h", "24h"]:
             k = f"feesBurned{span}"
-            description += f"Last {span}: {solidity.to_float(feesburned[k]):,.2f} ETH ({feesburned[f'{k}Usd']:,.2f} USD)\n"
+            description += f"Last {span}: {solidity.to_float(feesburned[k]):,.2f} ETH ({feesburned[f'{k}Usd']:,.2f} USDC)\n"
         description += "```\n"
         description += "**Burn Ranking (last 5 minutes):**\n"
         ranking = data["leaderboards"]["leaderboard5m"][:5]

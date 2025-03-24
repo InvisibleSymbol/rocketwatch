@@ -241,7 +241,7 @@ class Wall(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 # use Binance as USD price oracle
                 rpl_usd = list((await Binance("RPL", ["USDT"]).get_liquidity(session)).values())[0].price
-                rpl_eth = rpl_usd / rp.get_eth_usd_price()
+                rpl_eth = rpl_usd / rp.get_eth_usdc_price()
         except Exception as e:
             await self.bot.report_error(e, ctx)
             return await on_fail()
