@@ -37,6 +37,9 @@ class EventPlugin(commands.Cog):
         self._pending_block = self.last_served_block
         self._last_run = datetime.now() - rate_limit
 
+    def start_tracking(self, block: BlockNumber) -> None:
+        self.last_served_block = block - 1
+
     def get_new_events(self) -> list[Event]:
         now = datetime.now()
         if (now - self._last_run) < self.rate_limit:
@@ -53,10 +56,4 @@ class EventPlugin(commands.Cog):
         pass
 
     def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
-        self._pending_block = max(self.last_served_block, to_block)
-        events = self._get_past_events(from_block, to_block)
-        self.last_served_block = self._pending_block
-        return events
-
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         return []

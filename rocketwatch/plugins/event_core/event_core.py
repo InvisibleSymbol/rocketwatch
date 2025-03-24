@@ -123,10 +123,11 @@ class EventCore(commands.Cog):
             log.info(f"Checking block range [{from_block}, {to_block}]")
 
             gather_fns = []
-            if from_block <= to_block:
-                for sm in submodules:
-                    fn = partial(sm.get_past_events, from_block=from_block, to_block=to_block)
-                    gather_fns.append(fn)
+            for sm in submodules:
+                fn = partial(sm.get_past_events, from_block=from_block, to_block=to_block)
+                gather_fns.append(fn)
+                if target_block == "latest":
+                    sm.start_tracking(to_block + 1)
 
         log.debug(f"{target_block = }")
 
@@ -251,7 +252,7 @@ class EventCore(commands.Cog):
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
-            plugin: StatusPlugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
+            plugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
             embed = await plugin.get_status()
 
         embed.timestamp = datetime.now()

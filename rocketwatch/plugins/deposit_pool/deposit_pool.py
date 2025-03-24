@@ -136,14 +136,13 @@ class DepositPool(StatusPlugin):
         relative_dev = (reth_price / protocol_rate - 1)
 
         if abs(relative_dev) <= 0.0005:
-            rate_status = "within 0.05% of protocol rate"
+            rate_status = "within 0.05% of the protocol rate"
         elif relative_dev > 0:
             rate_status = f"at a **{relative_dev:.2%} premium**"
         else:
             rate_status = f"at a **{-relative_dev:.2%} discount**"
 
-        embed.add_field(name="Market Rate", value=f"rETH is trading {rate_status}.", inline=False)
-
+        embed.add_field(name="Secondary Market", value=f"rETH is trading {rate_status}.", inline=False)
         return embed
 
     @hybrid_command()
