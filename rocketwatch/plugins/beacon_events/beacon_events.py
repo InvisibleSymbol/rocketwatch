@@ -175,7 +175,7 @@ class BeaconEvents(EventPlugin):
 
         if eth_utils.is_same_address(fee_recipient, rp.get_address_by_name("rocketSmoothingPool")):
             args["event_name"] = "mev_proposal_smoothie_event"
-            args["smoothie_amount"] = w3.eth.get_balance(fee_recipient, block=block_number)
+            args["smoothie_amount"] = w3.eth.get_balance(fee_recipient, block_identifier=block_number)
         else:
             args["event_name"] = "mev_proposal_event"
 
