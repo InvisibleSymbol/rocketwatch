@@ -27,6 +27,7 @@ from utils.shared_w3 import w3
 log = logging.getLogger("event_core")
 log.setLevel(cfg["log_level"])
 
+
 class EventCore(commands.Cog):
     class State(Enum):
         OK = 0
@@ -169,7 +170,7 @@ class EventCore(commands.Cog):
 
         log.info(f"{len(events)} new events gathered, updating DB")
         if events:
-            await self.db.event_queue.bulk_write(list(map(pymongo.InsertOne, events)))
+            await self.db.event_queue.insert_many(events)
 
         self.head_block = target_block
         self.db.last_checked_block.replace_one(
