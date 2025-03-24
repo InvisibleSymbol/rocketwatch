@@ -187,8 +187,7 @@ class Events(EventPlugin):
         try:
             rp.flush()
             self.__init__(self.bot)
-            post_upgrade_block = BlockNumber(contract_upgrade_block + 1)
-            self.active_filters = [pf(post_upgrade_block, "latest") for pf in self._partial_filters]
+            self.start_tracking(BlockNumber(contract_upgrade_block + 1))
             messages.extend(self._get_new_events())
             return messages
         except Exception as err:
@@ -197,12 +196,15 @@ class Events(EventPlugin):
             self.active_filters.clear()
             raise err
 
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+    def start_tracking(self, block: BlockNumber) -> None:
+        super().start_tracking(block)
+        self.active_filters.clear()
+
+    def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
         for pf in self._partial_filters:
             events.extend(pf(from_block, to_block).get_all_entries())
 
-        self.active_filters.clear()
         messages, _ = self.process_events(events)
         return messages
 
