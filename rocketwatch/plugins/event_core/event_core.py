@@ -121,6 +121,10 @@ class EventCore(commands.Cog):
                 to_block = target_block
 
             from_block = cast(BlockNumber, self.head_block + 1)
+            if to_block < from_block:
+                log.warning(f"Skipping empty block range [{from_block}, {to_block}]")
+                return
+
             log.info(f"Checking block range [{from_block}, {to_block}]")
 
             gather_fns = []
