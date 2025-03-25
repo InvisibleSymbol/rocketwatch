@@ -49,7 +49,7 @@ class DepositPool(StatusPlugin):
         display_limit = 3
         queue_length, queue_content = Queue.get_minipool_queue(display_limit)
         if queue_length > 0:
-            embed.description = f"**Minipool Queue** ({queue_length})\n"
+            embed.description = f"**Minipool Queue ({queue_length})**\n"
             embed.description += queue_content
             if queue_length > display_limit:
                 embed.description += f"{display_limit + 1}. `...`\n"

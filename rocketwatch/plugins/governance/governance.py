@@ -113,8 +113,8 @@ class Governance(StatusPlugin):
         if draft_rpips:
             embed.description += "- **RPIPs in draft status**\n"
             for i, rpip in enumerate(draft_rpips, start=1):
-                title = f"{sanitize(rpip.title, 40)} (RPIP-{rpip.number})"
-                embed.description += f"  {i}. [{title}]({rpip.url})\n"
+                title = sanitize(rpip.title, 40)
+                embed.description += f"  {i}. [{title}]({rpip.url}) (RPIP-{rpip.number})\n"
 
         # --------- ORACLE DAO --------- #
 
@@ -144,9 +144,10 @@ class Governance(StatusPlugin):
 
         # --------- DAO FORUM --------- #
 
-        if topics := await self._get_latest_forum_topics(days=7):
+        num_days = 7
+        if topics := await self._get_latest_forum_topics(days=num_days):
             embed.description += "### Forum\n"
-            embed.description += "- **Recently active topics (7d)**\n"
+            embed.description += f"- **Recently active topics ({num_days}d)**\n"
             for i, topic in enumerate(topics[:10], start=1):
                 title = sanitize(topic.title)
                 embed.description += f"  {i}. [{title}]({topic.url})\n"

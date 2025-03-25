@@ -130,7 +130,7 @@ class Forum(commands.Cog):
         if isinstance(period, Choice):
             period: Forum.Period = cast(Forum.Period, period.value)
 
-        embed = Embed(title=f"Top Forum Posts ({period.capitalize()})", description="")
+        embed = Embed(title=f"Top Forum Posts ({period})", description="")
 
         if topics := await self.get_popular_topics(period):
             for i, topic in enumerate(topics[:10], start=1):
@@ -155,7 +155,7 @@ class Forum(commands.Cog):
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         embed = Embed(
-            title=f"Top Forum Users ({period.capitalize()})",
+            title=f"Top Forum Users ({period})",
             description=""
         )
 

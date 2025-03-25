@@ -30,7 +30,7 @@ class RPIPs(commands.Cog):
         embed = Embed()
         embed.set_author(name="🔗 Data from rpips.rocketpool.net", url="https://rpips.rocketpool.net")
 
-        rpips_by_name: dict[str, RPIPs.RPIP] = {str(rpip): rpip for rpip in self.get_all_rpips()}
+        rpips_by_name: dict[str, RPIPs.RPIP] = {rpip.full_title: rpip for rpip in self.get_all_rpips()}
         if rpip := rpips_by_name.get(name):
             embed.title = name
             embed.url = rpip.url
@@ -67,7 +67,7 @@ class RPIPs(commands.Cog):
             self.status = status
 
         def __str__(self) -> str:
-            return f"RPIP-{self.number}: {self.title}"
+            return self.full_title
 
         @ttl_cache(ttl=300)
         @retry(tries=3, delay=1)
@@ -93,6 +93,10 @@ class RPIPs(commands.Cog):
             }
 
         @property
+        def full_title(self) -> str:
+            return f"RPIP-{self.number}: {self.title}"
+
+        @property
         def url(self) -> str:
             return f"https://rpips.rocketpool.net/RPIPs/RPIP-{self.number}"
 
@@ -106,7 +110,7 @@ class RPIPs(commands.Cog):
     async def _get_rpip_names(self, ctx: Context, current: str) -> list[Choice[str]]:
         choices = []
         for rpip in self.get_all_rpips():
-            if current.lower() in (name := str(rpip)).lower():
+            if current.lower() in (name := rpip.full_title).lower():
                 choices.append(Choice(name=name, value=name))
         return choices[:-26:-1]
 
