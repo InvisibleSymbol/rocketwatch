@@ -67,13 +67,8 @@ class Queue(commands.Cog):
 
     @staticmethod
     @cache
-    def _cached_node_url(address: str) -> str:
-        return el_explorer_url(address)
-
-    @staticmethod
-    @cache
-    def _cached_minipool_url(address: str) -> str:
-        return el_explorer_url(address, name_fmt=lambda n: f"`{n}`", prefix=-1)
+    def _cached_el_url(address, prefix="") -> str:
+        return el_explorer_url(address, name_fmt=lambda n: f"`{n}`", prefix=prefix)
 
     @staticmethod
     def get_minipool_queue(limit: int, start: int = 0) -> tuple[int, str]:
@@ -108,8 +103,8 @@ class Queue(commands.Cog):
 
         content = ""
         for i, minipool in enumerate(queue[:limit]):
-            mp_label = Queue._cached_minipool_url(minipool)
-            node_label = Queue._cached_node_url(nodes[i])
+            mp_label = Queue._cached_el_url(minipool, -1)
+            node_label = Queue._cached_el_url(nodes[i])
             content += f"{start+i+1}. {mp_label} :construction_site: <t:{status_times[i]}:R> by {node_label}\n"
 
         return q_len, content
