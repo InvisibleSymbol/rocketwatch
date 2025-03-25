@@ -144,7 +144,7 @@ class Governance(StatusPlugin):
             embed.description += f"- **Recently active topics ({num_days}d)**\n"
             for i, topic in enumerate(topics[:10], start=1):
                 title = sanitize(topic.title, 40)
-                embed.description += f"  {i}. [{title}]({topic.url}) [`{topic.post_count-1}` 💬]\n"
+                embed.description += f"  {i}. [{title}]({topic.url}) [`{topic.post_count-1}\u2009💬`]\n"
 
         if not embed.description:
             embed.set_image(url="https://c.tenor.com/PVf-csSHmu8AAAAd/tenor.gif")
