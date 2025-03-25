@@ -94,7 +94,7 @@ class DepositPool(StatusPlugin):
             collateral_target_perc = collateral_eth / collateral_target_eth
             description = (
                 f"**{collateral_eth:,.2f}** ETH of liquidity in the rETH contract.\n"
-                f"**{collateral_target_perc:.2%}** of the **{collateral_target_eth:,.0f}** ETH target"
+                f"**{collateral_target_perc:.2%}** of the {collateral_target_eth:,.0f} ETH target"
                 f" ({collateral_rate:.2%} of {collateral_rate_target:.2%})."
             )
 
