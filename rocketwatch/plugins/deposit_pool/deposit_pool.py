@@ -88,14 +88,14 @@ class DepositPool(StatusPlugin):
         if collateral_eth < 0.01:
             description = (
                 f"No liquidity in the rETH contract!\n"
-                f"Target set to **{collateral_target_eth:,.0f}** ETH ({collateral_rate_target:.2%} of supply)."
+                f"Target set to **{collateral_target_eth:,.0f}** ETH ({collateral_rate_target:.0%} of supply)."
             )
         else:
             collateral_target_perc = collateral_eth / collateral_target_eth
             description = (
                 f"**{collateral_eth:,.2f}** ETH of liquidity in the rETH contract.\n"
                 f"**{collateral_target_perc:.2%}** of the {collateral_target_eth:,.0f} ETH target"
-                f" ({collateral_rate:.2%} of {collateral_rate_target:.2%})."
+                f" ({collateral_rate:.2%}/{collateral_rate_target:.0%})."
             )
 
         return Embed(title="rETH Extra Collateral", description=description)
