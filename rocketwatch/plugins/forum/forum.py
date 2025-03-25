@@ -113,7 +113,7 @@ class Forum(commands.Cog):
                 username=user_dict["user"]["username"],
                 name=user_dict["user"]["name"] if user_dict["user"]["name"] else None,
                 topic_count=user_dict["topic_count"],
-                post_count=user_dict["post_count"] - user_dict["topic_count"],
+                post_count=user_dict["post_count"],
                 likes_received=user_dict["likes_received"]
             ))
         return users
@@ -136,8 +136,8 @@ class Forum(commands.Cog):
             for i, topic in enumerate(topics[:10], start=1):
                 embed.description += (
                     f"{i}. [{topic}]({topic.url})\n"
-                    f"Last reply: <t:{topic.last_post_at}:R>\n"
-                    f"`{topic.like_count:>4}` 🤍\t`{topic.post_count:>4}` 💬\t`{topic.views:>4}` 👀\n"
+                    f"  Last reply <t:{topic.last_post_at}:R>\t\n"
+                    f"  `{topic.like_count:>3}` 🤍  `{topic.post_count:>3}` 💬  `{topic.views:>4}` 👁️\n"
                 )
         else:
             embed.description = "No topics found."
@@ -164,7 +164,7 @@ class Forum(commands.Cog):
             for i, user in enumerate(users[:10], start=1):
                 embed.description += (
                     f"{i}. [{user}]({user.url})\n"
-                    f"`{user.likes_received:>4}` 🤍\t`{user.topic_count:>4}` 📝\t`{user.post_count:>4}` 💬\n"
+                    f"\t `{user.likes_received:>3}` 🤍\t `{user.topic_count:>3}` 📝\t `{user.post_count:>3}` 💬\n"
                 )
         else:
             embed.description = "No users found."

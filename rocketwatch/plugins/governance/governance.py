@@ -86,35 +86,39 @@ class Governance(StatusPlugin):
                 text = text[:(max_length - 1)] + "…"
             return text
 
+        def print_proposals(_dao: DAO, _proposals: list[DAO.Proposal]) -> str:
+            text = ""
+            for _i, _proposal in enumerate(_proposals, start=1):
+                _title = sanitize(_proposal.message)
+                _tx_hash = self._get_tx_hash_for_proposal(_dao, _proposal)
+                _url = f"{cfg['execution_layer.explorer']}/tx/{_tx_hash}"
+                text += f"  {_i}. [{_title}]({_url})\n"
+            return text
+
         # --------- PROTOCOL DAO --------- #
 
+        section_content = ""
         dao = ProtocolDAO()
-        proposals = self._get_active_pdao_proposals(dao)
-        snapshot_proposals = await self._get_active_snapshot_proposals()
-        draft_rpips = await self._get_draft_rpips()
 
-        if proposals or snapshot_proposals or draft_rpips:
-            embed.description += "### Protocol DAO\n"
+        if proposals := self._get_active_pdao_proposals(dao):
+            section_content += "- **Active on-chain proposals**\n"
+            section_content += print_proposals(dao, proposals)
 
-        if proposals:
-            embed.description = "- **Active on-chain proposals**\n"
-            for i, proposal in enumerate(proposals, start=1):
-                title = sanitize(proposal.message)
-                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
-                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
-                embed.description += f"  {i}. [{title}]({url})\n"
-
-        if snapshot_proposals:
-            embed.description += "- **Active Snapshot proposals**\n"
+        if snapshot_proposals := await self._get_active_snapshot_proposals():
+            section_content += "- **Active Snapshot proposals**\n"
             for i, proposal in enumerate(snapshot_proposals, start=1):
                 title = sanitize(proposal.title)
-                embed.description += f"  {i}. [{title}]({proposal.url})\n"
+                section_content += f"  {i}. [{title}]({proposal.url})\n"
 
-        if draft_rpips:
-            embed.description += "- **RPIPs in draft status**\n"
+        if draft_rpips := await self._get_draft_rpips():
+            section_content += "- **RPIPs in draft status**\n"
             for i, rpip in enumerate(draft_rpips, start=1):
                 title = sanitize(rpip.title, 40)
-                embed.description += f"  {i}. [{title}]({rpip.url}) (RPIP-{rpip.number})\n"
+                section_content += f"  {i}. [{title}]({rpip.url}) (RPIP-{rpip.number})\n"
+
+        if section_content:
+            embed.description += "### Protocol DAO\n"
+            embed.description += section_content
 
         # --------- ORACLE DAO --------- #
 
@@ -122,12 +126,7 @@ class Governance(StatusPlugin):
         if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Oracle DAO\n"
             embed.description += "- **Active proposals**\n"
-
-            for i, proposal in enumerate(proposals, start=1):
-                title = sanitize(proposal.message)
-                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
-                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
-                embed.description += f"  {i}. [{title}]({url})\n"
+            embed.description += print_proposals(dao, proposals)
 
         # --------- SECURITY COUNCIL --------- #
 
@@ -135,12 +134,7 @@ class Governance(StatusPlugin):
         if proposals := self._get_active_dao_proposals(dao):
             embed.description += "### Security Council\n"
             embed.description += "- **Active proposals**\n"
-
-            for i, proposal in enumerate(proposals, start=1):
-                title = sanitize(proposal.message)
-                tx_hash = self._get_tx_hash_for_proposal(dao, proposal)
-                url = f"{cfg['execution_layer.explorer']}/tx/{tx_hash}"
-                embed.description += f"  {i}. [{title}]({url})\n"
+            embed.description += print_proposals(dao, proposals)
 
         # --------- DAO FORUM --------- #
 
