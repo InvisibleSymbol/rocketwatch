@@ -40,7 +40,7 @@ class DetectScam(commands.Cog):
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
         self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
-        self.__invite_pattern = re.compile(r"discord(app)?\.com\/invite\\(?P<code>[a-zA-Z0-9]+)")
+        self.__invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
 
     async def report_suspicious_message(self, msg, reason):
         # check if the message has been deleted
