@@ -220,12 +220,6 @@ class SupportUtils(GroupCog, name="support"):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-        self.ctx_menu = app_commands.ContextMenu(
-            name='New Support Thread',
-            callback=self.my_cool_context_menu,
-            guild_ids=[cfg["rocketpool.support.server_id"]]
-        )
-        self.bot.tree.add_command(self.ctx_menu)
 
     @Cog.listener()
     async def on_ready(self):
@@ -238,55 +232,6 @@ class SupportUtils(GroupCog, name="support"):
             }},
             upsert=True
         )
-
-    async def cog_unload(self) -> None:
-        self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
-
-    # You can add checks too
-    @app_commands.guilds(cfg["rocketpool.support.server_id"])
-    async def my_cool_context_menu(self, interaction: Interaction, message: Message):
-        if not has_perms(interaction, ""):
-            await interaction.response.send_message(
-                embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
-            return
-        await interaction.response.defer(ephemeral=True)
-        author = message.author
-        initiator = interaction.user
-        try:
-            target = message
-            args = {}
-            if message.channel.id != cfg["rocketpool.support.channel_id"]:
-                # create a new thread in the support channel
-                target = await self.bot.get_or_fetch_channel(cfg["rocketpool.support.channel_id"])
-                args = {"type": ChannelType.public_thread}
-
-            a = await target.create_thread(name=f"{author} - Support Thread",
-                                           reason=f"Support Thread ({author}): triggered by {initiator}",
-                                           auto_archive_duration=60,
-                                           **args)
-            suffix = ""
-            if isinstance(target, TextChannel):
-                suffix = f"\nOriginal Message: {message.jump_url}"
-            await a.send(
-                content=f"Original Message Author: {author.mention}\nSupport Thread Initiator: {initiator.mention}{suffix}",
-                embed=await generate_template_embed(self.db, "boiler"),
-                allowed_mentions=AllowedMentions(users=True))
-            # send reply to original message with a link to the new thread
-            await message.reply(f"{author.mention}, a support thread has been created for you,"
-                                f" please move to {a.mention} for further assistance.", mention_author=True)
-            await interaction.edit_original_response(
-                embed=Embed(
-                    title="Support Thread Successfully Created",
-                    description=f"[Thread Link]({a.jump_url})")
-            )
-        except Exception as e:
-            await interaction.edit_original_response(
-                embed=Embed(
-                    title="Error",
-                    description=f"{e}"
-                ),
-            )
-            raise e
 
     @subgroup.command()
     async def add(self, interaction: Interaction, name: str):
