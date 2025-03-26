@@ -19,7 +19,7 @@ from discord import (
     Reaction,
     Guild,
     DeletedReferencedMessage,
-    Interaction, RawMessageDeleteEvent
+    Interaction, RawMessageDeleteEvent, RawBulkMessageDeleteEvent
 )
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -153,7 +153,7 @@ class DetectScam(commands.Cog):
                 {"guild_id": message.guild.id, "message_id": message.id},
                 {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
             )
-            await interaction.followup.send(content="Thank you for reporting!", ephemeral=True)
+            await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
         except Exception as e:
             await self.bot.report_error(e)
             await interaction.followup.send(
@@ -303,7 +303,17 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, event: RawMessageDeleteEvent) -> None:
-        report = await self.db.scam_reports.find_one({"guild_id": event.guild_id, "message_id": event.message_id})
+        await self._on_message_delete(event.guild_id, event.channel_id, event.message_id)
+
+    @commands.Cog.listener()
+    async def on_raw_bulk_message_delete(self, event: RawBulkMessageDeleteEvent) -> None:
+        for message_id in event.message_ids:
+            await self._on_message_delete(event.guild_id, event.channel_id, message_id)
+
+    async def _on_message_delete(self, guild_id: int, channel_id: int, message_id: int) -> None:
+        report = await self.db.scam_reports.find_one(
+            {"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id}
+        )
         if not report:
             return
 
@@ -313,50 +323,36 @@ class DetectScam(commands.Cog):
             message = await channel.fetch_message(report["warning_id"])
             await message.delete()
 
-        # try to update report message to indicate that the message was deleted
-        with contextlib.suppress(errors.NotFound):
-            report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-            message = await report_channel.fetch_message(report["report_id"])
-            embed = message.embeds[0]
-            embed.description += "\n\n**Original message has been deleted.**"
-            # orange
-            embed.color = Color.from_rgb(255, 165, 0)
-            await message.edit(embed=embed)
-
-        # record in db that message was deleted
+        await self._update_report(report, "Original message has been deleted.")
         await self.db.scam_reports.update_one(
-            {"guild_id": event.guild_id, "message_id": event.message_id},
+            {"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id},
             {"$set": {"warning_id": None}}
         )
 
     @commands.Cog.listener()
     # on user ban
     async def on_member_ban(self, guild: Guild, user: User) -> None:
-        # delete all warnings, update all reports
         reports = await self.db.scam_reports.find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
-        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-
         for report in reports:
-            # delete warning message
-            channel = await self.bot.get_or_fetch_channel(report["channel_id"])
-            with contextlib.suppress(errors.NotFound):
-                message = await channel.fetch_message(report["warning_id"])
-                await message.delete()
+            await self._update_report(report, "User has been banned.")
 
-            # try to update report message to indicate that the message was deleted
-            with contextlib.suppress(errors.NotFound):
+    async def _update_report(self, report: dict, note: str) -> None:
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+        async with self.report_lock:
+            try:
                 message = await report_channel.fetch_message(report["report_id"])
                 embed = message.embeds[0]
-                embed.description += "\n\n**User has been banned.**"
-                # green
-                embed.color = Color.from_rgb(0, 255, 0)
+                embed.description += f"\n\n**{note}**"
+                if embed.colour.g == 0:
+                    # orange first
+                    embed.colour = Color.from_rgb(255, 165, 0)
+                else:
+                    # then green
+                    embed.colour = Color.from_rgb(0, 255, 0)
                 await message.edit(embed=embed)
+            except Exception as e:
+                await self.bot.report_error(e)
 
-            # record in db that message was deleted
-            await self.db.scam_reports.update_one(
-                {"guild_id": guild.id, "message_id": report["message_id"]},
-                {"$set": {"warning_id": None}}
-            )
 
 async def setup(bot):
     await bot.add_cog(DetectScam(bot))
