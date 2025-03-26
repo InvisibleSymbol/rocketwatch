@@ -108,9 +108,12 @@ class DetectScam(commands.Cog):
         if not (components := await self._get_report_components(message, reason)):
             return None
 
-        warning, report, contents = components
-        with contextlib.suppress(errors.Forbidden):
+        try:
+            warning, report, contents = components
             warning_msg = await message.reply(embed=warning, mention_author=False)
+        except errors.Forbidden:
+            log.warning(f"Failed to send warning message in reply to {message.id}")
+            return None
 
         report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
         report_msg = await report_channel.send(embed=report, file=contents)
@@ -122,22 +125,21 @@ class DetectScam(commands.Cog):
         return None
 
     async def manual_report(self, interaction: Interaction, message: Message) -> None:
-        await interaction.response.defer(ephemeral=True)
-
         if message.author.bot:
-            await interaction.followup.send(content="Bot messages can't be reported.", ephemeral=True)
+            await interaction.response.send_message(content="Bot messages can't be reported.", ephemeral=True)
             return None
 
         if message.author == interaction.user:
-            await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
+            await interaction.response.send_message(content="Did you just report yourself?", ephemeral=True)
             return None
 
         reporter = await self.bot.get_or_fetch_user(interaction.user.id)
         reason = f"Manual report by {reporter.mention}"
 
         if not (components := await self._get_report_components(message, reason)):
-            await interaction.followup.send(
-                content="Failed to report message. It may have already been reported or deleted.", ephemeral=True
+            await interaction.response.send_message(
+                content="Failed to report message. It may have already been reported or deleted.", 
+                ephemeral=True
             )
             return None
 
@@ -155,11 +157,12 @@ class DetectScam(commands.Cog):
                 {"guild_id": message.guild.id, "message_id": message.id},
                 {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
             )
-            await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
+            await interaction.response.send_message(content="Thanks for reporting!", ephemeral=True)
         except Exception as e:
             await self.bot.report_error(e)
-            await interaction.followup.send(
-                content="Failed to send report details! The error has been reported.", ephemeral=True
+            await interaction.response.send_message(
+                content="Failed to send report details! The error has been reported.", 
+                ephemeral=True
             )
 
         return None
