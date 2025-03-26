@@ -231,7 +231,7 @@ class DetectScam(commands.Cog):
             ("support team", "supp0rt", "🎫", "🎟️", "m0d"),
             [
                 ("ask", "seek", "request", "contact"),
-                ("help", "assistance", "service")
+                ("help", "assistance", "service", "support")
             ],
             [
                 ("instant", "live"),
