@@ -312,8 +312,8 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, event: RawBulkMessageDeleteEvent) -> None:
-        for message_id in event.message_ids:
-            await self._on_message_delete(event.guild_id, event.channel_id, message_id)
+        guild_id, channel_id = event.guild_id, event.channel_id
+        await asyncio.gather(*[self._on_message_delete(guild_id, channel_id, msg_id) for msg_id in event.message_ids])
 
     async def _on_message_delete(self, guild_id: int, channel_id: int, message_id: int) -> None:
         report = await self.db.scam_reports.find_one(
