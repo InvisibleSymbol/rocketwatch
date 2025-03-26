@@ -19,7 +19,9 @@ from discord import (
     Reaction,
     Guild,
     DeletedReferencedMessage,
-    Interaction, RawMessageDeleteEvent, RawBulkMessageDeleteEvent
+    Interaction,
+    RawMessageDeleteEvent,
+    RawBulkMessageDeleteEvent
 )
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
