@@ -1,25 +1,28 @@
-import asyncio
-import contextlib
 import io
+import asyncio
 import logging
-from datetime import datetime
-
+import contextlib
 import regex as re
+
 from urllib import parse
-from datetime import timezone
+from typing import Optional
+from datetime import datetime, timezone
+
+from cachetools import TTLCache
 from discord import (
     errors,
+    app_commands,
     File,
     Color,
     User,
     Message,
     Reaction,
     Guild,
-    DeletedReferencedMessage
+    DeletedReferencedMessage,
+    Interaction, RawMessageDeleteEvent
 )
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
-from cachetools import TTLCache
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
@@ -44,54 +47,116 @@ class DetectScam(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-        self.reported_ids = set()
         self.report_lock = asyncio.Lock()
         self.reaction_lock = asyncio.Lock()
         self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
         self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
         self.__invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
+        self.report_menu = app_commands.ContextMenu(
+            name="Report as Spam",
+            callback=self.manual_report,
+            guild_ids=[cfg["rocketpool.support.server_id"]]
+        )
+        self.bot.tree.add_command(self.report_menu)
 
-    async def report_suspicious_message(self, msg: Message, reason: str) -> None:
-        # check if the message has been deleted
+    def cog_unload(self) -> None:
+        self.bot.tree.remove_command(self.report_menu.name, type=self.report_menu.type)
+
+    async def _get_report_components(self, message: Message, reason: str) -> Optional[tuple[Embed, Embed, File]]:
         try:
-            msg = await msg.channel.fetch_message(msg.id)
-            if isinstance(msg, DeletedReferencedMessage):
-                return
+            message = await message.channel.fetch_message(message.id)
+            if isinstance(message, DeletedReferencedMessage):
+                return None
         except errors.NotFound:
-            return
-        # lock
+            return None
+
         async with self.report_lock:
-            # check if message has already been reported
-            if msg.id in self.reported_ids:
-                return
-            e = Embed(title="🚨 Warning: Possible Scam Detected")
-            e.colour = Color.from_rgb(255, 0, 0)
-            e.description = f"**Reason:** {reason}\n"
-            bak_footer = e.footer.text
-            e.set_footer(text="This message will be deleted once the suspicious message is removed.")
-            # supress failure
-            with contextlib.suppress(errors.Forbidden):
-                warning = await msg.reply(embed=e, mention_author=False)
-            e.set_footer(text=bak_footer)
-            # report into report-scams channel as well
-            ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-            e.description += f"User ID: `{msg.author.id}` ({msg.author.mention})\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
-            e.description += "Original message has been attached as a file. Please review and take appropriate action."
-            with io.BytesIO(get_text_of_message(msg).encode()) as f:
-                report = await ch.send(embed=e, file=File(f, filename="original_message.txt"))
-            # insert back reference into database so we can delete it later if removed
-            await self.db["scam_reports"].insert_one({
-                "guild_id"  : msg.guild.id,
-                "report_id" : report.id,
-                "message_id": msg.id,
-                "warning_id": warning.id,
-                "user_id"   : msg.author.id,
-                "channel_id": msg.channel.id,
-                "reason"    : reason
+            if await self.db.scam_reports.find_one({"guild_id": message.guild.id, "message_id": message.id}):
+                log.info(f"Found existing report for message {message.id} in database")
+                return None
+
+            warning = Embed(title="🚨 Warning: Possible Scam Detected")
+            warning.color = Color.from_rgb(255, 0, 0)
+            warning.description = f"**Reason:** {reason}\n"
+
+            report = warning.copy()
+            warning.set_footer(text="This message will be deleted once the suspicious message is removed.")
+
+            report.description += f"User ID: `{message.author.id}` ({message.author.mention})\nMessage ID: `{message.id}` ({message.jump_url})\nChannel ID: `{message.channel.id}` ({message.channel.mention})\n\n"
+            report.description += "Original message has been attached as a file. Please review and take appropriate action."
+
+            text = get_text_of_message(message)
+            with io.BytesIO(text.encode()) as f:
+                contents = File(f, filename="original_message.txt")
+
+            await self.db.scam_reports.insert_one({
+                "guild_id": message.guild.id,
+                "channel_id": message.channel.id,
+                "message_id": message.id,
+                "user_id": message.author.id,
+                "reason": reason,
+                "content": text,
+                "warning_id": None,
+                "report_id": None,
             })
-            # add to reported ids
-            self.reported_ids.add(msg.id)
+            return warning, report, contents
+
+    async def report_suspicious_message(self, message: Message, reason: str) -> None:
+        if not (components := await self._get_report_components(message, reason)):
+            return None
+
+        warning, report, contents = components
+        with contextlib.suppress(errors.Forbidden):
+            warning_msg = await message.reply(embed=warning, mention_author=False)
+
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+        report_msg = await report_channel.send(embed=report, file=contents)
+
+        await self.db.scam_reports.update_one(
+            {"guild_id": message.guild.id, "message_id": message.id},
+            {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
+        )
+        return None
+
+    async def manual_report(self, interaction: Interaction, message: Message) -> None:
+        await interaction.response.defer(ephemeral=True)
+
+        if message.author == interaction.user:
+            await interaction.followup.send(content="You can't report yourself!")
+            return None
+
+        reporter = await self.bot.get_or_fetch_user(interaction.user.id)
+        reason = f"Manual report by {reporter.mention}"
+
+        if not (components := await self._get_report_components(message, reason)):
+            await interaction.followup.send(
+                content="Failed to report message. It may have already been reported or deleted.", ephemeral=True
+            )
+            return None
+
+        try:
+            warning, report, contents = components
+            report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+            report_msg = await report_channel.send(embed=report, file=contents)
+            moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
+            warning_msg = await message.reply(
+                content=f"{moderator.mention} {report_msg.jump_url}",
+                embed=warning,
+                mention_author=False
+            )
+            await self.db.scam_reports.update_one(
+                {"guild_id": message.guild.id, "message_id": message.id},
+                {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
+            )
+            await interaction.followup.send(content="Thank you for reporting!", ephemeral=True)
+        except Exception as e:
+            await self.bot.report_error(e)
+            await interaction.followup.send(
+                content="Failed to send report details! The error has been reported.", ephemeral=True
+            )
+
+        return None
 
     @commands.Cog.listener()
     async def on_message(self, message: Message) -> None:
@@ -233,60 +298,61 @@ class DetectScam(commands.Cog):
             print("reaction done")
 
     @commands.Cog.listener()
-    async def on_message_delete(self, message: Message) -> None:
-        # check if message was reported
-        report = await self.db["scam_reports"].find_one({"guild_id": message.guild.id, "message_id": message.id})
-        if report:
-            # delete warning message
-            ch = await self.bot.get_or_fetch_channel(report["channel_id"])
-            with contextlib.suppress(errors.NotFound):
-                msg = await ch.fetch_message(report["warning_id"])
-                await ch.delete_messages([msg])
-            # try to update report message to indicate that the message was deleted
-            with contextlib.suppress(errors.NotFound):
-                ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-                msg = await ch.fetch_message(report["report_id"])
-                e = msg.embeds[0]
-                e.description += "\n\n**Original message has been deleted.**"
-                # orange
-                e.colour = Color.from_rgb(255, 165, 0)
-                await msg.edit(embed=e)
-            # record in db that message was deleted
-            await self.db["scam_reports"].update_one({"guild_id": message.guild.id, "message_id": message.id},
-                                                     {"$set": {"deleted": True}})
-        if message.channel.id == cfg["rocketpool.support.channel_id"]:
-            e = Embed(title="Message Deleted")
-            e.description = f"**User:** {message.author.mention} ({message.author.id})\n" \
-                            f"**Channel:** {message.channel.mention} ({message.channel.id})\n" \
-                            f"**Message:**\n{get_text_of_message(message)[:1000]}"
-            e.set_footer(text=f"Message ID: {message.id}")
-            ch = await self.bot.get_or_fetch_channel(895367217288466482)
-            await ch.send(embed=e)
+    async def on_raw_message_delete(self, event: RawMessageDeleteEvent) -> None:
+        report = await self.db.scam_reports.find_one({"guild_id": event.guild_id, "message_id": event.message_id})
+        if not report:
+            return
 
+        # delete warning message
+        channel = await self.bot.get_or_fetch_channel(report["channel_id"])
+        with contextlib.suppress(errors.NotFound):
+            message = await channel.fetch_message(report["warning_id"])
+            await message.delete()
+
+        # try to update report message to indicate that the message was deleted
+        with contextlib.suppress(errors.NotFound):
+            report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+            message = await report_channel.fetch_message(report["report_id"])
+            embed = message.embeds[0]
+            embed.description += "\n\n**Original message has been deleted.**"
+            # orange
+            embed.color = Color.from_rgb(255, 165, 0)
+            await message.edit(embed=embed)
+
+        # record in db that message was deleted
+        await self.db.scam_reports.update_one(
+            {"guild_id": event.guild_id, "message_id": event.message_id},
+            {"$set": {"warning_id": None}}
+        )
 
     @commands.Cog.listener()
     # on user ban
     async def on_member_ban(self, guild: Guild, user: User) -> None:
         # delete all warnings, update all reports
-        reports = await self.db["scam_reports"].find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
+        reports = await self.db.scam_reports.find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+
         for report in reports:
             # delete warning message
-            ch = await self.bot.get_or_fetch_channel(report["channel_id"])
+            channel = await self.bot.get_or_fetch_channel(report["channel_id"])
             with contextlib.suppress(errors.NotFound):
-                msg = await ch.fetch_message(report["warning_id"])
-                await ch.delete_messages([msg])
+                message = await channel.fetch_message(report["warning_id"])
+                await message.delete()
+
             # try to update report message to indicate that the message was deleted
             with contextlib.suppress(errors.NotFound):
-                ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-                msg = await ch.fetch_message(report["report_id"])
-                e = msg.embeds[0]
-                e.description += "\n\n**User has been banned.**"
+                message = await report_channel.fetch_message(report["report_id"])
+                embed = message.embeds[0]
+                embed.description += "\n\n**User has been banned.**"
                 # green
-                e.colour = Color.from_rgb(0, 255, 0)
-                await msg.edit(embed=e)
+                embed.color = Color.from_rgb(0, 255, 0)
+                await message.edit(embed=embed)
+
             # record in db that message was deleted
-            await self.db["scam_reports"].update_one({"guild_id": guild.id, "message_id": report["message_id"]},
-                                                     {"$set": {"deleted": True}})
+            await self.db.scam_reports.update_one(
+                {"guild_id": guild.id, "message_id": report["message_id"]},
+                {"$set": {"warning_id": None}}
+            )
 
 async def setup(bot):
     await bot.add_cog(DetectScam(bot))

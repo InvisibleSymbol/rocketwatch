@@ -4,11 +4,9 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from checksumdir import dirhash
-from discord import TextChannel, File, app_commands, Object
+from discord import app_commands, TextChannel, File, Object, User, Message
 from discord.ext.commands import Bot, Context
 from discord.ext import commands
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from utils.cfg import cfg
 from utils.retry import retry_async
@@ -94,6 +92,9 @@ class RocketWatch(Bot):
 
     async def get_or_fetch_channel(self, channel_id: int) -> TextChannel:
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+
+    async def get_or_fetch_user(self, user_id: int) -> User:
+        return self.get_user(user_id) or await self.fetch_user(user_id)
 
     async def report_error(self, exception: Exception, ctx: Optional[Context] = None, *args) -> None:
         err_description = f"`{repr(exception)[:150]}`"
