@@ -39,7 +39,7 @@ class DepositPool(StatusPlugin):
             dp_status = "Capacity reached!"
         else:
             free_capacity = solidity.to_float(multicall["getMaximumDepositAmount"])
-            dp_status = f"Enough space for **{free_capacity:,.2f}** more ETH."
+            dp_status = f"Enough space for **{free_capacity:,.2f} ETH**."
 
         embed = Embed(title="Deposit Pool Stats")
         embed.add_field(name="Current Size", value=f"{dp_balance:,.2f} ETH")
@@ -54,7 +54,7 @@ class DepositPool(StatusPlugin):
             if queue_length > display_limit:
                 embed.description += f"{display_limit + 1}. `...`\n"
             queue_capacity = max(queue_length * 31 - dp_balance, 0.0)
-            embed.description += f"Need **{queue_capacity:,.2f}** ETH to dequeue all minipools."
+            embed.description += f"Need **{queue_capacity:,.2f} ETH** to dequeue all minipools."
         else:
             lines = []
             if (num_leb8 := int(dp_balance // 24)) > 0:
@@ -88,12 +88,12 @@ class DepositPool(StatusPlugin):
         if collateral_eth < 0.01:
             description = (
                 f"No liquidity in the rETH contract!\n"
-                f"Target set to **{collateral_target_eth:,.0f}** ETH ({collateral_rate_target:.0%} of supply)."
+                f"Target set to {collateral_target_eth:,.0f} ETH ({collateral_rate_target:.0%} of supply)."
             )
         else:
             collateral_target_perc = collateral_eth / collateral_target_eth
             description = (
-                f"**{collateral_eth:,.2f}** ETH of liquidity in the rETH contract.\n"
+                f"**{collateral_eth:,.2f} ETH** of liquidity in the rETH contract.\n"
                 f"**{collateral_target_perc:.2%}** of the {collateral_target_eth:,.0f} ETH target"
                 f" ({collateral_rate:.2%}/{collateral_rate_target:.0%})."
             )
@@ -136,13 +136,13 @@ class DepositPool(StatusPlugin):
         relative_rate_diff = (reth_price / protocol_rate - 1)
 
         if abs(relative_rate_diff) <= 0.0005:
-            rate_status = "within 0.05% of the protocol rate"
+            rate_status = "within 0.05% of the protocol rate."
         elif relative_rate_diff > 0:
-            rate_status = f"at a **{relative_rate_diff:.2%} premium**"
+            rate_status = f"at a **{relative_rate_diff:.2%} premium**!"
         else:
-            rate_status = f"at a **{-relative_rate_diff:.2%} discount**"
+            rate_status = f"at a **{-relative_rate_diff:.2%} discount**!"
 
-        embed.add_field(name="Secondary Market", value=f"rETH is trading {rate_status}.", inline=False)
+        embed.add_field(name="Secondary Market", value=f"rETH is trading {rate_status}", inline=False)
         return embed
 
     @hybrid_command()
