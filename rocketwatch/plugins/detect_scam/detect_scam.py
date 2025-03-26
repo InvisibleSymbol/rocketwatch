@@ -122,8 +122,12 @@ class DetectScam(commands.Cog):
     async def manual_report(self, interaction: Interaction, message: Message) -> None:
         await interaction.response.defer(ephemeral=True)
 
+        if message.author.bot:
+            await interaction.followup.send(content="Bot messages can't be reported.", ephemeral=True)
+            return None
+
         if message.author == interaction.user:
-            await interaction.followup.send(content="You can't report yourself!")
+            await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
             return None
 
         reporter = await self.bot.get_or_fetch_user(interaction.user.id)
@@ -161,7 +165,7 @@ class DetectScam(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: Message) -> None:
         # if self, ignore
-        if message.author.id == self.bot.user.id:
+        if message.author == self.bot.user:
             return
         if message.guild is None:
             return
