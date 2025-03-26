@@ -5,8 +5,18 @@ import logging
 from datetime import datetime
 
 import regex as re
+from urllib import parse
 from datetime import timezone
-from discord import File, errors, Color, DeletedReferencedMessage
+from discord import (
+    errors,
+    File,
+    Color,
+    User,
+    Message,
+    Reaction,
+    Guild,
+    DeletedReferencedMessage
+)
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
@@ -20,14 +30,14 @@ log = logging.getLogger("detect_scam")
 log.setLevel(cfg["log_level"])
 
 
-def get_text_of_message(message):
+def get_text_of_message(message: Message) -> str:
     text = ""
     if message.content:
-        text += message.content + "\n"
+        text += message.content.replace("\n", "") + "\n"
     if message.embeds:
         for embed in message.embeds:
             text += f"---\n Embed: {embed.title}\n{embed.description}\n---\n"
-    return text.lower()
+    return parse.unquote(text).lower()
 
 
 class DetectScam(commands.Cog):
@@ -42,7 +52,7 @@ class DetectScam(commands.Cog):
         self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
         self.__invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
 
-    async def report_suspicious_message(self, msg, reason):
+    async def report_suspicious_message(self, msg: Message, reason: str) -> None:
         # check if the message has been deleted
         try:
             msg = await msg.channel.fetch_message(msg.id)
@@ -68,7 +78,7 @@ class DetectScam(commands.Cog):
             ch = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
             e.description += f"User ID: `{msg.author.id}` ({msg.author.mention})\nMessage ID: `{msg.id}` ({msg.jump_url})\nChannel ID: `{msg.channel.id}` ({msg.channel.mention})\n\n"
             e.description += "Original message has been attached as a file. Please review and take appropriate action."
-            with io.StringIO(get_text_of_message(msg)) as f:
+            with io.BytesIO(get_text_of_message(msg).encode()) as f:
                 report = await ch.send(embed=e, file=File(f, filename="original_message.txt"))
             # insert back reference into database so we can delete it later if removed
             await self.db["scam_reports"].insert_one({
@@ -84,7 +94,7 @@ class DetectScam(commands.Cog):
             self.reported_ids.add(msg.id)
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: Message) -> None:
         # if self, ignore
         if message.author.id == self.bot.user.id:
             return
@@ -95,7 +105,7 @@ class DetectScam(commands.Cog):
             return
         checks = [
             self.markdown_link_trick(message),
-            self.ticket_with_link(message),
+            self.link_and_keywords(message),
             self.paperhands(message),
             self.mention_everyone(message),
             self.discord_invite(message)
@@ -103,7 +113,7 @@ class DetectScam(commands.Cog):
         await asyncio.gather(*checks)
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
+    async def on_reaction_add(self, reaction: Reaction, user: User) -> None:
         if reaction.message.guild.id != cfg["rocketpool.support.server_id"]:
             log.warning(f"Ignoring reaction from {reaction.message.guild.id} (Content: {reaction.message.content})")
             return
@@ -112,7 +122,7 @@ class DetectScam(commands.Cog):
         ]
         await asyncio.gather(*checks)
 
-    async def markdown_link_trick(self, message):
+    async def markdown_link_trick(self, message: Message) -> None:
         txt = get_text_of_message(message)
         for m in self.__markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
@@ -121,15 +131,15 @@ class DetectScam(commands.Cog):
                     "Markdown link with possible domain in visible portion that does not match the actual domain."
                 )
 
-    async def discord_invite(self, message):
+    async def discord_invite(self, message: Message) -> None:
         txt = get_text_of_message(message)
         if self.__invite_pattern.search(txt):
             await self.report_suspicious_message(
                 message,
-                "Invite to external server"
+                "Invite to external server."
             )
 
-    async def ticket_with_link(self, message):
+    async def link_and_keywords(self, message: Message) -> None:
         # message contains one of the relevant keyword combinations and a link
         txt = get_text_of_message(message)
         if not self.__basic_url_pattern.search(txt):
@@ -137,17 +147,21 @@ class DetectScam(commands.Cog):
 
         keywords = (
             [
-                ("open", "create"),
+                ("open", "create", "raise", "raisse"),
                 "ticket"
             ],
             [
-                ("contact", "reach out", "report", [("talk", "speak"), ("to", "with")]),
-                ("admin", "mod", "m0d")
+                ("contact", "reach out", "report", [("talk", "speak"), ("to", "with")], "ask"),
+                ("admin", "mod")
             ],
-            ("support team", "supp0rt"),
+            ("support team", "supp0rt", "🎫", "🎟️", "m0d"),
             [
                 ("ask", "seek", "request", "contact"),
-                ("help", "assistance")
+                ("help", "assistance", "service")
+            ],
+            [
+                ("instant", "live"),
+                "chat"
             ]
         )
 
@@ -159,11 +173,12 @@ class DetectScam(commands.Cog):
                     return any(map(txt_contains, _x))
                 case list():
                     return all(map(txt_contains, _x))
+            return False
 
         if txt_contains(keywords):
             await self.report_suspicious_message(message, "There is no ticket system in this server.")
 
-    async def paperhands(self, message):
+    async def paperhands(self, message: Message) -> None:
         # message contains the word "paperhand" and a link
         txt = get_text_of_message(message)
         # if has http and contains the word paperhand or paperhold
@@ -171,13 +186,13 @@ class DetectScam(commands.Cog):
             await self.report_suspicious_message(message, "High chance the linked website is a scam.")
 
     # contains @here or @everyone but doesn't actually have the permission to do so
-    async def mention_everyone(self, message):
+    async def mention_everyone(self, message: Message) -> None:
         txt = get_text_of_message(message)
         if ("@here" in txt or "@everyone" in txt) and not message.author.guild_permissions.mention_everyone:
             await self.report_suspicious_message(message, "Mentioned @here or @everyone without permission")
 
 
-    async def reaction_spam(self, reaction, user):
+    async def reaction_spam(self, reaction: Reaction, user: User) -> None:
         # reaction spam is when one user reacts to a message with multiple reactions by only themselves and in quick succession
         # this is usually done to make the message stand out
 
@@ -218,7 +233,7 @@ class DetectScam(commands.Cog):
             print("reaction done")
 
     @commands.Cog.listener()
-    async def on_message_delete(self, message):
+    async def on_message_delete(self, message: Message) -> None:
         # check if message was reported
         report = await self.db["scam_reports"].find_one({"guild_id": message.guild.id, "message_id": message.id})
         if report:
@@ -251,7 +266,7 @@ class DetectScam(commands.Cog):
 
     @commands.Cog.listener()
     # on user ban
-    async def on_member_ban(self, guild, user):
+    async def on_member_ban(self, guild: Guild, user: User) -> None:
         # delete all warnings, update all reports
         reports = await self.db["scam_reports"].find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
         for report in reports:
