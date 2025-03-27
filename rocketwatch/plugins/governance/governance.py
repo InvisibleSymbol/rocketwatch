@@ -92,7 +92,7 @@ class Governance(StatusPlugin):
                 _title = sanitize(_proposal.message)
                 _tx_hash = self._get_tx_hash_for_proposal(_dao, _proposal)
                 _url = f"{cfg['execution_layer.explorer']}/tx/{_tx_hash}"
-                text += f"  {_i}. [{_title}]({_url})\n"
+                text += f"  {_i}. [{_title}]({_url}) (#{_proposal.id})\n"
             return text
 
         # --------- PROTOCOL DAO --------- #
