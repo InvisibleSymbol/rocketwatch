@@ -173,7 +173,7 @@ class DefaultDAO(DAO):
         return (
             f"{graph_bars[0] : <{len(graph_bars[2])}}{'▏' if votes_for >= votes_against else ''}\n"
             f"{graph_bars[1] : <{len(graph_bars[2])}}{'▏' if votes_for <= votes_against else ''}\n"
-            f"Quorum: {quorum_perc:.0%}%{' ✔' if (quorum_perc >= 1) else ''}"
+            f"Quorum: {quorum_perc:.0%}{' ✔' if (quorum_perc >= 1) else ''}"
         )
 
 class OracleDAO(DefaultDAO):
@@ -300,7 +300,7 @@ class ProtocolDAO(DAO):
         veto_quorum_perc = proposal.votes_veto / proposal.veto_quorum
         return (
             f"{main_graph_repr}\n"
-            f"Quorum: {main_quorum_perc:.2%}%{' ✔' if (main_quorum_perc >= 1) else ''}\n\n"
+            f"Quorum: {main_quorum_perc:.2%}{' ✔' if (main_quorum_perc >= 1) else ''}\n\n"
             f"{veto_graph_repr}\n"
-            f"Quorum: {veto_quorum_perc:.2%}%{' ✔' if (veto_quorum_perc >= 1) else ''}"
+            f"Quorum: {veto_quorum_perc:.2%}{' ✔' if (veto_quorum_perc >= 1) else ''}"
         )
