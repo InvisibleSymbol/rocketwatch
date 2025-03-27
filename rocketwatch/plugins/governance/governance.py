@@ -77,7 +77,7 @@ class Governance(StatusPlugin):
     async def get_digest(self) -> Embed:
         embed = Embed(title="Governance Digest", description="")
 
-        def sanitize(text: str, max_length=50) -> str:
+        def sanitize(text: str, max_length: int = 50) -> str:
             text = text.strip()
             text = text.replace("http://", "")
             text = text.replace("https://", "")
@@ -89,7 +89,7 @@ class Governance(StatusPlugin):
         def print_proposals(_dao: DAO, _proposals: list[DAO.Proposal]) -> str:
             text = ""
             for _i, _proposal in enumerate(_proposals, start=1):
-                _title = sanitize(_proposal.message)
+                _title = sanitize(_proposal.message, 40)
                 _tx_hash = self._get_tx_hash_for_proposal(_dao, _proposal)
                 _url = f"{cfg['execution_layer.explorer']}/tx/{_tx_hash}"
                 text += f"  {_i}. [{_title}]({_url}) (#{_proposal.id})\n"
