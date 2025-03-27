@@ -389,7 +389,7 @@ class Snapshot(EventPlugin):
                 embed.description += f" ```{reason}```"
 
             embed.add_field(name="Signer", value=signer)
-            embed.add_field(name="Vote Power", value=f"{self.vp:,.2f}")
+            embed.add_field(name="Voting Power", value=f"{self.vp:,.2f}")
             embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
 
             if self.vp >= 250:
