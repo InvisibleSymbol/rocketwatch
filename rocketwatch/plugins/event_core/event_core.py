@@ -14,7 +14,7 @@ from cronitor import Monitor
 from discord.ext import commands, tasks
 from eth_typing import BlockIdentifier, BlockNumber
 from motor.motor_asyncio import AsyncIOMotorClient
-from web3.datastructures import MutableAttributeDict as aDict
+from web3.datastructures import MutableAttributeDict
 
 from rocketwatch import RocketWatch
 from plugins.support_utils.support_utils import generate_template_embed
@@ -268,7 +268,7 @@ class EventCore(commands.Cog):
         await self._replace_or_add_status(channel_name, embed, state_message)
 
     async def show_service_interrupt(self) -> None:
-        embed = assemble(aDict({"event_name": "service_interrupted"}))
+        embed = assemble(MutableAttributeDict({"event_name": "service_interrupted"}))
         for channel_name in cfg.get("events.status_message", {}).keys():
             state_message = await self.db.state_messages.find_one({"_id": channel_name})
             if (not state_message) or (state_message["state"] != str(self.state.ERROR)):

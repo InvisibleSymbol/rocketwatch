@@ -33,7 +33,7 @@ class DAO(ABC):
 
     @staticmethod
     @abstractmethod
-    def fetch_proposal(proposal_id: int) -> Proposal:
+    def fetch_proposal(self, proposal_id: int) -> Proposal:
         pass
 
     @abstractmethod
@@ -169,11 +169,11 @@ class DefaultDAO(DAO):
             max_width=12
         )
         graph_bars = graph.get_string().split("\n")
-        quorum_pct = round(100 * max(votes_for, votes_against) / votes_required)
+        quorum_perc = max(votes_for, votes_against) / votes_required
         return (
             f"{graph_bars[0] : <{len(graph_bars[2])}}{'▏' if votes_for >= votes_against else ''}\n"
             f"{graph_bars[1] : <{len(graph_bars[2])}}{'▏' if votes_for <= votes_against else ''}\n"
-            f"Quorum: {quorum_pct}%{' ✔' if quorum_pct >= 100 else ''}"
+            f"Quorum: {quorum_perc:.0%}%{' ✔' if (quorum_perc >= 1) else ''}"
         )
 
 class OracleDAO(DefaultDAO):
@@ -296,11 +296,11 @@ class ProtocolDAO(DAO):
         )
         veto_graph_bars = graph.get_string().split("\n")
         veto_graph_repr = f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏"
-        main_quorum_pct = round(100 * proposal.votes_total / proposal.quorum, 2)
-        veto_quorum_pct = round(100 * proposal.votes_veto / proposal.veto_quorum, 2)
+        main_quorum_perc = proposal.votes_total / proposal.quorum
+        veto_quorum_perc = proposal.votes_veto / proposal.veto_quorum
         return (
             f"{main_graph_repr}\n"
-            f"Quorum: {main_quorum_pct}%{' ✔' if main_quorum_pct >= 100 else ''}\n\n"
+            f"Quorum: {main_quorum_perc:.2%}%{' ✔' if (main_quorum_perc >= 1) else ''}\n\n"
             f"{veto_graph_repr}\n"
-            f"Quorum: {veto_quorum_pct}%{' ✔' if veto_quorum_pct >= 100 else ''}"
+            f"Quorum: {veto_quorum_perc:.2%}%{' ✔' if (veto_quorum_perc >= 1) else ''}"
         )
