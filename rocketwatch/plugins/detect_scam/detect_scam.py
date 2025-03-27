@@ -6,7 +6,7 @@ import regex as re
 
 from urllib import parse
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 
 from cachetools import TTLCache
 from discord import (
@@ -23,7 +23,7 @@ from discord import (
     RawMessageDeleteEvent,
     RawBulkMessageDeleteEvent
 )
-from discord.ext import commands
+from discord.ext.commands import Cog
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from rocketwatch import RocketWatch
@@ -45,13 +45,16 @@ def get_text_of_message(message: Message) -> str:
     return parse.unquote(text).lower()
 
 
-class DetectScam(commands.Cog):
+class DetectScam(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-        self.report_lock = asyncio.Lock()
-        self.reaction_lock = asyncio.Lock()
-        self.message_react_cache = TTLCache(maxsize=1000, ttl=300)
+        
+        self._report_lock = asyncio.Lock()
+        self._update_lock = asyncio.Lock()
+        self._reaction_lock = asyncio.Lock()
+        
+        self._message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
         self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
         self.__invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
@@ -65,7 +68,7 @@ class DetectScam(commands.Cog):
     def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.report_menu.name, type=self.report_menu.type)
 
-    async def _get_report_components(self, message: Message, reason: str) -> Optional[tuple[Embed, Embed, File]]:
+    async def _generate_report(self, message: Message, reason: str) -> Optional[tuple[Embed, Embed, File]]:
         try:
             message = await message.channel.fetch_message(message.id)
             if isinstance(message, DeletedReferencedMessage):
@@ -73,8 +76,8 @@ class DetectScam(commands.Cog):
         except errors.NotFound:
             return None
 
-        async with self.report_lock:
-            if await self.db.scam_reports.find_one({"guild_id": message.guild.id, "message_id": message.id}):
+        async with self._report_lock:
+            if await self.db.scam_reports.find_one({"message_id": message.id}):
                 log.info(f"Found existing report for message {message.id} in database")
                 return None
 
@@ -93,19 +96,21 @@ class DetectScam(commands.Cog):
                 contents = File(f, filename="original_message.txt")
 
             await self.db.scam_reports.insert_one({
-                "guild_id": message.guild.id,
-                "channel_id": message.channel.id,
-                "message_id": message.id,
-                "user_id": message.author.id,
-                "reason": reason,
-                "content": text,
-                "warning_id": None,
-                "report_id": None,
+                "guild_id"       : message.guild.id,
+                "channel_id"     : message.channel.id,
+                "message_id"     : message.id,
+                "user_id"        : message.author.id,
+                "reason"         : reason,
+                "content"        : text,
+                "warning_id"     : None,
+                "report_id"      : None,
+                "user_banned"    : False,
+                "message_removed": False,
             })
             return warning, report, contents
 
     async def report_suspicious_message(self, message: Message, reason: str) -> None:
-        if not (components := await self._get_report_components(message, reason)):
+        if not (components := await self._generate_report(message, reason)):
             return None
 
         try:
@@ -119,10 +124,10 @@ class DetectScam(commands.Cog):
         report_msg = await report_channel.send(embed=report, file=contents)
 
         await self.db.scam_reports.update_one(
-            {"guild_id": message.guild.id, "message_id": message.id},
+            {"message_id": message.id},
             {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
         )
-        return None
+        return None  
 
     async def manual_report(self, interaction: Interaction, message: Message) -> None:
         if message.author.bot:
@@ -136,7 +141,7 @@ class DetectScam(commands.Cog):
         reporter = await self.bot.get_or_fetch_user(interaction.user.id)
         reason = f"Manual report by {reporter.mention}"
 
-        if not (components := await self._get_report_components(message, reason)):
+        if not (components := await self._generate_report(message, reason)):
             await interaction.response.send_message(
                 content="Failed to report message. It may have already been reported or deleted.", 
                 ephemeral=True
@@ -154,7 +159,7 @@ class DetectScam(commands.Cog):
                 mention_author=False
             )
             await self.db.scam_reports.update_one(
-                {"guild_id": message.guild.id, "message_id": message.id},
+                {"message_id": message.id},
                 {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
             )
             await interaction.response.send_message(content="Thanks for reporting!", ephemeral=True)
@@ -167,7 +172,7 @@ class DetectScam(commands.Cog):
 
         return None
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_message(self, message: Message) -> None:
         # if self, ignore
         if message.author == self.bot.user:
@@ -186,7 +191,7 @@ class DetectScam(commands.Cog):
         ]
         await asyncio.gather(*checks)
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_reaction_add(self, reaction: Reaction, user: User) -> None:
         if reaction.message.guild.id != cfg["rocketpool.support.server_id"]:
             log.warning(f"Ignoring reaction from {reaction.message.guild.id} (Content: {reaction.message.content})")
@@ -275,22 +280,21 @@ class DetectScam(commands.Cog):
             return
 
         # check if the reaction is by the same user that created the message
-        if reaction.message.author.id != user.id:
+        if reaction.message.author != user:
             return
 
         # check if the message is new enough (we ignore any reactions on messages older than 5 minutes from now)
-        if reaction.message.created_at.timestamp() - datetime.now(timezone.utc).timestamp() > 300:
+        if (reaction.message.created_at - datetime.now()) > timedelta(minutes=5):
             return
 
-        async with self.reaction_lock:
-            print("reaction")
+        async with self._reaction_lock:
             # get all reactions on message
-            reactions = self.message_react_cache.get(reaction.message.id, default=None)
+            reactions = self._message_react_cache.get(reaction.message.id, default=None)
             if reactions is None:
                 reactions = {}
                 for reaction in reaction.message.reactions:
                     reactions |= ({reaction.emoji: {user async for user in reaction.users()}})
-                self.message_react_cache[reaction.message.id] = reactions
+                self._message_react_cache[reaction.message.id] = reactions
 
             # insert reaction into reactions
             if reaction.emoji not in reactions:
@@ -302,23 +306,18 @@ class DetectScam(commands.Cog):
                 await self.report_suspicious_message(reaction.message, "Reaction spam by message author")
 
             # update cache
-            self.message_react_cache[reaction.message.id] = reactions
+            self._message_react_cache[reaction.message.id] = reactions
 
-            print("reaction done")
-
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_raw_message_delete(self, event: RawMessageDeleteEvent) -> None:
-        await self._on_message_delete(event.guild_id, event.channel_id, event.message_id)
+        await self._on_message_delete(event.message_id)
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_raw_bulk_message_delete(self, event: RawBulkMessageDeleteEvent) -> None:
-        guild_id, channel_id = event.guild_id, event.channel_id
-        await asyncio.gather(*[self._on_message_delete(guild_id, channel_id, msg_id) for msg_id in event.message_ids])
+        await asyncio.gather(*[self._on_message_delete(msg_id) for msg_id in event.message_ids])
 
-    async def _on_message_delete(self, guild_id: int, channel_id: int, message_id: int) -> None:
-        report = await self.db.scam_reports.find_one(
-            {"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id}
-        )
+    async def _on_message_delete(self, message_id: int) -> None:
+        report = await self.db.scam_reports.find_one({"message_id": message_id, "message_removed": False})
         if not report:
             return
 
@@ -330,30 +329,32 @@ class DetectScam(commands.Cog):
 
         await self._update_report(report, "Original message has been deleted.")
         await self.db.scam_reports.update_one(
-            {"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id},
-            {"$set": {"warning_id": None}}
+            {"message_id": message_id},
+            {"$set": {"warning_id": None, "message_removed": True}}
         )
 
-    @commands.Cog.listener()
-    # on user ban
+    @Cog.listener()
     async def on_member_ban(self, guild: Guild, user: User) -> None:
-        reports = await self.db.scam_reports.find({"guild_id": guild.id, "user_id": user.id}).to_list(None)
+        reports = await self.db.scam_reports.find(
+            {"guild_id": guild.id, "user_id": user.id, "user_banned": False}
+        ).to_list(None)
         for report in reports:
             await self._update_report(report, "User has been banned.")
+            await self.db.scam_reports.update_one(report, {"$set": {"user_banned": True}})
 
     async def _update_report(self, report: dict, note: str) -> None:
         report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-        async with self.report_lock:
+        async with self._update_lock:
             try:
                 message = await report_channel.fetch_message(report["report_id"])
                 embed = message.embeds[0]
                 embed.description += f"\n\n**{note}**"
-                if embed.colour.g == 0:
+                if embed.color.g == 0:
                     # orange first
-                    embed.colour = Color.from_rgb(255, 165, 0)
+                    embed.color = Color.from_rgb(255, 165, 0)
                 else:
                     # then green
-                    embed.colour = Color.from_rgb(0, 255, 0)
+                    embed.color = Color.from_rgb(0, 255, 0)
                 await message.edit(embed=embed)
             except Exception as e:
                 await self.bot.report_error(e)
