@@ -184,10 +184,10 @@ class Rewards(commands.Cog):
         fig, ax = plt.subplots(figsize=(5, 2.5))
         ax.grid()
 
-        one_pct_borrowed = max(actual_borrowed_eth, borrowed_eth) / (rpl_ratio * 100)
+        one_perc_borrowed = max(actual_borrowed_eth, borrowed_eth) / (rpl_ratio * 100)
 
         x_min = 0
-        x_max = max(rpl_stake * 2, actual_rpl_stake * 5, one_pct_borrowed * 20)
+        x_max = max(rpl_stake * 2, actual_rpl_stake * 5, one_perc_borrowed * 20)
         ax.set_xlim((x_min, x_max))
 
         cur_color, cur_label, cur_ls = "#eb8e55", "current", "solid"
