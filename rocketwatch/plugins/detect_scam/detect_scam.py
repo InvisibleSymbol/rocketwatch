@@ -48,18 +48,19 @@ class DetectScam(Cog):
         self._update_lock = asyncio.Lock()
         
         self._message_react_cache = TTLCache(maxsize=1000, ttl=300)
-        self.__markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
-        self.__basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
-        self.__invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
-        self.report_menu = app_commands.ContextMenu(
-            name="Report as Spam",
+        self.markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
+        self.basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
+        self.invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
+
+        self.report_command = app_commands.ContextMenu(
+            name="Report Message",
             callback=self.manual_report,
-            guild_ids=[cfg["rocketpool.support.server_id"]]
+            guild_ids=[cfg["rocketpool.support.server_id"]],
         )
-        self.bot.tree.add_command(self.report_menu)
+        self.bot.tree.add_command(self.report_command)
 
     def cog_unload(self) -> None:
-        self.bot.tree.remove_command(self.report_menu.name, type=self.report_menu.type)
+        self.bot.tree.remove_command(self.report_command.name, type=self.report_command.type)
         
     def _get_message_content(message: Message) -> str:
         text = ""
@@ -178,21 +179,21 @@ class DetectScam(Cog):
 
     def _markdown_link_trick(self, message: Message) -> Optional[str]:
         txt = DetectScam._get_message_content(message)
-        for m in self.__markdown_link_pattern.findall(txt):
+        for m in self.markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
                 return "Markdown link with possible domain in visible portion that does not match the actual domain."
         return None
 
     def _discord_invite(self, message: Message) -> Optional[str]:
         txt = DetectScam._get_message_content(message)
-        if self.__invite_pattern.search(txt):
+        if self.invite_pattern.search(txt):
             return "Invite to external server."
         return None
 
     def _link_and_keywords(self, message: Message) -> Optional[str]:
         # message contains one of the relevant keyword combinations and a link
         txt = DetectScam._get_message_content(message)
-        if not self.__basic_url_pattern.search(txt):
+        if not self.basic_url_pattern.search(txt):
             return None
 
         keywords = (
@@ -270,10 +271,10 @@ class DetectScam(Cog):
             reactions[reaction.emoji] = {user}
         else:
             reactions[reaction.emoji].add(user)
-    
-        # if there are 8 reactions done by the author of the message, report it
+
         reaction_count = len([r for r in reactions.values() if user in r and len(r) == 1])
-        log.debug(f"{reaction_count} reactions on message {reaction.message.id}")        
+        log.debug(f"{reaction_count} reactions on message {reaction.message.id}")
+        # if there are 8 reactions done by the author of the message, report it
         return "Reaction spam by message author." if (reaction_count >= 8) else None
             
     @Cog.listener()
