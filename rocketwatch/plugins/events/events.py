@@ -620,8 +620,9 @@ class Events(EventPlugin):
                     # not interesting
                     return None
 
-            proposal = ProtocolDAO().fetch_proposal(proposal_id)
-            args.proposal_body = ProtocolDAO().build_proposal_body(
+            dao = ProtocolDAO()
+            proposal = dao.fetch_proposal(proposal_id)
+            args.proposal_body = dao.build_proposal_body(
                 proposal,
                 include_proposer=False,
                 include_payload=("add" in event_name),
@@ -641,8 +642,9 @@ class Events(EventPlugin):
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
 
-            proposal = DefaultDAO(dao_name).fetch_proposal(proposal_id)
-            args.proposal_body = DefaultDAO(dao_name).build_proposal_body(
+            dao = DefaultDAO(dao_name)
+            proposal = dao.fetch_proposal(proposal_id)
+            args.proposal_body = dao.build_proposal_body(
                 proposal,
                 include_proposer=False,
                 include_payload=("add" in event_name),
