@@ -133,7 +133,7 @@ class DepositPool(StatusPlugin):
 
         reth_price = rp.get_reth_eth_price()
         protocol_rate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
-        relative_rate_diff = (reth_price / protocol_rate - 1)
+        relative_rate_diff = (reth_price / protocol_rate) - 1
         expected_rate_diff = 0.0005
 
         if abs(relative_rate_diff) <= expected_rate_diff:
