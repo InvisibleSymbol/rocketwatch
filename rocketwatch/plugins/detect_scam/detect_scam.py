@@ -136,7 +136,10 @@ class DetectScam(Cog):
             warning.description = f"**Reason:** {reason}\n"
             
             report = warning.copy()
-            warning.set_footer(text="This message will be deleted once the suspicious thread is removed.")
+            warning.set_footer(text=(
+                "There is no ticket system for support on this server.\n"
+                "Ignore this thread and any invites or DMs you may receive."
+            ))
             
             report.description += (
                 f"Thread Name: `{thread.name}`\n"
