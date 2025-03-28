@@ -95,6 +95,7 @@ class DetectScam(Cog):
             warning.set_footer(text="This message will be deleted once the suspicious message is removed.")
 
             report.description += (
+                "\n"
                 f"User ID: `{message.author.id}` ({message.author.mention})\n"
                 f"Message ID: `{message.id}` ({message.jump_url})\n"
                 f"Channel ID: `{message.channel.id}` ({message.channel.jump_url})\n"
@@ -142,6 +143,7 @@ class DetectScam(Cog):
             ))
             
             report.description += (
+                "\n"
                 f"Thread Name: `{thread.name}`\n"
                 f"User ID: `{thread.owner}` ({thread.owner.mention})\n"
                 f"Thread ID: `{thread.id}` ({thread.jump_url})\n"
@@ -233,13 +235,13 @@ class DetectScam(Cog):
         txt = DetectScam._get_message_content(message)
         for m in self.markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
-                return "Markdown link with possible domain in visible portion that does not match the actual domain."
+                return "Markdown link with possible domain in visible portion that does not match the actual domain"
         return None
 
     def _discord_invite(self, message: Message) -> Optional[str]:
         txt = DetectScam._get_message_content(message)
         if self.invite_pattern.search(txt):
-            return "Invite to external server."
+            return "Invite to external server"
         return None
 
     def _link_and_keywords(self, message: Message) -> Optional[str]:
@@ -285,14 +287,14 @@ class DetectScam(Cog):
         txt = DetectScam._get_message_content(message)
         # if has http and contains the word paperhand or paperhold
         if (any(x in txt for x in ["paperhand", "paperhold", "pages.dev", "web.app"]) and "http" in txt) or "pages.dev" in txt:
-            return "High chance the linked website is a scam."
+            return "High chance the linked website is a scam"
         return None
 
     # contains @here or @everyone but doesn't actually have the permission to do so
     def _mention_everyone(self, message: Message) -> Optional[str]:
         txt = DetectScam._get_message_content(message)
         if ("@here" in txt or "@everyone" in txt) and not message.author.guild_permissions.mention_everyone:
-            return "Mentioned @here or @everyone without permission."
+            return "Mentioned @here or @everyone without permission"
         return None
 
     async def _reaction_spam(self, reaction: Reaction, user: User) -> Optional[str]:    
@@ -327,7 +329,7 @@ class DetectScam(Cog):
         reaction_count = len([r for r in reactions.values() if user in r and len(r) == 1])
         log.debug(f"{reaction_count} reactions on message {reaction.message.id}")
         # if there are 8 reactions done by the author of the message, report it
-        return "Reaction spam by message author." if (reaction_count >= 8) else None
+        return "Reaction spam by message author" if (reaction_count >= 8) else None
             
     @Cog.listener()
     async def on_message(self, message: Message) -> None:
@@ -445,7 +447,7 @@ class DetectScam(Cog):
             log.debug(f"Ignoring thread creation (id: {thread.id}, name: {thread.name})")
             return
         
-        await self.report_thread(thread, "Fraudulent support thread.")
+        await self.report_thread(thread, "Illegitimate support thread")
         
     @Cog.listener()
     async def on_raw_thread_update(self, event: RawThreadUpdateEvent) -> None:
