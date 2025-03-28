@@ -4,7 +4,14 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from discord import app_commands, TextChannel, File, Object, User, Message
+from discord import (
+    app_commands, 
+    Thread, 
+    File, 
+    Object, 
+    User
+)
+from discord.abc import GuildChannel, PrivateChannel
 from discord.ext.commands import Bot, Context
 from discord.ext import commands
 
@@ -78,11 +85,11 @@ class RocketWatch(Bot):
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
         if isinstance(exception, commands.errors.MaxConcurrencyReached):
-            msg = f"Someone else is already using this command. Please try again later"
+            msg = "Someone else is already using this command. Please try again later"
         elif isinstance(exception, app_commands.errors.CommandOnCooldown):
             msg = f"Slow down! You are using this command too fast. Please try again in {exception.retry_after:.0f} seconds"
         else:
-            msg = f"An unexpected error occurred and has been reported to the developer. Please try again later"
+            msg = "An unexpected error occurred and has been reported to the developer. Please try again later"
 
         try:
             await self.report_error(exception, ctx)
@@ -90,7 +97,7 @@ class RocketWatch(Bot):
         except Exception:
             log.exception("Failed to alert user")
 
-    async def get_or_fetch_channel(self, channel_id: int) -> TextChannel:
+    async def get_or_fetch_channel(self, channel_id: int) -> GuildChannel | PrivateChannel | Thread:
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
 
     async def get_or_fetch_user(self, user_id: int) -> User:
@@ -120,4 +127,4 @@ class RocketWatch(Bot):
             file = File(io.BytesIO(err_trace.encode()), "exception.txt")
             await retry_async(tries=5, delay=5)(channel.send)(err_description, file=file)
         except Exception:
-            log.exception(f"Failed to send message. Max retries reached.")
+            log.exception("Failed to send message. Max retries reached.")

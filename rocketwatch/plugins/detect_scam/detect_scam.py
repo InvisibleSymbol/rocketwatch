@@ -22,7 +22,9 @@ from discord import (
     DeletedReferencedMessage,
     Interaction,
     RawMessageDeleteEvent,
-    RawBulkMessageDeleteEvent
+    RawBulkMessageDeleteEvent,
+    RawThreadUpdateEvent,
+    RawThreadDeleteEvent
 )
 from discord.ext.commands import Cog
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -443,20 +445,21 @@ class DetectScam(Cog):
         await self.report_thread(thread, "Fraudulent support thread.")
         
     @Cog.listener()
-    async def on_thread_update(self, before: Thread, after: Thread) -> None:
-        await self.on_message_create(after)
+    async def on_raw_thread_update(self, event: RawThreadUpdateEvent) -> None:
+        thread: Thread = await self.bot.get_or_fetch_channel(event.thread_id)
+        await self.on_thread_create(thread)
     
     @Cog.listener()
-    async def on_thread_delete(self, thread: Thread) -> None:
+    async def on_raw_thread_delete(self, event: RawThreadDeleteEvent) -> None:
         report = await self.db.scam_reports.find_one(
-            {"channel_id": thread.id, "message_id": None, "removed": False}
+            {"channel_id": event.thread_id, "message_id": None, "removed": False}
         )
         if not report:
             return
 
         await self._update_report(report, "Thread has been deleted.")
         await self.db.scam_reports.update_one(
-            {"channel_id": thread.id, "message_id": None, "removed": False},
+            {"channel_id": event.thread_id, "message_id": None, "removed": False},
             {"$set": {"warning_id": None, "removed": True}}
         )
 
