@@ -440,7 +440,7 @@ class DetectScam(Cog):
             log.warning(f"Ignoring thread creation in {thread.guild.id}")
             return
 
-        keywords = ("support", "ticket", "assistance",  "🎫", "🎟️")
+        keywords = ("support", "ticket", "assistance", "🎫", "🎟️")
         if not any(kw in thread.name.lower() for kw in keywords):
             log.debug(f"Ignoring thread creation (id: {thread.id}, name: {thread.name})")
             return
