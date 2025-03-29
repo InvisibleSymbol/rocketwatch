@@ -2,6 +2,7 @@ import io
 import asyncio
 import logging
 import contextlib
+
 import regex as re
 
 from urllib import parse
@@ -33,16 +34,16 @@ from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed
 
-
 log = logging.getLogger("detect_scam")
 log.setLevel(cfg["log_level"])
 
 
 class DetectScam(Cog):
-    COLOR_ALERT = Color.from_rgb(255, 0, 0)
-    COLOR_WARN = Color.from_rgb(255, 165, 0)
-    COLOR_OK = Color.from_rgb(0, 255, 0)
-    
+    class Color:
+        ALERT = Color.from_rgb(255, 0, 0)
+        WARN = Color.from_rgb(255, 165, 0)
+        OK = Color.from_rgb(0, 255, 0)
+
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
@@ -64,7 +65,8 @@ class DetectScam(Cog):
 
     def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.report_command.name, type=self.report_command.type)
-        
+
+    @staticmethod
     def _get_message_content(message: Message) -> str:
         text = ""
         if message.content:
@@ -87,9 +89,9 @@ class DetectScam(Cog):
                 log.info(f"Found existing report for message {message.id} in database")
                 return None
 
-            warning = Embed(title="🚨 Warning: Possible Scam Detected")
-            warning.color = self.COLOR_ALERT
-            warning.description = f"**Reason:** {reason}\n"
+            warning = Embed(title="🚨 Possible Scam Detected")
+            warning.color = self.Color.ALERT
+            warning.description = f"**Reason**: {reason}\n"
 
             report = warning.copy()
             warning.set_footer(text="This message will be deleted once the suspicious message is removed.")
@@ -132,9 +134,9 @@ class DetectScam(Cog):
                 log.info(f"Found existing report for thread {thread.id} in database")
                 return None
 
-            warning = Embed(title="🚨 Warning: Possible Scam Detected")
-            warning.color = self.COLOR_ALERT
-            warning.description = f"**Reason:** {reason}\n"
+            warning = Embed(title="🚨 Possible Scam Detected")
+            warning.color = self.Color.ALERT
+            warning.description = f"**Reason**: {reason}\n"
             
             report = warning.copy()
             warning.set_footer(text=(
@@ -410,11 +412,11 @@ class DetectScam(Cog):
                 message = await report_channel.fetch_message(report["report_id"])
                 embed = message.embeds[0]
                 embed.description += f"\n\n**{note}**"
-                embed.color = self.COLOR_WARN if (embed.color == self.COLOR_ALERT) else self.COLOR_OK
+                embed.color = self.Color.WARN if (embed.color == self.Color.ALERT) else self.Color.OK
                 await message.edit(embed=embed)
             except Exception as e:
                 await self.bot.report_error(e)
-                
+
     async def report_thread(self, thread: Thread, reason: str) -> None:
         if not (components := await self._generate_thread_report(thread, reason)):
             return None
