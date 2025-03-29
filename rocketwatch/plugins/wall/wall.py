@@ -30,7 +30,6 @@ class Wall(commands.Cog):
         self.cex: set[CEX] = {
             Binance("RPL", ["USDT"]),
             Coinbase("RPL", ["USDC"]),
-            Deepcoin("RPL", ["USDT"]),
             GateIO("RPL", ["USDT"]),
             OKX("RPL", ["USDT"]),
             Bitget("RPL", ["USDT"]),

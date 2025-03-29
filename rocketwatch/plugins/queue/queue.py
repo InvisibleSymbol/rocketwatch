@@ -28,7 +28,7 @@ class Queue(commands.Cog):
         PAGE_SIZE = 15
 
         def __init__(self):
-            super().__init__()
+            super().__init__(timeout=None)
             self.page_index = 0
 
         async def load(self) -> Embed:
