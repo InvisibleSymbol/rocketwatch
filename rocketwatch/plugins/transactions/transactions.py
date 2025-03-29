@@ -95,13 +95,13 @@ class Transactions(EventPlugin):
         old_addresses = self.addresses
         try:
             from_block = self.last_served_block + 1 - self.lookback_distance
-            return self._get_past_events(from_block, self._pending_block)
+            return self.get_past_events(from_block, self._pending_block)
         except Exception as err:
             # rollback in case of contract upgrade
             self.addresses = old_addresses
             raise err
 
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+    def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
         for block in range(from_block, to_block):
             events.extend(self.get_events_for_block(cast(BlockNumber, block)))

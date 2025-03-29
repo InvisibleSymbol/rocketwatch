@@ -7,7 +7,6 @@ import time
 
 import humanize
 import requests
-from checksumdir import dirhash
 from colorama import Fore, Style
 from discord import File, Object
 from discord.app_commands import Choice, guilds, describe
@@ -31,36 +30,24 @@ log.setLevel(cfg["log_level"])
 class Debug(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-        self.ran = False
-        self.contract_files = []
-        self.function_list = []
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
+        self.contract_names = []
+        self.function_names = []
 
     # --------- LISTENERS --------- #
 
     @Cog.listener()
     async def on_ready(self):
-        if self.ran:
+        if self.function_names:
             return
-        self.ran = True
-        log.info("Checking if plugins have changed!")
-        plugins_hash = dirhash("plugins")
-        log.debug(f"Plugin folder hash: {plugins_hash}")
-        # check if hash in db matches
-        db_entry = await self.db.state.find_one({"_id": "plugins_hash"})
-        if db_entry and plugins_hash == db_entry.get("hash"):
-            log.info("Plugins have not changed!")
-        else:
-            log.info("Plugins have changed! Updating Commands...")
-            await self.bot.tree.sync()
-            await self.bot.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-            await self.db.state.update_one({"_id": "plugins_hash"}, {"$set": {"hash": plugins_hash}}, upsert=True)
-            log.info("Commands updated!")
 
         for contract in rp.addresses.copy():
-            self.contract_files.append(contract)
-            for function in rp.get_contract_by_name(contract).functions:
-                self.function_list.append(f"{contract}.{function}")
+            try:
+                for function in rp.get_contract_by_name(contract).functions:
+                    self.function_names.append(f"{contract}.{function}")
+                self.contract_names.append(contract)
+            except Exception:
+                log.exception(f"Could not get function list for {contract}")
 
     # --------- PRIVATE OWNER COMMANDS --------- #
 
@@ -452,11 +439,11 @@ class Debug(Cog):
     @get_abi_of_contract.autocomplete("contract")
     @decode_tnx.autocomplete("contract_name")
     async def match_contract_names(self, ctx: Context, current: str):
-        return [Choice(name=name, value=name) for name in self.contract_files if current.lower() in name.lower()][:25]
+        return [Choice(name=name, value=name) for name in self.contract_names if current.lower() in name.lower()][:25]
 
     @call.autocomplete("function")
     async def match_function_name(self, ctx: Context, current: str):
-        return [Choice(name=name, value=name) for name in self.function_list if current.lower() in name.lower()][:25]
+        return [Choice(name=name, value=name) for name in self.function_names if current.lower() in name.lower()][:25]
 
 
 async def setup(bot):

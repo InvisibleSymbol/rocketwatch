@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import logging
 import math
+from typing import Optional, Callable, Literal
 
 import discord
 import humanize
@@ -88,10 +89,17 @@ def get_pdao_delegates() -> dict[str, str]:
         return {}
 
 
-def el_explorer_url(target, name="", prefix="", make_code=False, block="latest"):
-    url = f"https://{cfg['rocketpool.execution_layer.explorer']}/search?q={target}"
+def el_explorer_url(
+        target: str,
+        name: str = "",
+        prefix: str | Literal[-1] = "",
+        name_fmt: Optional[Callable[[str], str]] = None,
+        block="latest"
+):
+
     if w3.isAddress(target):
         # sanitize address
+        url = f"{cfg['execution_layer.explorer']}/address/{target}"
         target = w3.toChecksumAddress(target)
 
         # rocketscan url stuff
@@ -147,7 +155,7 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
             if (
                     not name
                     and w3.keccak(text=code.hex()).hex()
-                    in cfg["mev.hashes"]
+                    in cfg["other.mev_hashes"]
             ):
                 name = "MEV Bot Contract"
             if not name:
@@ -170,12 +178,15 @@ def el_explorer_url(target, name="", prefix="", make_code=False, block="latest")
                         log.warning(f"Contract {target} has a suspicious name: {n}")
                     else:
                         name = f"{discord.utils.remove_markdown(n, ignore_links=False)}*"
+    else:
+        # transaction_hash
+        url = f"{cfg['execution_layer.explorer']}/tx/{target}"
 
     if not name:
         # fall back to shortened address
         name = s_hex(target)
-    if make_code:
-        name = f"`{name}`"
+    if name_fmt:
+        name = name_fmt(name)
     if prefix == -1:
         prefix = ""
     return f"{prefix}[{name}]({url})"
@@ -331,7 +342,7 @@ def assemble(args) -> Embed:
 
     if "epoch" in args:
         e.add_field(name="Epoch",
-                    value=f"[{args.epoch}](https://{cfg['rocketpool']['consensus_layer']['explorer']}/epoch/{args.epoch})")
+                    value=f"[{args.epoch}](https://{cfg['consensus_layer.explorer']}/epoch/{args.epoch})")
 
     if "timezone" in args:
         e.add_field(name="Timezone",
@@ -451,15 +462,15 @@ def assemble(args) -> Embed:
                     value=v)
 
     # show block number
-    el_explorer = cfg["rocketpool.execution_layer.explorer"]
+    el_explorer = cfg["execution_layer.explorer"]
     if "blockNumber" in args:
         e.add_field(name="Block Number",
-                    value=f"[{args.blockNumber}](https://{el_explorer}/block/{args.blockNumber})")
+                    value=f"[{args.blockNumber}]({el_explorer}/block/{args.blockNumber})")
 
-    cl_explorer = cfg["rocketpool.consensus_layer.explorer"]
+    cl_explorer = cfg["consensus_layer.explorer"]
     if "slot" in args:
         e.add_field(name="Slot",
-                    value=f"[{args.slot}](https://{cl_explorer}/slot/{args.slot})")
+                    value=f"[{args.slot}]({cl_explorer}/slot/{args.slot})")
 
     if "smoothie_amount" in args:
         e.add_field(name="Smoothing Pool Balance",
@@ -487,7 +498,7 @@ def assemble(args) -> Embed:
     # show the transaction fees
     if "tnx_fee" in args:
         e.add_field(name="Transaction Fee",
-                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_dai} DAI)",
+                    value=f"{args.tnx_fee} ETH ({args.tnx_fee_usd} USDC)",
                     inline=False)
 
     return e

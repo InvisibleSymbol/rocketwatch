@@ -1,13 +1,12 @@
 import logging
 import os
-import warnings
 from pathlib import Path
+from typing import Optional
 
 from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
-from multicall import Call
-from multicall import Multicall
+from multicall import Call, Multicall
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall as Web3Multicall
 
@@ -31,7 +30,7 @@ class RocketPool:
 
     def __init__(self):
         self.addresses = bidict()
-        self.multicall = None
+        self.multicall = Web3Multicall(w3.eth)
         self.flush()
 
     def flush(self):
@@ -40,20 +39,14 @@ class RocketPool:
         self.ABI_CACHE.clear()
         self.ADDRESS_CACHE.clear()
         self.addresses = bidict()
-        try:
-            # add multicall3 address
-            multicall_address = Multicall([], _w3=w3).multicall_address
-            self.addresses["multicall3"] = multicall_address
-            self.multicall = Web3Multicall(w3.eth, multicall_address)
-        except Exception as err:
-            log.error(f"Failed to initialize Web3Multicall: {err}")
-            self.multicall = None
         self._init_contract_addresses()
 
     def _init_contract_addresses(self) -> None:
         manual_addresses = cfg["rocketpool.manual_addresses"]
         for name, address in manual_addresses.items():
             self.addresses[name] = address
+
+        self.addresses["multicall3"] = self.multicall.address
 
         log.info("Indexing Rocket Pool contracts...")
         # generate list of all file names with the .sol extension from the rocketpool submodule
@@ -77,7 +70,8 @@ class RocketPool:
             "WETH": self.call(f"{cs_dir}.getWETHAddress")
         }
 
-    def seth_sig(self, abi, function_name):
+    @staticmethod
+    def seth_sig(abi, function_name):
         # also handle tuple outputs, so `example(unit256)((unit256,unit256))` for example
         for item in abi:
             if item.get("name") == function_name:
@@ -114,7 +108,8 @@ class RocketPool:
         log.debug(f"Retrieved address for {name} Contract: {address}")
         return address
 
-    def get_revert_reason(self, tnx):
+    @staticmethod
+    def get_revert_reason(tnx):
         try:
             w3.eth.call(
                 {
@@ -175,9 +170,9 @@ class RocketPool:
     def get_name_by_address(self, address):
         return self.addresses.inverse.get(address, None)
 
-    def get_contract_by_name(self, name, historical=False):
+    def get_contract_by_name(self, name, historical=False, mainnet=False):
         address = self.get_address_by_name(name)
-        return self.assemble_contract(name, address, historical=historical)
+        return self.assemble_contract(name, address, historical=historical, mainnet=mainnet)
 
     def get_contract_by_address(self, address):
         """
@@ -204,19 +199,6 @@ class RocketPool:
         log.debug(f"Calling {path} (block={block})")
         return self.get_function(path, *args, historical=block != "latest", address=address, mainnet=mainnet).call(block_identifier=block)
 
-    def get_pubkey_using_transaction(self, receipt):
-        # will throw some warnings about other events but those are safe to ignore since we don't need those anyways
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            processed_logs = self.get_contract_by_name("casperDeposit").events.DepositEvent().processReceipt(receipt)
-
-        # attempt to retrieve the pubkey
-        if processed_logs:
-            deposit_event = processed_logs[0]
-            return deposit_event.args.pubkey.hex()
-
-        return None
-
     def get_annual_rpl_inflation(self):
         inflation_per_interval = solidity.to_float(self.call("rocketTokenRPL.getInflationIntervalRate"))
         if not inflation_per_interval:
@@ -230,41 +212,17 @@ class RocketPool:
         percentage = (value / 18_000_000) * 100
         return round(percentage, 2)
 
-    def get_minipools_by_type(self, minipool_type, limit=10):
-        key = w3.soliditySha3(["string"], [minipool_type])
-        cap = self.call("addressQueueStorage.getLength", key)
-        limit = min(cap, limit)
-        results = [
-            self.call("addressQueueStorage.getItem", key, i) for i in range(limit)
-        ]
-
-        return cap, results
-
-    def get_minipools(self, limit=10):
-        return {
-            "variable": self.get_minipools_by_type("minipools.available.variable", limit)
-        }
+    @ttl_cache(ttl=60)
+    def get_eth_usdc_price(self) -> float:
+        from utils.liquidity import UniswapV3
+        pool_address = self.get_address_by_name("UniV3_USDC_ETH")
+        return 1 / UniswapV3.Pool(pool_address).get_normalized_price()
 
     @ttl_cache(ttl=60)
-    def get_dai_eth_price(self):
-        data = self.call("DAIETH_univ3.slot0", mainnet=True)
-        value_dai = data[0] ** 2 / 2 ** 192
-        return 1 / value_dai
-
-    @timerun
-    def get_minipool_count_per_status(self):
-        offset, limit = 0, 10000
-        minipool_count_per_status = [0, 0, 0, 0, 0]
-        while True:
-            log.debug(f"getMinipoolCountPerStatus({offset}, {limit})")
-            tmp = self.call("rocketMinipoolManager.getMinipoolCountPerStatus", offset, limit)
-            for i in range(len(tmp)):
-                minipool_count_per_status[i] += tmp[i]
-            if sum(tmp) < limit:
-                break
-            offset += limit
-        return dict(zip(["initialisedCount", "prelaunchCount", "stakingCount", "withdrawableCount", "dissolvedCount"],
-                        minipool_count_per_status))
+    def get_reth_eth_price(self) -> Optional[float]:
+        from utils.liquidity import UniswapV3
+        pool_address = self.get_address_by_name("UniV3_rETH_ETH")
+        return UniswapV3.Pool(pool_address).get_normalized_price()
 
 
 rp = RocketPool()

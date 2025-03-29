@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 class KarmaUtils(GroupCog, name="karma"):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.menus = []
         for c in [5,10]:
             self.menus.append(app_commands.ContextMenu(

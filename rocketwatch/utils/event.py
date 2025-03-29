@@ -22,7 +22,8 @@ class Event:
     block_number: BlockNumber
     transaction_index: int = 999
     event_index: int = 999
-    attachment: Optional[Image] = None
+    image: Optional[Image] = None
+    thumbnail: Optional[Image] = None
 
     def get_score(self):
         return (10**9 * self.block_number) + (10**5 * self.transaction_index) + self.event_index
@@ -35,6 +36,9 @@ class EventPlugin(commands.Cog):
         self.last_served_block = w3.eth.get_block(cfg["events.genesis"]).number - 1
         self._pending_block = self.last_served_block
         self._last_run = datetime.now() - rate_limit
+
+    def start_tracking(self, block: BlockNumber) -> None:
+        self.last_served_block = block - 1
 
     def get_new_events(self) -> list[Event]:
         now = datetime.now()
@@ -52,10 +56,4 @@ class EventPlugin(commands.Cog):
         pass
 
     def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
-        self._pending_block = max(self.last_served_block, to_block)
-        events = self._get_past_events(from_block, to_block)
-        self.last_served_block = self._pending_block
-        return events
-
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         return []

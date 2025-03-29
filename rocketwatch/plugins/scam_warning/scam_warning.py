@@ -17,7 +17,7 @@ log.setLevel(cfg["log_level"])
 class ScamWarning(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.channel_ids = set(cfg["rocketpool.dm_warning.channels"])
         self.inactivity_cooldown = timedelta(days=90)
         self.failure_cooldown = timedelta(days=1)

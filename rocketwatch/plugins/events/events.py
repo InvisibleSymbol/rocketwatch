@@ -116,7 +116,7 @@ class Events(EventPlugin):
         try:
             default_args = {
                 "tnx_fee": 0,
-                "tnx_fee_dai": 0
+                "tnx_fee_usd": 0
             }
             event_obj = aDict({
                 "event": event,
@@ -187,8 +187,7 @@ class Events(EventPlugin):
         try:
             rp.flush()
             self.__init__(self.bot)
-            post_upgrade_block = BlockNumber(contract_upgrade_block + 1)
-            self.active_filters = [pf(post_upgrade_block, "latest") for pf in self._partial_filters]
+            self.start_tracking(BlockNumber(contract_upgrade_block + 1))
             messages.extend(self._get_new_events())
             return messages
         except Exception as err:
@@ -197,12 +196,15 @@ class Events(EventPlugin):
             self.active_filters.clear()
             raise err
 
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+    def start_tracking(self, block: BlockNumber) -> None:
+        super().start_tracking(block)
+        self.active_filters.clear()
+
+    def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
         for pf in self._partial_filters:
             events.extend(pf(from_block, to_block).get_all_entries())
 
-        self.active_filters.clear()
         messages, _ = self.process_events(events)
         return messages
 
@@ -416,7 +418,15 @@ class Events(EventPlugin):
 
         # maybe it's in the transaction?
         if not pubkey:
-            pubkey = rp.get_pubkey_using_transaction(receipt)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                deposit_contract = rp.get_contract_by_name("casperDeposit")
+                processed_logs = deposit_contract.events.DepositEvent().processReceipt(receipt)
+
+            # attempt to retrieve the pubkey
+            if processed_logs:
+                deposit_event = processed_logs[0]
+                pubkey = deposit_event.args.pubkey.hex()
 
         if pubkey:
             event.args.pubkey = "0x" + pubkey
@@ -429,10 +439,6 @@ class Events(EventPlugin):
 
         # and add the minipool address, which is the origin of the event
         event.args.minipool = event.address
-
-        # and add the transaction fee
-        event.args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-        event.args.tnx_fee_dai = rp.get_dai_eth_price() * event.args.tnx_fee
 
         return self.handle_event(event_name, event)
 
@@ -570,10 +576,10 @@ class Events(EventPlugin):
                 args.discountAmount = (1 - args.exchangeRate / solidity.to_float(args.marketExchangeRate)) * 100
 
         receipt = None
-        if "tnx_fee" not in args and cfg["rocketpool.chain"] == "mainnet":
+        if cfg["rocketpool.chain"] == "mainnet":
             receipt = w3.eth.get_transaction_receipt(event.transactionHash)
             args.tnx_fee = solidity.to_float(receipt["gasUsed"] * receipt["effectiveGasPrice"])
-            args.tnx_fee_dai = rp.get_dai_eth_price() * args.tnx_fee
+            args.tnx_fee_usd = round(rp.get_eth_usdc_price() * args.tnx_fee, 2)
             args.caller = receipt["from"]
 
         # add transaction hash and block number to args
@@ -614,8 +620,9 @@ class Events(EventPlugin):
                     # not interesting
                     return None
 
-            proposal = ProtocolDAO.fetch_proposal(proposal_id)
-            args.proposal_body = ProtocolDAO().build_proposal_body(
+            dao = ProtocolDAO()
+            proposal = dao.fetch_proposal(proposal_id)
+            args.proposal_body = dao.build_proposal_body(
                 proposal,
                 include_proposer=False,
                 include_payload=("add" in event_name),
@@ -635,8 +642,9 @@ class Events(EventPlugin):
                 "rocketDAOSecurityProposals": "sdao"
             }[dao_name])
 
-            proposal = DefaultDAO.fetch_proposal(proposal_id)
-            args.proposal_body = DefaultDAO(dao_name).build_proposal_body(
+            dao = DefaultDAO(dao_name)
+            proposal = dao.fetch_proposal(proposal_id)
+            args.proposal_body = dao.build_proposal_body(
                 proposal,
                 include_proposer=False,
                 include_payload=("add" in event_name),
@@ -667,7 +675,7 @@ class Events(EventPlugin):
         if "transfer_event" in event_name:
             token_prefix = event_name.split("_", 1)[0]
             args.amount = args.value / 10**18
-            if args["from"] in cfg["dao_multsigs"]:
+            if args["from"] in cfg["rocketpool.dao_multsigs"]:
                 event_name = "pdao_erc20_transfer_event"
                 token_contract = rp.assemble_contract(name="ERC20", address=event["address"])
                 args.symbol = token_contract.functions.symbol().call()

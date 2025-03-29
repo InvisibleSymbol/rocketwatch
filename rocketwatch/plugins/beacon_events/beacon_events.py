@@ -3,6 +3,7 @@ from typing import Optional, cast
 
 import pymongo
 import requests
+import eth_utils
 from eth_typing import BlockNumber
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -25,14 +26,14 @@ log.setLevel(cfg["log_level"])
 class BeaconEvents(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.finality_delay_threshold = 3
 
     def _get_new_events(self) -> list[Event]:
         from_block = self.last_served_block + 1 - self.lookback_distance
-        return self._get_past_events(from_block, self._pending_block)
+        return self.get_past_events(from_block, self._pending_block)
 
-    def _get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
+    def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         from_slot = max(0, date_to_beacon_block(w3.eth.get_block(from_block - 1).timestamp) + 1)
         to_slot = date_to_beacon_block(w3.eth.get_block(to_block).timestamp)
         log.info(f"Checking for new beacon chain events in slot range [{from_slot}, {to_slot}]")
@@ -118,7 +119,7 @@ class BeaconEvents(EventPlugin):
 
         return events
 
-    @retry(tries=3, delay=5)
+    @retry(tries=3, delay=10)
     def _get_proposal(self, beacon_block: dict) -> Optional[Event]:
         if not (payload := beacon_block["body"].get("execution_payload")):
             # no proposed block
@@ -129,14 +130,17 @@ class BeaconEvents(EventPlugin):
             # not proposed by a minipool
             return None
 
-        log.info(f"Rocket Pool validator {validator_index} proposed a block")
+        log.info(f"Validator {validator_index} proposed a block")
 
         timestamp = int(payload["timestamp"])
         block_number = cast(BlockNumber, int(payload["block_number"]))
 
+        if not (api_key := cfg["consensus_layer.beaconcha_secret"]):
+            log.warning(f"Missing beaconcha.in API key")
+            return None
+
         # fetch from beaconcha.in because beacon node is unaware of MEV bribes
-        api_key = cfg["beaconchain_explorer"]["api_key"]
-        endpoint = f"{cfg['beaconchain_explorer']['api']}/api/v1/execution/block/{block_number}"
+        endpoint = f"https://beaconcha.in/api/v1/execution/block/{block_number}"
         response = requests.get(endpoint, headers={"apikey": api_key})
 
         if response.status_code != 200:
@@ -169,13 +173,9 @@ class BeaconEvents(EventPlugin):
             "timestamp": timestamp,
         }
 
-        if fee_recipient.lower() == rp.get_address_by_name("rocketSmoothingPool").lower():
+        if eth_utils.is_same_address(fee_recipient, rp.get_address_by_name("rocketSmoothingPool")):
             args["event_name"] = "mev_proposal_smoothie_event"
-            args["smoothie_amount"] = rp.call(
-                "multicall3.getEthBalance",
-                w3.toChecksumAddress(fee_recipient),
-                block=block_number
-            )
+            args["smoothie_amount"] = w3.eth.get_balance(fee_recipient, block_identifier=block_number)
         else:
             args["event_name"] = "mev_proposal_event"
 

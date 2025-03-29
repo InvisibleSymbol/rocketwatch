@@ -21,7 +21,7 @@ log.setLevel(cfg["log_level"])
 class Constellation(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     async def _fetch_num_operators(self) -> int:
         current_block = w3.eth.get_block_number()
@@ -37,8 +37,8 @@ class Constellation(Cog):
         def _fetch_interval(_from: int, _to: int) -> int:
             _operators = 0
 
-            _operators += len(whitelist_contract.events.OperatorAdded().getLogs(fromBlock=_from, toBlock=_to))
-            _operators -= len(whitelist_contract.events.OperatorRemoved().getLogs(fromBlock=_from, toBlock=_to))
+            _operators += len(whitelist_contract.events.OperatorAdded().get_logs(fromBlock=_from, toBlock=_to))
+            _operators -= len(whitelist_contract.events.OperatorRemoved().get_logs(fromBlock=_from, toBlock=_to))
             for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
                 _operators += len(event_log.args.operators)
             for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
@@ -110,7 +110,7 @@ class Constellation(Cog):
 
         min_rpl_stake_ratio: float = solidity.to_float(info_calls["minimumStakeRatio"])
         rpl_ratio: float = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice"))
-        rpl_stake_pct: float = 100 * rpl_staked * rpl_ratio / eth_matched
+        rpl_stake_perc: float = rpl_staked * rpl_ratio / eth_matched
 
         balance_eth: float = solidity.to_float(w3.eth.getBalance(distributor_contract.address))
         balance_rpl: float = solidity.to_float(rp.call("rocketTokenRPL.balanceOf", distributor_contract.address))
@@ -129,7 +129,7 @@ class Constellation(Cog):
         solo_apr: float = 0.033
         deployment_gas: int = 2_250_000
         gas_price_wei: int = w3.eth.gas_price
-        operator_commission: float = (0.1 + 0.04 * min(1.0, rpl_stake_pct / 10)) / 2
+        operator_commission: float = (0.1 + 0.04 * min(1.0, 10 * rpl_stake_perc)) / 2
         daily_income_wei: int = round((32 - eth_bond) * 1e18 * solo_apr * operator_commission / 365)
         break_even_days: int = round(deployment_gas * gas_price_wei / daily_income_wei)
 
@@ -144,7 +144,7 @@ class Constellation(Cog):
         embed.add_field(name="MP Limit", value=f"{max_validators} ({max_validators * num_operators:,})")
         embed.add_field(name="ETH Stake", value=f"{eth_staked:,}")
         embed.add_field(name="RPL Stake", value=f"{rpl_staked:,.2f}")
-        embed.add_field(name="RPL Bond", value=f"{rpl_stake_pct:,.2f}%")
+        embed.add_field(name="RPL Bond", value=f"{rpl_stake_perc:.2%}")
 
         if max_minipools_eth > 0:
             balance_status_eth = f"`{max_minipools_eth:,.0f}` pools"
@@ -168,9 +168,11 @@ class Constellation(Cog):
 
         embed.add_field(
             name="Distributor Balances",
-            value=f"`{balance_eth:,.2f}` ETH ({balance_status_eth})\n"
-                  f"`{balance_rpl:,.2f}` RPL ({balance_status_rpl})\n"
-                  f"{balance_status}",
+            value=(
+                f"`{balance_eth:,.2f}` ETH ({balance_status_eth})\n"
+                f"`{balance_rpl:,.2f}` RPL ({balance_status_rpl})\n"
+                f"{balance_status}"
+            ),
             inline=False
         )
         embed.add_field(name="Gas Price", value=f"{(gas_price_wei / 1e9):,.2f} gwei")

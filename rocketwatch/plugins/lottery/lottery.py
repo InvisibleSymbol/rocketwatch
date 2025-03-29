@@ -21,7 +21,7 @@ log.setLevel(cfg["log_level"])
 class LotteryBase:
     def __init__(self):
         # connect to local mongodb
-        self.client = AsyncIOMotorClient(cfg["mongodb_uri"])
+        self.client = AsyncIOMotorClient(cfg["mongodb.uri"])
         self.db = self.client.get_database("rocketwatch")
         self.did_check = False
 

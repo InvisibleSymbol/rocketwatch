@@ -6,24 +6,23 @@ from datetime import datetime, timedelta
 
 import regex
 import requests
-import numpy as np
 import termplotlib as tpl
-from PIL.Image import Image
-from discord.ext.commands import Context, hybrid_command
+from web3.constants import ADDRESS_ZERO
 from eth_typing import ChecksumAddress, BlockNumber
 from graphql_query import Operation, Query, Argument
-from web3.constants import ADDRESS_ZERO
+from discord.ext.commands import Context, hybrid_command
 from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne, DESCENDING
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
 from utils.embeds import Embed, el_explorer_url
-from utils.image import ImageCanvas, Color, FontVariant
+from utils.image import Image, ImageCanvas, Color, FontVariant
 from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.event import EventPlugin, Event
 from utils.visibility import is_hidden_weak
 from utils.get_nearest_block import get_block_by_timestamp
+from utils.retry import retry
 
 log = logging.getLogger("snapshot")
 log.setLevel(cfg["log_level"])
@@ -32,11 +31,12 @@ log.setLevel(cfg["log_level"])
 class Snapshot(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot, timedelta(minutes=2))
-        client = MongoClient(cfg["mongodb_uri"]).rocketwatch
+        client = MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.proposal_db = client.snapshot_proposals
         self.vote_db = client.snapshot_votes
 
     @staticmethod
+    @retry(tries=3, delay=1)
     def _query_api(query: Query) -> list[dict] | Optional[dict]:
         query_json = {"query": Operation(type="query", queries=[query]).render()}
         log.debug(f"Snapshot query: {query_json}")
@@ -124,7 +124,7 @@ class Snapshot(EventPlugin):
                 divisor = max(self.scores) if len(self.scores) >= 5 else sum(self.scores)
                 canvas.progress_bar(
                     (_x_offset, _y_offset + choice_height),
-                    (self._BAR_SIZE, width),
+                    (width, self._BAR_SIZE),
                     safe_div(_score, divisor),
                     fill_color=color
                 )
@@ -184,7 +184,7 @@ class Snapshot(EventPlugin):
             label_color = (0, 0, 0) if (quorum_perc >= 1) else (255, 255, 255)
             canvas.progress_bar(
                 (x_offset, y_offset + proposal_height),
-                (self._BAR_SIZE, width),
+                (width, self._BAR_SIZE),
                 min(quorum_perc, 1),
                 fill_color=pb_color
             )
@@ -220,19 +220,20 @@ class Snapshot(EventPlugin):
             proposal_height += self._TEXT_SIZE
             return proposal_height
 
+        @property
+        def url(self) -> str:
+            return f"https://vote.rocketpool.net/#/proposal/{self.id}"
+
         def get_embed_template(self) -> Embed:
             embed = Embed()
-            embed.set_author(
-                name="🔗 Data from snapshot.org",
-                url=f"https://vote.rocketpool.net/#/proposal/{self.id}"
-            )
+            embed.set_author(name="🔗 Data from snapshot.org", url=self.url)
             return embed
 
         def create_image(self, *, include_title: bool) -> Image:
             pad_top, pad_bottom = 20, 20
             pad_left, pad_right = 20, 20
+            width = 800
             height = self.predict_render_height(include_title)
-            width = min(1200, max(800, self._TITLE_SIZE * len(self.title) * include_title // 2))
             canvas = ImageCanvas(width + pad_left + pad_right, height + pad_top + pad_bottom)
             self.render_to(canvas, width, pad_left, pad_top, include_title=include_title)
             return canvas.image
@@ -246,7 +247,7 @@ class Snapshot(EventPlugin):
                 block_number=get_block_by_timestamp(self.start)[0],
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"snapshot_vote_start:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
         def create_reached_quorum_event(self, block_number: BlockNumber) -> Event:
@@ -258,16 +259,19 @@ class Snapshot(EventPlugin):
                 block_number=block_number,
                 event_name="pdao_snapshot_vote_quorum",
                 unique_id=f"snapshot_vote_quorum:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
         def create_end_event(self) -> Event:
-            reached_quorum = sum(self.scores) >= self.quorum
-            winning_choice = self.choices[np.argmax(self.scores)]
+            max_for, max_against = 0, 0
+            for choice, score in zip(self.choices, self.scores):
+                if "against" in choice.lower():
+                    max_against = max(max_against, score)
+                elif "abstain" not in choice.lower():
+                    max_for = max(max_for, score)
 
             embed = self.get_embed_template()
-            if reached_quorum and ("against" not in winning_choice.lower()):
-                # potentially fails if abstain > against > for
+            if self.reached_quorum() and (max_for >= max_against):
                 embed.title = ":white_check_mark: Snapshot Proposal Passed"
             else:
                 embed.title = ":x: Snapshot Proposal Failed"
@@ -278,7 +282,7 @@ class Snapshot(EventPlugin):
                 block_number=get_block_by_timestamp(self.end)[0],
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"snapshot_vote_end:{self.id}",
-                attachment=self.create_image(include_title=True)
+                image=self.create_image(include_title=True)
             )
 
     @dataclass(frozen=True, slots=True)
@@ -385,17 +389,26 @@ class Snapshot(EventPlugin):
                 embed.description += f" ```{reason}```"
 
             embed.add_field(name="Signer", value=signer)
-            embed.add_field(name="Vote Power", value=f"{self.vp:,.2f}")
+            embed.add_field(name="Voting Power", value=f"{self.vp:,.2f}")
             embed.add_field(name="Timestamp", value=f"<t:{self.created}:R>")
 
-            event_name = "pdao_snapshot_vote" if (self.vp >= 250) else "snapshot_vote"
+            if self.vp >= 250:
+                conditional_args = {
+                    "event_name": "pdao_snapshot_vote",
+                    "image": self.proposal.create_image(include_title=False)
+                }
+            else:
+                conditional_args = {
+                    "event_name": "snapshot_vote",
+                    "thumbnail": self.proposal.create_image(include_title=False)
+                }
+
             return Event(
                 embed=embed,
                 topic="snapshot",
                 block_number=get_block_by_timestamp(self.created)[0],
-                event_name=event_name,
                 unique_id=f"snapshot_vote:{self.proposal.id}:{self.voter}:{self.created}",
-                attachment=self.proposal.create_image(include_title=False)
+                **conditional_args
             )
 
     @staticmethod
@@ -463,7 +476,7 @@ class Snapshot(EventPlugin):
             fields=["id", "voter", "created", "vp", "choice", "reason"]
         )
         response: list[dict] = Snapshot._query_api(query)
-        return [Snapshot.Vote(**(d | {"proposal": proposal})) for d in response]
+        return [Snapshot.Vote(proposal=proposal, **d) for d in response]
 
     def _get_new_events(self) -> list[Event]:
         now = datetime.now()
@@ -563,7 +576,7 @@ class Snapshot(EventPlugin):
 
     @hybrid_command()
     async def snapshot_votes(self, ctx: Context):
-        """Show currently active Snapshot votes"""
+        """Show currently active Snapshot proposals"""
         await ctx.defer(ephemeral=is_hidden_weak(ctx))
 
         embed = Embed(title="Snapshot Proposals")
@@ -584,6 +597,9 @@ class Snapshot(EventPlugin):
         pad_top, pad_bottom = 20, 20
         pad_left, pad_right = 20, 20
 
+        proposal_width = 800
+        total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
+
         # could potentially be smarter about arranging proposals with different proportions
         total_height = v_spacing * (num_rows - 1)
         proposal_grid: list[list[Snapshot.Proposal]] = []
@@ -593,8 +609,6 @@ class Snapshot(EventPlugin):
             # row height is equal to height of its tallest proposal
             total_height += max(p.predict_render_height() for p in row)
 
-        proposal_width = 800
-        total_width = (proposal_width * num_cols) + h_spacing * (num_cols - 1)
         # make sure proportions don't become too skewed
         if total_width < total_height:
             proposal_width = (total_height - h_spacing * (num_cols - 1)) // num_cols
@@ -618,7 +632,6 @@ class Snapshot(EventPlugin):
         file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
         await ctx.send(embed=embed, file=file)
-        return None
 
 
 async def setup(bot):

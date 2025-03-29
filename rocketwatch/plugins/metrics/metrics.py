@@ -25,7 +25,7 @@ class Metrics(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.notice_ttl_cache = TTLCache(math.inf, ttl=60 * 15)
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
         self.collection = self.db.command_metrics
 
     @hybrid_command()

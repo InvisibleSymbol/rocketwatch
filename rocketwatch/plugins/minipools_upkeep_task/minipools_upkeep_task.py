@@ -28,8 +28,8 @@ def div_32(i: int):
 class MinipoolsUpkeepTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
-        self.sync_db = pymongo.MongoClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
+        self.sync_db = pymongo.MongoClient(cfg["mongodb.uri"]).get_database("rocketwatch")
         self.event_loop = None
 
         if not self.run_loop.is_running() and bot.is_ready():

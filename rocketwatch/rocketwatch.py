@@ -4,7 +4,14 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
-from discord import TextChannel, File, app_commands
+from discord import (
+    app_commands, 
+    Thread, 
+    File, 
+    Object, 
+    User
+)
+from discord.abc import GuildChannel, PrivateChannel
 from discord.ext.commands import Bot, Context
 from discord.ext import commands
 
@@ -16,10 +23,7 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketWatch(Bot):
-    async def on_ready(self):
-        log.info(f"Logged in as {self.user.name} ({self.user.id})")
-
-    async def setup_hook(self) -> None:
+    async def _load_plugins(self):
         chain = cfg["rocketpool.chain"]
         storage = cfg["rocketpool.manual_addresses.rocketStorage"]
         log.info(f"Running using storage contract {storage} (Chain: {chain})")
@@ -58,14 +62,34 @@ class RocketWatch(Bot):
 
         log.info('Finished loading plugins')
 
+    async def setup_hook(self) -> None:
+        await self._load_plugins()
+        if cfg["modules.enable_commands"] is None:
+            log.info("Command sync behavior not specified, skipping")
+            return
+
+        owner_guild = Object(id=cfg["discord.owner.server_id"])
+        if not cfg["modules.enable_commands"]:
+            log.info("Commands disabled, clearing tree...")
+            self.tree.clear_commands(guild=None)
+
+        log.info("Syncing command tree...")
+        await self.tree.sync()
+        # use faster local sync
+        await self.tree.sync(guild=owner_guild)
+
+
+    async def on_ready(self):
+        log.info(f"Logged in as {self.user.name} ({self.user.id})")
+
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
         if isinstance(exception, commands.errors.MaxConcurrencyReached):
-            msg = f"Someone else is already using this command. Please try again later"
+            msg = "Someone else is already using this command. Please try again later"
         elif isinstance(exception, app_commands.errors.CommandOnCooldown):
             msg = f"Slow down! You are using this command too fast. Please try again in {exception.retry_after:.0f} seconds"
         else:
-            msg = f"An unexpected error occurred and has been reported to the developer. Please try again later"
+            msg = "An unexpected error occurred and has been reported to the developer. Please try again later"
 
         try:
             await self.report_error(exception, ctx)
@@ -73,11 +97,14 @@ class RocketWatch(Bot):
         except Exception:
             log.exception("Failed to alert user")
 
-    async def get_or_fetch_channel(self, channel_id: int) -> TextChannel:
+    async def get_or_fetch_channel(self, channel_id: int) -> GuildChannel | PrivateChannel | Thread:
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
 
+    async def get_or_fetch_user(self, user_id: int) -> User:
+        return self.get_user(user_id) or await self.fetch_user(user_id)
+
     async def report_error(self, exception: Exception, ctx: Optional[Context] = None, *args) -> None:
-        err_description = f"`{repr(exception)[:100]}`"
+        err_description = f"`{repr(exception)[:150]}`"
         if args:
             args_fmt = "\n".join(f"args[{i}] = {arg}" for i, arg in enumerate(args))
             err_description += f"\n```{args_fmt}```"
@@ -100,4 +127,4 @@ class RocketWatch(Bot):
             file = File(io.BytesIO(err_trace.encode()), "exception.txt")
             await retry_async(tries=5, delay=5)(channel.send)(err_description, file=file)
         except Exception:
-            log.exception(f"Failed to send message. Max retries reached.")
+            log.exception("Failed to send message. Max retries reached.")

@@ -14,18 +14,18 @@ from utils.retry import retry
 log = logging.getLogger("shared_w3")
 log.setLevel(cfg["log_level"])
 
-w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.current'], request_kwargs={'timeout': 60}))
+w3 = Web3(HTTPProvider(cfg['execution_layer.endpoint.current'], request_kwargs={'timeout': 60}))
 mainnet_w3 = w3
 
 if cfg['rocketpool.chain'] != "mainnet":
-    mainnet_w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.mainnet']))
+    mainnet_w3 = Web3(HTTPProvider(cfg['execution_layer.endpoint.mainnet']))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 historical_w3 = None
-if "historical" in cfg['rocketpool.execution_layer.endpoint'].keys():
-    historical_w3 = Web3(HTTPProvider(cfg['rocketpool.execution_layer.endpoint.historical']))
+if "archive" in cfg['execution_layer.endpoint'].keys():
+    historical_w3 = Web3(HTTPProvider(cfg['execution_layer.endpoint.archive']))
 
-endpoints = cfg["rocketpool.consensus_layer.endpoints"]
+endpoints = cfg["consensus_layer.endpoints"]
 tmp = []
 exceptions = (
     HTTPError, ConnectionError, ConnectTimeout, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout)

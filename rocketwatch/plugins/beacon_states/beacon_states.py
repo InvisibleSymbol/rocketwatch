@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 class BeaconStates(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def beacon_states(self, ctx: Context):

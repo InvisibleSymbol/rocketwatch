@@ -18,7 +18,7 @@ log.setLevel(cfg["log_level"])
 class Milestones(EventPlugin):
     def __init__(self, bot: RocketWatch):
         super().__init__(bot)
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
+        self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.collection = self.db.milestones
         self.state = "OK"
 

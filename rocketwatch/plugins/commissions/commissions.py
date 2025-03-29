@@ -23,7 +23,7 @@ class Commissions(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         # connect to local mongodb
-        self.db = AsyncIOMotorClient(cfg["mongodb_uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
 
     @hybrid_command()
     async def commission_history(self, ctx: Context):

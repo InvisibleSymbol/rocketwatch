@@ -2,10 +2,10 @@ import asyncio
 import logging
 import time
 
-import cronitor
 import pymongo
 import schedule
 from multicall import Call
+from cronitor import Monitor
 from pymongo import UpdateOne, UpdateMany
 
 from utils import solidity
@@ -23,6 +23,9 @@ def safe_to_float(_, num: int):
         return solidity.to_float(num)
     except Exception:
         return None
+
+def safe_to_hex(_, b: bytes):
+    return f"0x{b.hex()}" if b else None
 
 def safe_state_to_str(_, state: int):
     try:
@@ -43,8 +46,8 @@ def is_true(_, b):
 class Task:
     def __init__(self):
         self.event_loop = None
-        self.db = pymongo.MongoClient(cfg["mongodb_uri"]).rocketwatch
-        self.monitor = cronitor.Monitor('rocketnode-task', api_key=cfg["cronitor_secret"])
+        self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
+        self.monitor = Monitor('rocketnode-task', api_key=cfg["other.secrets.cronitor"])
         self.batch_size = 10_000
 
     @timerun
@@ -83,8 +86,7 @@ class Task:
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         lambs = [
             lambda a: (a, rp.seth_sig(m.abi, "getNodeAddress"), [((a, "node_operator"), None)]),
-            lambda a: (mm.address, [rp.seth_sig(mm.abi, "getMinipoolPubkey"), a],
-                       [((a, "pubkey"), lambda _, b: f"0x{b.hex()}" if b else None)]),
+            lambda a: (mm.address, [rp.seth_sig(mm.abi, "getMinipoolPubkey"), a], [((a, "pubkey"), safe_to_hex)]),
         ]
         # get all minipool addresses from db that do not have a node operator assigned
         minipool_addresses = self.db.minipools_new.distinct("address", {"node_operator": {"$exists": False}})
