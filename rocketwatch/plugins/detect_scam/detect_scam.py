@@ -63,30 +63,36 @@ class DetectScam(Cog):
                 user.guild_permissions.administrator
             ))
         
-        @ui.button(label="Mark Safu", style=ButtonStyle.primary)
+        @ui.button(label="Mark Safu", style=ButtonStyle.blurple)
         async def mark_safe(self, interaction: Interaction, button: ui.Button) -> None:
             log.info(f"User {interaction.user.id} marked message {interaction.message.id} as safe")
             
+            reportable_repr = type(self.reportable).__name__.lower()
             if interaction.user.id in self.safu_votes:
-                log.debug(f"User {interaction.user.id} already voted on this message")
+                log.debug(f"User {interaction.user.id} already voted on {reportable_repr}")
                 return await interaction.response.send_message(content="You already voted!", ephemeral=True)
-                
+
+            if interaction.user.is_timed_out():
+                log.debug(f"Timed-out user {interaction.user.id} tried to vote on {self.reportable}")
+                return None
+
             if isinstance(self.reportable, Message):
-                repr = "message"
                 reported_user = self.reportable.author
                 db_filter = {"message_id": self.reportable.id}
-            else: # Thread
-                repr = "thread"
+            elif isinstance(self.reportable, Thread):
                 reported_user = self.reportable.owner
                 db_filter = {"channel_id": self.reportable.id, "message_id": None}
+            else:
+                log.warning(f"Unknown reportable type {type(self.reportable)}")
+                return None
                 
             if interaction.user == reported_user:
-                log.debug(f"User {interaction.user.id} tried to mark their own {repr} as safe")
+                log.debug(f"User {interaction.user.id} tried to mark their own {reportable_repr} as safe")
                 return await interaction.response.send_message(
-                    content=f"You can't vote on your own {repr}!", 
+                    content=f"You can't vote on your own {reportable_repr}!",
                     ephemeral=True
                 )
-        
+
             self.safu_votes.add(interaction.user.id)
             
             if self.is_admin(interaction.user):
@@ -204,7 +210,6 @@ class DetectScam(Cog):
                 "There is no ticket system for support on this server.\n"
                 "Ignore this thread and any invites or DMs you may receive."
             ))
-            
             report.description += (
                 "\n"
                 f"Thread Name: `{thread.name}`\n"
@@ -213,7 +218,6 @@ class DetectScam(Cog):
                 "\n"
                 "Please review and take appropriate action."
             )
-            
             await self.db.scam_reports.insert_one({
                 "guild_id"   : thread.guild.id,
                 "channel_id" : thread.id,
