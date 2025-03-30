@@ -46,7 +46,7 @@ class DetectScam(Cog):
         WARN = Color.from_rgb(255, 165, 0)
         OK = Color.from_rgb(0, 255, 0)
         
-    class DeletableView(ui.View):
+    class RemovalVoteView(ui.View):
         THRESHOLD = 5
         
         def __init__(self, plugin: 'DetectScam', reportable: Message | Thread):
@@ -235,7 +235,7 @@ class DetectScam(Cog):
         warning, report, contents = components
 
         try:
-            view = self.DeletableView(self, message)
+            view = self.RemovalVoteView(self, message)
             warning_msg = await message.reply(embed=warning, view=view, mention_author=False)
         except errors.Forbidden:
             warning_msg = None
@@ -273,7 +273,7 @@ class DetectScam(Cog):
             report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
             report_msg = await report_channel.send(embed=report, file=contents)
             moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
-            view = self.DeletableView(self, message)
+            view = self.RemovalVoteView(self, message)
             warning_msg = await message.reply(
                 content=f"{moderator.mention} {report_msg.jump_url}",
                 embed=warning,
@@ -484,7 +484,7 @@ class DetectScam(Cog):
         warning, report = components
         
         try:
-            view = self.DeletableView(self, thread)
+            view = self.RemovalVoteView(self, thread)
             warning_msg = await thread.send(embed=warning, view=view)
         except errors.Forbidden:
             log.warning(f"Failed to send warning message in thread {thread.id}")
