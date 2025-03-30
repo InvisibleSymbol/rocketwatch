@@ -80,8 +80,8 @@ class RocketWatch(Bot):
         await self.tree.sync()
         
         # use faster local sync
-        owner_guild = Object(id=cfg["discord.owner.server_id"])
-        await self.tree.sync(guild=owner_guild)
+        await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
+        await self.tree.sync(guild=Object(id=cfg["rocketpool.support.server_id"]))
 
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")

@@ -120,7 +120,7 @@ class DetectScam(Cog):
         self._message_react_cache = TTLCache(maxsize=1000, ttl=300)
         self.markdown_link_pattern = re.compile(r"(?<=\[)([^/\] ]*).+?(?<=\(https?:\/\/)([^/\)]*)")
         self.basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
-        self.invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|(dsc\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
+        self.invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|((dsc|discord)\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
 
         self.report_command = app_commands.ContextMenu(
             name="Report Message",
