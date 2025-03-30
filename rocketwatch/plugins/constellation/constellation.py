@@ -41,7 +41,7 @@ class Constellation(Cog):
             _operators -= len(whitelist_contract.events.OperatorRemoved().get_logs(fromBlock=_from, toBlock=_to))
             for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
                 _operators += len(event_log.args.operators)
-            for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
+            for event_log in whitelist_contract.events.OperatorsRemoved().get_logs(fromBlock=_from, toBlock=_to):
                 _operators -= len(event_log.args.operators)
 
             return _operators
