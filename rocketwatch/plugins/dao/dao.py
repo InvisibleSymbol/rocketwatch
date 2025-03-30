@@ -45,7 +45,7 @@ class DAOCommand(Cog):
                     (
                         f"**Proposal #{proposal.id}** - Active\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Voting ends <t:{proposal.end}:R>"
+                        f"Voting ends <t:{proposal.end}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.Active]
                 ] + [
                     (
