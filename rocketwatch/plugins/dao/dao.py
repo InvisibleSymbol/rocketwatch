@@ -77,25 +77,25 @@ class DAOCommand(Cog):
                     (
                         f"**Proposal #{proposal.id}** - Pending\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=False)}```"
-                        f"Starts <t:{proposal.start}:R>, ends <t:{proposal.end_phase_2}:R>"
+                        f"Voting starts <t:{proposal.start}:R>, ends <t:{proposal.end_phase_2}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal.id}** - Active (Phase 1)\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Next phase <t:{proposal.end_phase_1}:R>, voting ends <t:{proposal.end_phase_2}:R>"
+                        f"Next phase <t:{proposal.end_phase_1}:R>, voting ends <t:{proposal.end_phase_2}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase1]
                 ] + [
                     (
                         f"**Proposal #{proposal.id}** - Active (Phase 2)\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Ends <t:{proposal.end_phase_2}:R>"
+                        f"Voting ends <t:{proposal.end_phase_2}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.ActivePhase2]
                 ] + [
                     (
                         f"**Proposal #{proposal.id}** - Succeeded (Not Yet Executed)\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Expires <t:{proposal.expires}:R>"
+                        f"Expires <t:{proposal.expires}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]
             ) or "No active proposals."
