@@ -283,24 +283,26 @@ class ProtocolDAO(DAO):
             ["For", "Against", "Abstain", ""],
             max_width=12
         )
-        main_graph_repr = "\n".join(graph.get_string().split("\n")[:-1])
-
-        graph = tpl.figure()
-        graph.barh(
-            [
-                round(proposal.votes_veto),
-                round(max(proposal.votes_veto, proposal.veto_quorum)),
-            ],
-            [f"{'Veto' : <{len('Against')}}", ""],
-            max_width=12
-        )
-        veto_graph_bars = graph.get_string().split("\n")
-        veto_graph_repr = f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏"
         main_quorum_perc = proposal.votes_total / proposal.quorum
-        veto_quorum_perc = proposal.votes_veto / proposal.veto_quorum
-        return (
-            f"{main_graph_repr}\n"
-            f"Quorum: {main_quorum_perc:.2%}{' ✔' if (main_quorum_perc >= 1) else ''}\n\n"
-            f"{veto_graph_repr}\n"
-            f"Quorum: {veto_quorum_perc:.2%}{' ✔' if (veto_quorum_perc >= 1) else ''}"
-        )
+
+        lines = graph.get_string().split("\n")[:-1]
+        lines.append(f"Quorum: {main_quorum_perc:.2%}{' ✔' if (main_quorum_perc >= 1) else ''}")
+        
+        if proposal.votes_veto > 0:
+            graph = tpl.figure()
+            graph.barh(
+                [
+                    round(proposal.votes_veto),
+                    round(max(proposal.votes_veto, proposal.veto_quorum)),
+                ],
+                [f"{'Veto' : <{len('Against')}}", ""],
+                max_width=12
+            )
+            veto_graph_bars = graph.get_string().split("\n")       
+            veto_quorum_perc = proposal.votes_veto / proposal.veto_quorum
+            
+            lines.append("")
+            lines.append(f"{veto_graph_bars[0] : <{len(veto_graph_bars[1])}}▏")
+            lines.append(f"Quorum: {veto_quorum_perc:.2%}{' ✔' if (veto_quorum_perc >= 1) else ''}")
+        
+        return "\n".join(lines)
