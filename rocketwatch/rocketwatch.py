@@ -64,23 +64,24 @@ class RocketWatch(Bot):
 
     async def setup_hook(self) -> None:
         await self._load_plugins()
+
+    async def on_ready(self):
+        log.info(f"Logged in as {self.user.name} ({self.user.id})")
+        
         if cfg["modules.enable_commands"] is None:
             log.info("Command sync behavior not specified, skipping")
             return
 
-        owner_guild = Object(id=cfg["discord.owner.server_id"])
         if not cfg["modules.enable_commands"]:
             log.info("Commands disabled, clearing tree...")
             self.tree.clear_commands(guild=None)
 
         log.info("Syncing command tree...")
         await self.tree.sync()
+        
         # use faster local sync
+        owner_guild = Object(id=cfg["discord.owner.server_id"])
         await self.tree.sync(guild=owner_guild)
-
-
-    async def on_ready(self):
-        log.info(f"Logged in as {self.user.name} ({self.user.id})")
 
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")

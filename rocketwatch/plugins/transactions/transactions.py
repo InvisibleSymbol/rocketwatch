@@ -148,7 +148,7 @@ class Transactions(EventPlugin):
             args.delegator = receipt["from"]
             args.delegate = args.get("delegate") or args.get("newDelegate")
             args.votingPower = solidity.to_float(rp.call("rocketNetworkVoting.getVotingPower", args.delegator, args.blockNumber))
-            if (args.votingPower < 100) or (args.delegate == args.delegator):
+            if (args.votingPower < 50) or (args.delegate == args.delegator):
                 return None
         elif "failed_deposit" in event_name:
             args.node = receipt["from"]
