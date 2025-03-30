@@ -11,6 +11,8 @@ from datetime import datetime, timezone, timedelta
 
 from cachetools import TTLCache
 from discord import (
+    ui,
+    ButtonStyle,
     errors,
     app_commands,
     File,
@@ -43,6 +45,64 @@ class DetectScam(Cog):
         ALERT = Color.from_rgb(255, 0, 0)
         WARN = Color.from_rgb(255, 165, 0)
         OK = Color.from_rgb(0, 255, 0)
+        
+    class DeletableView(ui.View):
+        THRESHOLD = 5
+        
+        def __init__(self, plugin: 'DetectScam', reportable: Message | Thread):
+            super().__init__(timeout=None)
+            self.plugin = plugin
+            self.reportable = reportable
+            self.safu_votes = set()
+            
+        @staticmethod
+        def is_admin(user: User) -> bool:
+            return any((
+                user.id == cfg["discord.owner.user_id"],
+                {role.id for role in user.roles} & set(cfg["rocketpool.support.role_ids"]),
+                user.guild_permissions.administrator
+            ))
+        
+        @ui.button(label="Mark Safu", style=ButtonStyle.primary)
+        async def mark_safe(self, interaction: Interaction, button: ui.Button) -> None:
+            log.info(f"User {interaction.user.id} marked message {interaction.message.id} as safe")
+            
+            if interaction.user.id in self.safu_votes:
+                log.debug(f"User {interaction.user.id} already voted on this message")
+                return await interaction.response.send_message(content="You already voted!", ephemeral=True)
+                
+            if isinstance(self.reportable, Message):
+                repr = "message"
+                reported_user = self.reportable.author
+                db_filter = {"message_id": self.reportable.id}
+            else: # Thread
+                repr = "thread"
+                reported_user = self.reportable.owner
+                db_filter = {"channel_id": self.reportable.id, "message_id": None}
+                
+            if interaction.user == reported_user:
+                log.debug(f"User {interaction.user.id} tried to mark their own {repr} as safe")
+                return await interaction.response.send_message(
+                    content=f"You can't vote on your own {repr}!", 
+                    ephemeral=True
+                )
+        
+            self.safu_votes.add(interaction.user.id)
+            
+            if self.is_admin(interaction.user):
+                user_repr = interaction.user.mention
+            elif len(self.safu_votes) >= self.THRESHOLD:
+                user_repr = "the community"
+            else:
+                button.label = f"Mark Safu ({len(self.safu_votes)}/{self.THRESHOLD})"
+                return await interaction.response.edit_message(view=self)                
+
+            await interaction.message.delete()
+            async with self.plugin._update_lock:
+                report = await self.plugin.db.scam_reports.find_one(db_filter)
+                await self.plugin._update_report(report, f"This has been marked as safe by {user_repr}.")
+                await self.plugin.db.scam_reports.update_one(db_filter, {"$set": {"warning_id": None}})
+                await interaction.response.send_message(content="Warning removed!", ephemeral=True)
 
     def __init__(self, bot: RocketWatch):
         self.bot = bot
@@ -102,7 +162,8 @@ class DetectScam(Cog):
                 f"Message ID: `{message.id}` ({message.jump_url})\n"
                 f"Channel ID: `{message.channel.id}` ({message.channel.jump_url})\n"
                 "\n"
-                "Original message has been attached as a file. Please review and take appropriate action."
+                "Original message has been attached as a file.\n"
+                "Please review and take appropriate action."
             )
 
             text = DetectScam._get_message_content(message)
@@ -174,7 +235,8 @@ class DetectScam(Cog):
         warning, report, contents = components
 
         try:
-            warning_msg = await message.reply(embed=warning, mention_author=False)
+            view = self.DeletableView(self, message)
+            warning_msg = await message.reply(embed=warning, view=view, mention_author=False)
         except errors.Forbidden:
             warning_msg = None
             log.warning(f"Failed to send warning message in reply to {message.id}")
@@ -192,31 +254,30 @@ class DetectScam(Cog):
         await interaction.response.defer(ephemeral=True)
         
         if message.author.bot:
-            await interaction.followup.send(content="Bot messages can't be reported.", ephemeral=True)
-            return None
+            return await interaction.followup.send(content="Bot messages can't be reported.", ephemeral=True)
 
         if message.author == interaction.user:
-            await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
-            return None
+            return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
 
         reporter = await self.bot.get_or_fetch_user(interaction.user.id)
         reason = f"Manual report by {reporter.mention}"
 
         if not (components := await self._generate_message_report(message, reason)):
-            await interaction.followup.send(
+            return await interaction.followup.send(
                 content="Failed to report message. It may have already been reported or deleted.", 
                 ephemeral=True
             )
-            return None
 
         try:
             warning, report, contents = components
             report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
             report_msg = await report_channel.send(embed=report, file=contents)
             moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
+            view = self.DeletableView(self, message)
             warning_msg = await message.reply(
                 content=f"{moderator.mention} {report_msg.jump_url}",
                 embed=warning,
+                view=view,
                 mention_author=False
             )
             await self.db.scam_reports.update_one(
@@ -373,11 +434,13 @@ class DetectScam(Cog):
 
     @Cog.listener()
     async def on_raw_message_delete(self, event: RawMessageDeleteEvent) -> None:
-        await self._on_message_delete(event.message_id)
+        async with self._update_lock:
+            await self._on_message_delete(event.message_id)
 
     @Cog.listener()
     async def on_raw_bulk_message_delete(self, event: RawBulkMessageDeleteEvent) -> None:
-        await asyncio.gather(*[self._on_message_delete(msg_id) for msg_id in event.message_ids])
+        async with self._update_lock:
+            await asyncio.gather(*[self._on_message_delete(msg_id) for msg_id in event.message_ids])
 
     async def _on_message_delete(self, message_id: int) -> None:
         report = await self.db.scam_reports.find_one({"message_id": message_id, "removed": False})
@@ -391,31 +454,28 @@ class DetectScam(Cog):
             await message.delete()
 
         await self._update_report(report, "Original message has been deleted.")
-        await self.db.scam_reports.update_one(
-            {"message_id": message_id, "removed": False},
-            {"$set": {"warning_id": None, "removed": True}}
-        )
+        await self.db.scam_reports.update_one(report, {"$set": {"warning_id": None, "removed": True}})
 
     @Cog.listener()
     async def on_member_ban(self, guild: Guild, user: User) -> None:
-        reports = await self.db.scam_reports.find(
-            {"guild_id": guild.id, "user_id": user.id, "user_banned": False}
-        ).to_list(None)
-        for report in reports:
-            await self._update_report(report, "User has been banned.")
-            await self.db.scam_reports.update_one(report, {"$set": {"user_banned": True}})
+        async with self._update_lock:
+            reports = await self.db.scam_reports.find(
+                {"guild_id": guild.id, "user_id": user.id, "user_banned": False}
+            ).to_list(None)
+            for report in reports:
+                await self._update_report(report, "User has been banned.")
+                await self.db.scam_reports.update_one(report, {"$set": {"user_banned": True}})
 
     async def _update_report(self, report: dict, note: str) -> None:
         report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-        async with self._update_lock:
-            try:
-                message = await report_channel.fetch_message(report["report_id"])
-                embed = message.embeds[0]
-                embed.description += f"\n\n**{note}**"
-                embed.color = self.Color.WARN if (embed.color == self.Color.ALERT) else self.Color.OK
-                await message.edit(embed=embed)
-            except Exception as e:
-                await self.bot.report_error(e)
+        try:
+            message = await report_channel.fetch_message(report["report_id"])
+            embed = message.embeds[0]
+            embed.description += f"\n\n**{note}**"
+            embed.color = self.Color.WARN if (embed.color == self.Color.ALERT) else self.Color.OK
+            await message.edit(embed=embed)
+        except Exception as e:
+            await self.bot.report_error(e)
 
     async def report_thread(self, thread: Thread, reason: str) -> None:
         if not (components := await self._generate_thread_report(thread, reason)):
@@ -424,7 +484,8 @@ class DetectScam(Cog):
         warning, report = components
         
         try:
-            warning_msg = await thread.send(embed=warning)
+            view = self.DeletableView(self, thread)
+            warning_msg = await thread.send(embed=warning, view=view)
         except errors.Forbidden:
             log.warning(f"Failed to send warning message in thread {thread.id}")
             warning_msg = None
@@ -458,17 +519,18 @@ class DetectScam(Cog):
     
     @Cog.listener()
     async def on_raw_thread_delete(self, event: RawThreadDeleteEvent) -> None:
-        report = await self.db.scam_reports.find_one(
-            {"channel_id": event.thread_id, "message_id": None, "removed": False}
-        )
-        if not report:
-            return
+        async with self._update_lock:
+            report = await self.db.scam_reports.find_one(
+                {"channel_id": event.thread_id, "message_id": None, "removed": False}
+            )
+            if not report:
+                return
 
-        await self._update_report(report, "Thread has been deleted.")
-        await self.db.scam_reports.update_one(
-            {"channel_id": event.thread_id, "message_id": None, "removed": False},
-            {"$set": {"warning_id": None, "removed": True}}
-        )
+            await self._update_report(report, "Thread has been deleted.")
+            await self.db.scam_reports.update_one(
+                {"channel_id": event.thread_id, "message_id": None, "removed": False},
+                {"$set": {"warning_id": None, "removed": True}}
+            )
 
 
 async def setup(bot):

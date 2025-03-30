@@ -3,8 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 from bson import CodecOptions
-from discord import app_commands, Interaction, Message, ui, TextStyle, AllowedMentions, ButtonStyle, File, TextChannel, \
-    ChannelType, User
+from discord import app_commands, Interaction, ui, TextStyle, ButtonStyle, File, User
 from discord.app_commands import Group, Choice, choices
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -48,7 +47,7 @@ class AdminView(ui.View):
         await interaction.response.send_modal(AdminModal(boiler["title"], boiler["description"], self.db, self.template_name))
 
 
-class DeleteableView(ui.View):
+class DeletableView(ui.View):
     def __init__(self, template_name: str):
         super().__init__()
         self.template_name = template_name
@@ -169,13 +168,13 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
         await interaction.response.send_message(
             content=mention.mention if mention else "",
             embed=e,
-            view=DeleteableView(name)
+            view=DeletableView(name)
         )
     else:
         await interaction.response.send_message(
             embed=Embed(
                 title="Error",
-                description=f"An error occurred while generating the template embed."
+                description="An error occurred while generating the template embed."
             ),
             ephemeral=True
         )
@@ -184,7 +183,7 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
 class SupportGlobal(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     @app_commands.command(name="use")
     async def _use_1(self, interaction: Interaction, name: str, mention: User | None):
@@ -219,7 +218,7 @@ class SupportUtils(GroupCog, name="support"):
 
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     @Cog.listener()
     async def on_ready(self):
