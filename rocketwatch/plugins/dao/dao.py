@@ -39,19 +39,19 @@ class DAOCommand(Cog):
                     (
                         f"**Proposal #{proposal.id}** - Pending\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_votes=False)}```"
-                        f"Starts <t:{proposal.start}:R>, ends <t:{proposal.end}:R>"
+                        f"Voting starts <t:{proposal.start}:R>, ends <t:{proposal.end}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.Pending]
                 ] + [
                     (
                         f"**Proposal #{proposal.id}** - Active\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Ends <t:{proposal.end}:R>"
+                        f"Voting ends <t:{proposal.end}:R>"
                     ) for proposal in current_proposals[dao.ProposalState.Active]
                 ] + [
                     (
                         f"**Proposal #{proposal.id}** - Succeeded (Not Yet Executed)\n"
                         f"```{dao.build_proposal_body(proposal, include_proposer=full, include_payload=full)}```"
-                        f"Expires <t:{proposal.expires}:R>"
+                        f"Expires <t:{proposal.expires}:R>."
                     ) for proposal in current_proposals[dao.ProposalState.Succeeded]
                 ]
             ) or "No active proposals."
