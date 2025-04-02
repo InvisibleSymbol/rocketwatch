@@ -114,7 +114,7 @@ class MinipoolDistribution(commands.Cog):
         fig.savefig(img, format='png')
         img.seek(0)
 
-        fig.clf()
+        fig.clear()
         plt.close()
 
         e.title = "Minipool Distribution"
@@ -207,7 +207,7 @@ class MinipoolDistribution(commands.Cog):
         fig.savefig(img, format="png")
         img.seek(0)
 
-        fig.clf()
+        fig.clear()
         plt.close()
 
         e.set_image(url="attachment://graph.png")
