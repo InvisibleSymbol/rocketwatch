@@ -68,13 +68,15 @@ class RocketWatch(Bot):
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} ({self.user.id})")
         
-        if cfg["modules.enable_commands"] is None:
-            log.info("Command sync behavior not specified, skipping")
-            return
+        commands_enabled = cfg["modules.enable_commands"]
+        if not commands_enabled:
+            self.tree.clear_commands(guild=None)
+            if commands_enabled is None:
+                log.info("Command sync behavior unspecified, skipping")
+                return
 
         if not cfg["modules.enable_commands"]:
             log.info("Commands disabled, clearing tree...")
-            self.tree.clear_commands(guild=None)
 
         log.info("Syncing command tree...")
         await self.tree.sync()
