@@ -585,7 +585,7 @@ class DigiFinex(CEX):
 class ERC20Token:
     def __init__(self, address: ChecksumAddress):
         self.address = address
-        contract = rp.assemble_contract("ERC20", address)
+        contract = rp.assemble_contract("ERC20", address, mainnet=True)
         self.symbol: str = contract.functions.symbol().call()
         self.decimals: int = contract.functions.decimals().call()
 

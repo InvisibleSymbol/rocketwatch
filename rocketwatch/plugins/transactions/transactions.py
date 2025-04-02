@@ -44,7 +44,7 @@ class Transactions(EventPlugin):
                 addresses.append(address)
                 function_map[contract_name] = mapping
             except Exception:
-                log.exception(f"Could not find address for contract {contract_name}")
+                log.warning(f"Could not find address for contract {contract_name}")
 
         return addresses, function_map
 
@@ -176,11 +176,11 @@ class Transactions(EventPlugin):
             odao_share = args.trustedNodePercent / 10 ** 16
 
             args.description = '\n'.join([
-                f"Node Operator Share",
+                "Node Operator Share",
                 f"{share_repr(node_share)} {node_share:.1f}%",
-                f"Protocol DAO Share",
+                "Protocol DAO Share",
                 f"{share_repr(pdao_share)} {pdao_share:.1f}%",
-                f"Oracle DAO Share",
+                "Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
         elif event_name == "pdao_setting_multi":
