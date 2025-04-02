@@ -9,7 +9,9 @@ from discord import File
 from discord.app_commands import describe
 from discord.ext import commands
 from discord.ext.commands import Context, hybrid_command
+from discord.utils import as_chunks
 from matplotlib.ticker import FuncFormatter
+from eth_typing import ChecksumAddress
 
 from rocketwatch import RocketWatch
 from utils import solidity
@@ -41,25 +43,23 @@ async def collateral_distribution_raw(ctx: Context, distribution):
     await ctx.send(embed=e)
 
 
-def get_node_minipools_and_collateral():
-    # get node addresses
-    nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+def get_node_minipools_and_collateral() -> dict[ChecksumAddress, dict[str, int]]:
     node_staking = rp.get_contract_by_name("rocketNodeStaking")
-    # get their RPL stake using rocketNodeStaking.getNodeRPLStake
-    rpl_stakes = rp.multicall.aggregate(
-        [node_staking.functions.getNodeRPLStake(node) for node in nodes]
-    )
-    rpl_stakes = [r.results[0] for r in rpl_stakes.results]
-    # get the minipool sizes using rocketMinipoolManager.getNodeStakingMinipoolCountBySize
     minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
-    eb16s = rp.multicall.aggregate(
-        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 16 * 10**18) for node in nodes
-    )
-    eb16s = [r.results[0] for r in eb16s.results]
-    eb8s = rp.multicall.aggregate(
-        minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 8 * 10**18) for node in nodes
-    )
-    eb8s = [r.results[0] for r in eb8s.results]
+    eb16s, eb8s, rpl_stakes = [], [], []
+
+    nodes = rp.call("rocketNodeManager.getNodeAddresses", 0, 10_000)
+    for node_batch in as_chunks(nodes, 500):
+        eb16s += [r.results[0] for r in rp.multicall.aggregate(
+            minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 16 * 10**18) for node in node_batch
+        ).results]
+        eb8s += [r.results[0] for r in rp.multicall.aggregate(
+            minipool_manager.functions.getNodeStakingMinipoolCountBySize(node, 8 * 10**18) for node in node_batch
+        ).results]
+        rpl_stakes += [r.results[0] for r in rp.multicall.aggregate(
+            node_staking.functions.getNodeRPLStake(node) for node in node_batch
+        ).results]
+
     return {
         nodes[i]: {
             "eb8s"     : eb8s[i],
@@ -207,7 +207,7 @@ class Collateral(commands.Cog):
         img = BytesIO()
         fig.savefig(img, format='png')
         img.seek(0)
-        fig.clf()
+        fig.clear()
         plt.close()
 
         e.title = "Node TVL vs Collateral Scatter Plot"
@@ -283,7 +283,7 @@ class Collateral(commands.Cog):
         fig.savefig(img, format='png')
         img.seek(0)
 
-        fig.clf()
+        fig.clear()
         plt.close()
 
         e.title = "Average Collateral Distribution"
