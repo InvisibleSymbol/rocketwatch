@@ -7,6 +7,7 @@ from bidict import bidict
 from cachetools import cached, FIFOCache
 from cachetools.func import ttl_cache
 from multicall import Call, Multicall
+from multicall.constants import MULTICALL3_ADDRESSES
 from web3.exceptions import ContractLogicError
 from web3_multicall import Multicall as Web3Multicall
 
@@ -19,7 +20,7 @@ from utils.time_debug import timerun
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
 
-# no address found exception
+
 class NoAddressFound(Exception):
     pass
 
@@ -30,7 +31,7 @@ class RocketPool:
 
     def __init__(self):
         self.addresses = bidict()
-        self.multicall = Web3Multicall(w3.eth)
+        self.multicall = Web3Multicall(w3.eth, MULTICALL3_ADDRESSES[w3.eth.chain_id])
         self.flush()
 
     def flush(self):
@@ -60,15 +61,18 @@ class RocketPool:
                 log.warning(f"Skipping {contract} in function list generation")
                 continue
 
-        cs_dir, cs_prefix = "ConstellationDirectory", "Constellation"
-        self.addresses |= {
-            f"{cs_prefix}.SuperNodeAccount": self.call(f"{cs_dir}.getSuperNodeAddress"),
-            f"{cs_prefix}.OperatorDistributor": self.call(f"{cs_dir}.getOperatorDistributorAddress"),
-            f"{cs_prefix}.Whitelist": self.call(f"{cs_dir}.getWhitelistAddress"),
-            f"{cs_prefix}.ETHVault": self.call(f"{cs_dir}.getWETHVaultAddress"),
-            f"{cs_prefix}.RPLVault": self.call(f"{cs_dir}.getRPLVaultAddress"),
-            "WETH": self.call(f"{cs_dir}.getWETHAddress")
-        }
+        try:
+            cs_dir, cs_prefix = "ConstellationDirectory", "Constellation"
+            self.addresses |= {
+                f"{cs_prefix}.SuperNodeAccount": self.call(f"{cs_dir}.getSuperNodeAddress"),
+                f"{cs_prefix}.OperatorDistributor": self.call(f"{cs_dir}.getOperatorDistributorAddress"),
+                f"{cs_prefix}.Whitelist": self.call(f"{cs_dir}.getWhitelistAddress"),
+                f"{cs_prefix}.ETHVault": self.call(f"{cs_dir}.getWETHVaultAddress"),
+                f"{cs_prefix}.RPLVault": self.call(f"{cs_dir}.getRPLVaultAddress"),
+                "WETH": self.call(f"{cs_dir}.getWETHAddress")
+            }
+        except NoAddressFound:
+            log.warning("Failed to find address for Constellation contracts")
 
     @staticmethod
     def seth_sig(abi, function_name):

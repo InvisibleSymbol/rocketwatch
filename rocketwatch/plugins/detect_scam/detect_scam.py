@@ -133,14 +133,15 @@ class DetectScam(Cog):
         self.bot.tree.remove_command(self.report_command.name, type=self.report_command.type)
 
     @staticmethod
-    def _get_message_content(message: Message) -> str:
+    def _get_message_content(message: Message, *, preserve_formatting: bool = False) -> str:
         text = ""
         if message.content:
-            text += message.content.replace("\n", "") + "\n"
+            content = message.content if preserve_formatting else message.content.replace("\n", " ")
+            text += content + "\n"
         if message.embeds:
             for embed in message.embeds:
                 text += f"---\n Embed: {embed.title}\n{embed.description}\n---\n"
-        return parse.unquote(text).lower()
+        return text if preserve_formatting else parse.unquote(text).lower()
 
     async def _generate_message_report(self, message: Message, reason: str) -> Optional[tuple[Embed, Embed, File]]:
         try:
@@ -172,8 +173,8 @@ class DetectScam(Cog):
                 "Please review and take appropriate action."
             )
 
-            text = DetectScam._get_message_content(message)
-            with io.BytesIO(text.encode()) as f:
+            text = self._get_message_content(message, preserve_formatting=True)
+            with io.StringIO(text) as f:
                 contents = File(f, filename="original_message.txt")
 
             await self.db.scam_reports.insert_one({
@@ -274,8 +275,11 @@ class DetectScam(Cog):
 
         try:
             warning, report, contents = components
+            
             report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
             report_msg = await report_channel.send(embed=report, file=contents)
+            await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"report_id": report_msg.id}})
+            
             moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
             view = self.RemovalVoteView(self, message)
             warning_msg = await message.reply(
@@ -284,10 +288,7 @@ class DetectScam(Cog):
                 view=view,
                 mention_author=False
             )
-            await self.db.scam_reports.update_one(
-                {"message_id": message.id},
-                {"$set": {"warning_id": warning_msg.id, "report_id": report_msg.id}}
-            )
+            await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"warning_id": warning_msg.id}})
             await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
         except Exception as e:
             await self.bot.report_error(e)
@@ -299,21 +300,21 @@ class DetectScam(Cog):
         return None
 
     def _markdown_link_trick(self, message: Message) -> Optional[str]:
-        txt = DetectScam._get_message_content(message)
+        txt = self._get_message_content(message)
         for m in self.markdown_link_pattern.findall(txt):
             if "." in m[0] and m[0] != m[1]:
                 return "Markdown link with possible domain in visible portion that does not match the actual domain"
         return None
 
     def _discord_invite(self, message: Message) -> Optional[str]:
-        txt = DetectScam._get_message_content(message)
+        txt = self._get_message_content(message)
         if self.invite_pattern.search(txt):
             return "Invite to external server"
         return None
 
-    def _link_and_keywords(self, message: Message) -> Optional[str]:
+    def _ticket_system(self, message: Message) -> Optional[str]:
         # message contains one of the relevant keyword combinations and a link
-        txt = DetectScam._get_message_content(message)
+        txt = self._get_message_content(message)
         if not self.basic_url_pattern.search(txt):
             return None
 
@@ -351,15 +352,15 @@ class DetectScam(Cog):
 
     def _paperhands(self, message: Message) -> Optional[str]:
         # message contains the word "paperhand" and a link
-        txt = DetectScam._get_message_content(message)
+        txt = self._get_message_content(message)
         # if has http and contains the word paperhand or paperhold
-        if (any(x in txt for x in ["paperhand", "paperhold", "pages.dev", "web.app"]) and "http" in txt) or "pages.dev" in txt:
-            return "High chance the linked website is a scam"
+        if (any(x in txt for x in ["paperhand", "paper hand", "paperhold", "pages.dev", "web.app"]) and "http" in txt) or "pages.dev" in txt:
+            return "The linked website is most likely a wallet drainer"
         return None
 
     # contains @here or @everyone but doesn't actually have the permission to do so
     def _mention_everyone(self, message: Message) -> Optional[str]:
-        txt = DetectScam._get_message_content(message)
+        txt = self._get_message_content(message)
         if ("@here" in txt or "@everyone" in txt) and not message.author.guild_permissions.mention_everyone:
             return "Mentioned @here or @everyone without permission"
         return None
@@ -412,7 +413,7 @@ class DetectScam(Cog):
 
         checks = [
             self._markdown_link_trick,
-            self._link_and_keywords,
+            self._ticket_system,
             self._paperhands,
             self._mention_everyone,
             self._discord_invite
@@ -421,6 +422,10 @@ class DetectScam(Cog):
             if reason := check(message):
                 await self.report_message(message, reason)
                 return
+            
+    @Cog.listener()
+    async def on_message_edit(self, before: Message, after: Message) -> None:
+        await self.on_message(after)
         
     @Cog.listener()
     async def on_reaction_add(self, reaction: Reaction, user: User) -> None:
@@ -529,7 +534,7 @@ class DetectScam(Cog):
             )
             if not report:
                 return
-
+                
             await self._update_report(report, "Thread has been deleted.")
             await self.db.scam_reports.update_one(
                 {"channel_id": event.thread_id, "message_id": None, "removed": False},
