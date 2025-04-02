@@ -130,6 +130,9 @@ class DepositPool(StatusPlugin):
 
         collateral_embed = self.get_contract_collateral_stats()
         embed.add_field(name="Withdrawals", value=collateral_embed.description, inline=False)
+        
+        if cfg["rocketpool.chain"] != "mainnet":
+            return embed
 
         reth_price = rp.get_reth_eth_price()
         protocol_rate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate"))
