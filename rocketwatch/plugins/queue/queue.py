@@ -1,7 +1,7 @@
 import math
 import logging
 
-from functools import cache
+from cachetools.func import ttl_cache 
 from discord import ui, ButtonStyle, Interaction
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -67,7 +67,7 @@ class Queue(commands.Cog):
             await interaction.response.edit_message(embed=embed, view=self)
 
     @staticmethod
-    @cache
+    @ttl_cache(ttl=600)
     def _cached_el_url(address, prefix="") -> str:
         return el_explorer_url(address, name_fmt=lambda n: f"`{n}`", prefix=prefix)
 
