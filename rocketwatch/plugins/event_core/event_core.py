@@ -263,7 +263,7 @@ class EventCore(commands.Cog):
         embed.timestamp = datetime.now()
         embed.set_footer(text=f"Tracking {cfg['rocketpool.chain']} using {len(self.bot.cogs)} plugins")
         for field in config["fields"]:
-            embed.add_field(name=field["name"], value=field["value"])
+            embed.add_field(**field)
 
         await self._replace_or_add_status(channel_name, embed, state_message)
 
