@@ -79,10 +79,10 @@ class DetectScam(Cog):
 
             if isinstance(self.reportable, Message):
                 reported_user = self.reportable.author
-                db_filter = {"message_id": self.reportable.id}
+                db_filter = {"type": "message", "message_id": self.reportable.id}
             elif isinstance(self.reportable, Thread):
                 reported_user = self.reportable.owner
-                db_filter = {"channel_id": self.reportable.id, "message_id": None}
+                db_filter = {"type": "thread", "channel_id": self.reportable.id}
             else:
                 log.warning(f"Unknown reportable type {type(self.reportable)}")
                 return None
@@ -160,7 +160,7 @@ class DetectScam(Cog):
             return None
 
         async with self._report_lock:
-            if await self.db.scam_reports.find_one({"message_id": message.id}):
+            if await self.db.scam_reports.find_one({"type": "message", "message_id": message.id}):
                 log.info(f"Found existing report for message {message.id} in database")
                 return None
 
@@ -186,6 +186,7 @@ class DetectScam(Cog):
                 contents = File(f, filename="original_message.txt")
 
             await self.db.scam_reports.insert_one({
+                "type"       : "message",
                 "guild_id"   : message.guild.id,
                 "channel_id" : message.channel.id,
                 "message_id" : message.id,
@@ -206,7 +207,7 @@ class DetectScam(Cog):
             return None
         
         async with self._report_lock:
-            if await self.db.scam_reports.find_one({"channel_id": thread.id, "message_id": None}):
+            if await self.db.scam_reports.find_one({"type": "thread", "channel_id": thread.id}):
                 log.info(f"Found existing report for thread {thread.id} in database")
                 return None
 
@@ -228,9 +229,9 @@ class DetectScam(Cog):
                 "Please review and take appropriate action."
             )
             await self.db.scam_reports.insert_one({
+                "type"       : "thread",
                 "guild_id"   : thread.guild.id,
                 "channel_id" : thread.id,
-                "message_id" : None,
                 "user_id"    : thread.owner_id,
                 "reason"     : reason,
                 "content"    : thread.name,
@@ -272,7 +273,7 @@ class DetectScam(Cog):
         if message.author == interaction.user:
             return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
 
-        reason = f"Manual report by {interaction.user.mention}\n"
+        reason = f"Manual report by {interaction.user.mention}"
         if not (components := await self._generate_message_report(message, reason)):
             return await interaction.followup.send(
                 content="Failed to report message. It may have already been reported or deleted.", 
@@ -449,18 +450,17 @@ class DetectScam(Cog):
             await asyncio.gather(*[self._on_message_delete(msg_id) for msg_id in event.message_ids])
 
     async def _on_message_delete(self, message_id: int) -> None:
-        report = await self.db.scam_reports.find_one({"message_id": message_id, "removed": False})
-        if not report:
+        db_filter = {"type": "message", "message_id": message_id, "removed": False}
+        if not (report := await self.db.scam_reports.find_one(db_filter)):
             return
 
-        # delete warning message
         channel = await self.bot.get_or_fetch_channel(report["channel_id"])
         with contextlib.suppress(errors.NotFound, errors.Forbidden):
             message = await channel.fetch_message(report["warning_id"])
             await message.delete()
 
         await self._update_report(report, "Original message has been deleted.")
-        await self.db.scam_reports.update_one(report, {"$set": {"warning_id": None, "removed": True}})
+        await self.db.scam_reports.update_one(db_filter, {"$set": {"warning_id": None, "removed": True}})
 
     @Cog.listener()
     async def on_member_ban(self, guild: Guild, user: User) -> None:
@@ -525,17 +525,10 @@ class DetectScam(Cog):
     @Cog.listener()
     async def on_raw_thread_delete(self, event: RawThreadDeleteEvent) -> None:
         async with self._update_lock:
-            report = await self.db.scam_reports.find_one(
-                {"channel_id": event.thread_id, "message_id": None, "removed": False}
-            )
-            if not report:
-                return
-                
-            await self._update_report(report, "Thread has been deleted.")
-            await self.db.scam_reports.update_one(
-                {"channel_id": event.thread_id, "message_id": None, "removed": False},
-                {"$set": {"warning_id": None, "removed": True}}
-            )
+            db_filter = {"type": "thread", "channel_id": event.thread_id, "removed": False}
+            if report := await self.db.scam_reports.find_one(db_filter):                
+                await self._update_report(report, "Thread has been deleted.")
+                await self.db.scam_reports.update_one(db_filter, {"$set": {"warning_id": None, "removed": True}})
             
     async def manual_user_report(self, interaction: Interaction, member: Member) -> None:
         await interaction.response.defer(ephemeral=True)
@@ -568,7 +561,7 @@ class DetectScam(Cog):
                
         async with self._report_lock:
             if await self.db.scam_reports.find_one(
-                {"user_id": member.id, "guild_id": member.guild.id, "channel_id": None, "message_id": None}
+                {"type": "user", "guild_id": member.guild.id, "user_id": member.id}
             ):
                 log.info(f"Found existing report for user {member.id} in database")
                 return None
@@ -587,16 +580,14 @@ class DetectScam(Cog):
             report.set_thumbnail(url=member.display_avatar.url)
             
             await self.db.scam_reports.insert_one({
+                "type"       : "user",
                 "guild_id"   : member.guild.id,
-                "channel_id" : None,
-                "message_id" : None,
                 "user_id"    : member.id,
                 "reason"     : reason,
-                "content"    : None,
+                "content"    : member.display_name,
                 "warning_id" : None,
                 "report_id"  : None,
                 "user_banned": False,
-                "removed"    : False,
             })
             return report
 
