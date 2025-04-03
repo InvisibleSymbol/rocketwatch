@@ -56,7 +56,7 @@ class Events(EventPlugin):
                 contract = rp.get_contract_by_name(contract_name)
                 addresses.add(contract.address)
             except NoAddressFound:
-                log.exception(f"Failed to get contract {contract_name}")
+                log.warning(f"Failed to get contract {contract_name}")
                 continue
 
             for event in group["events"]:
@@ -447,7 +447,7 @@ class Events(EventPlugin):
         args = aDict(event.args)
 
         if "negative_rETH_ratio_update_event" in event_name:
-            args.currRETHRate = solidity.to_float(args.totalEth) / solidity.to_float(args.rethSupply)
+            args.currRETHRate = solidity.to_float(args.totalEth) / solidity.to_float(args.rethSupply) if args.rethSupply > 0 else 1
             args.prevRETHRate = solidity.to_float(rp.call("rocketTokenRETH.getExchangeRate", block=event.blockNumber - 1))
             d = args.currRETHRate - args.prevRETHRate
             if d > 0 or abs(d) < 0.00001:
