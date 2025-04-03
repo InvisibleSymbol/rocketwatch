@@ -2,7 +2,6 @@ import io
 import asyncio
 import logging
 import contextlib
-
 import regex as re
 
 from urllib import parse
@@ -12,12 +11,13 @@ from datetime import datetime, timezone, timedelta
 from cachetools import TTLCache
 from discord import (
     ui,
+    AppCommandType,
     ButtonStyle,
     errors,
-    app_commands,
     File,
     Color,
     User,
+    Member,
     Message,
     Reaction,
     Guild,
@@ -29,6 +29,7 @@ from discord import (
     RawThreadUpdateEvent,
     RawThreadDeleteEvent
 )
+from discord.app_commands import ContextMenu
 from discord.ext.commands import Cog
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -56,11 +57,11 @@ class DetectScam(Cog):
             self.safu_votes = set()
             
         @staticmethod
-        def is_admin(user: User) -> bool:
+        def is_admin(member: Member) -> bool:
             return any((
-                user.id == cfg["discord.owner.user_id"],
-                {role.id for role in user.roles} & set(cfg["rocketpool.support.role_ids"]),
-                user.guild_permissions.administrator
+                member.id == cfg["discord.owner.user_id"],
+                {role.id for role in member.roles} & set(cfg["rocketpool.support.role_ids"]),
+                member.guild_permissions.administrator
             ))
         
         @ui.button(label="Mark Safu", style=ButtonStyle.blurple)
@@ -122,15 +123,22 @@ class DetectScam(Cog):
         self.basic_url_pattern = re.compile(r"https?:\/\/([/\\@\-_0-9a-zA-Z]+\.)+[\\@\-_0-9a-zA-Z]+")
         self.invite_pattern = re.compile(r"((discord(app)?\.com\/invite)|((dsc|discord)\.gg))(\\|\/)(?P<code>[a-zA-Z0-9]+)")
 
-        self.report_command = app_commands.ContextMenu(
+        self.message_report_menu = ContextMenu(
             name="Report Message",
-            callback=self.manual_report,
+            callback=self.manual_message_report,
             guild_ids=[cfg["rocketpool.support.server_id"]],
         )
-        self.bot.tree.add_command(self.report_command)
+        self.bot.tree.add_command(self.message_report_menu)
+        self.user_report_menu = ContextMenu(
+            name="Report User",
+            callback=self.manual_user_report,
+            type=AppCommandType.user,
+            guild_ids=[cfg["rocketpool.support.server_id"]]
+        )
+        self.bot.tree.add_command(self.user_report_menu)
 
     def cog_unload(self) -> None:
-        self.bot.tree.remove_command(self.report_command.name, type=self.report_command.type)
+        self.bot.tree.remove_command(self.message_report_menu.name, type=self.message_report_menu.type)
 
     @staticmethod
     def _get_message_content(message: Message, *, preserve_formatting: bool = False) -> str:
@@ -255,7 +263,7 @@ class DetectScam(Cog):
         )
         return None  
 
-    async def manual_report(self, interaction: Interaction, message: Message) -> None:
+    async def manual_message_report(self, interaction: Interaction, message: Message) -> None:
         await interaction.response.defer(ephemeral=True)
         
         if message.author.bot:
@@ -264,40 +272,29 @@ class DetectScam(Cog):
         if message.author == interaction.user:
             return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
 
-        reporter = await self.bot.get_or_fetch_user(interaction.user.id)
-        reason = f"Manual report by {reporter.mention}"
-
+        reason = f"Manual report by {interaction.user.mention}\n"
         if not (components := await self._generate_message_report(message, reason)):
             return await interaction.followup.send(
                 content="Failed to report message. It may have already been reported or deleted.", 
                 ephemeral=True
             )
 
-        try:
-            warning, report, contents = components
-            
-            report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
-            report_msg = await report_channel.send(embed=report, file=contents)
-            await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"report_id": report_msg.id}})
-            
-            moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
-            view = self.RemovalVoteView(self, message)
-            warning_msg = await message.reply(
-                content=f"{moderator.mention} {report_msg.jump_url}",
-                embed=warning,
-                view=view,
-                mention_author=False
-            )
-            await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"warning_id": warning_msg.id}})
-            await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
-        except Exception as e:
-            await self.bot.report_error(e)
-            await interaction.followup.send(
-                content="Failed to send report details! The error has been reported.", 
-                ephemeral=True
-            )
-
-        return None
+        warning, report, contents = components
+        
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+        report_msg = await report_channel.send(embed=report, file=contents)
+        await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"report_id": report_msg.id}})
+        
+        moderator = await self.bot.get_or_fetch_user(cfg["rocketpool.support.moderator_id"])
+        view = self.RemovalVoteView(self, message)
+        warning_msg = await message.reply(
+            content=f"{moderator.mention} {report_msg.jump_url}",
+            embed=warning,
+            view=view,
+            mention_author=False
+        )
+        await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"warning_id": warning_msg.id}})
+        await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
 
     def _markdown_link_trick(self, message: Message) -> Optional[str]:
         txt = self._get_message_content(message)
@@ -341,7 +338,7 @@ class DetectScam(Cog):
         def txt_contains(_x: list | tuple | str) -> bool:
             match _x:
                 case str():
-                    return _x in txt
+                    return (re.search(rf"\b{_x}\b", txt) is not None)
                 case tuple():
                     return any(map(txt_contains, _x))
                 case list():
@@ -506,7 +503,6 @@ class DetectScam(Cog):
             {"channel_id": thread.id, "message_id": None},
             {"$set": {"warning_id": warning_msg.id if warning_msg else None, "report_id": report_msg.id}}
         )
-        return None
 
     @Cog.listener()
     async def on_thread_create(self, thread: Thread) -> None:
@@ -540,6 +536,69 @@ class DetectScam(Cog):
                 {"channel_id": event.thread_id, "message_id": None, "removed": False},
                 {"$set": {"warning_id": None, "removed": True}}
             )
+            
+    async def manual_user_report(self, interaction: Interaction, member: Member) -> None:
+        await interaction.response.defer(ephemeral=True)
+        
+        if member.bot:
+            return await interaction.followup.send(content="Bots can't be reported.", ephemeral=True)
+
+        if member == interaction.user:
+            return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
+
+        reason = f"Manual report by {interaction.user.mention}"        
+        if not (report := await self._generate_user_report(member, reason)):
+            return await interaction.followup.send(
+                content="Failed to report user. They may have already been reported or banned.", 
+                ephemeral=True
+            )
+        
+        report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
+        report_msg = await report_channel.send(embed=report)
+
+        await self.db.scam_reports.update_one(
+            {"guild_id": member.guild.id, "user_id": member.id, "channel_id": None, "message_id": None},
+            {"$set": {"report_id": report_msg.id}}
+        )
+        await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
+        
+    async def _generate_user_report(self, member: Member, reason: str) -> Optional[Embed]: 
+        if not isinstance(member, Member):
+            return None
+               
+        async with self._report_lock:
+            if await self.db.scam_reports.find_one(
+                {"user_id": member.id, "guild_id": member.guild.id, "channel_id": None, "message_id": None}
+            ):
+                log.info(f"Found existing report for user {member.id} in database")
+                return None
+
+            report = Embed(title="🚨 Suspicious User Detected")
+            report.color = self.Color.ALERT
+            report.description = f"**Reason**: {reason}\n"
+            report.description += (
+                "\n"
+                f"Name: `{member.display_name}`\n"
+                f"ID: `{member.id}` ({member.mention})\n"
+                f"Roles: [{', '.join(role.mention for role in member.roles[1:])}]\n"
+                "\n"
+                "Please review and take appropriate action."
+            )
+            report.set_thumbnail(url=member.display_avatar.url)
+            
+            await self.db.scam_reports.insert_one({
+                "guild_id"   : member.guild.id,
+                "channel_id" : None,
+                "message_id" : None,
+                "user_id"    : member.id,
+                "reason"     : reason,
+                "content"    : None,
+                "warning_id" : None,
+                "report_id"  : None,
+                "user_banned": False,
+                "removed"    : False,
+            })
+            return report
 
 
 async def setup(bot):

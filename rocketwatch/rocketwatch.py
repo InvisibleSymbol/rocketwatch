@@ -100,6 +100,9 @@ class RocketWatch(Bot):
         except Exception:
             log.exception("Failed to alert user")
 
+    async def get_or_fetch_guild(self, guild_id: int) -> Object:
+        return self.get_guild(guild_id) or await self.fetch_guild(guild_id)
+
     async def get_or_fetch_channel(self, channel_id: int) -> GuildChannel | PrivateChannel | Thread:
         return self.get_channel(channel_id) or await self.fetch_channel(channel_id)
 
