@@ -139,6 +139,7 @@ class DetectScam(Cog):
 
     def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.message_report_menu.name, type=self.message_report_menu.type)
+        self.bot.tree.remove_command(self.user_report_menu.name, type=self.user_report_menu.type)
 
     @staticmethod
     def _get_message_content(message: Message, *, preserve_formatting: bool = False) -> str:
@@ -410,17 +411,17 @@ class DetectScam(Cog):
             return
 
         checks = [
-            self._markdown_link_trick,
             self._ticket_system,
+            self._markdown_link_trick,
             self._paperhands,
+            self._discord_invite,
             self._mention_everyone,
-            self._discord_invite
         ]
         for check in checks:
             if reason := check(message):
                 await self.report_message(message, reason)
                 return
-            
+
     @Cog.listener()
     async def on_message_edit(self, before: Message, after: Message) -> None:
         await self.on_message(after)
