@@ -241,7 +241,7 @@ class APR(commands.Cog):
         fig.tight_layout()
         fig.savefig(img, format='png')
         img.seek(0)
-        fig.clf()
+        fig.clear()
         plt.close()
 
         # reset the x axis formatter
@@ -416,7 +416,7 @@ class APR(commands.Cog):
         fig.tight_layout()
         fig.savefig(img, format='png')
         img.seek(0)
-        fig.clf()
+        fig.clear()
         plt.close()
 
         # reset the x axis formatter

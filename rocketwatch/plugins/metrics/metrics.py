@@ -146,7 +146,7 @@ class Metrics(commands.Cog):
         file.seek(0)
 
         # clear plot from memory
-        plt.clear()
+        plt.clf()
         plt.close()
 
         e = Embed(title="Command Usage and Event ")
