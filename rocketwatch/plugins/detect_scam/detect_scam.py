@@ -57,11 +57,11 @@ class DetectScam(Cog):
             self.safu_votes = set()
             
         @staticmethod
-        def is_admin(member: Member) -> bool:
+        def is_admin(user: Member) -> bool:
             return any((
-                member.id == cfg["discord.owner.user_id"],
-                {role.id for role in member.roles} & set(cfg["rocketpool.support.role_ids"]),
-                member.guild_permissions.administrator
+                user.id == cfg["discord.owner.user_id"],
+                {role.id for role in user.roles} & set(cfg["rocketpool.support.role_ids"]),
+                user.guild_permissions.administrator
             ))
         
         @ui.button(label="Mark Safu", style=ButtonStyle.blurple)
@@ -174,7 +174,7 @@ class DetectScam(Cog):
 
             report.description += (
                 "\n"
-                f"User ID: `{message.author.id}` ({message.author.mention})\n"
+                f"User ID:    `{message.author.id}` ({message.author.mention})\n"
                 f"Message ID: `{message.id}` ({message.jump_url})\n"
                 f"Channel ID: `{message.channel.id}` ({message.channel.jump_url})\n"
                 "\n"
@@ -224,8 +224,8 @@ class DetectScam(Cog):
             report.description += (
                 "\n"
                 f"Thread Name: `{thread.name}`\n"
-                f"User ID: `{thread.owner}` ({thread.owner.mention})\n"
-                f"Thread ID: `{thread.id}` ({thread.jump_url})\n"
+                f"User ID:     `{thread.owner}` ({thread.owner.mention})\n"
+                f"Thread ID:   `{thread.id}` ({thread.jump_url})\n"
                 "\n"
                 "Please review and take appropriate action."
             )
@@ -531,17 +531,17 @@ class DetectScam(Cog):
                 await self._update_report(report, "Thread has been deleted.")
                 await self.db.scam_reports.update_one(db_filter, {"$set": {"warning_id": None, "removed": True}})
             
-    async def manual_user_report(self, interaction: Interaction, member: Member) -> None:
+    async def manual_user_report(self, interaction: Interaction, user: Member) -> None:
         await interaction.response.defer(ephemeral=True)
         
-        if member.bot:
+        if user.bot:
             return await interaction.followup.send(content="Bots can't be reported.", ephemeral=True)
 
-        if member == interaction.user:
+        if user == interaction.user:
             return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
 
         reason = f"Manual report by {interaction.user.mention}"        
-        if not (report := await self._generate_user_report(member, reason)):
+        if not (report := await self._generate_user_report(user, reason)):
             return await interaction.followup.send(
                 content="Failed to report user. They may have already been reported or banned.", 
                 ephemeral=True
@@ -551,20 +551,20 @@ class DetectScam(Cog):
         report_msg = await report_channel.send(embed=report)
 
         await self.db.scam_reports.update_one(
-            {"guild_id": member.guild.id, "user_id": member.id, "channel_id": None, "message_id": None},
+            {"guild_id": user.guild.id, "user_id": user.id, "channel_id": None, "message_id": None},
             {"$set": {"report_id": report_msg.id}}
         )
         await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
         
-    async def _generate_user_report(self, member: Member, reason: str) -> Optional[Embed]: 
-        if not isinstance(member, Member):
+    async def _generate_user_report(self, user: Member, reason: str) -> Optional[Embed]: 
+        if not isinstance(user, Member):
             return None
                
         async with self._report_lock:
             if await self.db.scam_reports.find_one(
-                {"type": "user", "guild_id": member.guild.id, "user_id": member.id}
+                {"type": "user", "guild_id": user.guild.id, "user_id": user.id}
             ):
-                log.info(f"Found existing report for user {member.id} in database")
+                log.info(f"Found existing report for user {user.id} in database")
                 return None
 
             report = Embed(title="🚨 Suspicious User Detected")
@@ -572,20 +572,20 @@ class DetectScam(Cog):
             report.description = f"**Reason**: {reason}\n"
             report.description += (
                 "\n"
-                f"Name: `{member.display_name}`\n"
-                f"ID: `{member.id}` ({member.mention})\n"
-                f"Roles: [{', '.join(role.mention for role in member.roles[1:])}]\n"
+                f"Name:  `{user.display_name}`\n"
+                f"ID:    `{user.id}` ({user.mention})\n"
+                f"Roles: [{', '.join(role.mention for role in user.roles[1:])}]\n"
                 "\n"
                 "Please review and take appropriate action."
             )
-            report.set_thumbnail(url=member.display_avatar.url)
+            report.set_thumbnail(url=user.display_avatar.url)
             
             await self.db.scam_reports.insert_one({
                 "type"       : "user",
-                "guild_id"   : member.guild.id,
-                "user_id"    : member.id,
+                "guild_id"   : user.guild.id,
+                "user_id"    : user.id,
                 "reason"     : reason,
-                "content"    : member.display_name,
+                "content"    : user.display_name,
                 "warning_id" : None,
                 "report_id"  : None,
                 "user_banned": False,
