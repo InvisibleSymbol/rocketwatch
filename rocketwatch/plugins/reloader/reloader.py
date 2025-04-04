@@ -58,13 +58,13 @@ class Reloader(commands.Cog):
         except ExtensionNotLoaded:
             await ctx.send(content=f"Plugin {module} not loaded!")
             
+    @reload.autocomplete("module")
     @unload.autocomplete("module")
     async def _get_loaded_extensions(self, ctx: Context, current: str) -> list[Choice[str]]:
         loaded = {ext.split(".")[-1] for ext in self.bot.extensions.keys()}
         return [Choice(name=plugin, value=plugin) for plugin in loaded if current.lower() in plugin.lower()][:25]
     
     @load.autocomplete("module")
-    @reload.autocomplete("module")
     async def _get_unloaded_extensions(self, ctx: Context, current: str) -> list[Choice[str]]:
         loaded = {ext.split(".")[-1] for ext in self.bot.extensions.keys()}
         all = {path.stem for path in Path("plugins").glob('**/*.py')}
