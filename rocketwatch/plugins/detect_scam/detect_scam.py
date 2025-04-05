@@ -400,6 +400,11 @@ class DetectScam(Cog):
     @Cog.listener()
     async def on_message(self, message: Message) -> None:
         if message.author.bot:
+            log.warning("Ignoring message sent by bot")
+            return
+        
+        if message.author.guild_permissions.administrator:
+            log.warning("Ignoring message sent by server admin")
             return
         
         if message.guild is None:
