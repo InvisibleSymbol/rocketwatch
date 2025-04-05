@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from discord import Intents
 
@@ -23,10 +22,8 @@ def main() -> None:
     intents.reactions = True
     intents.moderation = True
 
-    prefix = str(uuid.uuid4())
-    log.info(f"Using command prefix {prefix}")
-    bot = RocketWatch(intents=intents, command_prefix=prefix)
-    log.info("Starting bot")
+    log.info("Starting bot...")
+    bot = RocketWatch(intents=intents)
     bot.run(cfg["discord.secret"])
 
 
