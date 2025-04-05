@@ -399,7 +399,7 @@ class DetectScam(Cog):
             
     @Cog.listener()
     async def on_message(self, message: Message) -> None:
-        if message.author == self.bot.user:
+        if message.author.bot:
             return
         
         if message.guild is None:
