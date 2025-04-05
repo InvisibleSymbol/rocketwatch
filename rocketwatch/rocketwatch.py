@@ -64,26 +64,30 @@ class RocketWatch(Bot):
 
     async def setup_hook(self) -> None:
         await self._load_plugins()
+        
+    async def sync_commands(self) -> None:
+        log.info("Syncing command tree...")
+        await self.tree.sync()
+        # use faster local sync
+        await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
+        await self.tree.sync(guild=Object(id=cfg["rocketpool.support.server_id"]))
+        
+    def clear_commands(self) -> None:
+        self.tree.clear_commands(guild=None)
+        self.tree.clear_commands(guild=Object(id=cfg["discord.owner.server_id"]))
+        self.tree.clear_commands(guild=Object(id=cfg["rocketpool.support.server_id"]))
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} ({self.user.id})")
-        
         commands_enabled = cfg["modules.enable_commands"]
         if not commands_enabled:
-            self.tree.clear_commands(guild=None)
+            log.info("Commands disabled, clearing tree...")
+            self.clear_commands()
             if commands_enabled is None:
                 log.info("Command sync behavior unspecified, skipping")
                 return
 
-        if not cfg["modules.enable_commands"]:
-            log.info("Commands disabled, clearing tree...")
-
-        log.info("Syncing command tree...")
-        await self.tree.sync()
-        
-        # use faster local sync
-        await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-        await self.tree.sync(guild=Object(id=cfg["rocketpool.support.server_id"]))
+        await self.sync_commands()
 
     async def on_command_error(self, ctx: Context, exception: Exception) -> None:
         log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")

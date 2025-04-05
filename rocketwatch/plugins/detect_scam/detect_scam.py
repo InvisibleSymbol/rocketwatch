@@ -29,8 +29,8 @@ from discord import (
     RawThreadUpdateEvent,
     RawThreadDeleteEvent
 )
-from discord.app_commands import ContextMenu
 from discord.ext.commands import Cog
+from discord.app_commands import command, guilds, ContextMenu
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from rocketwatch import RocketWatch
@@ -269,16 +269,15 @@ class DetectScam(Cog):
         await interaction.response.defer(ephemeral=True)
         
         if message.author.bot:
-            return await interaction.followup.send(content="Bot messages can't be reported.", ephemeral=True)
+            return await interaction.followup.send(content="Bot messages can't be reported.")
 
         if message.author == interaction.user:
-            return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
+            return await interaction.followup.send(content="Did you just report yourself?")
 
         reason = f"Manual report by {interaction.user.mention}"
         if not (components := await self._generate_message_report(message, reason)):
             return await interaction.followup.send(
-                content="Failed to report message. It may have already been reported or deleted.", 
-                ephemeral=True
+                content="Failed to report message. It may have already been reported or deleted."
             )
 
         warning, report, contents = components
@@ -296,7 +295,7 @@ class DetectScam(Cog):
             mention_author=False
         )
         await self.db.scam_reports.update_one({"message_id": message.id}, {"$set": {"warning_id": warning_msg.id}})
-        await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
+        await interaction.followup.send(content="Thanks for reporting!")
 
     def _markdown_link_trick(self, message: Message) -> Optional[str]:
         txt = self._get_message_content(message)
@@ -531,20 +530,25 @@ class DetectScam(Cog):
                 await self._update_report(report, "Thread has been deleted.")
                 await self.db.scam_reports.update_one(db_filter, {"$set": {"warning_id": None, "removed": True}})
             
+    @command()
+    @guilds(cfg["rocketpool.support.server_id"])
+    async def report_user(self, interaction: Interaction, user: Member) -> Optional[Embed]:
+        """Generate a suspicious user report and send it to the report channel"""
+        await self.manual_user_report(interaction, user)
+    
     async def manual_user_report(self, interaction: Interaction, user: Member) -> None:
         await interaction.response.defer(ephemeral=True)
         
         if user.bot:
-            return await interaction.followup.send(content="Bots can't be reported.", ephemeral=True)
+            return await interaction.followup.send(content="Bots can't be reported.")
 
         if user == interaction.user:
-            return await interaction.followup.send(content="Did you just report yourself?", ephemeral=True)
+            return await interaction.followup.send(content="Did you just report yourself?")
 
         reason = f"Manual report by {interaction.user.mention}"        
         if not (report := await self._generate_user_report(user, reason)):
             return await interaction.followup.send(
-                content="Failed to report user. They may have already been reported or banned.", 
-                ephemeral=True
+                content="Failed to report user. They may have already been reported or banned."
             )
         
         report_channel = await self.bot.get_or_fetch_channel(cfg["discord.channels.report_scams"])
@@ -554,7 +558,7 @@ class DetectScam(Cog):
             {"guild_id": user.guild.id, "user_id": user.id, "channel_id": None, "message_id": None},
             {"$set": {"report_id": report_msg.id}}
         )
-        await interaction.followup.send(content="Thanks for reporting!", ephemeral=True)
+        await interaction.followup.send(content="Thanks for reporting!")
         
     async def _generate_user_report(self, user: Member, reason: str) -> Optional[Embed]: 
         if not isinstance(user, Member):
