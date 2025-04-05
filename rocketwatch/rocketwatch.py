@@ -72,14 +72,13 @@ class RocketWatch(Bot):
     async def sync_commands(self) -> None:
         log.info("Syncing command tree...")
         await self.tree.sync()
-        # use faster local sync
-        await self.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-        await self.tree.sync(guild=Object(id=cfg["rocketpool.support.server_id"]))
+        for guild in self.guilds:
+            await self.tree.sync(guild=guild)
         
     def clear_commands(self) -> None:
         self.tree.clear_commands(guild=None)
-        self.tree.clear_commands(guild=Object(id=cfg["discord.owner.server_id"]))
-        self.tree.clear_commands(guild=Object(id=cfg["rocketpool.support.server_id"]))
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
 
     async def on_ready(self):
         log.info(f"Logged in as {self.user.name} ({self.user.id})")

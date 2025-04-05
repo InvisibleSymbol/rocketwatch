@@ -174,28 +174,12 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def force_update_commands(self, ctx: Context):
+    async def sync_commands(self, ctx: Context):
         """
-        Force an update of the commands.
-        """
-        await ctx.defer(ephemeral=True)
-        await self.bot.tree.sync()
-        await self.bot.tree.sync(guild=Object(id=cfg["discord.owner.server_id"]))
-        for guild in self.bot.guilds:
-            await self.bot.tree.sync(guild=guild)
-        await ctx.send(content="Done")
-
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
-    @is_owner()
-    async def full_sync_commands(self, ctx: Context):
-        """
-        Full sync of the commands tree.
+        Full sync of the commands tree
         """
         await ctx.defer(ephemeral=True)
-        await self.bot.tree.sync()
-        for guild in [cfg["discord.owner.server_id"], *cfg["discord.guilds"]]:
-            await self.bot.tree.sync(guild=Object(id=guild))
+        self.bot.sync_commands()
         await ctx.send(content="Done")
 
     @hybrid_command()
