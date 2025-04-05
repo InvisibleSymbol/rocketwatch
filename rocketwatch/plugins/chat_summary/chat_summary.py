@@ -61,7 +61,7 @@ class ChatSummary(commands.Cog):
         await ctx.defer(ephemeral=True)
         last_ts = await self.db["last_summary"].find_one({"channel_id": ctx.channel.id})
         # ratelimit
-        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(minutes=60 * 6):
+        if last_ts and (datetime.now(timezone.utc) - last_ts["timestamp"].replace(tzinfo=pytz.utc)) < timedelta(hours=6):
              await ctx.send("You can only summarize once every 6 hours.", ephemeral=True)
              return
         if ctx.channel.id not in [405163713063288832]:

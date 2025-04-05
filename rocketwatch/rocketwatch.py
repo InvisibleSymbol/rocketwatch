@@ -6,6 +6,7 @@ from typing import Optional
 
 from discord import (
     app_commands, 
+    Intents,
     Thread, 
     File, 
     Object, 
@@ -23,12 +24,15 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketWatch(Bot):
+    def __init__(self, intents: Intents) -> None:
+        super().__init__(command_prefix=(), intents=intents)
+    
     async def _load_plugins(self):
         chain = cfg["rocketpool.chain"]
         storage = cfg["rocketpool.manual_addresses.rocketStorage"]
         log.info(f"Running using storage contract {storage} (Chain: {chain})")
 
-        log.info('Loading plugins')
+        log.info("Loading plugins...")
         included_modules = set(cfg["modules.include"] or [])
         excluded_modules = set(cfg["modules.exclude"] or [])
 
