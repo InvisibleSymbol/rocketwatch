@@ -5,7 +5,6 @@ discord: {
         user_id:   -1
         server_id: -1
     }
-    guilds: []
     channels: {
         default: -1
         dao:     -1
