@@ -4,9 +4,9 @@ import logging
 import warnings
 from typing import Optional, Callable, Literal
 
-from discord import Object
-from discord.app_commands import guilds
-from discord.ext.commands import Context, is_owner, hybrid_command
+from discord import Interaction
+from discord.ext.commands import is_owner
+from discord.app_commands import command, guilds
 from eth_typing import ChecksumAddress, BlockNumber
 from hexbytes import HexBytes
 from web3._utils.filters import Filter
@@ -101,18 +101,18 @@ class Events(EventPlugin):
 
         return partial_filters, event_map, topic_map
 
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @command()
+    @guilds(cfg["discord.owner.server_id"])
     @is_owner()
     async def trigger_event(
             self,
-            ctx: Context,
+            interaction: Interaction,
             contract: str,
             event: str,
             json_args: str = "{}",
             block_number: int = 0
     ):
-        await ctx.defer()
+        await interaction.response.defer()
         try:
             default_args = {
                 "tnx_fee": 0,
@@ -125,21 +125,21 @@ class Events(EventPlugin):
                 "args": aDict(default_args | json.loads(json_args))
             })
         except json.JSONDecodeError:
-            return await ctx.send(content="Invalid JSON args!")
+            return await interaction.followup.send(content="Invalid JSON args!")
 
         if not (event_name := self.event_map.get(event, None)):
             event_name = self.event_map[f"{contract}.{event}"]
 
         if embed := self.handle_event(event_name, event_obj):
-            await ctx.send(embed=embed)
+            await interaction.followup.send(embed=embed)
         else:
-            await ctx.send(content="No events triggered.")
+            await interaction.followup.send(content="No events triggered.")
 
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @command()
+    @guilds(cfg["discord.owner.server_id"])
     @is_owner()
-    async def replay_events(self, ctx: Context, tx_hash: str):
-        await ctx.defer()
+    async def replay_events(self, interaction: Interaction, tx_hash: str):
+        await interaction.response.defer()
         receipt = w3.eth.get_transaction_receipt(tx_hash)
         logs: list[LogReceipt] = receipt.logs
 
@@ -163,10 +163,10 @@ class Events(EventPlugin):
 
         responses, _ = self.process_events(filtered_events)
         if not responses:
-            await ctx.send(content="No events found.")
+            await interaction.followup.send(content="No events found.")
 
         for response in responses:
-            await ctx.send(embed=response.embed)
+            await interaction.followup.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
         if not self.active_filters:
@@ -497,11 +497,11 @@ class Events(EventPlugin):
             odao_share = args.trustedNodePercent / 10 ** 16
 
             args.description = '\n'.join([
-                f"Node Operator Share",
+                "Node Operator Share",
                 f"{share_repr(node_share)} {node_share:.1f}%",
-                f"Protocol DAO Share",
+                "Protocol DAO Share",
                 f"{share_repr(pdao_share)} {pdao_share:.1f}%",
-                f"Oracle DAO Share",
+                "Oracle DAO Share",
                 f"{share_repr(odao_share)} {odao_share:.1f}%",
             ])
         elif event_name == "bootstrap_sdao_member_kick_event":

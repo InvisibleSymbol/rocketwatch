@@ -4,9 +4,9 @@ import warnings
 from typing import cast, Optional
 
 import web3.exceptions
-from discord import Object
-from discord.app_commands import guilds
-from discord.ext.commands import Context, is_owner, hybrid_command
+from discord import Interaction
+from discord.app_commands import command, guilds
+from discord.ext.commands import is_owner
 from eth_typing import ChecksumAddress, BlockNumber, BlockIdentifier
 from web3.datastructures import MutableAttributeDict as aDict
 
@@ -48,18 +48,18 @@ class Transactions(EventPlugin):
 
         return addresses, function_map
 
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @command()
+    @guilds(cfg["discord.owner.server_id"])
     @is_owner()
     async def trigger_tx(
             self,
-            ctx: Context,
+            interaction: Interaction,
             contract: str,
             function: str,
             json_args: str = "{}",
             block_number: int = 0
     ) -> None:
-        await ctx.defer()
+        await interaction.response.defer()
         try:
             event_obj = aDict({
                 "hash": aDict({"hex": lambda: '0x0000000000000000000000000000000000000000'}),
@@ -67,29 +67,29 @@ class Transactions(EventPlugin):
                 "args": json.loads(json_args) | {"function_name": function}
             })
         except json.JSONDecodeError:
-            await ctx.send(content="Invalid JSON args!")
+            await interaction.followup.send(content="Invalid JSON args!")
             return
 
         event_name = self.function_map[contract][function]
         if embed := self.create_embed(event_name, event_obj):
-            await ctx.send(embed=embed)
+            await interaction.followup.send(embed=embed)
         else:
-            await ctx.send(content="No events triggered.")
+            await interaction.followup.send(content="No events triggered.")
 
-    @hybrid_command()
-    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @command()
+    @guilds(cfg["discord.owner.server_id"])
     @is_owner()
-    async def replay_tx(self, ctx: Context, tx_hash: str):
-        await ctx.defer()
+    async def replay_tx(self, interaction: Interaction, tx_hash: str):
+        await interaction.response.defer()
         tnx = w3.eth.get_transaction(tx_hash)
         block = w3.eth.get_block(tnx.blockHash)
 
         responses: list[Event] = self.process_transaction(block, tnx, tnx.to, tnx.input)
         if not responses:
-            await ctx.send(content="No events found.")
+            await interaction.followup.send(content="No events found.")
 
         for response in responses:
-            await ctx.send(embed=response.embed)
+            await interaction.followup.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
         old_addresses = self.addresses
