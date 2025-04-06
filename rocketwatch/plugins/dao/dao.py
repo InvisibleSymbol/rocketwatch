@@ -2,8 +2,9 @@ import logging
 
 from typing import Literal
 
-from discord.app_commands import describe
-from discord.ext.commands import Cog, Context, hybrid_command
+from discord import Interaction
+from discord.app_commands import command, describe
+from discord.ext.commands import Cog
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
@@ -101,17 +102,18 @@ class DAOCommand(Cog):
             ) or "No active proposals."
         )
 
-    @hybrid_command()
+    @command()
     @describe(dao_name="DAO to show proposals for")
     @describe(full="show all information (e.g. payload)")
     async def dao_votes(
             self,
-            ctx: Context,
+            interaction: Interaction,
             dao_name: Literal["oDAO", "pDAO", "Security Council"] = "pDAO",
             full: bool = False
     ) -> None:
         """Show currently active on-chain proposals"""
-        await ctx.defer(ephemeral=is_hidden(ctx) if full else is_hidden_weak(ctx))
+        visibility = is_hidden(interaction) if full else is_hidden_weak(interaction)
+        await interaction.response.defer(ephemeral=visibility)
 
         match dao_name:
             case "pDAO":
@@ -126,7 +128,7 @@ class DAOCommand(Cog):
             case _:
                 raise ValueError(f"Invalid DAO name: {dao_name}")
 
-        await ctx.send(embed=embed)        
+        await interaction.followup.send(embed=embed)        
 
 
 async def setup(bot):

@@ -294,7 +294,7 @@ class Debug(Cog):
     @hybrid_command()
     async def get_abi_of_contract(self, ctx: Context, contract: str):
         """retrieve the latest ABI for a contract"""
-        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx.interaction))
         try:
             abi = prettify_json_string(rp.uncached_get_abi_by_name(contract))
             await ctx.send(file=File(
@@ -307,7 +307,7 @@ class Debug(Cog):
     @hybrid_command()
     async def get_address_of_contract(self, ctx: Context, contract: str):
         """retrieve the latest address for a contract"""
-        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx.interaction))
         try:
             address = cfg["rocketpool.manual_addresses"].get(contract)
             if not address:
@@ -333,7 +333,7 @@ class Debug(Cog):
                    address: str = None,
                    raw_output: bool = False):
         """Call Function of Contract"""
-        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx))
+        await ctx.defer(ephemeral=is_hidden_role_controlled(ctx.interaction))
         # convert block to int if number
         if block.isnumeric():
             block = int(block)
