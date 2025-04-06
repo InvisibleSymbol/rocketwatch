@@ -7,10 +7,11 @@ from datetime import datetime, timedelta
 import regex
 import requests
 import termplotlib as tpl
+from discord import Interaction
+from discord.app_commands import command
 from web3.constants import ADDRESS_ZERO
 from eth_typing import ChecksumAddress, BlockNumber
 from graphql_query import Operation, Query, Argument
-from discord.ext.commands import Context, hybrid_command
 from pymongo import MongoClient, InsertOne, UpdateOne, DeleteOne, DESCENDING
 
 from rocketwatch import RocketWatch
@@ -375,7 +376,7 @@ class Snapshot(EventPlugin):
                     f" ({vote_fmt})" if (len(vote_fmt) <= 20) else f":\n{vote_fmt}"
                 )
             else:
-                log.debug(f"Same vote as before, skipping event")
+                log.debug("Same vote as before, skipping event")
                 return None
 
             if self.reason:
@@ -574,10 +575,10 @@ class Snapshot(EventPlugin):
 
         return events
 
-    @hybrid_command()
-    async def snapshot_votes(self, ctx: Context):
+    @command()
+    async def snapshot_votes(self, interaction: Interaction):
         """Show currently active Snapshot proposals"""
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction))
 
         embed = Embed(title="Snapshot Proposals")
         embed.set_author(name="🔗 Data from snapshot.org", url="https://vote.rocketpool.net")
@@ -585,7 +586,7 @@ class Snapshot(EventPlugin):
         proposals = self.fetch_proposals("active", reverse=True)[::-1]
         if not proposals:
             embed.description = "No active proposals."
-            return await ctx.send(embed=embed)
+            return await interaction.followup.send(embed=embed)
 
         num_proposals = len(proposals)
         num_cols = min(int(math.ceil(math.sqrt(num_proposals))), 4)
@@ -631,7 +632,7 @@ class Snapshot(EventPlugin):
 
         file = canvas.image.to_file("snapshot.png")
         embed.set_image(url=f"attachment://{file.filename}")
-        await ctx.send(embed=embed, file=file)
+        await interaction.followup.send(embed=embed, file=file)
 
 
 async def setup(bot):

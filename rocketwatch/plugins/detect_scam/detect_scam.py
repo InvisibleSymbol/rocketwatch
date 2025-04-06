@@ -537,7 +537,7 @@ class DetectScam(Cog):
             
     @command()
     @guilds(cfg["rocketpool.support.server_id"])
-    async def report_user(self, interaction: Interaction, user: Member) -> Optional[Embed]:
+    async def report_user(self, interaction: Interaction, user: Member) -> None:
         """Generate a suspicious user report and send it to the report channel"""
         await self.manual_user_report(interaction, user)
     
