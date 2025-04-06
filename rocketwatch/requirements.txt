@@ -24,7 +24,7 @@ cronitor==4.6.0
 circuitbreaker==1.4.0
 retry-async==0.1.4
 checksumdir==1.2.0
-multicall @ git+https://github.com/haiyanghe/multicall.py@d0603847d729630596f5d630edbd373d23e7f867
+multicall @ git+https://github.com/banteg/multicall.py@d0e4424fc10b534c9c63a3deacf90edd652d542a
 dice==3.1.2
 openai==1.10.0
 transformers==4.48.0
