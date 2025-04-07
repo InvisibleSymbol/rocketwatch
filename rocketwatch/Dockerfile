@@ -5,7 +5,7 @@ COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-COPY . ./app
+COPY . /app
 ENV PYTHONUNBUFFERED=1
 ENV MULTICALL_PROCESSES=11
 WORKDIR /app

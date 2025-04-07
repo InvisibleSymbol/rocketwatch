@@ -179,7 +179,7 @@ class Debug(Cog):
         Full sync of the commands tree
         """
         await ctx.defer(ephemeral=True)
-        self.bot.sync_commands()
+        await self.bot.sync_commands()
         await ctx.send(content="Done")
 
     @hybrid_command()
