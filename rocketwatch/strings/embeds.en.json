@@ -318,15 +318,15 @@
     },
     "pdao_spend_treasury_recurring_new": {
         "title": ":bank: DAO Treasury: New Recurring Spend",
-        "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
+        "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "pdao_spend_treasury_recurring_update": {
         "title": ":bank: DAO Treasury: Updated Recurring Spend",
-        "description": "%{recipient} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
+        "description": "%{recipientAddress} will be awarded **%{numPeriods} x %{amountPerPeriod} RPL**!"
     },
     "pdao_spend_treasury_recurring_claim_event": {
         "title": ":bank: DAO Treasury Contract Claim",
-        "description": "%{recipient} has claimed **%{amount} RPL** from their outstanding balance!"
+        "description": "%{recipientAddress} has claimed **%{amount} RPL** from their outstanding balance!"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",

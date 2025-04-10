@@ -323,7 +323,7 @@ class DetectScam(Cog):
             ],
             [
                 ("contact", "reach out", "report", [("talk", "speak"), ("to", "with")], "ask"),
-                ("admin", "mod")
+                ("admin", "mod", "administrator", "moderator")
             ],
             ("support team", "supp0rt", "🎫", "🎟️", "m0d"),
             [
