@@ -266,14 +266,14 @@ class Random(commands.Cog):
         total_minipool_count = data[True]["count"] + data[False]["count"]
         smoothie_minipool_count = data[True]["count"]
         d = datetime.now().timestamp() - rp.call("rocketRewardsPool.getClaimIntervalTimeStart")
-        e.description = f"`{smoothie_node_count}/{total_node_count}` Nodes (`{smoothie_node_count / total_node_count:.2%}`)" \
-                        f" have joined the Smoothing Pool.\n" \
-                        f" That is `{smoothie_minipool_count}/{total_minipool_count}` Minipools " \
+        e.description = f"`{smoothie_node_count}/{total_node_count}` nodes (`{smoothie_node_count / total_node_count:.2%}`)" \
+                        f" have joined the smoothing pool.\n" \
+                        f" That is `{smoothie_minipool_count}/{total_minipool_count}` minipools " \
                         f"(`{smoothie_minipool_count / total_minipool_count:.2%}`).\n" \
-                        f"The current (not overall) Balance is **`{smoothie_eth:,.2f}` ETH.**\n" \
+                        f"The current (not overall) balance is **`{smoothie_eth:,.2f}` ETH.**\n" \
                         f"This is over a span of `{uptime(d)}`.\n\n" \
-                        f"{min(smoothie_node_count, 5)} largest Nodes:\n"
-        e.description += "\n".join(f"- `{d['count']:>4}` Minipools - Node {el_explorer_url(d['address'])}" for d in
+                        f"{min(smoothie_node_count, 5)} largest nodes:\n"
+        e.description += "\n".join(f"- `{d['count']:>4}` minipools - node {el_explorer_url(d['address'])}" for d in
                                    data[True]["counts"][:min(smoothie_node_count, 5)])
         await ctx.send(embed=e)
 

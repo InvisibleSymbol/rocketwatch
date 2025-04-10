@@ -136,7 +136,7 @@ class BeaconEvents(EventPlugin):
         block_number = cast(BlockNumber, int(payload["block_number"]))
 
         if not (api_key := cfg["consensus_layer.beaconcha_secret"]):
-            log.warning(f"Missing beaconcha.in API key")
+            log.warning("Missing beaconcha.in API key")
             return None
 
         # fetch from beaconcha.in because beacon node is unaware of MEV bribes

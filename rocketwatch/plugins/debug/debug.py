@@ -244,6 +244,28 @@ class Debug(Cog):
             })
             await ctx.send(embed=event.embed, ephemeral=True)
         await ctx.send(content="Done", ephemeral=True)
+        
+    @hybrid_command()
+    @guilds(Object(id=cfg["discord.owner.server_id"]))
+    @is_owner()
+    async def fix_recurring_spend_event(self, ctx: Context, message_id: str):
+        await ctx.defer(ephemeral=True)
+        
+        from plugins.transactions.transactions import Transactions
+        
+        event_channel = await self.bot.fetch_channel(cfg["discord.channels.dao"])
+        message = await event_channel.fetch_message(int(message_id))
+        fields = {field.name: field.value for field in message.embeds[0].fields} 
+        tx_link = fields["Transaction Hash"].split(" ")[-1]
+        tx_hash = tx_link.split("/tx/")[1].split(")")[0]
+        
+        tnx = w3.eth.get_transaction(tx_hash)
+        block = w3.eth.get_block(tnx.blockHash)
+        tx_plugin: Transactions = self.bot.cogs["Transactions"]
+
+        responses = tx_plugin.process_transaction(block, tnx, tnx.to, tnx.input)
+        await message.edit(embed=responses[-1].embed)
+        await ctx.send(content="Done.")
 
     # --------- PUBLIC COMMANDS --------- #
 
@@ -260,8 +282,6 @@ class Debug(Cog):
             payload += f"\n{fg}Hello World"
         payload += f"{Style.RESET_ALL}```"
         await ctx.reply(content=payload)
-
-    # --------- PUBLIC COMMANDS --------- #
 
     @hybrid_command()
     async def asian_restaurant_name(self, ctx: Context):
