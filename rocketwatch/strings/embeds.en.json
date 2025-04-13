@@ -326,7 +326,7 @@
     },
     "pdao_spend_treasury_recurring_claim_event": {
         "title": ":bank: DAO Treasury Contract Claim",
-        "description": "%{recipientAddress} has claimed **%{amount} RPL** from their outstanding balance!"
+        "description": "%{recipient} has claimed **%{amount} RPL** from their outstanding balance!"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",

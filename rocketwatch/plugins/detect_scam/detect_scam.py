@@ -145,7 +145,7 @@ class DetectScam(Cog):
     def _get_message_content(message: Message, *, preserve_formatting: bool = False) -> str:
         text = ""
         if message.content:
-            content = message.content if preserve_formatting else message.content.replace("\n", " ")
+            content = message.content if preserve_formatting else message.content.replace("\n", "")
             text += content + "\n"
         if message.embeds:
             for embed in message.embeds:
@@ -398,7 +398,7 @@ class DetectScam(Cog):
         return "Reaction spam by message author" if (reaction_count >= 8) else None
             
     @Cog.listener()
-    async def on_message(self, message: Message) -> None:
+    async def on_message(self, message: Message) -> None:        
         if message.author.bot:
             log.warning("Ignoring message sent by bot")
             return

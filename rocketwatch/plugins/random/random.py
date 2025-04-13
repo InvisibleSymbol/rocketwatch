@@ -273,7 +273,7 @@ class Random(commands.Cog):
                         f"The current (not overall) balance is **`{smoothie_eth:,.2f}` ETH.**\n" \
                         f"This is over a span of `{uptime(d)}`.\n\n" \
                         f"{min(smoothie_node_count, 5)} largest nodes:\n"
-        e.description += "\n".join(f"- `{d['count']:>4}` minipools - node {el_explorer_url(d['address'])}" for d in
+        e.description += "\n".join(f"- `{d['count']:>4}` minipools - {el_explorer_url(d['address'])}" for d in
                                    data[True]["counts"][:min(smoothie_node_count, 5)])
         await ctx.send(embed=e)
 
