@@ -248,22 +248,26 @@ class Debug(Cog):
     @hybrid_command()
     @guilds(Object(id=cfg["discord.owner.server_id"]))
     @is_owner()
-    async def fix_recurring_spend_event(self, ctx: Context, message_id: str):
+    async def fix_recurring_spend_claim_event(self, ctx: Context, message_id: str):
         await ctx.defer(ephemeral=True)
         
-        from plugins.transactions.transactions import Transactions
+        from plugins.events.events import Events
         
         event_channel = await self.bot.fetch_channel(cfg["discord.channels.dao"])
         message = await event_channel.fetch_message(int(message_id))
         fields = {field.name: field.value for field in message.embeds[0].fields} 
         tx_link = fields["Transaction Hash"].split(" ")[-1]
         tx_hash = tx_link.split("/tx/")[1].split(")")[0]
+                
+        receipt = w3.eth.get_transaction_receipt(tx_hash)        
+        tx_plugin: Events = self.bot.cogs["Events"]
         
-        tnx = w3.eth.get_transaction(tx_hash)
-        block = w3.eth.get_block(tnx.blockHash)
-        tx_plugin: Transactions = self.bot.cogs["Transactions"]
+        logs = []
+        for event_log in receipt.logs:
+            if ("topics" in event_log) and (event_log["topics"][0].hex() in tx_plugin.topic_map):
+                logs.append(event_log)
 
-        responses = tx_plugin.process_transaction(block, tnx, tnx.to, tnx.input)
+        responses, _ = tx_plugin.process_events(logs)
         await message.edit(embed=responses[-1].embed)
         await ctx.send(content="Done.")
 
