@@ -1,9 +1,11 @@
 import json
 import logging
 import warnings
-from typing import cast, Optional
+from typing import cast
 
 import web3.exceptions
+import humanize
+from datetime import timedelta
 from discord import Interaction
 from discord.app_commands import command, guilds
 from discord.ext.commands import is_owner
@@ -71,8 +73,8 @@ class Transactions(EventPlugin):
             return
 
         event_name = self.function_map[contract][function]
-        if embed := self.create_embed(event_name, event_obj):
-            await interaction.followup.send(embed=embed)
+        if embeds := self.create_embeds(event_name, event_obj):
+            await interaction.followup.send(embeds=embeds)
         else:
             await interaction.followup.send(content="No events triggered.")
 
@@ -128,7 +130,7 @@ class Transactions(EventPlugin):
         return events
 
     @staticmethod
-    def create_embed(event_name: str, event: aDict) -> Optional[Embed]:
+    def create_embeds(event_name: str, event: aDict) -> list[Embed]:
         # prepare args
         args = aDict(event.args)
 
@@ -143,13 +145,13 @@ class Transactions(EventPlugin):
 
         # oDAO bootstrap doesn't emit an event
         if "odao_disable" in event_name and not args.confirmDisableBootstrapMode:
-            return None
+            return []
         elif event_name == "pdao_set_delegate":
             args.delegator = receipt["from"]
             args.delegate = args.get("delegate") or args.get("newDelegate")
             args.votingPower = solidity.to_float(rp.call("rocketNetworkVoting.getVotingPower", args.delegator, args.blockNumber))
             if (args.votingPower < 50) or (args.delegate == args.delegator):
-                return None
+                return []
         elif "failed_deposit" in event_name:
             args.node = receipt["from"]
             args.burnedValue = solidity.to_float(event.gasPrice * receipt.gasUsed)
@@ -204,12 +206,12 @@ class Transactions(EventPlugin):
                 )
             args.description = "\n".join(description_parts)
         elif event_name == "sdao_member_kick":
-            args.memberAddress = el_explorer_url(args.memberAddress, block=(event.blockNumber - 1))
+            args.memberAddress = el_explorer_url(args.memberAddress, block=(args.blockNumber - 1))
         elif event_name == "sdao_member_replace":
-            args.existingMemberAddress = el_explorer_url(args.existingMemberAddress, block=(event.blockNumber - 1))
+            args.existingMemberAddress = el_explorer_url(args.existingMemberAddress, block=(args.blockNumber - 1))
         elif event_name == "sdao_member_kick_multi":
             args.member_list = ", ".join([
-                el_explorer_url(member_address, block=(event.blockNumber - 1))
+                el_explorer_url(member_address, block=(args.blockNumber - 1))
                 for member_address in args.memberAddresses
             ])
         elif event_name == "bootstrap_odao_network_upgrade":
@@ -223,9 +225,36 @@ class Transactions(EventPlugin):
                 args.description = f"[ABI](https://ethereum.org/en/glossary/#abi) of Contract `{args.name}` has been upgraded!"
             else:
                 raise Exception(f"Network Upgrade of type {args.type} is not known.")
+        elif event_name == "pdao_spend_treasury_recurring_claim":
+            embeds = []
+            for contract_name in args.contractNames:
+                # (recipient, amount, period_length, start, periods_total, periods_paid)
+                get_contract = rp.get_function("rocketClaimDAO.getContract", contract_name)
+                contract_pre = get_contract.call(block_identifier=(args.blockNumber - 1))
+                contract_post = get_contract.call(block_identifier=args.blockNumber)
+
+                args.contract_name = contract_name
+                args.recipient_address = contract_post[0]
+                periods_claimed = contract_post[5] - contract_pre[5]
+                args.periods_claimed = f"{periods_claimed} period" if (periods_claimed == 1) else f"{periods_claimed} periods"
+                args.amount = periods_claimed * contract_post[1]
+
+                period_length: str = humanize.naturaldelta(timedelta(seconds=contract_post[2]))
+                periods_left: int = contract_post[4] - contract_post[5]
+                if periods_left == 0:
+                    args.contract_validity = "This was the final claim for this payment contract!"
+                elif periods_left == 1:
+                    args.contract_validity = f"The contract is valid for one more period of {period_length}!"
+                else:
+                    args.contract_validity = f"The contract is valid for {periods_left} more periods of {period_length}."
+
+                embed = assemble(prepare_args(args))
+                embeds.append(embed)
+
+            return embeds
 
         args = prepare_args(args)
-        return assemble(args)
+        return [assemble(args)]
 
     def process_transaction(self, block, tnx, contract_address, fn_input) -> list[Event]:
         if contract_address not in self.addresses:
@@ -293,25 +322,27 @@ class Transactions(EventPlugin):
             dao_address = dao.contract.address
             responses = self.process_transaction(block, tnx, dao_address, payload)
 
-        if (embed := self.create_embed(event_name, event)) is None:
-            return responses
+        embeds = self.create_embeds(event_name, event)
+        new_responses = []
 
-        response = Event(
-            topic="transactions",
-            embed=embed,
-            event_name=event_name,
-            unique_id=f"{tnx.hash.hex()}:{event_name}",
-            block_number=event.blockNumber,
-            transaction_index=event.transactionIndex,
-            event_index=(999 - len(responses)),
-        )
+        for embed in embeds:
+            response = Event(
+                topic="transactions",
+                embed=embed,
+                event_name=event_name,
+                unique_id=f"{tnx.hash.hex()}:{event_name}",
+                block_number=event.blockNumber,
+                transaction_index=event.transactionIndex,
+                event_index=(999 - len(responses) - len(embeds) + len(new_responses)),
+            )
+            new_responses.append(response)
 
         if "upgrade_triggered" in event_name:
             log.info(f"Detected contract upgrade at block {response.block_number}, reinitializing")
             rp.flush()
             self.__init__(self.bot)
 
-        return [response] + responses
+        return new_responses + responses
 
 async def setup(bot):
     await bot.add_cog(Transactions(bot))
