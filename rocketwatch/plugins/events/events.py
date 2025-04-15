@@ -162,11 +162,10 @@ class Events(EventPlugin):
                 filtered_events.extend(rich_logs)
 
         responses, _ = self.process_events(filtered_events)
-        if not responses:
+        if responses:
+            await interaction.followup.send(embeds=[response.embed for response in responses])
+        else:
             await interaction.followup.send(content="No events found.")
-
-        for response in responses:
-            await interaction.followup.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
         if not self.active_filters:

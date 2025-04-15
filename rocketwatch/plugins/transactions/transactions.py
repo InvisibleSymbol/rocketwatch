@@ -1,7 +1,6 @@
 import json
 import logging
 import warnings
-from typing import cast
 
 import web3.exceptions
 import humanize
@@ -87,11 +86,10 @@ class Transactions(EventPlugin):
         block = w3.eth.get_block(tnx.blockHash)
 
         responses: list[Event] = self.process_transaction(block, tnx, tnx.to, tnx.input)
-        if not responses:
+        if responses:
+            await interaction.followup.send(embeds=[response.embed for response in responses])          
+        else:
             await interaction.followup.send(content="No events found.")
-
-        for response in responses:
-            await interaction.followup.send(embed=response.embed)
 
     def _get_new_events(self) -> list[Event]:
         old_addresses = self.addresses
@@ -106,7 +104,7 @@ class Transactions(EventPlugin):
     def get_past_events(self, from_block: BlockNumber, to_block: BlockNumber) -> list[Event]:
         events = []
         for block in range(from_block, to_block):
-            events.extend(self.get_events_for_block(cast(BlockNumber, block)))
+            events.extend(self.get_events_for_block(block))
         return events
 
     def get_events_for_block(self, block_number: BlockIdentifier) -> list[Event]:
