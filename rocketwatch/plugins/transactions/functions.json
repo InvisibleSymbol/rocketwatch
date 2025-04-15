@@ -40,6 +40,10 @@
         "proposalSecurityKickMulti": "sdao_member_kick_multi",
         "proposalSecurityReplace": "sdao_member_replace"
     },
+    "rocketClaimDAO": {
+        "payOutContracts": "pdao_spend_treasury_recurring_claim",
+        "payOutContractsAndWithdraw": "pdao_spend_treasury_recurring_claim"
+    },
     "rocketNetworkVoting": {
         "initialiseVotingWithDelegate": "pdao_set_delegate",
         "setDelegate": "pdao_set_delegate"

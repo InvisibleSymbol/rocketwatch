@@ -369,15 +369,6 @@
             ]
         },
         {
-            "contract_name": "rocketClaimDAO",
-            "events": [
-                {
-                    "event_name": "RPLTreasuryContractClaimed",
-                    "name": "pdao_spend_treasury_recurring_claim_event"
-                }
-            ]
-        },
-        {
             "contract_name": "Constellation.SuperNodeAccount",
             "events": [
                 {
