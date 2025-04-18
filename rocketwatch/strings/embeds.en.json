@@ -276,7 +276,7 @@
         "description": "%{proposer} created **proposal #%{proposalID}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_vote_event": {
-        "title": ":writing_hand: Major pDAO Vote",
+        "title": ":ballot_box: Major pDAO Vote",
         "description": "**Proposal #%{proposalID}**:\n%{voter} voted `%{decision}` with a voting power of **%{votingPower}**!\n```%{proposal_body}```"
     },
     "pdao_proposal_vote_override_event": {
@@ -326,7 +326,7 @@
     },
     "pdao_spend_treasury_recurring_claim": {
         "title": ":bank: DAO Treasury Contract Claim",
-        "description": "%{recipient_address} has claimed **%{amount} RPL** (%{periods_claimed}) from `%{contract_name}`!\n%{contract_validity}"
+        "description": "%{recipient_address} has claimed **%{amount} RPL** from `%{contract_name}`!\n%{contract_validity}"
     },
     "minipool_scrub_event": {
         "title": ":rotating_light: Minipool Scrubbed",

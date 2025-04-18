@@ -94,6 +94,22 @@ class Governance(StatusPlugin):
                 _url = f"{cfg['execution_layer.explorer']}/tx/{_tx_hash}"
                 text += f"  {_i}. [{_title}]({_url}) (#{_proposal.id})\n"
             return text
+        
+        # --------- SECURITY COUNCIL --------- #
+
+        dao = SecurityCouncil()
+        if proposals := self._get_active_dao_proposals(dao):
+            embed.description += "### Security Council\n"
+            embed.description += "- **Active proposals**\n"
+            embed.description += print_proposals(dao, proposals)
+            
+        # --------- ORACLE DAO --------- #
+
+        dao = OracleDAO()
+        if proposals := self._get_active_dao_proposals(dao):
+            embed.description += "### Oracle DAO\n"
+            embed.description += "- **Active proposals**\n"
+            embed.description += print_proposals(dao, proposals)
 
         # --------- PROTOCOL DAO --------- #
 
@@ -119,22 +135,6 @@ class Governance(StatusPlugin):
         if section_content:
             embed.description += "### Protocol DAO\n"
             embed.description += section_content
-
-        # --------- ORACLE DAO --------- #
-
-        dao = OracleDAO()
-        if proposals := self._get_active_dao_proposals(dao):
-            embed.description += "### Oracle DAO\n"
-            embed.description += "- **Active proposals**\n"
-            embed.description += print_proposals(dao, proposals)
-
-        # --------- SECURITY COUNCIL --------- #
-
-        dao = SecurityCouncil()
-        if proposals := self._get_active_dao_proposals(dao):
-            embed.description += "### Security Council\n"
-            embed.description += "- **Active proposals**\n"
-            embed.description += print_proposals(dao, proposals)
 
         # --------- DAO FORUM --------- #
 
