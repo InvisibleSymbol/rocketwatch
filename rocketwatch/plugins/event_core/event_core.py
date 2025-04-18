@@ -257,8 +257,12 @@ class EventCore(commands.Cog):
                 return
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
-            plugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
-            embed = await plugin.get_status()
+            try:
+                plugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
+                embed = await plugin.get_status()
+            except Exception as err:
+                await self.bot.report_error(err)
+                return
 
         embed.timestamp = datetime.now()
         embed.set_footer(text=f"Tracking {cfg['rocketpool.chain']} using {len(self.bot.cogs)} plugins")

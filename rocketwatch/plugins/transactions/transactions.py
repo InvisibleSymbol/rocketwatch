@@ -232,19 +232,19 @@ class Transactions(EventPlugin):
                 contract_post = get_contract.call(block_identifier=args.blockNumber)
 
                 args.contract_name = contract_name
+                args.periodLength = contract_post[2]
+                
                 args.recipient_address = contract_post[0]
                 periods_claimed = contract_post[5] - contract_pre[5]
-                args.periods_claimed = f"{periods_claimed} period" if (periods_claimed == 1) else f"{periods_claimed} periods"
                 args.amount = periods_claimed * contract_post[1]
 
-                period_length: str = humanize.naturaldelta(timedelta(seconds=contract_post[2]))
                 periods_left: int = contract_post[4] - contract_post[5]
                 if periods_left == 0:
                     args.contract_validity = "This was the final claim for this payment contract!"
                 elif periods_left == 1:
-                    args.contract_validity = f"The contract is valid for one more period of {period_length}!"
+                    args.contract_validity = "The contract is valid for one more period!"
                 else:
-                    args.contract_validity = f"The contract is valid for {periods_left} more periods of {period_length}."
+                    args.contract_validity = f"The contract is valid for {periods_left} more periods."
 
                 embed = assemble(prepare_args(args))
                 embeds.append(embed)
