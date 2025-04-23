@@ -2,10 +2,9 @@ import math
 import logging
 
 from cachetools.func import ttl_cache 
-from discord import ui, ButtonStyle, Interaction
-from discord.ext import commands
-from discord.ext.commands import Context
-from discord.ext.commands import hybrid_command
+from discord import Interaction
+from discord.app_commands import command
+from discord.ext.commands import Cog
 from eth_typing import ChecksumAddress
 
 from rocketwatch import RocketWatch
@@ -16,55 +15,29 @@ from utils.embeds import el_explorer_url
 from utils.rocketpool import rp
 from utils.visibility import is_hidden_weak
 from utils.shared_w3 import w3
+from utils.views import PageView
 
 log = logging.getLogger("queue")
 log.setLevel(cfg["log_level"])
 
 
-class Queue(commands.Cog):
+class Queue(Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
 
-    class PageView(ui.View):
-        PAGE_SIZE = 15
-
+    class MinipoolPageView(PageView):
         def __init__(self):
-            super().__init__(timeout=None)
-            self.page_index = 0
-
-        async def load(self) -> Embed:
+            super().__init__(page_size=15)
+            
+        @property
+        def _title(self) -> str:
+            return "Minipool Queue"
+        
+        async def _load_content(self, from_idx: int, to_idx: int) -> tuple[int, str]:
             queue_length, queue_content = Queue.get_minipool_queue(
-                limit=self.PAGE_SIZE, start=(self.page_index * self.PAGE_SIZE)
+                limit=(to_idx - from_idx + 1), start=from_idx
             )
-            max_page_index = int(math.floor(queue_length / self.PAGE_SIZE))
-
-            if self.page_index > max_page_index:
-                # if the queue changed and this is out of bounds, try again
-                self.page_index = max_page_index
-                return await self.load()
-
-            embed = Embed(title="Minipool Queue")
-            if queue_length > 0:
-                embed.description = queue_content
-                self.prev_page.disabled = (self.page_index <= 0)
-                self.next_page.disabled = (self.page_index >= max_page_index)
-            else:
-                embed.set_image(url="https://c.tenor.com/1rQLxWiCtiIAAAAd/tenor.gif")
-                self.clear_items() # remove buttons
-
-            return embed
-
-        @ui.button(emoji="⬅", label="Prev", style=ButtonStyle.gray)
-        async def prev_page(self, interaction: Interaction, _) -> None:
-            self.page_index -= 1
-            embed = await self.load()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-        @ui.button(emoji="➡", label="Next", style=ButtonStyle.gray)
-        async def next_page(self, interaction: Interaction, _) -> None:
-            self.page_index += 1
-            embed = await self.load()
-            await interaction.response.edit_message(embed=embed, view=self)
+            return queue_length, queue_content
 
     @staticmethod
     @ttl_cache(ttl=600)
@@ -110,18 +83,18 @@ class Queue(commands.Cog):
 
         return q_len, content
 
-    @hybrid_command()
-    async def queue(self, ctx: Context):
+    @command()
+    async def queue(self, interaction: Interaction):
         """Show the minipool queue"""
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
-        view = Queue.PageView()
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction))
+        view = Queue.MinipoolPageView()
         embed = await view.load()
-        await ctx.send(embed=embed, view=view)
+        await interaction.followup.send(embed=embed, view=view)
 
-    @hybrid_command()
-    async def clear_queue(self, ctx: Context):
+    @command()
+    async def clear_queue(self, interaction: Interaction):
         """Show gas price for clearing the queue using the rocketDepositPoolQueue contract"""
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction))
 
         e = Embed(title="Gas Prices for Dequeuing Minipools")
         e.set_author(
@@ -167,7 +140,7 @@ class Queue(commands.Cog):
             inline=False
         )
 
-        await ctx.send(embed=e)
+        await interaction.followup.send(embed=e)
 
 
 async def setup(bot):
