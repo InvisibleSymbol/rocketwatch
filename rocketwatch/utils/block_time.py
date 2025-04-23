@@ -18,7 +18,7 @@ def ts_to_block(target_ts: int) -> int:
     log.debug(f"Looking for block at timestamp {target_ts}")
     if target_ts < block_to_ts(1):
         # genesis block doesn't have a timestamp
-        return 0, 0
+        return 0
 
     lo = 1
     hi = w3.eth.block_number - 1
