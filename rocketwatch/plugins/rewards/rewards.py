@@ -19,8 +19,7 @@ from utils.cfg import cfg
 from utils.embeds import Embed, resolve_ens
 from utils.rocketpool import rp
 from utils.retry import retry_async
-from utils.get_nearest_block import get_block_by_timestamp
-
+from utils.block_time import ts_to_block
 
 log = logging.getLogger("rewards")
 log.setLevel(cfg["log_level"])
@@ -30,7 +29,7 @@ class Rewards(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
 
-    @dataclass
+    @dataclass(frozen=True, slots=True)
     class RewardEstimate:
         address: str
         interval: int
@@ -60,7 +59,7 @@ class Rewards(commands.Cog):
             await ctx.send("Error fetching node data from Sprocket Pool API. Blame Patches.")
             return None
 
-        data_block, _ = get_block_by_timestamp(patches_res["time"])
+        data_block = ts_to_block(patches_res["time"])
         rpl_rewards: int = patches_res[address].get("collateralRpl", 0)
         eth_rewards: int = patches_res[address].get("smoothingPoolEth", 0)
         interval_time = rp.call("rocketDAOProtocolSettingsRewards.getRewardsClaimIntervalTime", block=data_block)
@@ -118,10 +117,12 @@ class Rewards(commands.Cog):
         await ctx.send(embed=embed)
 
     @hybrid_command()
-    @describe(node_address="address of node to simulate rewards for")
-    @describe(rpl_stake="amount of staked RPL to simulate")
-    @describe(num_leb8="number of 8 ETH minipools to simulate")
-    @describe(num_eb16="number of 16 ETH minipools to simulate")
+    @describe(
+        node_address="address of node to simulate rewards for",
+        rpl_stake="amount of staked RPL to simulate",
+        num_leb8="number of 8 ETH minipools to simulate",
+        num_eb16="number of 16 ETH minipools to simulate"
+    )
     async def simulate_rewards(
             self,
             ctx: Context,
@@ -131,7 +132,7 @@ class Rewards(commands.Cog):
             num_eb16: int = 0
     ):
         """
-        Simulate RPL rewards for this period.
+        Simulate RPL rewards for this period
         """
         await ctx.defer(ephemeral=True)
         display_name, address = await resolve_ens(ctx, node_address)
@@ -148,7 +149,7 @@ class Rewards(commands.Cog):
         borrowed_eth = (24 * num_leb8) + (16 * num_eb16)
 
         data_block: int = rewards.data_block
-        reward_start_block, _ = get_block_by_timestamp(rewards.start_time)
+        reward_start_block = ts_to_block(rewards.start_time)
 
         rpl_min: float = solidity.to_float(rp.call("rocketDAOProtocolSettingsNode.getMinimumPerMinipoolStake", block=data_block))
         rpl_ratio = solidity.to_float(rp.call("rocketNetworkPrices.getRPLPrice", block=data_block))
@@ -266,9 +267,9 @@ class Rewards(commands.Cog):
 
         title = f"Simulated RPL Rewards for {display_name} {sim_info_txt}".strip()
         embed = self.create_embed(title, rewards)
-        embed.set_image(url="attachment://graph.png")
+        embed.set_image(url="attachment://rewards.png")
 
-        f = File(img, filename="graph.png")
+        f = File(img, filename="rewards.png")
         await ctx.send(embed=embed, files=[f])
         img.close()
 

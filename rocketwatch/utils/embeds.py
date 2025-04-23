@@ -21,6 +21,7 @@ from utils.rocketpool import rp
 from utils.sea_creatures import get_sea_creature_for_address
 from utils.shared_w3 import w3
 from utils.retry import retry
+from utils.block_time import block_to_ts
 
 ens = CachedEns()
 
@@ -488,7 +489,7 @@ def assemble(args) -> Embed:
         times = [value for key, value in args.items() if "time" in key.lower()]
 
     if block := args.get("blockNumber"):
-        times += [w3.eth.get_block(block).timestamp]
+        times += [block_to_ts(block)]
 
     time = times[0] if times else int(datetime.datetime.now().timestamp())
     e.add_field(name="Timestamp",

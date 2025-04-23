@@ -16,7 +16,7 @@ from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import el_explorer_url, Embed
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block, block_to_ts
 from utils.readable import prettify_json_string
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
@@ -276,18 +276,23 @@ class Debug(Cog):
         Get a block using a timestamp. Useful for contracts that track blocktime instead of blocknumber.
         """
         await ctx.defer(ephemeral=is_hidden(ctx))
-        block, steps = get_block_by_timestamp(timestamp)
-        found_timestamp = w3.eth.get_block(block).timestamp
-        if found_timestamp == timestamp:
-            text = f"```Found perfect match for timestamp: {timestamp}\n" \
-                   f"Block: {block}\n" \
-                   f"Steps taken: {steps}```"
+
+        block = ts_to_block(timestamp)
+        found_ts = block_to_ts(block)
+
+        if found_ts == timestamp:
+            text = (
+                f"Found perfect match for timestamp {timestamp}:\n"
+                f"Block: {block}"
+            )
         else:
-            text = f"```Found closest match for timestamp: {timestamp}\n" \
-                   f"Timestamp: {found_timestamp}\n" \
-                   f"Block: {block}\n" \
-                   f"Steps taken: {steps}```"
-        await ctx.send(content=text)
+            text = (
+                f"Found close match for timestamp {timestamp}:\n"
+                f"Timestamp: {found_ts}\n"
+                f"Block: {block}"
+            )
+
+        await ctx.send(content=f"```{text}```")
 
     @hybrid_command()
     async def get_abi_of_contract(self, ctx: Context, contract: str):

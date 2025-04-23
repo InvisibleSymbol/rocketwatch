@@ -22,7 +22,7 @@ from utils.readable import uptime
 from utils.rocketpool import rp
 from utils.event import EventPlugin, Event
 from utils.visibility import is_hidden_weak
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block
 from utils.retry import retry
 
 log = logging.getLogger("snapshot")
@@ -245,7 +245,7 @@ class Snapshot(EventPlugin):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=get_block_by_timestamp(self.start)[0],
+                block_number=ts_to_block(self.start),
                 event_name="pdao_snapshot_vote_start",
                 unique_id=f"snapshot_vote_start:{self.id}",
                 image=self.create_image(include_title=True)
@@ -280,7 +280,7 @@ class Snapshot(EventPlugin):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=get_block_by_timestamp(self.end)[0],
+                block_number=ts_to_block(self.end),
                 event_name="pdao_snapshot_vote_end",
                 unique_id=f"snapshot_vote_end:{self.id}",
                 image=self.create_image(include_title=True)
@@ -407,7 +407,7 @@ class Snapshot(EventPlugin):
             return Event(
                 embed=embed,
                 topic="snapshot",
-                block_number=get_block_by_timestamp(self.created)[0],
+                block_number=ts_to_block(self.created),
                 unique_id=f"snapshot_vote:{self.proposal.id}:{self.voter}:{self.created}",
                 **conditional_args
             )

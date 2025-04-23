@@ -47,6 +47,14 @@ class DetectScam(Cog):
         WARN = Color.from_rgb(255, 165, 0)
         OK = Color.from_rgb(0, 255, 0)
         
+    @staticmethod
+    def is_reputable(user: Member) -> bool:
+        return any((
+            user.id == cfg["discord.owner.user_id"],
+            {role.id for role in user.roles} & set(cfg["rocketpool.support.role_ids"]),
+            user.guild_permissions.moderate_members
+        ))
+        
     class RemovalVoteView(ui.View):
         THRESHOLD = 5
         
@@ -55,14 +63,6 @@ class DetectScam(Cog):
             self.plugin = plugin
             self.reportable = reportable
             self.safu_votes = set()
-            
-        @staticmethod
-        def is_admin(user: Member) -> bool:
-            return any((
-                user.id == cfg["discord.owner.user_id"],
-                {role.id for role in user.roles} & set(cfg["rocketpool.support.role_ids"]),
-                user.guild_permissions.administrator
-            ))
         
         @ui.button(label="Mark Safu", style=ButtonStyle.blurple)
         async def mark_safe(self, interaction: Interaction, button: ui.Button) -> None:
@@ -96,7 +96,7 @@ class DetectScam(Cog):
 
             self.safu_votes.add(interaction.user.id)
             
-            if self.is_admin(interaction.user):
+            if DetectScam.is_reputable(interaction.user):
                 user_repr = interaction.user.mention
             elif len(self.safu_votes) >= self.THRESHOLD:
                 user_repr = "the community"
@@ -403,8 +403,8 @@ class DetectScam(Cog):
             log.warning("Ignoring message sent by bot")
             return
         
-        if message.author.guild_permissions.administrator:
-            log.warning("Ignoring message sent by server admin")
+        if self.is_reputable(message.author):
+            log.warning(f"Ignoring message sent by trusted user ({message.author})")
             return
         
         if message.guild is None:

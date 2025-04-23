@@ -84,10 +84,6 @@ class APR(commands.Cog):
     async def on_error(self, err: Exception):
         await self.bot.report_error(err)
 
-    def get_time_of_block(self, block_number):
-        block = w3.eth.getBlock(block_number)
-        return datetime.fromtimestamp(block["timestamp"])
-
     @hybrid_command()
     async def reth_apr(self, ctx: Context):
         """Show the current rETH APR"""

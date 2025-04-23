@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from enum import Enum
 from functools import partial
-from typing import Optional, cast, Any
+from typing import Optional, Any
 
 import pymongo
 from cronitor import Monitor
@@ -120,7 +120,7 @@ class EventCore(commands.Cog):
                 target_block = self.head_block + self.block_batch_size
                 to_block = target_block
 
-            from_block = cast(BlockNumber, self.head_block + 1)
+            from_block: BlockNumber = self.head_block + 1
             if to_block < from_block:
                 log.warning(f"Skipping empty block range [{from_block}, {to_block}]")
                 return
@@ -258,7 +258,7 @@ class EventCore(commands.Cog):
 
         if not (embed := await generate_template_embed(self.db, "announcement")):
             try:
-                plugin = cast(StatusPlugin, self.bot.cogs.get(config["plugin"]))
+                plugin: StatusPlugin = self.bot.cogs.get(config["plugin"])
                 embed = await plugin.get_status()
             except Exception as err:
                 await self.bot.report_error(err)
