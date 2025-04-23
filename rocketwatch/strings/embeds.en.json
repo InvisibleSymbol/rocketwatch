@@ -501,71 +501,71 @@
         "description": "Finality has been recovered on the Beacon Chain!"
     },
     "cs_max_validator_increase_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation Validator Limit Increased",
+        "title": "<:nodeset:1351406340056285266> Constellation Validator Limit Increased",
         "description": "Constellation operators can now run **%{newLimit}** minipools!\n This is up from the previous limit of **%{oldLimit}**."
     },
     "cs_max_validator_decrease_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation Validator Limit Decreased",
+        "title": "<:nodeset:1351406340056285266> Constellation Validator Limit Decreased",
         "description": "Constellation operators are now limited to **%{newLimit}** minipools!\n This is down from the previous limit of **%{oldLimit}**."
     },
     "cs_eth_treasury_fee_change_event": {
-        "title": "<:nodeset:1297235812278341653> xrETH Treasury Fee Changed",
+        "title": "<:nodeset:1351406340056285266> xrETH Treasury Fee Changed",
         "description": "The xrETH treasury fee has changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_eth_no_fee_change_event": {
-        "title": "<:nodeset:1297235812278341653> xrETH Operator Fee Changed",
+        "title": "<:nodeset:1351406340056285266> xrETH Operator Fee Changed",
         "description": "The xrETH node operator fee has changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_eth_mint_fee_change_event": {
-        "title": "<:nodeset:1297235812278341653> xrETH Mint Fee Changed",
+        "title": "<:nodeset:1351406340056285266> xrETH Mint Fee Changed",
         "description": "The xrETH mint fee has changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_deposit_eth_event": {
-        "title": "<:nodeset:1297235812278341653> xrETH Deposit",
+        "title": "<:nodeset:1351406340056285266> xrETH Deposit",
         "description": "**%{shares} xrETH** minted from **%{assets} ETH**!",
-        "description_small": "<:nodeset:1297235812278341653> %{sender} minted **%{shares} xrETH** from **%{assets} ETH**!"
+        "description_small": "<:nodeset:1351406340056285266> %{sender} minted **%{shares} xrETH** from **%{assets} ETH**!"
     },
     "cs_withdraw_eth_event": {
-        "title": "<:nodeset:1297235812278341653> xrETH Withdrawal",
+        "title": "<:nodeset:1351406340056285266> xrETH Withdrawal",
         "description": "**%{shares} xrETH** burned for **%{assets} ETH**!",
-        "description_small": "<:nodeset:1297235812278341653> %{sender} burned **%{shares} xrETH** for **%{assets} ETH**!"
+        "description_small": "<:nodeset:1351406340056285266> %{sender} burned **%{shares} xrETH** for **%{assets} ETH**!"
     },
     "cs_rpl_treasury_fee_change_event": {
-        "title": "<:nodeset:1297235812278341653> xRPL Treasury Fee Changed",
+        "title": "<:nodeset:1351406340056285266> xRPL Treasury Fee Changed",
         "description": "The xRPL treasury fee has been changed from **%{oldFee}%** to **%{newFee}%**!"
     },
     "cs_deposit_rpl_event": {
-        "title": "<:nodeset:1297235812278341653> xRPL Deposit",
+        "title": "<:nodeset:1351406340056285266> xRPL Deposit",
         "description": "**%{shares} xRPL** minted from **%{assets} RPL**!",
-        "description_small": "<:nodeset:1297235812278341653> %{sender} minted **%{shares} xRPL** from **%{assets} RPL**!"
+        "description_small": "<:nodeset:1351406340056285266> %{sender} minted **%{shares} xRPL** from **%{assets} RPL**!"
     },
     "cs_withdraw_rpl_event": {
-        "title": "<:nodeset:1297235812278341653> xRPL Withdrawal",
+        "title": "<:nodeset:1351406340056285266> xRPL Withdrawal",
         "description": "**%{shares} xRPL** burned for **%{assets} RPL**!",
-        "description_small": "<:nodeset:1297235812278341653> %{sender} burned **%{shares} xRPL** for **%{assets} RPL**!"
+        "description_small": "<:nodeset:1351406340056285266> %{sender} burned **%{shares} xRPL** for **%{assets} RPL**!"
     },
     "cs_operator_added_event": {
-        "title": "<:nodeset:1297235812278341653> New Constellation Operator",
+        "title": "<:nodeset:1351406340056285266> New Constellation Operator",
         "description": "%{address} registered as a node operator for Constellation!"
     },
     "cs_operators_added_event": {
-        "title": "<:nodeset:1297235812278341653> New Constellation Operators",
+        "title": "<:nodeset:1351406340056285266> New Constellation Operators",
         "description": "%{operatorList}"
     },
     "cs_operator_removed_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation Operator Removed",
+        "title": "<:nodeset:1351406340056285266> Constellation Operator Removed",
         "description": "%{address} has been removed as a node operator!"
     },
     "cs_operators_removed_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation Operators Removed",
+        "title": "<:nodeset:1351406340056285266> Constellation Operators Removed",
         "description": "%{operatorList}"
     },
     "cs_rpl_min_ratio_change_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation RPL Minimum Changed",
+        "title": "<:nodeset:1351406340056285266> Constellation RPL Minimum Changed",
         "description": "The supernode's RPL bond minimum changed from **%{oldRatio}%** to **%{newRatio}%**!"
     },
     "cs_rpl_target_ratio_change_event": {
-        "title": "<:nodeset:1297235812278341653> Constellation RPL Target Changed",
+        "title": "<:nodeset:1351406340056285266> Constellation RPL Target Changed",
         "description": "The supernode's RPL bond target changed from **%{oldRatio}%** to **%{newRatio}%**!"
     },
     "exit_arbitrage_event": {
