@@ -34,10 +34,13 @@ mongodb: {
 rocketpool: {
     chain: "mainnet"
     support: {
-        role_ids: [708268619867619338]
-        server_id: 544295541849456651
-        channel_id: 912434217118498876
-        moderator_id: 118923557265735680
+        role_ids: []
+        server_id: -1
+        channel_id: -1
+        moderator_id: -1
+    }
+    dm_warning: {
+        channels: []
     }
     dao_multisigs: [
         "0x778c08fC151D7AB10042334B6A0929D4fa2983cA",

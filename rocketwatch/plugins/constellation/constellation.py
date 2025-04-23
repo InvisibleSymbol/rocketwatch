@@ -1,7 +1,9 @@
 import logging
 import math
 
-from discord.ext.commands import Cog, Context, hybrid_command
+from discord import Interaction
+from discord.app_commands import command
+from discord.ext.commands import Cog
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from rocketwatch import RocketWatch
@@ -11,6 +13,7 @@ from utils.shared_w3 import w3
 from utils.rocketpool import rp
 from utils.visibility import is_hidden_weak
 from utils.embeds import Embed, el_explorer_url
+from utils.event_logs import get_logs
 
 
 cog_id = "constellation"
@@ -24,7 +27,6 @@ class Constellation(Cog):
         self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
 
     async def _fetch_num_operators(self) -> int:
-        current_block = w3.eth.get_block_number()
         whitelist_contract = rp.get_contract_by_name("Constellation.Whitelist")
 
         if db_entry := (await self.db.last_checked_block.find_one({"_id": cog_id})):
@@ -34,45 +36,30 @@ class Constellation(Cog):
             last_checked_block = 20946650 # contract deployment
             num_operators = 0
 
-        def _fetch_interval(_from: int, _to: int) -> int:
-            _operators = 0
-
-            _operators += len(whitelist_contract.events.OperatorAdded().get_logs(fromBlock=_from, toBlock=_to))
-            _operators -= len(whitelist_contract.events.OperatorRemoved().get_logs(fromBlock=_from, toBlock=_to))
-            for event_log in whitelist_contract.events.OperatorsAdded().get_logs(fromBlock=_from, toBlock=_to):
-                _operators += len(event_log.args.operators)
-            for event_log in whitelist_contract.events.OperatorsRemoved().get_logs(fromBlock=_from, toBlock=_to):
-                _operators -= len(event_log.args.operators)
-
-            return _operators
-
-        request_block_limit = 50_000
         b_from = last_checked_block + 1
-        b_to = b_from + request_block_limit
+        b_to = w3.eth.get_block_number()
 
-        # catch up to current block with chunked requests
-        while b_to < current_block:
-            num_operators += _fetch_interval(b_from, b_to)
-            b_from = b_to + 1
-            b_to = b_from + request_block_limit
-
-        num_operators += _fetch_interval(b_from, current_block)
-        last_checked_block = current_block
+        num_operators += len(get_logs(whitelist_contract.events.OperatorAdded, b_from, b_to))
+        num_operators -= len(get_logs(whitelist_contract.events.OperatorRemoved, b_from, b_to))
+        for event_log in get_logs(whitelist_contract.events.OperatorsAdded, b_from, b_to):
+            num_operators += len(event_log.args.operators)
+        for event_log in get_logs(whitelist_contract.events.OperatorsRemoved, b_from, b_to):
+            num_operators -= len(event_log.args.operators)
 
         await self.db.last_checked_block.replace_one(
             {"_id": cog_id},
-            {"_id": cog_id, "block": last_checked_block, "operators": num_operators},
+            {"_id": cog_id, "block": b_to, "operators": num_operators},
             upsert=True
         )
 
         return num_operators
 
-    @hybrid_command()
-    async def constellation(self, ctx: Context):
+    @command()
+    async def constellation(self, interaction: Interaction):
         """
         Summary of Gravita Constellation protocol stats.
         """
-        await ctx.defer(ephemeral=is_hidden_weak(ctx))
+        await interaction.response.defer(ephemeral=is_hidden_weak(interaction))
 
         supernode_contract = rp.get_contract_by_name("Constellation.SuperNodeAccount")
         distributor_contract = rp.get_contract_by_name("Constellation.OperatorDistributor")
@@ -184,7 +171,7 @@ class Constellation(Cog):
             inline=False
         )
 
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 
 async def setup(bot):
