@@ -16,7 +16,7 @@ from utils.rocketpool import rp
 from utils.shared_w3 import bacon, w3
 from utils.solidity import date_to_beacon_block, beacon_block_to_date
 from utils.event import EventPlugin, Event
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block
 from utils.retry import retry
 
 log = logging.getLogger("beacon_events")
@@ -114,7 +114,7 @@ class BeaconEvents(EventPlugin):
                     embed=embed,
                     event_name=slash["event_name"],
                     unique_id=unique_id,
-                    block_number=get_block_by_timestamp(timestamp)[0],
+                    block_number=ts_to_block(timestamp),
                 ))
 
         return events
@@ -236,7 +236,7 @@ class BeaconEvents(EventPlugin):
                 embed=embed,
                 event_name=event_name,
                 unique_id=f"finality_delay_recover:{epoch_number}",
-                block_number=get_block_by_timestamp(timestamp)[0]
+                block_number=ts_to_block(timestamp)
             )
             return event
 
@@ -258,7 +258,7 @@ class BeaconEvents(EventPlugin):
                 embed=embed,
                 event_name=event_name,
                 unique_id=f"{epoch_number}:finality_delay",
-                block_number=get_block_by_timestamp(timestamp)[0]
+                block_number=ts_to_block(timestamp)
             )
 
         return None

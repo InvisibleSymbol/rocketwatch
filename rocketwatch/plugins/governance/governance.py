@@ -15,7 +15,7 @@ from utils.cfg import cfg
 from utils.dao import DAO, DefaultDAO, OracleDAO, SecurityCouncil, ProtocolDAO
 from utils.embeds import Embed
 from utils.visibility import is_hidden_weak
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block
 
 log = logging.getLogger("governance")
 log.setLevel(cfg["log_level"])
@@ -38,8 +38,8 @@ class Governance(StatusPlugin):
 
     @staticmethod
     def _get_tx_hash_for_proposal(dao: DAO, proposal: DAO.Proposal) -> HexStr:
-        from_block = get_block_by_timestamp(proposal.created)[0] - 1
-        to_block = get_block_by_timestamp(proposal.created)[0] + 1
+        from_block = ts_to_block(proposal.created) - 1
+        to_block = ts_to_block(proposal.created) + 1
 
         log.info(f"Looking for proposal {proposal} in [{from_block},{to_block}]")
         for receipt in dao.proposal_contract.events.ProposalAdded().get_logs(fromBlock=from_block, toBlock=to_block):

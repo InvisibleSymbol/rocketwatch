@@ -4,7 +4,7 @@ import logging
 from enum import IntEnum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Optional, Literal, cast
 
 import termplotlib as tpl
 from eth_typing import ChecksumAddress
@@ -33,7 +33,7 @@ class DAO(ABC):
 
     @staticmethod
     @abstractmethod
-    def fetch_proposal(self, proposal_id: int) -> Proposal:
+    def fetch_proposal(self, proposal_id: int) -> Optional[Proposal]:
         pass
 
     @abstractmethod
@@ -127,7 +127,11 @@ class DefaultDAO(DAO):
 
         return proposals
 
-    def fetch_proposal(self, proposal_id: int) -> Proposal:
+    def fetch_proposal(self, proposal_id: int) -> Optional[Proposal]:
+        num_proposals = self.proposal_contract.functions.getTotal().call()
+        if not (1 <= proposal_id <= num_proposals):
+            return None
+        
         # map results of functions calls to function name
         multicall: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([
@@ -232,8 +236,11 @@ class ProtocolDAO(DAO):
 
         return proposals
 
-
-    def fetch_proposal(self, proposal_id: int) -> Proposal:
+    def fetch_proposal(self, proposal_id: int) -> Optional[Proposal]:
+        num_proposals = self.proposal_contract.functions.getTotal().call()
+        if not (1 <= proposal_id <= num_proposals):
+            return None
+        
         # map results of functions calls to function name
         multicall: dict[str, str | bytes | int] = {
             res.function_name: res.results[0] for res in rp.multicall.aggregate([

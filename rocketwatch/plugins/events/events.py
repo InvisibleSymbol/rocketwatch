@@ -23,6 +23,7 @@ from utils.event import EventPlugin, Event
 from utils.rocketpool import rp, NoAddressFound
 from utils.shared_w3 import w3, bacon
 from utils.solidity import SUBMISSION_KEYS
+from utils.block_time import block_to_ts
 
 log = logging.getLogger("events")
 log.setLevel(cfg["log_level"])
@@ -458,7 +459,7 @@ class Events(EventPlugin):
             args.rewardPeriodEnd = next_period
             update_rate = rp.call("rocketDAOProtocolSettingsNetwork.getSubmitPricesFrequency", block=event.blockNumber) # in seconds
             # get timestamp of event block
-            ts = w3.eth.getBlock(event.blockNumber).timestamp
+            ts = block_to_ts(event.blockNumber)
             # check if the next update is after the next period ts
             earliest_next_update = ts + update_rate
             # if it will update before the next period, skip
@@ -834,7 +835,7 @@ class Events(EventPlugin):
                                            block=args.blockNumber - 1)
                     minipool_creation = rp.call("rocketMinipoolDelegate.getStatusTime", address=args.minipool,
                                                 block=args.blockNumber - 1)
-                    block_time = w3.eth.getBlock(args.blockNumber - 1)["timestamp"]
+                    block_time = block_to_ts(args.blockNumber - 1)
                     if block_time - minipool_creation > scrub_period // 2:
                         reason = "taking too long to migrate their withdrawal credentials on the beacon chain"
                 args.scrub_reason = reason
@@ -843,7 +844,7 @@ class Events(EventPlugin):
             if solidity.to_float(args.amountOfStETH) < 10_000:
                 return None
             if receipt:
-                args.timestamp = w3.eth.getBlock(receipt["blockNumber"])["timestamp"]
+                args.timestamp = block_to_ts(receipt["blockNumber"])
 
         args.event_name = event_name
         args = prepare_args(args)

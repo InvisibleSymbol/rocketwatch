@@ -14,7 +14,7 @@ from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
 from utils.embeds import Embed
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block
 from utils.rocketpool import rp
 from utils.shared_w3 import w3
 from utils.visibility import is_hidden
@@ -51,7 +51,7 @@ class RPL(commands.Cog):
 
         # track down the rewards for node operators from the last reward period
         contract = rp.get_contract_by_name("rocketVault")
-        m = get_block_by_timestamp(rp.call("rocketRewardsPool.getClaimIntervalTimeStart"))[0]
+        m = ts_to_block(rp.call("rocketRewardsPool.getClaimIntervalTimeStart"))
         events = contract.events["TokenDeposited"].getLogs(argument_filters={
             "by": w3.soliditySha3(
                 ["string", "address"],
