@@ -1,22 +1,26 @@
-import asyncio
 import logging
 import time
 
 import pymongo
-import schedule
 from multicall import Call
 from cronitor import Monitor
 from pymongo import UpdateOne, UpdateMany
 
+from discord.ext import tasks, commands
+
+from rocketwatch import RocketWatch
 from utils import solidity
 from utils.cfg import cfg
-from utils.get_nearest_block import get_block_by_timestamp
+from utils.block_time import ts_to_block
 from utils.rocketpool import rp
 from utils.shared_w3 import bacon
-from utils.time_debug import timerun
+from utils.time_debug import timerun, timerun_async
+from utils.event_logs import get_logs
 
-log = logging.getLogger("rocketnode")
+
+log = logging.getLogger("node_task")
 log.setLevel(cfg["log_level"])
+
 
 def safe_to_float(_, num: int):
     try:
@@ -43,15 +47,45 @@ def is_true(_, b):
     return b is True
 
 
-class Task:
-    def __init__(self):
-        self.event_loop = None
+class NodeTask(commands.Cog):
+    def __init__(self, bot: RocketWatch):
+        self.bot = bot
         self.db = pymongo.MongoClient(cfg["mongodb.uri"]).rocketwatch
-        self.monitor = Monitor('rocketnode-task', api_key=cfg["other.secrets.cronitor"])
-        self.batch_size = 10_000
+        self.monitor = Monitor("node-task", api_key=cfg["other.secrets.cronitor"])
+        self.batch_size = 1000
+        self.loop.start()
+            
+    def cog_unload(self):
+        self.loop.cancel()
+        
+    @tasks.loop(seconds=solidity.BEACON_EPOCH_LENGTH)
+    async def loop(self):
+        p_id = time.time() 
+        self.monitor.ping(state="run", series=p_id)
+        try:
+            log.debug("starting node task")
+            self.check_indexes()
+            await self.add_untracked_minipools()
+            await self.add_static_data_to_minipools()
+            await self.update_dynamic_minipool_metadata()
+            self.add_static_deposit_data_to_minipools()
+            self.add_static_beacon_data_to_minipools()
+            self.update_dynamic_minipool_beacon_metadata()
+            await self.add_untracked_node_operators()
+            await self.add_static_data_to_node_operators()
+            await self.update_dynamic_node_operator_metadata()
+            log.debug("node task finished")
+            self.monitor.ping(state="complete", series=p_id)
+        except Exception as err:
+            await self.bot.report_error(err)
+            self.monitor.ping(state="fail", series=p_id)
+        
+    @loop.before_loop
+    async def on_ready(self):
+        await self.bot.wait_until_ready()
 
-    @timerun
-    def add_untracked_minipools(self):
+    @timerun_async
+    async def add_untracked_minipools(self):
         # rocketMinipoolManager.getMinipoolAt(i) returns the address of the minipool at index i
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         latest_rp = rp.call("rocketMinipoolManager.getMinipoolCount") - 1
@@ -65,11 +99,11 @@ class Task:
             log.debug("No new minipools")
             return
         log.debug(f"Latest minipool in db: {latest_db}, latest minipool in rp: {latest_rp}")
-        # batch into 10k minipools at a time, between latest_id and minipool_count
+        # batch into self.batch_size minipools at a time, between latest_id and minipool_count
         for i in range(latest_db + 1, latest_rp + 1, self.batch_size):
             i_end = min(i + self.batch_size, latest_rp + 1)
             log.debug(f"Getting untracked minipools ({i} to {i_end})")
-            data |= rp.multicall2_do_call([
+            data |= await rp.multicall2([
                 Call(mm.address, [rp.seth_sig(mm.abi, "getMinipoolAt"), i], [(i, None)])
                 for i in range(i, i_end)
             ])
@@ -80,8 +114,8 @@ class Task:
         ])
         log.debug("New minipools inserted")
 
-    @timerun
-    def add_static_data_to_minipools(self):
+    @timerun_async
+    async def add_static_data_to_minipools(self):
         m = rp.assemble_contract("rocketMinipool")
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         lambs = [
@@ -100,7 +134,7 @@ class Task:
         for i in range(0, len(minipool_addresses), batch_size):
             i_end = min(i + batch_size, len(minipool_addresses))
             log.debug(f"Getting minipool static data ({i} to {i_end})")
-            res = rp.multicall2_do_call([
+            res = await rp.multicall2([
                 Call(*lamb(a))
                 for a in minipool_addresses[i:i_end]
                 for lamb in lambs
@@ -121,26 +155,21 @@ class Task:
         self.db.minipools_new.bulk_write(bulk, ordered=False)
         log.debug("Minipools updated with static data")
 
-    @timerun
-    def update_dynamic_minipool_metadata(self):
+    @timerun_async
+    async def update_dynamic_minipool_metadata(self):
         m = rp.assemble_contract("rocketMinipool")
         mc = rp.get_contract_by_name("multicall3")
         lambs = [
             lambda a: (a, rp.seth_sig(m.abi, "getStatus"), [((a, "status"), safe_state_to_str)]),
             lambda a: (a, rp.seth_sig(m.abi, "getStatusTime"), [((a, "status_time"), None)]),
             lambda a: (a, rp.seth_sig(m.abi, "getVacant"), [((a, "vacant"), is_true)]),
-            lambda a: (a, rp.seth_sig(m.abi, "getNodeDepositBalance"),
-                       [((a, "node_deposit_balance"), safe_to_float)]),
-            lambda a: (
-                a, rp.seth_sig(m.abi, "getNodeRefundBalance"),
-                [((a, "node_refund_balance"), safe_to_float)]),
-            lambda a: (a, rp.seth_sig(m.abi, "getPreMigrationBalance"),
-                       [((a, "pre_migration_balance"), safe_to_float)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getNodeDepositBalance"), [((a, "node_deposit_balance"), safe_to_float)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getNodeRefundBalance"), [((a, "node_refund_balance"), safe_to_float)]),
+            lambda a: (a, rp.seth_sig(m.abi, "getPreMigrationBalance"), [((a, "pre_migration_balance"), safe_to_float)]),
             lambda a: (a, rp.seth_sig(m.abi, "getNodeFee"), [((a, "node_fee"), safe_to_float)]),
             lambda a: (a, rp.seth_sig(m.abi, "getEffectiveDelegate"), [((a, "effective_delegate"), None)]),
             lambda a: (a, rp.seth_sig(m.abi, "getUseLatestDelegate"), [((a, "use_latest_delegate"), None)]),
-            lambda a: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), a],
-                       [((a, "execution_balance"), safe_to_float)])
+            lambda a: (mc.address, [rp.seth_sig(mc.abi, "getEthBalance"), a], [((a, "execution_balance"), safe_to_float)])
         ]
         # get all minipool addresses from db
         minipool_addresses = self.db.minipools_new.distinct("address")
@@ -150,7 +179,7 @@ class Task:
         for i in range(0, len(minipool_addresses), batch_size):
             i_end = min(i + batch_size, len(minipool_addresses))
             log.debug(f"Getting minipool metadata ({i} to {i_end})")
-            res = rp.multicall2_do_call([
+            res = await rp.multicall2([
                 Call(*lamb(a))
                 for a in minipool_addresses[i:i_end]
                 for lamb in lambs
@@ -190,18 +219,18 @@ class Task:
         nd = rp.get_contract_by_name("rocketNodeDeposit")
         mm = rp.get_contract_by_name("rocketMinipoolManager")
         data = {}
-        batch_size = 1000
-        for i in range(0, len(minipools), batch_size):
-            i_end = min(i + batch_size, len(minipools))
+        for i in range(0, len(minipools), self.batch_size):
+            i_end = min(i + self.batch_size, len(minipools))
             # turn status time of first and last minipool into blocks
-            block_start = get_block_by_timestamp(minipools[i]["status_time"])[0] - 1
-            block_end = get_block_by_timestamp(minipools[i_end - 1]["status_time"])[0]
+            block_start = ts_to_block(minipools[i]["status_time"]) - 1
+            block_end = ts_to_block(minipools[i_end - 1]["status_time"]) + 1
             a = [m["address"] for m in minipools[i:i_end]]
             log.debug(f"Getting minipool deposit data ({i} to {i_end})")
-            f_deposits = nd.events.DepositReceived.createFilter(fromBlock=block_start, toBlock=block_end)
-            events = f_deposits.get_all_entries()
-            f_creations = mm.events.MinipoolCreated.createFilter(fromBlock=block_start, toBlock=block_end)
-            events.extend(f_creations.get_all_entries())
+            
+            f_deposits = get_logs(nd.events.DepositReceived, block_start, block_end)
+            f_creations = get_logs(mm.events.MinipoolCreated, block_start, block_end)
+            events = f_deposits + f_creations
+            
             events = sorted(events, key=lambda x: (x['blockNumber'], x['transactionIndex'], x['logIndex'] *1e-8), reverse=True)
             # map to pairs of 2
             prepared_events = []
@@ -243,7 +272,6 @@ class Task:
         log.debug("Minipools updated with static deposit data")
 
 
-
     @timerun
     def add_static_beacon_data_to_minipools(self):
         # get all public keys from db where no validator_index is set
@@ -253,11 +281,10 @@ class Task:
             log.debug("No minipools need to be updated with static beacon data")
             return
         # we need to do smaller bulks as the pubkey is qutie long and we dont want to make the query url too long
-        batch_size = 1000
         data = {}
         # endpoint = bacon.get_validators("head", ids=vali_indexes)["data"]
-        for i in range(0, len(public_keys), batch_size):
-            i_end = min(i + batch_size, len(public_keys))
+        for i in range(0, len(public_keys), self.batch_size):
+            i_end = min(i + self.batch_size, len(public_keys))
             log.debug(f"Getting beacon data for minipools ({i} to {i_end})")
             # get beacon data for public keys
             beacon_data = bacon.get_validators("head", ids=public_keys[i:i_end])["data"]
@@ -332,8 +359,8 @@ class Task:
         self.db.proposals.create_index("slot", unique=True)
         log.debug("indexes checked")
 
-    @timerun
-    def add_untracked_node_operators(self):
+    @timerun_async
+    async def add_untracked_node_operators(self):
         # rocketNodeManager.getNodeCount(i) returns the address of the node at index i
         nm = rp.get_contract_by_name("rocketNodeManager")
         latest_rp = rp.call("rocketNodeManager.getNodeCount") - 1
@@ -350,7 +377,7 @@ class Task:
         for i in range(latest_db + 1, latest_rp + 1, self.batch_size):
             i_end = min(i + self.batch_size, latest_rp + 1)
             log.debug(f"Getting untracked node ({i} to {i_end})")
-            data |= rp.multicall2_do_call([
+            data |= await rp.multicall2([
                 Call(nm.address, [rp.seth_sig(nm.abi, "getNodeAt"), i], [(i, None)])
                 for i in range(i, i_end)
             ])
@@ -361,8 +388,8 @@ class Task:
         ])
         log.debug("New nodes inserted")
 
-    @timerun
-    def add_static_data_to_node_operators(self):
+    @timerun_async
+    async def add_static_data_to_node_operators(self):
         ndf = rp.get_contract_by_name("rocketNodeDistributorFactory")
         lambs = [
             lambda a: (ndf.address, [rp.seth_sig(ndf.abi, "getProxyAddress"), a], [((a, "fee_distributor_address"), None)]),
@@ -379,7 +406,7 @@ class Task:
         for i in range(0, len(node_addresses), batch_size):
             i_end = min(i + batch_size, len(node_addresses))
             log.debug(f"Getting node operators static data ({i} to {i_end})")
-            res = rp.multicall2_do_call([
+            res = await rp.multicall2([
                 Call(*lamb(a))
                 for a in node_addresses[i:i_end]
                 for lamb in lambs
@@ -400,8 +427,8 @@ class Task:
         self.db.node_operators_new.bulk_write(bulk, ordered=False)
         log.debug("Node operators updated with static data")
 
-    @timerun
-    def update_dynamic_node_operator_metadata(self):
+    @timerun_async
+    async def update_dynamic_node_operator_metadata(self):
         ndf = rp.get_contract_by_name("rocketNodeDistributorFactory")
         nd = rp.get_contract_by_name("rocketNodeDeposit")
         nm = rp.get_contract_by_name("rocketNodeManager")
@@ -445,7 +472,7 @@ class Task:
         for i in range(0, len(nodes), batch_size):
             i_end = min(i + batch_size, len(nodes))
             log.debug(f"Getting node operator metadata ({i} to {i_end})")
-            res = rp.multicall2_do_call([
+            res = await rp.multicall2([
                 Call(*lamb(n))
                 for n in nodes[i:i_end]
                 for lamb in lambs
@@ -466,53 +493,6 @@ class Task:
         ]
         self.db.node_operators_new.bulk_write(bulk, ordered=False)
         log.debug("Node operators updated with metadata")
-        return
 
-    def ensure_event_loop(self):
-        # the bellow prevents multicall from breaking
-        if not self.event_loop:
-            self.event_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.event_loop)
-
-    @timerun
-    def task(self):
-        p_id = time.time()
-        self.monitor.ping(state='run', series=p_id)
-        try:
-            self._run()
-            self.monitor.ping(state='complete', series=p_id)
-        except Exception as err:
-            log.exception(err)
-            self.monitor.ping(state='fail', series=p_id)
-
-    @timerun
-    def _run(self):
-        log.debug("starting rocketnode task")
-        self.check_indexes()
-        self.ensure_event_loop()
-        self.add_untracked_minipools()
-        self.add_static_data_to_minipools()
-        self.update_dynamic_minipool_metadata()
-        self.add_static_deposit_data_to_minipools()
-        self.add_static_beacon_data_to_minipools()
-        self.update_dynamic_minipool_beacon_metadata()
-        self.add_untracked_node_operators()
-        self.add_static_data_to_node_operators()
-        self.update_dynamic_node_operator_metadata()
-        log.debug("rocketnode task finished")
-
-
-logging.basicConfig(format="%(levelname)5s %(asctime)s [%(name)s] %(filename)s:%(lineno)d|%(funcName)s(): %(message)s")
-log = logging.getLogger("rocketnode")
-log.setLevel(cfg["log_level"])
-logging.getLogger().setLevel("INFO")
-
-t = Task()
-
-schedule.every(6.4).minutes.do(t.task)
-# run once on startup
-t.task()
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+async def setup(self):
+    await self.add_cog(NodeTask(self))
