@@ -6,8 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from cronitor import Monitor
 from pymongo import MongoClient
-from discord.ext import commands, tasks
 from requests.exceptions import HTTPError
+from eth_typing import ChecksumAddress
+
+from discord.ext import commands, tasks
+from discord.utils import as_chunks
 
 from rocketwatch import RocketWatch
 from utils.cfg import cfg
@@ -19,24 +22,21 @@ from utils.time_debug import timerun
 log = logging.getLogger("minipool_task")
 log.setLevel(cfg["log_level"])
 
+
 class MinipoolTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
         self.db = MongoClient(cfg["mongodb.uri"]).rocketwatch
         self.minipool_manager = rp.get_contract_by_name("rocketMinipoolManager")
         self.monitor = Monitor('gather-minipools', api_key=cfg["other.secrets.cronitor"])
-
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
+        self.batch_size = 1000
+        self.loop.start()
+            
+    def cog_unload(self):
+        self.loop.cancel()
 
     @tasks.loop(seconds=60 ** 2)
-    async def run_loop(self):
+    async def loop(self):
         p_id = time.time()
         self.monitor.ping(state='run', series=p_id)
         executor = ThreadPoolExecutor()
@@ -44,33 +44,37 @@ class MinipoolTask(commands.Cog):
         futures = [loop.run_in_executor(executor, self.task)]
         try:
             await asyncio.gather(*futures)
-            self.monitor.ping(state='complete', series=p_id)
+            self.monitor.ping(state="complete", series=p_id)
         except Exception as err:
             await self.bot.report_error(err)
-            self.monitor.ping(state='fail', series=p_id)
+            self.monitor.ping(state="fail", series=p_id)
+            
+    @loop.before_loop
+    async def before_loop(self):
+        await self.bot.wait_until_ready()
 
     @timerun
-    def get_untracked_minipools(self):
+    def get_untracked_minipools(self) -> set[ChecksumAddress]:
         minipool_count = rp.call("rocketMinipoolManager.getMinipoolCount")
         minipool_addresses = []
-        for i in range(0, minipool_count, 10000):
+        for i in range(0, minipool_count, self.batch_size):
             log.debug(f"getting minipool addresses for {i}/{minipool_count}")
-            i_end = min(i + 10000, minipool_count)
+            i_end = min(i + self.batch_size, minipool_count)
             minipool_addresses += [
                 w3.toChecksumAddress(r.results[0]) for r in rp.multicall.aggregate(
                     self.minipool_manager.functions.getMinipoolAt(i) for i in range(i, i_end)).results]
         # remove address that are already in the minipool collection
         tracked_addresses = self.db.minipools.distinct("address")
-        return [a for a in minipool_addresses if a not in tracked_addresses]
+        return set(minipool_addresses) - set(tracked_addresses)
 
     @timerun
     def get_public_keys(self, addresses):
         # optimizing this doesn't seem to help much, so keep it simple for readability
         # batch the same way as get_untracked_minipools
         minipool_pubkeys = []
-        for i in range(0, len(addresses), 10000):
+        for i in range(0, len(addresses), self.batch_size):
             log.debug(f"getting minipool pubkeys for {i}/{len(addresses)}")
-            i_end = min(i + 10000, len(addresses))
+            i_end = min(i + self.batch_size, len(addresses))
             minipool_pubkeys += [
                 f"0x{r.results[0].hex()}" for r in rp.multicall.aggregate(
                     self.minipool_manager.functions.getMinipoolPubkey(a) for a in addresses[i:i_end]).results]
@@ -138,37 +142,37 @@ class MinipoolTask(commands.Cog):
 
     def task(self):
         self.check_indexes()
-        log.debug("Gathering all untracked Minipools...")
-        minipool_addresses = self.get_untracked_minipools()
-        if not minipool_addresses:
-            log.debug("No untracked Minipools found.")
+        log.debug("Gathering all untracked minipools...")
+        all_minipool_addresses = self.get_untracked_minipools()
+        if not all_minipool_addresses:
+            log.debug("No untracked minipools found.")
             return
-        log.debug(f"Found {len(minipool_addresses)} untracked Minipools.")
-        log.debug("Gathering all Minipool public keys...")
-        minipool_pubkeys = self.get_public_keys(minipool_addresses)
-        log.debug("Gathering all Minipool node operators...")
-        node_addresses = self.get_node_operator(minipool_addresses)
-        log.debug("Gathering all Minipool commission rates...")
-        node_fees = self.get_node_fee(minipool_addresses)
-        log.debug("Gathering all Minipool validator indexes...")
-        validator_data = self.get_validator_data(minipool_pubkeys)
-        data = [{
-            "address"         : a,
-            "pubkey"          : p,
-            "node_operator"   : n,
-            "node_fee"        : f,
-            "validator"       : validator_data[p]["validator_id"],
-            "activation_epoch": validator_data[p]["activation_epoch"]
-        } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_data]
-        if data:
-            log.debug(f"Inserting {len(data)} Minipools into the database...")
-            self.db.minipools.insert_many(data)
-        else:
-            log.debug("No new Minipools with data found.")
+        
+        log.debug(f"Found {len(all_minipool_addresses)} untracked minipools.")
+        for minipool_addresses in as_chunks(all_minipool_addresses, self.batch_size):
+            log.debug("Gathering minipool public keys...")
+            minipool_pubkeys = self.get_public_keys(minipool_addresses)
+            log.debug("Gathering minipool node operators...")
+            node_addresses = self.get_node_operator(minipool_addresses)
+            log.debug("Gathering minipool commission rates...")
+            node_fees = self.get_node_fee(minipool_addresses)
+            log.debug("Gathering minipool validator indexes...")
+            validator_data = self.get_validator_data(minipool_pubkeys)
+            data = [{
+                "address"         : a,
+                "pubkey"          : p,
+                "node_operator"   : n,
+                "node_fee"        : f,
+                "validator"       : validator_data[p]["validator_id"],
+                "activation_epoch": validator_data[p]["activation_epoch"]
+            } for a, p, n, f in zip(minipool_addresses, minipool_pubkeys, node_addresses, node_fees) if p in validator_data]
+            if data:
+                log.debug(f"Inserting {len(data)} minipools into the database...")
+                self.db.minipools.insert_many(data)
+            else:
+                log.debug("No new minipools with data found.")
+                
         log.debug("Finished!")
-
-    def cog_unload(self):
-        self.run_loop.cancel()
 
 
 async def setup(bot):

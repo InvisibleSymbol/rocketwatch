@@ -15,7 +15,7 @@ from utils import solidity
 from utils.cfg import cfg
 from utils.readable import decode_abi
 from utils.shared_w3 import w3, mainnet_w3, historical_w3
-from utils.time_debug import timerun
+from utils.time_debug import timerun_async
 
 log = logging.getLogger("rocketpool")
 log.setLevel(cfg["log_level"])
@@ -90,10 +90,9 @@ class RocketPool:
                 return f"{function_name}({inputs})({outputs})"
         raise Exception(f"Function {function_name} not found in ABI")
 
-    @timerun
-    def multicall2_do_call(self, calls: list[Call], require_success=True):
-        multicall = Multicall(calls, _w3=w3, gas_limit=500_000_000, require_success=require_success)
-        return multicall()
+    @timerun_async
+    async def multicall2(self, calls: list[Call], require_success=True):
+        return await Multicall(calls, _w3=w3, gas_limit=50_000_000, require_success=require_success)
 
     @cached(cache=ADDRESS_CACHE)
     def get_address_by_name(self, name):

@@ -16,7 +16,7 @@ from utils.shared_w3 import w3
 from utils.visibility import is_hidden
 from utils.cfg import cfg
 from utils.rocketpool import rp
-from utils.time_debug import timerun
+from utils.time_debug import timerun_async
 
 log = logging.getLogger("minipools_upkeep_task")
 log.setLevel(cfg["log_level"])
@@ -28,26 +28,26 @@ def div_32(i: int):
 class MinipoolsUpkeepTask(commands.Cog):
     def __init__(self, bot: RocketWatch):
         self.bot = bot
-        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-        self.sync_db = pymongo.MongoClient(cfg["mongodb.uri"]).get_database("rocketwatch")
-        self.event_loop = None
+        self.db = AsyncIOMotorClient(cfg["mongodb.uri"]).rocketwatch
+        self.loop.start()
+        
+    def cog_unload(self):
+        self.loop.cancel()
 
-        if not self.run_loop.is_running() and bot.is_ready():
-            self.run_loop.start()
-
-    @commands.Cog.listener()
+    # every 6.4 minutes
+    @tasks.loop(seconds=solidity.BEACON_EPOCH_LENGTH)
+    async def loop(self):
+        try:
+            await self.upkeep_minipools()
+        except Exception as err:
+            await self.bot.report_error(err)
+            
+    @loop.before_loop
     async def on_ready(self):
-        if self.run_loop.is_running():
-            return
-        self.run_loop.start()
+        await self.bot.wait_until_ready()
 
-    @timerun
-    def get_minipools_from_db(self):
-        # get all minipools from db
-        return self.sync_db.minipools.find().distinct("address")
-
-    @timerun
-    def get_minipool_stats(self, minipools):
+    @timerun_async
+    async def get_minipool_stats(self, minipools):
         m_d = rp.get_contract_by_name("rocketMinipoolDelegate")
         m = rp.assemble_contract("rocketMinipool", address=minipools[0])
         mc = rp.get_contract_by_name("multicall3")
@@ -71,7 +71,7 @@ class MinipoolsUpkeepTask(commands.Cog):
                 for a in addresses
                 for lamb in lambs
             ]
-            res = rp.multicall2_do_call(calls)
+            res = await rp.multicall2(calls)
             # add data to mini pool stats dict (address => {func_name: value})
             # strip get from function name
             for (address, variable_name), value in res.items():
@@ -80,25 +80,10 @@ class MinipoolsUpkeepTask(commands.Cog):
                 minipool_stats[address][variable_name] = value
         return minipool_stats
 
-    # every 6.4 minutes
-    @tasks.loop(seconds=solidity.BEACON_EPOCH_LENGTH)
-    async def run_loop(self):
-        executor = ThreadPoolExecutor()
-        loop = asyncio.get_event_loop()
-        futures = [loop.run_in_executor(executor, self.upkeep_minipools)]
-        try:
-            await asyncio.gather(*futures)
-        except Exception as err:
-            await self.bot.report_error(err)
-
-    def upkeep_minipools(self):
+    async def upkeep_minipools(self):
         logging.info("Updating minipool states")
-        # the bellow fixes multicall from breaking
-        if not self.event_loop:
-            self.event_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.event_loop)
-        a = self.get_minipools_from_db()
-        b = self.get_minipool_stats(a)
+        a = await self.db.minipools.find().distinct("address")
+        b = await self.get_minipool_stats(a)
         # update data in db using unordered bulk write
         # note: this data is kept in the "meta" field of each minipool
         bulk = [
@@ -109,7 +94,7 @@ class MinipoolsUpkeepTask(commands.Cog):
             ) for address, stats in b.items()
         ]
 
-        self.sync_db.minipools.bulk_write(bulk, ordered=False)
+        await self.db.minipools.bulk_write(bulk, ordered=False)
         logging.info("Updated minipool states")
 
     @hybrid_command()
