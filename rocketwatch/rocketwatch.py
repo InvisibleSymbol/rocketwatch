@@ -6,15 +6,17 @@ from typing import Optional
 
 from discord import (
     app_commands, 
+    Interaction,
     Intents,
     Thread, 
     File, 
     Object, 
-    User
+    User,
 )
 from discord.abc import GuildChannel, PrivateChannel
-from discord.ext.commands import Bot, Context
 from discord.ext import commands
+from discord.ext.commands import Bot, Context
+from discord.app_commands import CommandTree, AppCommandError
 
 from utils.cfg import cfg
 from utils.retry import retry_async
@@ -24,8 +26,14 @@ log.setLevel(cfg["log_level"])
 
 
 class RocketWatch(Bot):
+    class RWCommandTree(CommandTree):
+        async def on_error(self, interaction: Interaction, error: AppCommandError) -> None:
+            bot: RocketWatch = self.client
+            ctx = await Context.from_interaction(interaction)
+            await bot.on_command_error(ctx, error)
+    
     def __init__(self, intents: Intents) -> None:
-        super().__init__(command_prefix=(), intents=intents)
+        super().__init__(command_prefix=(), tree_cls=self.RWCommandTree, intents=intents)
     
     async def _load_plugins(self):
         chain = cfg["rocketpool.chain"]
@@ -92,17 +100,17 @@ class RocketWatch(Bot):
 
         await self.sync_commands()
 
-    async def on_command_error(self, ctx: Context, exception: Exception) -> None:
-        log.info(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
-        if isinstance(exception, commands.errors.MaxConcurrencyReached):
+    async def on_command_error(self, ctx: Context, error: Exception) -> None:
+        log.error(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
+        if isinstance(error, commands.errors.MaxConcurrencyReached):
             msg = "Someone else is already using this command. Please try again later"
-        elif isinstance(exception, app_commands.errors.CommandOnCooldown):
-            msg = f"Slow down! You are using this command too fast. Please try again in {exception.retry_after:.0f} seconds"
+        elif isinstance(error, app_commands.errors.CommandOnCooldown):
+            msg = f"Slow down! You are using this command too fast. Please try again in {error.retry_after:.0f} seconds"
         else:
             msg = "An unexpected error occurred and has been reported to the developer. Please try again later"
 
         try:
-            await self.report_error(exception, ctx)
+            await self.report_error(error, ctx)
             await ctx.send(content=msg, ephemeral=True)
         except Exception:
             log.exception("Failed to alert user")
@@ -137,7 +145,7 @@ class RocketWatch(Bot):
 
         try:
             channel = await self.get_or_fetch_channel(cfg["discord.channels.errors"])
-            file = File(io.BytesIO(err_trace.encode()), "exception.txt")
+            file = File(io.StringIO(err_trace), "exception.txt")
             await retry_async(tries=5, delay=5)(channel.send)(err_description, file=file)
         except Exception:
             log.exception("Failed to send message. Max retries reached.")
