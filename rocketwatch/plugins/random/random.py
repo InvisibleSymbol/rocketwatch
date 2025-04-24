@@ -70,14 +70,15 @@ class Random(commands.Cog):
 
         e = Embed()
         e.set_author(name="🔗 Data from ultrasound.money", url="https://ultrasound.money")
-        description = "**Eth Burned:**\n```"
+        description = "**ETH Burned:**\n```"
         feesburned = data["feesBurned"]
         for span in ["5m", "1h", "24h"]:
             k = f"feesBurned{span}"
             description += f"Last {span}: {solidity.to_float(feesburned[k]):,.2f} ETH ({feesburned[f'{k}Usd']:,.2f} USDC)\n"
         description += "```\n"
-        description += "**Burn Ranking (last 5 minutes):**\n"
+        description += "**Burn Ranking (last 5 minutes)**\n"
         ranking = data["leaderboards"]["leaderboard5m"][:5]
+        
         for i, entry in enumerate(ranking):
             # use a number emoji as rank (:one:, :two:, ...)
             # first of convert the number to a word
@@ -92,9 +93,12 @@ class Random(commands.Cog):
                 description += f" {target}"
             if entry.get("category"):
                 description += f" `[{entry['category'].upper()}]`"
-            description += f"\n<:VOID:721787344138797116>`{solidity.to_float(entry['fees']):,.2f} ETH` :fire:\n"
+            
+            description += "\n\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0"
+            description += f"`{solidity.to_float(entry['fees']):,.2f} ETH` :fire:\n"
+            
         e.add_field(
-            name="Current Base Fee:",
+            name="Current Base Fee",
             value=f"`{solidity.to_float(data['latestBlockFees'][0]['baseFeePerGas'], 9):,.2f} GWEI`"
         )
         e.description = description
