@@ -103,11 +103,11 @@ class RocketWatch(Bot):
     async def on_command_error(self, ctx: Context, error: Exception) -> None:
         log.error(f"/{ctx.command.name} called by {ctx.author} in #{ctx.channel.name} ({ctx.guild}) failed")
         if isinstance(error, commands.errors.MaxConcurrencyReached):
-            msg = "Someone else is already using this command. Please try again later"
+            msg = "Someone else is already using this command. Please try again later."
         elif isinstance(error, app_commands.errors.CommandOnCooldown):
-            msg = f"Slow down! You are using this command too fast. Please try again in {error.retry_after:.0f} seconds"
+            msg = f"Slow down! You are using this command too fast. Please try again in {error.retry_after:.0f} seconds."
         else:
-            msg = "An unexpected error occurred and has been reported to the developer. Please try again later"
+            msg = "An unexpected error occurred and has been reported to the developer. Please try again later."
 
         try:
             await self.report_error(error, ctx)
