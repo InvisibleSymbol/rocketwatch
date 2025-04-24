@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 from bson import CodecOptions
-from discord import app_commands, Interaction, ui, TextStyle, ButtonStyle, File, User
+from discord import app_commands, ui, Interaction, TextStyle, ButtonStyle, File, User
 from discord.app_commands import Group, Choice, choices
 from discord.ext.commands import Cog, GroupCog
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -19,7 +19,8 @@ log.setLevel(cfg["log_level"])
 async def generate_template_embed(db, template_name: str):
     # get the boiler message from the database
     template = await db.support_bot.find_one({'_id': template_name})
-    if not template: return None
+    if not template: 
+        return None
     # get the last log entry from the db
     dumps_col = db.support_bot_dumps.with_options(codec_options=CodecOptions(tz_aware=True))
     last_edit = await dumps_col.find_one(
@@ -42,9 +43,9 @@ class AdminView(ui.View):
 
     @ui.button(label='Edit', style=ButtonStyle.blurple)
     async def edit(self, interaction: Interaction, button: ui.Button):
-        boiler = await self.db.support_bot.find_one({'_id': self.template_name})
+        template = await self.db.support_bot.find_one({'_id': self.template_name})
         # Make sure to update the message with our update
-        await interaction.response.send_modal(AdminModal(boiler["title"], boiler["description"], self.db, self.template_name))
+        await interaction.response.send_modal(AdminModal(template["title"], template["description"], self.db, self.template_name))
 
 
 class DeletableView(ui.View):
@@ -63,8 +64,7 @@ class DeletableView(ui.View):
         log.warning(f"Support Template Message deleted by {interaction.user} in {interaction.channel}")
 
 
-class AdminModal(ui.Modal,
-                 title="Change Template Message"):
+class AdminModal(ui.Modal, title="Change Template Message"):
     def __init__(self, old_title, old_description, db, template_name):
         super().__init__()
         self.db = db
@@ -74,13 +74,15 @@ class AdminModal(ui.Modal,
         self.title_field = ui.TextInput(
             label="Title",
             placeholder="Enter a title",
-            default=old_title)
+            default=old_title
+        )
         self.description_field = ui.TextInput(
             label="Description",
             placeholder="Enter a description",
             default=old_description,
             style=TextStyle.paragraph,
-            max_length=4000)
+            max_length=4000
+        )
         self.add_item(self.title_field)
         self.add_item(self.description_field)
 
@@ -100,7 +102,7 @@ class AdminModal(ui.Modal,
                 )
             )
             a = await interaction.original_response()
-            file = File(io.BytesIO(self.description_field.value.encode()), "pending_description_dump.txt")
+            file = File(io.StringIO(self.description_field.value), f"{self.title_field.value}.txt")
             await a.add_files(file)
             return
 
@@ -124,12 +126,14 @@ class AdminModal(ui.Modal,
 
         await self.db.support_bot.update_one(
             {"_id": self.template_name},
-            {"$set": {"title": self.title_field.value, "description": self.description_field.value}})
-        embeds = [Embed(), await generate_template_embed(self.db, self.template_name)]
-        embeds[0].title = f"View & Edit {self.template_name} template"
-        embeds[0].description = f"The following is a preview of the {self.template_name} template.\n" \
-                                f"You can edit this template by clicking the 'Edit' button."
-        await interaction.response.edit_message(embeds=embeds, view=AdminView(self.db, self.template_name))
+            {"$set": {"title": self.title_field.value, "description": self.description_field.value}}
+        )
+        content = (
+            f"This is a preview of the '{self.template_name}' template.\n"
+            f"You can change it using the 'Edit' button."
+        )
+        embed = await generate_template_embed(self.db, self.template_name)
+        await interaction.response.edit_message(content=content, embed=embed, view=AdminView(self.db, self.template_name))
 
 
 def has_perms(interaction: Interaction, template_name):
@@ -138,7 +142,7 @@ def has_perms(interaction: Interaction, template_name):
     return any([
         any(r.id in cfg["rocketpool.support.role_ids"] for r in interaction.user.roles),
         cfg["discord.owner.user_id"] == interaction.user.id,
-        interaction.user.guild_permissions.ban_members and interaction.guild.id == cfg["rocketpool.support.server_id"]
+        interaction.user.guild_permissions.moderate_members and interaction.guild.id == cfg["rocketpool.support.server_id"]
     ])
 
 
@@ -213,8 +217,11 @@ class SupportGlobal(Cog):
 
 
 class SupportUtils(GroupCog, name="support"):
-    subgroup = Group(name='template', description='various templates used by active support members',
-                     guild_ids=[cfg["rocketpool.support.server_id"]])
+    subgroup = Group(
+        name='template', 
+        description='various templates used by active support members',
+        guild_ids=[cfg["rocketpool.support.server_id"]]
+    )
 
     def __init__(self, bot: RocketWatch):
         self.bot = bot
@@ -250,12 +257,14 @@ class SupportUtils(GroupCog, name="support"):
             return
         # create the template in the db
         await self.db.support_bot.insert_one(
-            {"_id": name, "title": "Insert Title here", "description": "Insert Description here"})
-        embeds = [Embed(), await generate_template_embed(self.db, name)]
-        embeds[0].title = f"View & Edit {name} template"
-        embeds[0].description = f"The following is a preview of the {name} template.\n" \
-                                f"You can edit this template by clicking the 'Edit' button."
-        await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db, name))
+            {"_id": name, "title": "Insert Title here", "description": "Insert Description here"}
+        )
+        content = (
+            f"This is a preview of the '{name}' template.\n"
+            f"You can change it using the 'Edit' button."
+        )
+        embed = await generate_template_embed(self.db, name)
+        await interaction.edit_original_response(content=content, embed=embed, view=AdminView(self.db, name))
 
     @subgroup.command()
     async def edit(self, interaction: Interaction, name: str):
@@ -275,12 +284,13 @@ class SupportUtils(GroupCog, name="support"):
                 ),
             )
             return
-        embeds = [Embed(), await generate_template_embed(self.db, name)]
-        embeds[0].title = f"View & Edit {name} template"
-        embeds[0].description = f"The following is a preview of the {name} template.\n" \
-                                f"You can edit this template by clicking the 'Edit' button."
-        # respond with the edit view
-        await interaction.edit_original_response(embeds=embeds, view=AdminView(self.db, name))
+        
+        content = (
+            f"This is a preview of the '{name}' template.\n"
+            f"You can change it using the 'Edit' button."
+        )
+        embed = await generate_template_embed(self.db, name)
+        await interaction.edit_original_response(content=content, embed=embed, view=AdminView(self.db, name))
 
     @subgroup.command()
     async def remove(self, interaction: Interaction, name: str):
@@ -334,7 +344,6 @@ class SupportUtils(GroupCog, name="support"):
                     "foreignField": "template",
                     "as": "dump"
                 }
-
             },
             {
                 "$project": {

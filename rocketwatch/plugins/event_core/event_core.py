@@ -136,15 +136,10 @@ class EventCore(commands.Cog):
 
         log.debug(f"{target_block = }")
 
-        try:
-            with ThreadPoolExecutor() as executor:
-                loop = asyncio.get_running_loop()
-                futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
-                results = await asyncio.gather(*futures)
-        except Exception as err:
-            log.exception("Failed to gather events")
-            await self.bot.report_error(err)
-            raise err
+        with ThreadPoolExecutor() as executor:
+            loop = asyncio.get_running_loop()
+            futures = [loop.run_in_executor(executor, gather_fn) for gather_fn in gather_fns]
+            results = await asyncio.gather(*futures)
 
         channels = cfg["discord.channels"]
         events: list[dict[str, Any]] = []
