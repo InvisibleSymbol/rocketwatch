@@ -49,19 +49,15 @@ class AdminView(ui.View):
 
 
 class DeletableView(ui.View):
-    def __init__(self, template_name: str):
-        super().__init__()
-        self.template_name = template_name
-
-    @ui.button(emoji='<:deletethis:1168673165489213551>', style=ButtonStyle.secondary)
+    def __init__(self, user: User):
+        super().__init__(timeout=None)
+        self.user = user
+        
+    @ui.button(emoji="<:delete:1364953621191721002>", style=ButtonStyle.gray)
     async def delete(self, interaction: Interaction, button: ui.Button):
-        # check if the user has perms
-        if not has_perms(interaction, self.template_name):
-            return
-        # delete the message
-        await interaction.message.delete()
-        # log deletion
-        log.warning(f"Support Template Message deleted by {interaction.user} in {interaction.channel}")
+        if (interaction.user == self.user) or has_perms(interaction):        
+            await interaction.message.delete()
+            log.warning(f"Support template deleted by {interaction.user} in {interaction.channel}")
 
 
 class AdminModal(ui.Modal, title="Change Template Message"):
@@ -136,9 +132,7 @@ class AdminModal(ui.Modal, title="Change Template Message"):
         await interaction.response.edit_message(content=content, embed=embed, view=AdminView(self.db, self.template_name))
 
 
-def has_perms(interaction: Interaction, template_name):
-    if template_name == "announcement" and cfg["discord.owner.user_id"] != interaction.user.id:
-        return False
+def has_perms(interaction: Interaction):
     return any([
         any(r.id in cfg["rocketpool.support.role_ids"] for r in interaction.user.roles),
         cfg["discord.owner.user_id"] == interaction.user.id,
@@ -172,7 +166,7 @@ async def _use(db, interaction: Interaction, name: str, mention: User | None):
         await interaction.response.send_message(
             content=mention.mention if mention else "",
             embed=e,
-            view=DeletableView(name)
+            view=DeletableView(interaction.user)
         )
     else:
         await interaction.response.send_message(
@@ -241,7 +235,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def add(self, interaction: Interaction, name: str):
-        if not has_perms(interaction, name):
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -268,7 +262,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def edit(self, interaction: Interaction, name: str):
-        if not has_perms(interaction, name):
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return
@@ -294,7 +288,7 @@ class SupportUtils(GroupCog, name="support"):
 
     @subgroup.command()
     async def remove(self, interaction: Interaction, name: str):
-        if not has_perms(interaction, name):
+        if not has_perms(interaction):
             await interaction.response.send_message(
                 embed=Embed(title="Error", description="You do not have permission to use this command."), ephemeral=True)
             return

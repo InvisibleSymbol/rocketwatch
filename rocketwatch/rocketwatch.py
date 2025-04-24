@@ -126,14 +126,16 @@ class RocketWatch(Bot):
 
     async def report_error(self, exception: Exception, ctx: Optional[Context] = None, *args) -> None:
         err_description = f"`{repr(exception)[:150]}`"
+        
         if args:
             args_fmt = "\n".join(f"args[{i}] = {arg}" for i, arg in enumerate(args))
             err_description += f"\n```{args_fmt}```"
+        
         if ctx:
             err_description += (
                 f"\n```"
                 f"{ctx.command.name = }\n"
-                f"{ctx.command.params = }\n"
+                f"ctx.command.params = {getattr(ctx.command, 'params')}\n"
                 f"{ctx.channel = }\n"
                 f"{ctx.author = }"
                 f"```"
