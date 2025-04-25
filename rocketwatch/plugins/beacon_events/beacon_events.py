@@ -119,7 +119,7 @@ class BeaconEvents(EventPlugin):
 
         return events
 
-    @retry(tries=3, delay=10)
+    @retry(tries=5, delay=10, backoff=2, max_delay=30)
     def _get_proposal(self, beacon_block: dict) -> Optional[Event]:
         if not (payload := beacon_block["body"].get("execution_payload")):
             # no proposed block
@@ -170,7 +170,7 @@ class BeaconEvents(EventPlugin):
             "minipool": minipool["address"],
             "slot": int(beacon_block["slot"]),
             "reward_amount": block_reward_eth,
-            "timestamp": timestamp,
+            "timestamp": timestamp
         }
 
         if eth_utils.is_same_address(fee_recipient, rp.get_address_by_name("rocketSmoothingPool")):
