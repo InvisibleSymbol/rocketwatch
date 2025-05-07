@@ -20,7 +20,7 @@ web3-multicall==0.0.7
 colorama==0.4.6
 seaborn==0.12.2
 etherscan_labels @ git+https://github.com/InvisibleSymbol/etherscan-labels@7eb617d715a4dda0eabdd858106a526a3abd3394
-cronitor==4.6.0
+cronitor==4.7.1
 circuitbreaker==1.4.0
 retry-async==0.1.4
 checksumdir==1.2.0
