@@ -69,6 +69,26 @@ provider = ""  # "anthropic", "openai", or "google"
 api_key = ""
 model = ""
 
+[transcription]
+voice_channel_id = 0
+output_channel_id = 0
+min_users = 3
+leave_grace_seconds = 120
+max_recording_minutes = 180
+chunk_duration_seconds = 600
+min_transcript_words = 100
+
+[transcription.llm]
+provider = ""  # "anthropic", "openai", or "google"
+api_key = ""
+model = ""
+
+[transcription.stt]
+provider = "openai"
+api_key = ""
+model = "whisper-1"
+base_url = ""  # optional: self-hosted whisper endpoint
+
 [sentinel]
 api_url = ""
 api_key = ""

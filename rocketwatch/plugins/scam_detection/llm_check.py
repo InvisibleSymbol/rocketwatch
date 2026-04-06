@@ -1,11 +1,11 @@
 import json
 import logging
-from abc import ABC, abstractmethod
 from typing import Any
 
 from discord import Member, Message
 
 from rocketwatch.utils.config import cfg
+from rocketwatch.utils.llm import LLMProvider, create_provider
 
 log = logging.getLogger("rocketwatch.scam_detection.llm")
 
@@ -61,84 +61,10 @@ USER_PROMPT_TEMPLATE = (
 )
 
 
-class LLMProvider(ABC):
-    @abstractmethod
-    async def complete(self, system: str, user_message: str) -> str: ...
-
-
-class AnthropicProvider(LLMProvider):
-    async def complete(self, system: str, user_message: str) -> str:
-        from anthropic import AsyncAnthropic
-        from anthropic.types import TextBlock
-
-        if not hasattr(self, "_client"):
-            self._client = AsyncAnthropic(api_key=cfg.llm.api_key)
-
-        response = await self._client.messages.create(
-            model=cfg.llm.model,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            system=system,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        block = response.content[0]
-        assert isinstance(block, TextBlock)
-        return block.text
-
-
-class OpenAIProvider(LLMProvider):
-    async def complete(self, system: str, user_message: str) -> str:
-        from openai import AsyncOpenAI
-
-        if not hasattr(self, "_client"):
-            self._client = AsyncOpenAI(api_key=cfg.llm.api_key)
-
-        response = await self._client.chat.completions.create(
-            model=cfg.llm.model,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_message},
-            ],
-        )
-        content = response.choices[0].message.content
-        assert isinstance(content, str)
-        return content
-
-
-class GoogleProvider(LLMProvider):
-    async def complete(self, system: str, user_message: str) -> str:
-        from google import genai
-
-        if not hasattr(self, "_client"):
-            self._client = genai.Client(api_key=cfg.llm.api_key)
-
-        response = await self._client.aio.models.generate_content(
-            model=cfg.llm.model,
-            contents=user_message,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system,
-                max_output_tokens=MAX_OUTPUT_TOKENS,
-            ),
-        )
-        text = response.text
-        assert isinstance(text, str)
-        return text
-
-
-_PROVIDERS: dict[str, type[LLMProvider]] = {
-    "anthropic": AnthropicProvider,
-    "openai": OpenAIProvider,
-    "google": GoogleProvider,
-}
-
-
 class LLMScamChecker:
     def __init__(self) -> None:
-        provider_name = cfg.llm.provider
-        self.enabled = bool(provider_name and cfg.llm.api_key)
-        self._provider: LLMProvider | None = None
-        if self.enabled:
-            self._provider = _PROVIDERS[provider_name]()
+        self._provider: LLMProvider | None = create_provider(cfg.llm)
+        self.enabled = self._provider is not None
 
     async def check(self, message: Message, *, user_msg_count: int) -> str | None:
         """Evaluate a message for social engineering using an LLM.
@@ -164,7 +90,11 @@ class LLMScamChecker:
         user_message = USER_PROMPT_TEMPLATE.format(
             content=content, joined=joined, message_count=prev_user_msg_count
         )
-        result = (await self._provider.complete(SYSTEM_PROMPT, user_message)).strip()
+        result = (
+            await self._provider.complete(
+                SYSTEM_PROMPT, user_message, max_tokens=MAX_OUTPUT_TOKENS
+            )
+        ).strip()
         log.debug(f"AI scam check ({cfg.llm.provider}/{cfg.llm.model}): {result}")
 
         if result.upper().startswith("SCAM"):

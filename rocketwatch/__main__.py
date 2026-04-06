@@ -22,6 +22,7 @@ def main() -> None:
     intents.message_content = True
     intents.reactions = True
     intents.moderation = True
+    intents.voice_states = True
 
     log.info("Starting bot...")
     bot = RocketWatch(intents=intents)

@@ -62,6 +62,25 @@ class LLMConfig(BaseModel):
     model: str = ""
 
 
+class STTConfig(BaseModel):
+    provider: Literal["openai", ""] = ""
+    api_key: str = ""
+    model: str = "whisper-1"
+    base_url: str = ""
+
+
+class TranscriptionConfig(BaseModel):
+    llm: LLMConfig = LLMConfig()
+    stt: STTConfig = STTConfig()
+    voice_channel_id: int = 0
+    output_channel_id: int = 0
+    min_users: int = 3
+    leave_grace_seconds: int = 120
+    max_recording_minutes: int = 180
+    chunk_duration_seconds: int = 600
+    min_transcript_words: int = 100
+
+
 class SentinelConfig(BaseModel):
     api_url: str = ""
     api_key: str = ""
@@ -107,6 +126,7 @@ class Config(BaseModel):
     events: EventsConfig
     sentinel: SentinelConfig = SentinelConfig()
     llm: LLMConfig = LLMConfig()
+    transcription: TranscriptionConfig = TranscriptionConfig()
     secrets: SecretsConfig = SecretsConfig()
 
 
