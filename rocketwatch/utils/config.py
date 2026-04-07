@@ -66,7 +66,6 @@ class STTConfig(BaseModel):
     provider: Literal["openai", ""] = ""
     api_key: str = ""
     model: str = "whisper-1"
-    base_url: str = ""
 
 
 class TranscriptionConfig(BaseModel):

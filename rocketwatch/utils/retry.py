@@ -22,7 +22,7 @@ def retry[**P, R](
                 is_async=inspect.iscoroutinefunction(func),
                 tries=tries,
                 delay=delay,
-                max_delay=max_delay,  # pyright: ignore[reportArgumentType]
+                max_delay=max_delay,
                 backoff=backoff,
             )(func),
         )

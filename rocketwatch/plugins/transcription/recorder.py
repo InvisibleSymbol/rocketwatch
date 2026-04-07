@@ -6,15 +6,14 @@ import time
 import wave
 from pathlib import Path
 
-import numpy as np
+from discord.opus import Decoder as OpusDecoder
 
 log = logging.getLogger("rocketwatch.transcription.recorder")
 
 # Discord audio: 48kHz, 16-bit signed, stereo
-SAMPLE_RATE = 48000
-CHANNELS = 2
-SAMPLE_WIDTH = 2  # bytes (16-bit)
-FRAME_SIZE = SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH  # bytes per second
+SAMPLE_RATE = OpusDecoder.SAMPLING_RATE  # 48000
+CHANNELS = OpusDecoder.CHANNELS  # 2
+SAMPLE_WIDTH = OpusDecoder.SAMPLE_SIZE // OpusDecoder.CHANNELS  # 2 bytes (16-bit)
 
 
 class UserStream:
@@ -51,20 +50,39 @@ class UserStream:
 
 
 class CallRecorder:
-    """Records per-user PCM audio from a Discord voice channel."""
+    """Records per-user PCM audio from a Discord voice channel.
+
+    Receives raw Opus packets and decodes them to PCM internally,
+    bypassing discord-ext-voice-recv's broken Opus decoder.
+    """
 
     def __init__(self, start_time: float | None = None) -> None:
         self._tmp_dir = Path(tempfile.mkdtemp(prefix="rw_voice_"))
         self._streams: dict[int, UserStream] = {}
+        self._decoders: dict[int, OpusDecoder] = {}
         self._start_time = start_time or time.monotonic()
         self._recording = True
 
-    def on_audio(self, user_id: int, pcm: bytes) -> None:
-        if not self._recording:
+    def on_opus(self, user_id: int, opus_data: bytes) -> None:
+        """Receive an Opus packet, decode to PCM, and buffer it."""
+        if not self._recording or not opus_data:
             return
-        timestamp = time.monotonic() - self._start_time
-        if user_id not in self._streams:
+
+        if user_id not in self._decoders:
+            log.info(f"Receiving audio from user {user_id}")
+            self._decoders[user_id] = OpusDecoder()
             self._streams[user_id] = UserStream(user_id, self._tmp_dir)
+
+        try:
+            pcm = self._decoders[user_id].decode(opus_data, fec=False)
+        except Exception:
+            log.debug(
+                f"Failed to decode Opus for user {user_id}: "
+                f"len={len(opus_data)} first_bytes={opus_data[:16].hex()}"
+            )
+            return
+
+        timestamp = time.monotonic() - self._start_time
         self._streams[user_id].write(pcm, timestamp)
 
     def stop(self) -> None:
@@ -74,47 +92,27 @@ class CallRecorder:
     def speaker_count(self) -> int:
         return len(self._streams)
 
-    def mix_to_wav(self) -> bytes:
-        """Mix all user streams into a single WAV file. Returns WAV bytes."""
-        if not self._streams:
-            return b""
-
-        # Determine total duration from the longest stream
-        max_samples = 0
-        user_data: list[tuple[int, np.ndarray[..., np.dtype[np.int16]]]] = []
-
-        for stream in self._streams.values():
-            raw = stream.read_all()
-            if not raw:
-                continue
-            samples = np.frombuffer(raw, dtype=np.int16)
-            offset_samples = int(stream.offset * SAMPLE_RATE * CHANNELS)
-            total = offset_samples + len(samples)
-            if total > max_samples:
-                max_samples = total
-            user_data.append((offset_samples, samples))
-
-        if not user_data:
-            return b""
-
-        # Mix into a single int32 buffer to avoid clipping, then normalize
-        mixed = np.zeros(max_samples, dtype=np.int32)
-        for offset, samples in user_data:
-            mixed[offset : offset + len(samples)] += samples.astype(np.int32)
-
-        # Clip to int16 range
-        np.clip(mixed, -32768, 32767, out=mixed)
-        pcm_out = mixed.astype(np.int16).tobytes()
-
-        # Write WAV
+    def _pcm_to_wav(self, pcm: bytes) -> bytes:
+        """Convert raw PCM bytes to WAV format."""
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
             wf.setnchannels(CHANNELS)
             wf.setsampwidth(SAMPLE_WIDTH)
             wf.setframerate(SAMPLE_RATE)
-            wf.writeframes(pcm_out)
-
+            wf.writeframes(pcm)
         return buf.getvalue()
+
+    def get_user_wavs(self) -> dict[int, tuple[float, bytes]]:
+        """Return per-user WAV files with their start offsets.
+
+        Returns a dict of user_id -> (offset_seconds, wav_bytes).
+        """
+        result: dict[int, tuple[float, bytes]] = {}
+        for user_id, stream in self._streams.items():
+            raw = stream.read_all()
+            if raw:
+                result[user_id] = (stream.offset, self._pcm_to_wav(raw))
+        return result
 
     def cleanup(self) -> None:
         """Remove temporary files."""

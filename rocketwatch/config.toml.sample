@@ -87,7 +87,6 @@ model = ""
 provider = "openai"
 api_key = ""
 model = "whisper-1"
-base_url = ""  # optional: self-hosted whisper endpoint
 
 [sentinel]
 api_url = ""

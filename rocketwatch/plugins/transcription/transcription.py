@@ -1,7 +1,10 @@
 import asyncio
 import io
 import logging
+from datetime import UTC, datetime
+from pathlib import Path
 
+import davey
 import discord
 from discord import (
     Attachment,
@@ -13,6 +16,7 @@ from discord import (
 from discord.abc import Messageable
 from discord.app_commands import command, describe, guilds
 from discord.ext.commands import Cog
+from discord.ext.voice_recv import BasicSink, VoiceRecvClient
 from pydub import AudioSegment
 
 from rocketwatch.bot import RocketWatch
@@ -21,6 +25,8 @@ from rocketwatch.plugins.transcription.recorder import CallRecorder
 from rocketwatch.utils.config import cfg
 from rocketwatch.utils.file import TextFile
 from rocketwatch.utils.llm import create_provider
+
+TRANSCRIPTIONS_DIR = Path("transcriptions")
 
 log = logging.getLogger("rocketwatch.transcription")
 
@@ -73,7 +79,9 @@ class Transcription(Cog):
         if before.channel and before.channel.id == target_id:
             assert isinstance(before.channel, VoiceChannel)
             count = self._count_voice_users(before.channel)
-            if count < self._config.min_users and self._recorder:
+            if count == 0 and self._recorder:
+                await self._stop_and_process()
+            elif count < self._config.min_users and self._recorder:
                 self._start_grace()
 
     def _start_grace(self) -> None:
@@ -96,8 +104,6 @@ class Transcription(Cog):
     async def _start_recording(self, channel: VoiceChannel) -> None:
         log.info(f"Auto-joining voice channel: {channel.name}")
         try:
-            from discord.ext.voice_recv import VoiceRecvClient
-
             vc = await channel.connect(cls=VoiceRecvClient)
         except Exception:
             log.exception("Failed to connect to voice channel")
@@ -106,13 +112,27 @@ class Transcription(Cog):
         self._voice_client = vc
         self._recorder = CallRecorder()
 
-        def sink_callback(
-            user: Member | discord.User | None, data: discord.VoiceData
-        ) -> None:  # type: ignore[name-defined]
-            if user and self._recorder:
-                self._recorder.on_audio(user.id, data.pcm)
+        def sink_callback(user, data) -> None:  # type: ignore[no-untyped-def]
+            if not user or not self._recorder:
+                return
 
-        vc.listen(discord.ext.voice_recv.BasicSink(sink_callback))  # type: ignore[attr-defined]
+            opus_data = data.packet.decrypted_data
+            if not opus_data:
+                return
+
+            # Decrypt DAVE (E2E encryption) layer
+            dave_session = vc._connection.dave_session
+            if dave_session and not dave_session.can_passthrough(user.id):
+                try:
+                    opus_data = dave_session.decrypt(
+                        user.id, davey.MediaType.audio, opus_data
+                    )
+                except Exception:
+                    return
+
+            self._recorder.on_opus(user.id, opus_data)
+
+        vc.listen(BasicSink(sink_callback, decode=False))
 
         # Start max-duration timeout
         self._timeout_task = asyncio.create_task(self._recording_timeout())
@@ -157,12 +177,25 @@ class Transcription(Cog):
             return
 
         try:
-            wav_bytes = recorder.mix_to_wav()
-            if not wav_bytes:
+            user_wavs = recorder.get_user_wavs()
+            if not user_wavs:
                 log.info("Empty recording, discarding")
                 return
 
-            transcript, summary = await self._pipeline.process(wav_bytes)
+            # Resolve user IDs to display names
+            guild = self.bot.get_guild(cfg.discord.owner.server_id)
+            usernames: dict[int, str] = {}
+            for user_id in user_wavs:
+                if guild:
+                    member = guild.get_member(user_id)
+                    if member:
+                        usernames[user_id] = member.display_name
+                        continue
+                usernames[user_id] = f"User {user_id}"
+
+            transcript, summary = await self._pipeline.process_users(
+                user_wavs, usernames
+            )
 
             # Discard if transcript is too short
             word_count = len(transcript.split())
@@ -170,11 +203,45 @@ class Transcription(Cog):
                 log.info(f"Transcript too short ({word_count} words), discarding")
                 return
 
+            # Save audio and transcript locally
+            self._save_artifacts(user_wavs, transcript, summary)
+
             await self._post_results(transcript, summary)
-        except Exception:
-            log.exception("Failed to process recording")
+        except Exception as e:
+            await self.bot.report_error(e)
         finally:
             recorder.cleanup()
+
+    def _save_artifacts(
+        self,
+        user_wavs: dict[int, tuple[float, bytes]],
+        transcript: str,
+        summary: str,
+    ) -> None:
+        """Save mixed audio, transcript, and summary to disk."""
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M")
+        out_dir = TRANSCRIPTIONS_DIR / timestamp
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Mix all user streams into a single audio file
+        mixed: AudioSegment | None = None
+        for _uid, (offset, wav_data) in user_wavs.items():
+            track = AudioSegment.from_wav(io.BytesIO(wav_data))
+            if mixed is None:
+                mixed = AudioSegment.silent(duration=int(offset * 1000)) + track
+            else:
+                # Overlay at the correct offset, extending if needed
+                end_ms = int(offset * 1000) + len(track)
+                if end_ms > len(mixed):
+                    mixed += AudioSegment.silent(duration=end_ms - len(mixed))
+                mixed = mixed.overlay(track, position=int(offset * 1000))
+
+        if mixed:
+            mixed.export(out_dir / "audio.mp3", format="mp3")
+
+        (out_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
+        (out_dir / "summary.txt").write_text(summary, encoding="utf-8")
+        log.info(f"Artifacts saved to {out_dir}")
 
     async def _post_results(self, transcript: str, summary: str) -> None:
         channel_id = self._config.output_channel_id
