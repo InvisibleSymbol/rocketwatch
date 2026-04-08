@@ -112,7 +112,7 @@ class Transcription(Cog):
         self._voice_client = vc
         self._recorder = CallRecorder(self._get_artifact_dir() / "raw")
 
-        def sink_callback(user: User | None, data: VoiceData) -> None:
+        def sink_callback(user: Member | User | None, data: VoiceData) -> None:
             if not user or not self._recorder:
                 return
 
