@@ -201,12 +201,10 @@ class Transcription(Cog):
             )
 
             # Save audio and transcript locally
-            self._save_artifacts(user_segments, transcript, summary)
+            self._save_artifacts(user_segments, transcript, summary or "")
 
-            # Discard if transcript is too short
-            word_count = len(transcript.split())
-            if word_count < self._config.min_transcript_words:
-                log.info(f"Transcript too short ({word_count} words), discarding")
+            if not summary:
+                log.info("No substantive content, discarding")
                 return
 
             await self._post_results(transcript, summary)
@@ -255,7 +253,7 @@ class Transcription(Cog):
         channel = await self.bot.get_or_fetch_channel(channel_id)
         assert isinstance(channel, Messageable)
 
-        embed = Embed(title="Community Call Summary", description=summary[:4096])
+        embed = Embed(title="Voice Call Summary", description=summary[:4096])
 
         transcript_file = TextFile(transcript, "transcript.txt")
         await channel.send(embed=embed, file=transcript_file)

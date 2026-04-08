@@ -2,6 +2,7 @@ import io
 import logging
 
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
@@ -21,7 +22,21 @@ who missed the call. Produce a structured summary with the following sections:
 
 Attribute key statements to speakers by name when relevant. \
 Omit any section that has no content. Use bullet points and keep the summary concise. \
-Give equal attention to all parts of the transcript, regardless of when they occurred."""
+Give equal attention to all parts of the transcript, regardless of when they occurred.
+
+If the transcript contains no substantive discussion worth summarizing \
+(e.g. only greetings, idle chatter, silence, or people joining/leaving), \
+set has_content to false and leave summary empty."""
+
+
+class SummaryResult(BaseModel):
+    has_content: bool = Field(
+        description="Whether the transcript contains substantive discussion worth posting."
+    )
+    summary: str = Field(
+        default="",
+        description="The structured summary. Empty if has_content is false.",
+    )
 
 
 class _Segment:
@@ -120,21 +135,30 @@ class TranscriptionPipeline:
 
         return "\n\n".join(lines)
 
-    async def summarize(self, transcript: str) -> str:
-        """Summarize a transcript using the configured LLM."""
-        result = await self._llm.complete(
+    async def summarize(self, transcript: str) -> str | None:
+        """Summarize a transcript using the configured LLM.
+
+        Returns None if the LLM determines there is no substantive content.
+        """
+        result = await self._llm.complete_structured(
             SUMMARIZE_SYSTEM_PROMPT,
             f"Summarize this community call transcript:\n\n{transcript}",
+            SummaryResult,
             max_tokens=2048,
         )
-        return result.strip()
+        if not result.has_content:
+            return None
+        return result.summary
 
     async def process_users(
         self,
         user_segments: dict[int, list[tuple[float, bytes]]],
         usernames: dict[int, str],
-    ) -> tuple[str, str]:
-        """Full pipeline with speaker labels. Returns (transcript, summary)."""
+    ) -> tuple[str, str | None]:
+        """Full pipeline with speaker labels. Returns (transcript, summary).
+
+        Summary is None if the LLM determines there is no substantive content.
+        """
         transcript = await self.transcribe_users(user_segments, usernames)
         summary = await self.summarize(transcript)
         return transcript, summary

@@ -72,11 +72,11 @@ model = ""
 [transcription]
 voice_channel_id = 0
 output_channel_id = 0
-min_users = 3
+min_users = 5
 leave_grace_seconds = 120
 max_recording_minutes = 180
 chunk_duration_seconds = 600
-min_transcript_words = 100
+
 
 [transcription.llm]
 provider = ""  # "anthropic", "openai", or "google"
