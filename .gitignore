@@ -118,6 +118,7 @@ state.db
 */config.toml
 compose.override.yaml
 mongodb/
+transcriptions/
 
 # helper scripts
 *.sh

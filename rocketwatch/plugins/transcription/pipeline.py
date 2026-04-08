@@ -1,9 +1,9 @@
 import io
 import logging
-import math
 
 from openai import AsyncOpenAI
 from pydub import AudioSegment
+from pydub.silence import detect_nonsilent
 
 from rocketwatch.utils.config import STTConfig
 from rocketwatch.utils.llm import LLMProvider
@@ -40,25 +40,26 @@ class TranscriptionPipeline:
         self,
         stt_config: STTConfig,
         llm_provider: LLMProvider,
-        chunk_duration_seconds: int = 600,
     ) -> None:
         self._stt = stt_config
         self._llm = llm_provider
-        self._chunk_seconds = chunk_duration_seconds
 
     async def _transcribe_wav(
         self, wav_bytes: bytes, client: AsyncOpenAI
     ) -> list[tuple[float, str]]:
-        """Transcribe a single WAV stream. Returns list of (offset_seconds, text)."""
+        """Transcribe a single WAV stream, splitting on silence gaps.
+
+        Returns list of (offset_seconds, text).
+        """
         audio = AudioSegment.from_wav(io.BytesIO(wav_bytes))
-        duration_seconds = len(audio) / 1000.0
-        chunk_ms = self._chunk_seconds * 1000
-        num_chunks = max(1, math.ceil(duration_seconds / self._chunk_seconds))
+        ranges = detect_nonsilent(
+            audio, min_silence_len=5000, silence_thresh=audio.dBFS - 16
+        )
+        if not ranges:
+            return []
 
         results: list[tuple[float, str]] = []
-        for i in range(num_chunks):
-            start_ms = i * chunk_ms
-            end_ms = min((i + 1) * chunk_ms, len(audio))
+        for i, (start_ms, end_ms) in enumerate(ranges):
             chunk = audio[start_ms:end_ms]
 
             buf = io.BytesIO()
@@ -74,38 +75,38 @@ class TranscriptionPipeline:
 
             text = response.text
             if text and text.strip():
-                offset = start_ms / 1000.0
-                results.append((offset, text.strip()))
+                results.append((start_ms / 1000.0, text.strip()))
 
         return results
 
     async def transcribe_users(
         self,
-        user_streams: dict[int, tuple[float, bytes]],
+        user_segments: dict[int, list[tuple[float, bytes]]],
         usernames: dict[int, str],
     ) -> str:
-        """Transcribe per-user audio streams and interleave by timestamp.
+        """Transcribe per-user audio segments and interleave by timestamp.
 
         Args:
-            user_streams: user_id -> (offset_seconds, wav_bytes)
+            user_segments: user_id -> [(offset_seconds, wav_bytes), ...]
             usernames: user_id -> display name
         """
         client = AsyncOpenAI(api_key=self._stt.api_key)
         segments: list[_Segment] = []
 
-        for user_id, (offset, wav_bytes) in user_streams.items():
+        for user_id, wav_segments in user_segments.items():
             speaker = usernames.get(user_id, f"User {user_id}")
-            log.info(f"Transcribing audio for {speaker}")
+            log.info(f"Transcribing audio for {speaker} ({len(wav_segments)} segments)")
 
-            chunks = await self._transcribe_wav(wav_bytes, client)
-            for chunk_offset, text in chunks:
-                segments.append(
-                    _Segment(
-                        start=offset + chunk_offset,
-                        speaker=speaker,
-                        text=text,
+            for offset, wav_bytes in wav_segments:
+                chunks = await self._transcribe_wav(wav_bytes, client)
+                for chunk_offset, text in chunks:
+                    segments.append(
+                        _Segment(
+                            start=offset + chunk_offset,
+                            speaker=speaker,
+                            text=text,
+                        )
                     )
-                )
 
         # Sort by timestamp
         segments.sort(key=lambda s: s.start)
@@ -115,7 +116,7 @@ class TranscriptionPipeline:
         for seg in segments:
             minutes = int(seg.start) // 60
             seconds = int(seg.start) % 60
-            lines.append(f"[{minutes}:{seconds:02d}] **{seg.speaker}**: {seg.text}")
+            lines.append(f"[{minutes}:{seconds:02d}] {seg.speaker}: {seg.text}")
 
         return "\n\n".join(lines)
 
@@ -143,11 +144,11 @@ class TranscriptionPipeline:
 
     async def process_users(
         self,
-        user_streams: dict[int, tuple[float, bytes]],
+        user_segments: dict[int, list[tuple[float, bytes]]],
         usernames: dict[int, str],
     ) -> tuple[str, str]:
         """Full pipeline with speaker labels. Returns (transcript, summary)."""
-        transcript = await self.transcribe_users(user_streams, usernames)
+        transcript = await self.transcribe_users(user_segments, usernames)
         summary = await self.summarize(transcript)
         return transcript, summary
 

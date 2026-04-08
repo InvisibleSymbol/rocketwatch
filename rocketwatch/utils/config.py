@@ -76,7 +76,6 @@ class TranscriptionConfig(BaseModel):
     min_users: int = 3
     leave_grace_seconds: int = 120
     max_recording_minutes: int = 180
-    chunk_duration_seconds: int = 600
     min_transcript_words: int = 100
 
 

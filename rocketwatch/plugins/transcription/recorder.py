@@ -21,32 +21,49 @@ class UserStream:
 
     def __init__(self, user_id: int, tmp_dir: Path) -> None:
         self.user_id = user_id
-        self._path = tmp_dir / f"user_{user_id}.pcm"
-        self._file = open(self._path, "wb")  # noqa: SIM115
-        self._first_timestamp: float | None = None
-        self._total_bytes = 0
+        self._tmp_dir = tmp_dir
+        self._segment_index = 0
+        self._file: io.BufferedWriter | None = None
+        self._segment_start: float = 0.0
+        self._last_timestamp: float = 0.0
+        self._segments: list[tuple[float, Path]] = []  # (offset, path)
+
+    def _start_segment(self, timestamp: float) -> None:
+        if self._file:
+            self._file.close()
+        path = self._tmp_dir / f"user_{self.user_id}_{self._segment_index}.pcm"
+        self._file = open(path, "wb")  # noqa: SIM115
+        self._segment_start = timestamp
+        self._last_timestamp = timestamp
+        self._segments.append((timestamp, path))
+        self._segment_index += 1
 
     def write(self, pcm: bytes, timestamp: float) -> None:
-        if self._first_timestamp is None:
-            self._first_timestamp = timestamp
+        if not self._file:
+            self._start_segment(timestamp)
+        else:
+            # Start a new segment if there's a significant gap (>5s)
+            expected = self._last_timestamp + len(pcm) / (
+                SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH
+            )
+            if timestamp - expected > 5.0:
+                self._start_segment(timestamp)
+
+        self._last_timestamp = timestamp
+        assert self._file is not None
         self._file.write(pcm)
-        self._total_bytes += len(pcm)
 
-    @property
-    def offset(self) -> float:
-        """Seconds from recording start to first audio from this user."""
-        return self._first_timestamp or 0.0
-
-    @property
-    def duration_bytes(self) -> int:
-        return self._total_bytes
-
-    def read_all(self) -> bytes:
-        self._file.close()
-        return self._path.read_bytes()
+    def get_segments(self) -> list[tuple[float, bytes]]:
+        """Return list of (offset_seconds, pcm_bytes) for each segment."""
+        if self._file:
+            self._file.close()
+            self._file = None
+        return [(offset, path.read_bytes()) for offset, path in self._segments]
 
     def close(self) -> None:
-        self._file.close()
+        if self._file:
+            self._file.close()
+            self._file = None
 
 
 class CallRecorder:
@@ -102,16 +119,17 @@ class CallRecorder:
             wf.writeframes(pcm)
         return buf.getvalue()
 
-    def get_user_wavs(self) -> dict[int, tuple[float, bytes]]:
-        """Return per-user WAV files with their start offsets.
+    def get_user_segments(self) -> dict[int, list[tuple[float, bytes]]]:
+        """Return per-user WAV segments with their start offsets.
 
-        Returns a dict of user_id -> (offset_seconds, wav_bytes).
+        Returns a dict of user_id -> [(offset_seconds, wav_bytes), ...].
         """
-        result: dict[int, tuple[float, bytes]] = {}
+        result: dict[int, list[tuple[float, bytes]]] = {}
         for user_id, stream in self._streams.items():
-            raw = stream.read_all()
-            if raw:
-                result[user_id] = (stream.offset, self._pcm_to_wav(raw))
+            segments = stream.get_segments()
+            wavs = [(offset, self._pcm_to_wav(pcm)) for offset, pcm in segments if pcm]
+            if wavs:
+                result[user_id] = wavs
         return result
 
     def cleanup(self) -> None:

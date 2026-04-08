@@ -26,7 +26,7 @@ from rocketwatch.utils.config import cfg
 from rocketwatch.utils.file import TextFile
 from rocketwatch.utils.llm import create_provider
 
-TRANSCRIPTIONS_DIR = Path("transcriptions")
+TRANSCRIPTIONS_DIR = Path("../transcriptions")
 
 log = logging.getLogger("rocketwatch.transcription")
 
@@ -45,7 +45,6 @@ class Transcription(Cog):
             self._pipeline: TranscriptionPipeline | None = TranscriptionPipeline(
                 stt_config=self._config.stt,
                 llm_provider=llm,
-                chunk_duration_seconds=self._config.chunk_duration_seconds,
             )
         else:
             self._pipeline = None
@@ -188,15 +187,15 @@ class Transcription(Cog):
             return
 
         try:
-            user_wavs = recorder.get_user_wavs()
-            if not user_wavs:
+            user_segments = recorder.get_user_segments()
+            if not user_segments:
                 log.info("Empty recording, discarding")
                 return
 
             # Resolve user IDs to display names
             guild = self.bot.get_guild(cfg.discord.owner.server_id)
             usernames: dict[int, str] = {}
-            for user_id in user_wavs:
+            for user_id in user_segments:
                 if guild:
                     member = guild.get_member(user_id)
                     if member:
@@ -205,11 +204,11 @@ class Transcription(Cog):
                 usernames[user_id] = f"User {user_id}"
 
             transcript, summary = await self._pipeline.process_users(
-                user_wavs, usernames
+                user_segments, usernames
             )
 
             # Save audio and transcript locally
-            self._save_artifacts(user_wavs, transcript, summary)
+            self._save_artifacts(user_segments, transcript, summary)
 
             # Discard if transcript is too short
             word_count = len(transcript.split())
@@ -225,7 +224,7 @@ class Transcription(Cog):
 
     def _save_artifacts(
         self,
-        user_wavs: dict[int, tuple[float, bytes]],
+        user_segments: dict[int, list[tuple[float, bytes]]],
         transcript: str,
         summary: str,
     ) -> None:
@@ -234,18 +233,18 @@ class Transcription(Cog):
         out_dir = TRANSCRIPTIONS_DIR / timestamp
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        # Mix all user streams into a single audio file
+        # Mix all user segments into a single audio file
         mixed: AudioSegment | None = None
-        for _uid, (offset, wav_data) in user_wavs.items():
-            track = AudioSegment.from_wav(io.BytesIO(wav_data))
-            if mixed is None:
-                mixed = AudioSegment.silent(duration=int(offset * 1000)) + track
-            else:
-                # Overlay at the correct offset, extending if needed
-                end_ms = int(offset * 1000) + len(track)
-                if end_ms > len(mixed):
-                    mixed += AudioSegment.silent(duration=end_ms - len(mixed))
-                mixed = mixed.overlay(track, position=int(offset * 1000))
+        for _uid, segments in user_segments.items():
+            for offset, wav_data in segments:
+                track = AudioSegment.from_wav(io.BytesIO(wav_data))
+                if mixed is None:
+                    mixed = AudioSegment.silent(duration=int(offset * 1000)) + track
+                else:
+                    end_ms = int(offset * 1000) + len(track)
+                    if end_ms > len(mixed):
+                        mixed += AudioSegment.silent(duration=end_ms - len(mixed))
+                    mixed = mixed.overlay(track, position=int(offset * 1000))
 
         if mixed:
             mixed.export(out_dir / "audio.mp3", format="mp3")
