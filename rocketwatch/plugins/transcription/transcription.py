@@ -202,7 +202,7 @@ class Transcription(Cog):
                 if member := await self.bot.get_or_fetch_member(guild_id, user_id):
                     usernames[user_id] = member.display_name
                 else:
-                    usernames[user_id] = f"User {user_id}"
+                    usernames[user_id] = str(user_id)
 
             transcript = await self._pipeline.transcribe_users(user_segments, usernames)
             self._save_transcript(transcript)
@@ -211,6 +211,12 @@ class Transcription(Cog):
             if not summary:
                 log.info("No substantive content, discarding")
                 return
+
+            # Replace display names with Discord mentions (visual only in embeds)
+            for user_id, name in sorted(
+                usernames.items(), key=lambda x: len(x[1]), reverse=True
+            ):
+                summary = summary.replace(name, f"<@{user_id}>")
 
             await self._post_results(transcript, summary)
         except Exception as e:
