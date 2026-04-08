@@ -3,16 +3,16 @@ import logging
 from typing import Any
 
 from discord import Member, Message
+from pydantic import BaseModel, Field
 
 from rocketwatch.utils.config import cfg
 from rocketwatch.utils.llm import LLMProvider, create_provider
 
 log = logging.getLogger("rocketwatch.scam_detection.llm")
 
-MAX_REASON_WORDS = 5
-MAX_OUTPUT_TOKENS = (MAX_REASON_WORDS + 1) * 3
+MAX_OUTPUT_TOKENS = 200
 
-SYSTEM_PROMPT = f"""\
+SYSTEM_PROMPT = """\
 You are a scam detection system for a cryptocurrency Discord server.
 Your job is to determine whether a message is attempting to manipulate or deceive users.
 
@@ -35,24 +35,32 @@ Do NOT flag messages that:
 Examples:
 
 "I've sent you a guide, kindly check. I had a similar issue but it was resolved"
--> SCAM: Steering to DMs
+-> is_scam=true, reason="Steering to DMs"
 
 "Apologies for the inconvenience. For any inquiries or support, please use the official link in my bio to reach the technical team and moderators."
--> SCAM: Profile link redirection
+-> is_scam=true, reason="Profile link redirection"
 
 "You need assistance mate?"
--> SCAM: Unsolicited help offer
+-> is_scam=true, reason="Unsolicited help offer"
 
 "This support is useless, where do I actually get help?"
--> SAFE
+-> is_scam=false, reason="Genuine frustration"
 
 "Can someone explain how the minipool bond reduction works?"
--> SAFE
+-> is_scam=false, reason="Technical question"
 
 "My node has been offline for 2 days and I keep getting penalties, is there something wrong with the network?"
--> SAFE
+-> is_scam=false, reason="Asking for help"
+"""
 
-Respond with SAFE or SCAM: <reason in {MAX_REASON_WORDS} words max>"""
+
+class ScamCheckResult(BaseModel):
+    is_scam: bool = Field(description="Whether the message is a scam attempt.")
+    reason: str = Field(
+        default="",
+        description="Brief reason for the verdict (5 words max). Always provide a reason.",
+    )
+
 
 USER_PROMPT_TEMPLATE = (
     "User joined: {joined}\n"
@@ -90,17 +98,12 @@ class LLMScamChecker:
         user_message = USER_PROMPT_TEMPLATE.format(
             content=content, joined=joined, message_count=prev_user_msg_count
         )
-        result = (
-            await self._provider.complete(
-                SYSTEM_PROMPT, user_message, max_tokens=MAX_OUTPUT_TOKENS
-            )
-        ).strip()
+        result = await self._provider.complete_structured(
+            SYSTEM_PROMPT, user_message, ScamCheckResult, max_tokens=MAX_OUTPUT_TOKENS
+        )
         log.debug(f"AI scam check ({cfg.llm.provider}/{cfg.llm.model}): {result}")
 
-        if result.upper().startswith("SCAM"):
-            reason = result.removeprefix("SCAM").lstrip(":").strip()
-            reason = reason.split("\n")[0].rstrip(".")
-            if reason:
-                return reason
+        if result.is_scam:
+            return result.reason or "Unknown"
 
         return None
