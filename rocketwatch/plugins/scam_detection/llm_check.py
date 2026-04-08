@@ -71,7 +71,7 @@ USER_PROMPT_TEMPLATE = (
 
 class LLMScamChecker:
     def __init__(self) -> None:
-        self._provider: LLMProvider | None = create_provider(cfg.llm)
+        self._provider: LLMProvider | None = create_provider(cfg.scam_detection.llm)
         self.enabled = self._provider is not None
 
     async def check(self, message: Message, *, user_msg_count: int) -> str | None:
@@ -101,7 +101,9 @@ class LLMScamChecker:
         result = await self._provider.complete_structured(
             SYSTEM_PROMPT, user_message, ScamCheckResult, max_tokens=MAX_OUTPUT_TOKENS
         )
-        log.debug(f"AI scam check ({cfg.llm.provider}/{cfg.llm.model}): {result}")
+        log.debug(
+            f"AI scam check ({cfg.scam_detection.llm.provider}/{cfg.scam_detection.llm.model}): {result}"
+        )
 
         if result.is_scam:
             return result.reason or "Unknown"

@@ -68,14 +68,17 @@ class STTConfig(BaseModel):
     model: str = "whisper-1"
 
 
+class ScamDetectionConfig(BaseModel):
+    llm: LLMConfig = LLMConfig()
+
+
 class TranscriptionConfig(BaseModel):
     llm: LLMConfig = LLMConfig()
     stt: STTConfig = STTConfig()
     voice_channel_id: int = 0
     output_channel_id: int = 0
-    min_users: int = 3
+    min_users: int = 5
     leave_grace_seconds: int = 120
-    max_recording_minutes: int = 180
 
 
 class SentinelConfig(BaseModel):
@@ -122,7 +125,7 @@ class Config(BaseModel):
     rocketpool: RocketPoolConfig
     events: EventsConfig
     sentinel: SentinelConfig = SentinelConfig()
-    llm: LLMConfig = LLMConfig()
+    scam_detection: ScamDetectionConfig = ScamDetectionConfig()
     transcription: TranscriptionConfig = TranscriptionConfig()
     secrets: SecretsConfig = SecretsConfig()
 

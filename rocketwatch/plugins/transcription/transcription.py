@@ -140,7 +140,7 @@ class Transcription(Cog):
 
     async def _recording_timeout(self) -> None:
         try:
-            await asyncio.sleep(self._config.max_recording_minutes * 60)
+            await asyncio.sleep(180 * 60)
             log.warning("Max recording duration reached, stopping")
             await self._stop_and_process()
         except asyncio.CancelledError:

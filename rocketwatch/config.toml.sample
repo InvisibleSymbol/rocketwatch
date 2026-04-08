@@ -64,7 +64,7 @@ UniV3_rETH_ETH = "0x553e9C493678d8606d6a5ba284643dB2110Df823"
 RockSolidVault = "0x936faCdf10c8c36294e7b9d28345255539d81bc7"
 GPv2Settlement = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
 
-[llm]
+[scam_detection.llm]
 provider = ""  # "anthropic", "openai", or "google"
 api_key = ""
 model = ""
@@ -74,9 +74,6 @@ voice_channel_id = 0
 output_channel_id = 0
 min_users = 5
 leave_grace_seconds = 120
-max_recording_minutes = 180
-chunk_duration_seconds = 600
-
 
 [transcription.llm]
 provider = ""  # "anthropic", "openai", or "google"
