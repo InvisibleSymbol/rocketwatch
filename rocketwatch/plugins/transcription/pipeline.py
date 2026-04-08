@@ -120,19 +120,6 @@ class TranscriptionPipeline:
 
         return "\n\n".join(lines)
 
-    async def transcribe_audio(self, wav_bytes: bytes) -> str:
-        """Transcribe a single WAV file (no speaker labels). Fallback for uploaded files."""
-        client = AsyncOpenAI(api_key=self._stt.api_key)
-        chunks = await self._transcribe_wav(wav_bytes, client)
-
-        lines: list[str] = []
-        for offset, text in chunks:
-            minutes = int(offset) // 60
-            seconds = int(offset) % 60
-            lines.append(f"[{minutes}:{seconds:02d}] {text}")
-
-        return "\n\n".join(lines)
-
     async def summarize(self, transcript: str) -> str:
         """Summarize a transcript using the configured LLM."""
         result = await self._llm.complete(
@@ -149,11 +136,5 @@ class TranscriptionPipeline:
     ) -> tuple[str, str]:
         """Full pipeline with speaker labels. Returns (transcript, summary)."""
         transcript = await self.transcribe_users(user_segments, usernames)
-        summary = await self.summarize(transcript)
-        return transcript, summary
-
-    async def process(self, wav_bytes: bytes) -> tuple[str, str]:
-        """Full pipeline without speaker labels. Returns (transcript, summary)."""
-        transcript = await self.transcribe_audio(wav_bytes)
         summary = await self.summarize(transcript)
         return transcript, summary

@@ -5,16 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import davey
-import discord
-from discord import (
-    Attachment,
-    Interaction,
-    Member,
-    VoiceChannel,
-    VoiceState,
-)
+from discord import Member, VoiceChannel, VoiceClient, VoiceState
 from discord.abc import Messageable
-from discord.app_commands import command, describe, guilds
 from discord.ext.commands import Cog
 from discord.ext.voice_recv import BasicSink, VoiceRecvClient
 from pydub import AudioSegment
@@ -23,6 +15,7 @@ from rocketwatch.bot import RocketWatch
 from rocketwatch.plugins.transcription.pipeline import TranscriptionPipeline
 from rocketwatch.plugins.transcription.recorder import CallRecorder
 from rocketwatch.utils.config import cfg
+from rocketwatch.utils.embeds import Embed
 from rocketwatch.utils.file import TextFile
 from rocketwatch.utils.llm import create_provider
 
@@ -36,7 +29,7 @@ class Transcription(Cog):
         self.bot = bot
         self._config = cfg.transcription
         self._recorder: CallRecorder | None = None
-        self._voice_client: discord.VoiceClient | None = None
+        self._voice_client: VoiceClient | None = None
         self._grace_task: asyncio.Task[None] | None = None
         self._timeout_task: asyncio.Task[None] | None = None
 
@@ -262,60 +255,11 @@ class Transcription(Cog):
         channel = await self.bot.get_or_fetch_channel(channel_id)
         assert isinstance(channel, Messageable)
 
-        embed = discord.Embed(
-            title="Community Call Summary",
-            description=summary[:4096],
-            color=discord.Color.blue(),
-        )
+        embed = Embed(title="Community Call Summary", description=summary[:4096])
 
         transcript_file = TextFile(transcript, "transcript.txt")
         await channel.send(embed=embed, file=transcript_file)
         log.info("Transcript and summary posted")
-
-    @command(name="transcribe_file", description="Transcribe an uploaded audio file")
-    @describe(audio="Audio file to transcribe (mp3, wav, m4a, ogg)")
-    @guilds(cfg.discord.owner.server_id)
-    async def transcribe_file(
-        self, interaction: Interaction, audio: Attachment
-    ) -> None:
-        if not self._pipeline:
-            await interaction.response.send_message(
-                "Transcription is not configured.", ephemeral=True
-            )
-            return
-
-        await interaction.response.defer(thinking=True)
-
-        try:
-            audio_bytes = await audio.read()
-
-            audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
-            wav_buf = io.BytesIO()
-            audio_segment.export(wav_buf, format="wav")
-            wav_bytes = wav_buf.getvalue()
-
-            transcript, summary = await self._pipeline.process(wav_bytes)
-
-            word_count = len(transcript.split())
-            if word_count < self._config.min_transcript_words:
-                await interaction.followup.send(
-                    f"Transcript too short ({word_count} words), discarding.",
-                    ephemeral=True,
-                )
-                return
-
-            embed = discord.Embed(
-                title="Community Call Summary",
-                description=summary[:4096],
-                color=discord.Color.blue(),
-            )
-            transcript_file = TextFile(transcript, "transcript.txt")
-            await interaction.followup.send(embed=embed, file=transcript_file)
-        except Exception:
-            log.exception("Failed to transcribe uploaded file")
-            await interaction.followup.send(
-                "Failed to transcribe audio file.", ephemeral=True
-            )
 
     async def cog_unload(self) -> None:
         self._cancel_grace()
