@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
-import io
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import davey
 from discord import Member, VoiceChannel, VoiceClient, VoiceState
@@ -12,6 +14,10 @@ from discord.ext.voice_recv import BasicSink, VoiceRecvClient
 from pydub import AudioSegment
 
 from rocketwatch.bot import RocketWatch
+
+if TYPE_CHECKING:
+    from discord import User
+    from discord.ext.voice_recv.opus import VoiceData
 from rocketwatch.plugins.transcription.pipeline import TranscriptionPipeline
 from rocketwatch.plugins.transcription.recorder import CallRecorder
 from rocketwatch.utils.config import cfg
@@ -22,6 +28,7 @@ from rocketwatch.utils.llm import create_provider
 TRANSCRIPTIONS_DIR = Path("../transcriptions")
 
 log = logging.getLogger("rocketwatch.transcription")
+logging.getLogger("discord.ext.voice_recv.reader").setLevel(logging.WARNING)
 
 
 class Transcription(Cog):
@@ -30,6 +37,7 @@ class Transcription(Cog):
         self._config = cfg.transcription
         self._recorder: CallRecorder | None = None
         self._voice_client: VoiceClient | None = None
+        self._artifact_dir: Path | None = None
         self._grace_task: asyncio.Task[None] | None = None
         self._timeout_task: asyncio.Task[None] | None = None
 
@@ -102,9 +110,9 @@ class Transcription(Cog):
             return
 
         self._voice_client = vc
-        self._recorder = CallRecorder()
+        self._recorder = CallRecorder(self._get_artifact_dir() / "raw")
 
-        def sink_callback(user, data) -> None:  # type: ignore[no-untyped-def]
+        def sink_callback(user: User | None, data: VoiceData) -> None:
             if not user or not self._recorder:
                 return
 
@@ -185,24 +193,21 @@ class Transcription(Cog):
                 log.info("Empty recording, discarding")
                 return
 
+            self._save_audio(user_segments)
+
             # Resolve user IDs to display names
-            guild = self.bot.get_guild(cfg.discord.owner.server_id)
             usernames: dict[int, str] = {}
+            guild_id = cfg.discord.owner.server_id
             for user_id in user_segments:
-                if guild:
-                    member = guild.get_member(user_id)
-                    if member:
-                        usernames[user_id] = member.display_name
-                        continue
-                usernames[user_id] = f"User {user_id}"
+                if member := await self.bot.get_or_fetch_member(guild_id, user_id):
+                    usernames[user_id] = member.display_name
+                else:
+                    usernames[user_id] = f"User {user_id}"
 
-            transcript, summary = await self._pipeline.process_users(
-                user_segments, usernames
-            )
+            transcript = await self._pipeline.transcribe_users(user_segments, usernames)
+            self._save_transcript(transcript)
 
-            # Save audio and transcript locally
-            self._save_artifacts(user_segments, transcript, summary or "")
-
+            summary = await self._pipeline.summarize(transcript)
             if not summary:
                 log.info("No substantive content, discarding")
                 return
@@ -212,23 +217,27 @@ class Transcription(Cog):
             await self.bot.report_error(e)
         finally:
             recorder.cleanup()
+            self._artifact_dir = None
 
-    def _save_artifacts(
+    def _get_artifact_dir(self) -> Path:
+        """Get or create the artifact directory for the current recording."""
+        if self._artifact_dir is None:
+            timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M")
+            self._artifact_dir = TRANSCRIPTIONS_DIR / timestamp
+        self._artifact_dir.mkdir(parents=True, exist_ok=True)
+        return self._artifact_dir
+
+    def _save_audio(
         self,
-        user_segments: dict[int, list[tuple[float, bytes]]],
-        transcript: str,
-        summary: str,
+        user_segments: dict[int, list[tuple[float, Path]]],
     ) -> None:
-        """Save mixed audio, transcript, and summary to disk."""
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M")
-        out_dir = TRANSCRIPTIONS_DIR / timestamp
-        out_dir.mkdir(parents=True, exist_ok=True)
+        """Mix per-user WAV files into a single MP3."""
+        out_dir = self._get_artifact_dir()
 
-        # Mix all user segments into a single audio file
         mixed: AudioSegment | None = None
         for _uid, segments in user_segments.items():
-            for offset, wav_data in segments:
-                track = AudioSegment.from_wav(io.BytesIO(wav_data))
+            for offset, wav_path in segments:
+                track = AudioSegment.from_wav(str(wav_path))
                 if mixed is None:
                     mixed = AudioSegment.silent(duration=int(offset * 1000)) + track
                 else:
@@ -239,10 +248,13 @@ class Transcription(Cog):
 
         if mixed:
             mixed.export(out_dir / "audio.mp3", format="mp3")
+            log.info(f"Audio saved to {out_dir}")
 
+    def _save_transcript(self, transcript: str) -> None:
+        """Save transcript to disk."""
+        out_dir = self._get_artifact_dir()
         (out_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
-        (out_dir / "summary.txt").write_text(summary, encoding="utf-8")
-        log.info(f"Artifacts saved to {out_dir}")
+        log.info(f"Transcript saved to {out_dir}")
 
     async def _post_results(self, transcript: str, summary: str) -> None:
         channel_id = self._config.output_channel_id

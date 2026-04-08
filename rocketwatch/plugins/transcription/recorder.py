@@ -1,7 +1,6 @@
 import contextlib
-import io
+import json
 import logging
-import tempfile
 import time
 import wave
 from pathlib import Path
@@ -14,32 +13,38 @@ log = logging.getLogger("rocketwatch.transcription.recorder")
 SAMPLE_RATE = OpusDecoder.SAMPLING_RATE  # 48000
 CHANNELS = OpusDecoder.CHANNELS  # 2
 SAMPLE_WIDTH = OpusDecoder.SAMPLE_SIZE // OpusDecoder.CHANNELS  # 2 bytes (16-bit)
+BYTES_PER_SECOND = SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH
+
+MIN_SEGMENT_DURATION = 1.0  # seconds
+MIN_SEGMENT_BYTES = int(MIN_SEGMENT_DURATION * BYTES_PER_SECOND) + 44  # +WAV header
 
 
 class UserStream:
-    """Buffers PCM audio for a single user, spilling to disk for long recordings."""
+    """Buffers PCM audio for a single user, writing WAV files to disk."""
 
-    def __init__(self, user_id: int, tmp_dir: Path) -> None:
+    def __init__(self, user_id: int, out_dir: Path) -> None:
         self.user_id = user_id
-        self._tmp_dir = tmp_dir
+        self._out_dir = out_dir
         self._segment_index = 0
-        self._file: io.BufferedWriter | None = None
+        self._wav: wave.Wave_write | None = None
         self._segment_start: float = 0.0
         self._last_timestamp: float = 0.0
         self._segments: list[tuple[float, Path]] = []  # (offset, path)
 
     def _start_segment(self, timestamp: float) -> None:
-        if self._file:
-            self._file.close()
-        path = self._tmp_dir / f"user_{self.user_id}_{self._segment_index}.pcm"
-        self._file = open(path, "wb")  # noqa: SIM115
+        self._close_wav()
+        path = self._out_dir / f"user_{self.user_id}_{self._segment_index}.wav"
+        self._wav = wave.open(str(path), "wb")  # noqa: SIM115
+        self._wav.setnchannels(CHANNELS)
+        self._wav.setsampwidth(SAMPLE_WIDTH)
+        self._wav.setframerate(SAMPLE_RATE)
         self._segment_start = timestamp
         self._last_timestamp = timestamp
         self._segments.append((timestamp, path))
         self._segment_index += 1
 
     def write(self, pcm: bytes, timestamp: float) -> None:
-        if not self._file:
+        if not self._wav:
             self._start_segment(timestamp)
         else:
             # Start a new segment if there's a significant gap (>5s)
@@ -50,20 +55,21 @@ class UserStream:
                 self._start_segment(timestamp)
 
         self._last_timestamp = timestamp
-        assert self._file is not None
-        self._file.write(pcm)
+        assert self._wav is not None
+        self._wav.writeframes(pcm)
 
-    def get_segments(self) -> list[tuple[float, bytes]]:
-        """Return list of (offset_seconds, pcm_bytes) for each segment."""
-        if self._file:
-            self._file.close()
-            self._file = None
-        return [(offset, path.read_bytes()) for offset, path in self._segments]
+    def get_segments(self) -> list[tuple[float, Path]]:
+        """Return list of (offset_seconds, wav_path) for each segment."""
+        self._close_wav()
+        return list(self._segments)
+
+    def _close_wav(self) -> None:
+        if self._wav:
+            self._wav.close()
+            self._wav = None
 
     def close(self) -> None:
-        if self._file:
-            self._file.close()
-            self._file = None
+        self._close_wav()
 
 
 class CallRecorder:
@@ -73,8 +79,9 @@ class CallRecorder:
     bypassing discord-ext-voice-recv's broken Opus decoder.
     """
 
-    def __init__(self, start_time: float | None = None) -> None:
-        self._tmp_dir = Path(tempfile.mkdtemp(prefix="rw_voice_"))
+    def __init__(self, out_dir: Path, start_time: float | None = None) -> None:
+        self._out_dir = out_dir
+        self._out_dir.mkdir(parents=True, exist_ok=True)
         self._streams: dict[int, UserStream] = {}
         self._decoders: dict[int, OpusDecoder] = {}
         self._start_time = start_time or time.monotonic()
@@ -88,7 +95,7 @@ class CallRecorder:
         if user_id not in self._decoders:
             log.info(f"Receiving audio from user {user_id}")
             self._decoders[user_id] = OpusDecoder()
-            self._streams[user_id] = UserStream(user_id, self._tmp_dir)
+            self._streams[user_id] = UserStream(user_id, self._out_dir)
 
         try:
             pcm = self._decoders[user_id].decode(opus_data, fec=False)
@@ -109,34 +116,34 @@ class CallRecorder:
     def speaker_count(self) -> int:
         return len(self._streams)
 
-    def _pcm_to_wav(self, pcm: bytes) -> bytes:
-        """Convert raw PCM bytes to WAV format."""
-        buf = io.BytesIO()
-        with wave.open(buf, "wb") as wf:
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(SAMPLE_WIDTH)
-            wf.setframerate(SAMPLE_RATE)
-            wf.writeframes(pcm)
-        return buf.getvalue()
+    def get_user_segments(self) -> dict[int, list[tuple[float, Path]]]:
+        """Return per-user WAV file paths with their start offsets.
 
-    def get_user_segments(self) -> dict[int, list[tuple[float, bytes]]]:
-        """Return per-user WAV segments with their start offsets.
-
-        Returns a dict of user_id -> [(offset_seconds, wav_bytes), ...].
+        Also writes a manifest.json alongside the WAV files so the
+        segment timestamps can be recovered from disk.
         """
-        result: dict[int, list[tuple[float, bytes]]] = {}
+        result: dict[int, list[tuple[float, Path]]] = {}
+        manifest: dict[str, list[dict[str, str | float]]] = {}
         for user_id, stream in self._streams.items():
-            segments = stream.get_segments()
-            wavs = [(offset, self._pcm_to_wav(pcm)) for offset, pcm in segments if pcm]
-            if wavs:
-                result[user_id] = wavs
+            segments = [
+                (offset, path)
+                for offset, path in stream.get_segments()
+                if path.stat().st_size >= MIN_SEGMENT_BYTES
+            ]
+            if segments:
+                result[user_id] = segments
+                manifest[str(user_id)] = [
+                    {"offset": offset, "file": path.name} for offset, path in segments
+                ]
+
+        if manifest:
+            manifest_path = self._out_dir / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest, indent=2))
+
         return result
 
     def cleanup(self) -> None:
-        """Remove temporary files."""
+        """Close open file handles."""
         for stream in self._streams.values():
             with contextlib.suppress(Exception):
                 stream.close()
-        import shutil
-
-        shutil.rmtree(self._tmp_dir, ignore_errors=True)

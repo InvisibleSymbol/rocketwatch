@@ -107,7 +107,7 @@ class ReportReviewView(ui.View):
         )
         return False
 
-    @ui.button(label="Confirm Ban", style=ButtonStyle.danger)
+    @ui.button(label="Confirm Scam", style=ButtonStyle.danger)
     async def confirm(
         self,
         interaction: Interaction["RocketWatch"],

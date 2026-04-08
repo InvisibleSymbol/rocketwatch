@@ -1,5 +1,6 @@
 import io
 import logging
+from pathlib import Path
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -35,7 +36,7 @@ class SummaryResult(BaseModel):
     )
     summary: str = Field(
         default="",
-        description="The structured summary. Empty if has_content is false.",
+        description="The structured summary of the transcript. Always provide a summary.",
     )
 
 
@@ -60,13 +61,14 @@ class TranscriptionPipeline:
         self._llm = llm_provider
 
     async def _transcribe_wav(
-        self, wav_bytes: bytes, client: AsyncOpenAI
+        self, wav_path: Path, client: AsyncOpenAI
     ) -> list[tuple[float, str]]:
-        """Transcribe a single WAV stream, splitting on silence gaps.
+        """Transcribe a single WAV file, splitting on silence gaps.
 
-        Returns list of (offset_seconds, text).
+        Returns list of (offset_seconds, text). Loads one chunk at a time
+        to keep memory usage low.
         """
-        audio = AudioSegment.from_wav(io.BytesIO(wav_bytes))
+        audio = AudioSegment.from_wav(str(wav_path))
         ranges = detect_nonsilent(
             audio, min_silence_len=5000, silence_thresh=audio.dBFS - 16
         )
@@ -96,13 +98,13 @@ class TranscriptionPipeline:
 
     async def transcribe_users(
         self,
-        user_segments: dict[int, list[tuple[float, bytes]]],
+        user_segments: dict[int, list[tuple[float, Path]]],
         usernames: dict[int, str],
     ) -> str:
         """Transcribe per-user audio segments and interleave by timestamp.
 
         Args:
-            user_segments: user_id -> [(offset_seconds, wav_bytes), ...]
+            user_segments: user_id -> [(offset_seconds, wav_path), ...]
             usernames: user_id -> display name
         """
         client = AsyncOpenAI(api_key=self._stt.api_key)
@@ -112,8 +114,8 @@ class TranscriptionPipeline:
             speaker = usernames.get(user_id, f"User {user_id}")
             log.info(f"Transcribing audio for {speaker} ({len(wav_segments)} segments)")
 
-            for offset, wav_bytes in wav_segments:
-                chunks = await self._transcribe_wav(wav_bytes, client)
+            for offset, wav_path in wav_segments:
+                chunks = await self._transcribe_wav(wav_path, client)
                 for chunk_offset, text in chunks:
                     segments.append(
                         _Segment(
@@ -152,7 +154,7 @@ class TranscriptionPipeline:
 
     async def process_users(
         self,
-        user_segments: dict[int, list[tuple[float, bytes]]],
+        user_segments: dict[int, list[tuple[float, Path]]],
         usernames: dict[int, str],
     ) -> tuple[str, str | None]:
         """Full pipeline with speaker labels. Returns (transcript, summary).
