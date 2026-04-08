@@ -147,10 +147,21 @@ class Transcription(Cog):
             pass
 
     async def _stop_and_process(self) -> None:
-        self._cancel_grace()
-        if self._timeout_task and not self._timeout_task.done():
+        current = asyncio.current_task()
+        if (
+            self._grace_task
+            and self._grace_task is not current
+            and not self._grace_task.done()
+        ):
+            self._grace_task.cancel()
+        self._grace_task = None
+        if (
+            self._timeout_task
+            and self._timeout_task is not current
+            and not self._timeout_task.done()
+        ):
             self._timeout_task.cancel()
-            self._timeout_task = None
+        self._timeout_task = None
 
         recorder = self._recorder
         vc = self._voice_client
@@ -197,14 +208,14 @@ class Transcription(Cog):
                 user_wavs, usernames
             )
 
+            # Save audio and transcript locally
+            self._save_artifacts(user_wavs, transcript, summary)
+
             # Discard if transcript is too short
             word_count = len(transcript.split())
             if word_count < self._config.min_transcript_words:
                 log.info(f"Transcript too short ({word_count} words), discarding")
                 return
-
-            # Save audio and transcript locally
-            self._save_artifacts(user_wavs, transcript, summary)
 
             await self._post_results(transcript, summary)
         except Exception as e:

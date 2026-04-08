@@ -20,7 +20,8 @@ who missed the call. Produce a structured summary with the following sections:
 - **Open Questions**: Unresolved topics or debates that need follow-up
 
 Attribute key statements to speakers by name when relevant. \
-Omit any section that has no content. Use bullet points and keep the summary concise."""
+Omit any section that has no content. Use bullet points and keep the summary concise. \
+Give equal attention to all parts of the transcript, regardless of when they occurred."""
 
 
 class _Segment:
